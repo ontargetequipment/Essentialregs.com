@@ -14,7 +14,7 @@ export default async function SamplePage() {
     .select(
       "*, cross_references!cross_references_from_provision_id_fkey(id, raw_text, target_type, target_provision_id, target_url)"
     )
-    .eq("is_public", true)
+    .in("id", ["osha-1910-119", "ecmc-rule-604", "cdphe-reg7-general"])
     .order("sort_order", { ascending: true });
 
   const provisions = (data ?? []).map((p) => ({

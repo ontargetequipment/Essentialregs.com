@@ -18,6 +18,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               EssentialRegs
             </Link>
             <nav className="flex gap-6 text-sm font-medium text-zinc-600">
+              <Link href="/regulations" className="hover:text-zinc-950">
+                Regulations
+              </Link>
               <Link href="/sample" className="hover:text-zinc-950">
                 Sample
               </Link>

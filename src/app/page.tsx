@@ -16,17 +16,17 @@ export default function Home() {
 
       <div className="mt-8 flex gap-4">
         <Link
-          href="/sample"
+          href="/regulations"
           className="rounded-md bg-zinc-900 px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+        >
+          Browse the full regulations
+        </Link>
+        <Link
+          href="/sample"
+          className="rounded-md border border-zinc-300 px-5 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
         >
           See a sample entry
         </Link>
-        <a
-          href="#pricing"
-          className="rounded-md border border-zinc-300 px-5 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
-        >
-          Pricing
-        </a>
       </div>
 
       <section id="pricing" className="mt-20 border-t border-zinc-200 pt-10">
