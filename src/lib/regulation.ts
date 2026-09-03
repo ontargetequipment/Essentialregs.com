@@ -1,7 +1,25 @@
+import DOMPurify from "isomorphic-dompurify";
 import { createClient } from "@/lib/supabase/server";
 import type { Provision } from "@/lib/types";
 
 export type ProvisionKind = "reg" | "part" | "appendix" | "item";
+
+/**
+ * Defense-in-depth for `full_text`: it's rendered with dangerouslySetInnerHTML
+ * because it's real formatted regulatory HTML (paragraphs, tables, embedded
+ * federal text), not plain strings. It's currently trusted content — it came
+ * from Brody's own uploaded reference file, not arbitrary user input — but
+ * sanitizing here means a bad row (a bad import, a future admin-entry path,
+ * anything) can't inject a <script> tag or an event-handler attribute into
+ * the page. `data-target` is explicitly allow-listed because the click-to-preview
+ * cross-reference popups (see RegulationReader.tsx) read it directly off the
+ * rendered DOM — stripping it would silently break every citation popup.
+ */
+export function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    ADD_ATTR: ["data-target"],
+  });
+}
 
 /**
  * The reader HTML this app's content was imported from encodes structure in
@@ -53,7 +71,12 @@ export async function fetchRegulationProvisions(
 
     if (error) throw new Error(error.message);
     if (!data || data.length === 0) break;
-    all.push(...(data as Provision[]));
+    all.push(
+      ...(data as Provision[]).map((p) => ({
+        ...p,
+        full_text: sanitizeHtml(p.full_text),
+      }))
+    );
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }
