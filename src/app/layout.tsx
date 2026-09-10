@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { AuthStatus } from "@/components/AuthStatus";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,7 +19,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className="text-lg font-semibold tracking-tight">
               EssentialRegs
             </Link>
-            <nav className="flex gap-6 text-sm font-medium text-zinc-600">
+            <nav className="flex items-center gap-6 text-sm font-medium text-zinc-600">
               <Link href="/regulations" className="hover:text-zinc-950">
                 Regulations
               </Link>
@@ -27,6 +29,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/#pricing" className="hover:text-zinc-950">
                 Pricing
               </Link>
+              <Suspense fallback={<span className="text-zinc-400">···</span>}>
+                <AuthStatus />
+              </Suspense>
             </nav>
           </div>
         </header>

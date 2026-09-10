@@ -2,10 +2,10 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 // Server-side Supabase client for use in Server Components / route handlers.
-// Same anon key as the browser client for now — once login is wired up
-// (subscriber-only content), this is also where the user's session cookie
-// gets read so RLS can tell a logged-in subscriber apart from an anonymous
-// visitor.
+// Same anon key as the browser client — access control is enforced by RLS,
+// not by this key. This is where the user's session cookie gets read (set
+// by src/proxy.ts) so RLS can tell a logged-in, access-granted subscriber
+// apart from an anonymous visitor.
 export async function createClient() {
   const cookieStore = await cookies();
 

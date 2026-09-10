@@ -376,6 +376,23 @@
 .reg-reader .xref:hover {
   background: var(--accent-soft);
 }
+.reg-reader .xref-external-reg {
+  color: var(--tag);
+  border-bottom: 1.5px solid var(--tag);
+  text-decoration: none;
+  cursor: pointer;
+  padding-right: 1px;
+}
+.reg-reader .xref-external-reg:hover {
+  background: #f2ead9;
+}
+.reg-reader .xref-external-reg::after {
+  content: "\2197";
+  display: inline-block;
+  margin-left: 1px;
+  font-size: 0.8em;
+  vertical-align: super;
+}
 .reg-reader .contains-link {
   margin-right: 4px;
 }

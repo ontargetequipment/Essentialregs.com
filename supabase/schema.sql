@@ -75,3 +75,69 @@ drop trigger if exists provisions_set_updated_at on provisions;
 create trigger provisions_set_updated_at
   before update on provisions
   for each row execute function set_updated_at();
+
+-- Auth: profiles table + manual "early access" gate ---------------------
+--
+-- profiles holds one row per Supabase Auth user (auth.users is managed by
+-- Supabase itself and lives outside this file). access_granted is the manual
+-- switch Brody flips (via SQL) to give a signed-in user full read access
+-- before the paid subscription flow exists -- there is deliberately no
+-- update policy letting a user grant it to themselves.
+create table if not exists profiles (
+  id             uuid primary key references auth.users(id) on delete cascade,
+  email          text,
+  access_granted boolean not null default false,
+  created_at     timestamptz not null default now()
+);
+
+alter table profiles enable row level security;
+
+drop policy if exists "users can read own profile" on profiles;
+create policy "users can read own profile"
+  on profiles for select
+  using (auth.uid() = id);
+
+-- Auto-create a profile row whenever a new auth user is created.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email)
+  values (new.id, new.email)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- Signed-in users Brody has granted access to can read everything, not just
+-- is_public rows. This composes with the "public can read public provisions"
+-- policies above (Postgres ORs together permissive policies on the same
+-- table/command), so nothing above needs to change.
+drop policy if exists "granted users can read all provisions" on provisions;
+create policy "granted users can read all provisions"
+  on provisions for select
+  using (
+    exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+      and profiles.access_granted = true
+    )
+  );
+
+drop policy if exists "granted users can read all cross-refs" on cross_references;
+create policy "granted users can read all cross-refs"
+  on cross_references for select
+  using (
+    exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+      and profiles.access_granted = true
+    )
+  );
