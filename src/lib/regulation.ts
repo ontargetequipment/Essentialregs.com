@@ -1,8 +1,38 @@
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtmlLib from "sanitize-html";
 import { createClient } from "@/lib/supabase/server";
 import type { Provision } from "@/lib/types";
 
 export type ProvisionKind = "reg" | "part" | "appendix" | "item";
+
+// Tags/attributes beyond sanitize-html's own (already generous) defaults
+// that show up in the imported regulation HTML -- tables, headings, and
+// inline styling used to reproduce the source document's layout.
+const ALLOWED_TAGS = sanitizeHtmlLib.defaults.allowedTags.concat([
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "table",
+  "thead",
+  "tbody",
+  "tfoot",
+  "tr",
+  "td",
+  "th",
+  "img",
+  "font",
+]);
+
+const ALLOWED_ATTRIBUTES: sanitizeHtmlLib.IOptions["allowedAttributes"] = {
+  ...sanitizeHtmlLib.defaults.allowedAttributes,
+  "*": ["class", "id", "style", "data-target"],
+  a: ["href", "name", "target"],
+  td: ["colspan", "rowspan"],
+  th: ["colspan", "rowspan"],
+  img: ["src", "alt", "width", "height"],
+};
 
 /**
  * Defense-in-depth for `full_text`: it's rendered with dangerouslySetInnerHTML
@@ -14,10 +44,20 @@ export type ProvisionKind = "reg" | "part" | "appendix" | "item";
  * the page. `data-target` is explicitly allow-listed because the click-to-preview
  * cross-reference popups (see RegulationReader.tsx) read it directly off the
  * rendered DOM — stripping it would silently break every citation popup.
+ *
+ * Uses `sanitize-html` rather than DOMPurify/jsdom: jsdom's own dependency
+ * chain (html-encoding-sniffer -> @exodus/bytes) ships a package that's
+ * ESM-only, which Node's require() can't load in Vercel's serverless
+ * runtime -- it crashed every request to a page that touched this module
+ * with "ERR_REQUIRE_ESM", regardless of Next's bundling settings.
+ * sanitize-html is pure CommonJS with no DOM emulation, so it doesn't hit
+ * that problem at all.
  */
 export function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, {
-    ADD_ATTR: ["data-target"],
+  return sanitizeHtmlLib(html, {
+    allowedTags: ALLOWED_TAGS,
+    allowedAttributes: ALLOWED_ATTRIBUTES,
+    allowedSchemes: ["http", "https", "mailto"],
   });
 }
 
