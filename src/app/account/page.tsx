@@ -14,12 +14,6 @@ export default async function AccountPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("access_granted, created_at")
-    .eq("id", user.id)
-    .single();
-
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
       <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Your account</h1>
@@ -31,11 +25,7 @@ export default async function AccountPage() {
         </div>
         <div className="flex justify-between border-b border-zinc-200 pb-3">
           <dt className="text-zinc-500">Access</dt>
-          <dd className="font-medium text-zinc-900">
-            {profile?.access_granted
-              ? "Full access (early access)"
-              : "Sample content only — full access not yet granted"}
-          </dd>
+          <dd className="font-medium text-zinc-900">Full access — all regulations</dd>
         </div>
       </dl>
 

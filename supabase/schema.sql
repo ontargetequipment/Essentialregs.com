@@ -116,28 +116,20 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- Signed-in users Brody has granted access to can read everything, not just
--- is_public rows. This composes with the "public can read public provisions"
--- policies above (Postgres ORs together permissive policies on the same
--- table/command), so nothing above needs to change.
+-- Any signed-in user can read everything, not just is_public rows -- login
+-- itself is the gate for now, ahead of any future paid subscription tier.
+-- This composes with the "public can read public provisions" policies above
+-- (Postgres ORs together permissive policies on the same table/command), so
+-- nothing above needs to change.
+--
+-- profiles.access_granted is left in the table above, unused for now, in
+-- case a stricter tier (e.g. paid vs. free account) is wanted again later.
 drop policy if exists "granted users can read all provisions" on provisions;
-create policy "granted users can read all provisions"
+create policy "authenticated users can read all provisions"
   on provisions for select
-  using (
-    exists (
-      select 1 from profiles
-      where profiles.id = auth.uid()
-      and profiles.access_granted = true
-    )
-  );
+  using (auth.role() = 'authenticated');
 
 drop policy if exists "granted users can read all cross-refs" on cross_references;
-create policy "granted users can read all cross-refs"
+create policy "authenticated users can read all cross-refs"
   on cross_references for select
-  using (
-    exists (
-      select 1 from profiles
-      where profiles.id = auth.uid()
-      and profiles.access_granted = true
-    )
-  );
+  using (auth.role() = 'authenticated');
