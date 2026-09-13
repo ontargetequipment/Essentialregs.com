@@ -398,15 +398,26 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
     submitted to the Anthropic Batches API or is skipped as headings-only
     and cleared in the database."""
     batch_requests = []
+    # The Batches API restricts custom_id to ^[a-zA-Z0-9_-]{1,64}$, but many
+    # real provision ids contain parentheses (e.g.
+    # "sec-7-B-III-C-5-c-(iii)-(B)-(4)" for deeply-nested items like
+    # I.B.1.a.(ii)) and fail that pattern -- confirmed against the live
+    # corpus, 859 ids across all regs contain disallowed characters. A
+    # positional custom_id sidesteps the whole character-set question; this
+    # map translates it back to the real provision id wherever a result
+    # (success, error, or timeout) needs to be written or logged.
+    custom_id_to_provision_id: dict[str, str] = {}
 
-    for provision in rows:
+    for i, provision in enumerate(rows):
         result = build_prompt(provision, meta)
         if result.body_word_count < MIN_WORDS:
             stats.skipped_short += 1
             clear_summary_as_too_short(client_supabase, provision["id"])
             continue
+        custom_id = f"row-{i}"
+        custom_id_to_provision_id[custom_id] = provision["id"]
         batch_requests.append({
-            "custom_id": provision["id"],
+            "custom_id": custom_id,
             "params": {
                 "model": model,
                 "max_tokens": MAX_TOKENS,
@@ -437,7 +448,7 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
                 print(f"  WARNING: batch {batch.id} did not finish within "
                       f"{MAX_POLL_SECONDS}s -- leaving remaining rows for next run.")
                 for req in chunk:
-                    log_failure(req["custom_id"], "batch poll timeout")
+                    log_failure(custom_id_to_provision_id[req["custom_id"]], "batch poll timeout")
                     stats.failed += 1
                 break
             time.sleep(poll_interval)
@@ -450,7 +461,7 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
               f"canceled={counts.canceled} expired={counts.expired}")
 
         for item in client_anthropic.messages.batches.results(batch.id):
-            custom_id = item.custom_id
+            provision_id = custom_id_to_provision_id[item.custom_id]
             result = item.result
             if result.type == "succeeded":
                 message = result.message
@@ -461,14 +472,14 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
                 stats.add_usage(message.usage)
                 if not summary_text:
                     stats.failed += 1
-                    log_failure(custom_id, "empty response")
+                    log_failure(provision_id, "empty response")
                     continue
-                write_summary(client_supabase, custom_id, summary_text, model)
+                write_summary(client_supabase, provision_id, summary_text, model)
                 stats.processed += 1
             else:
                 stats.failed += 1
                 error_detail = getattr(getattr(result, "error", None), "message", result.type)
-                log_failure(custom_id, f"{result.type}: {error_detail}")
+                log_failure(provision_id, f"{result.type}: {error_detail}")
 
 
 # --------------------------------------------------------------------------
