@@ -78,6 +78,7 @@ const RESERVED_IDS = new Set([
   "popup-footer",
   "popup-goto",
   "mobile-toggle",
+  "sidebar-scrim",
 ]);
 
 const VALID_ID = /^[A-Za-z0-9_.:-]+$/;

@@ -521,7 +521,11 @@
   line-height: 1;
   cursor: pointer;
   color: var(--ink-soft);
-  padding: 2px 6px;
+  /* 10px/12px rather than the original 2px/6px so this clears the ~24px
+     minimum touch-target size on phones -- it was ~23x24px, the only
+     control in the reader below that floor. */
+  padding: 10px 12px;
+  margin: -10px -12px 0 0;
   border-radius: 4px;
 }
 .reg-reader #popup-close:hover {
@@ -625,6 +629,21 @@
   }
   .reg-reader #sidebar.open {
     left: 0;
+  }
+  /* The sidebar itself is a fixed 320px, narrower than most phone
+     viewports (375/414px) -- without this, opening it left a visible,
+     un-dimmed, still-clickable sliver of the page and the site header on
+     the right, and no way to dismiss the menu except the nav links inside
+     it. Dims and blocks that sliver, and doubles as a click-to-close target. */
+  .reg-reader #sidebar-scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 26, 22, 0.45);
+    z-index: 50;
+  }
+  .reg-reader #sidebar-scrim.show {
+    display: block;
   }
   .reg-reader #doc {
     padding: 32px 22px 120px;
