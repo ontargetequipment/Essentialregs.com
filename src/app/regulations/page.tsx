@@ -40,6 +40,16 @@ export default async function RegulationsIndexPage() {
             first.
           </p>
           <SubscribeControl access={access} className="mt-5" />
+          <p className="mt-4 text-xs text-zinc-500">
+            Need multiple seats for your team?{" "}
+            <Link
+              href="/contact-sales"
+              className="font-medium text-zinc-700 underline underline-offset-2 hover:text-emerald-700"
+            >
+              Contact sales
+            </Link>
+            .
+          </p>
         </div>
       )}
 
