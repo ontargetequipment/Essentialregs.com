@@ -21,5 +21,7 @@ export type Provision = {
   last_verified_date: string | null;
   is_public: boolean;
   sort_order: number;
+  /** Moderation state of ai_summary — see supabase/migrations/004_review.sql. Absent/undefined wherever a caller hasn't selected it. */
+  summary_status?: string | null;
   cross_references?: CrossReference[];
 };

@@ -28,11 +28,58 @@ const ALLOWED_TAGS = sanitizeHtmlLib.defaults.allowedTags.concat([
 const ALLOWED_ATTRIBUTES: sanitizeHtmlLib.IOptions["allowedAttributes"] = {
   ...sanitizeHtmlLib.defaults.allowedAttributes,
   "*": ["class", "id", "style", "data-target"],
-  a: ["href", "name", "target"],
+  // "rel" is added by the transformTags.a transform below (noopener
+  // noreferrer) -- it has to be allow-listed here too or the attribute
+  // filter strips it right back out after the transform runs.
+  a: ["href", "name", "target", "rel"],
   td: ["colspan", "rowspan"],
   th: ["colspan", "rowspan"],
   img: ["src", "alt", "width", "height"],
 };
+
+// Inline styling actually used by the source document's layout (alignment,
+// emphasis, table/column widths, indentation). Anything else -- position,
+// display, filters, etc. -- is stripped, which is what keeps a bad row from
+// e.g. `position:fixed`-ing a full-screen overlay over the page.
+const ALLOWED_STYLES: NonNullable<sanitizeHtmlLib.IOptions["allowedStyles"]> = {
+  "*": {
+    "text-align": [/^(left|right|center|justify)$/],
+    "font-weight": [/^(bold|normal|\d{3})$/],
+    "font-style": [/^(italic|normal)$/],
+    "margin-left": [/^\d+(px|em|pt|%)$/],
+    "padding-left": [/^\d+(px|em|pt|%)$/],
+    "text-indent": [/^\d+(px|em|pt|%)$/],
+    width: [/^\d+(px|%)$/],
+    "text-decoration": [/^(underline|none)$/],
+  },
+};
+
+// Ids the reader shell itself renders (see RegulationReader.tsx / the JSX in
+// regulations/[reg]/page.tsx) -- a provision whose id collided with one of
+// these could hijack the popup/sidebar/search DOM via `getElementById`, so
+// any of these coming out of stored HTML gets dropped rather than kept.
+const RESERVED_IDS = new Set([
+  "sidebar",
+  "sidebar-header",
+  "jump-wrap",
+  "jumpbox",
+  "jump-results",
+  "main-scroll",
+  "doc",
+  "backdrop",
+  "popup",
+  "popup-head",
+  "popup-head-text",
+  "popup-eyebrow",
+  "popup-title",
+  "popup-close",
+  "popup-body",
+  "popup-footer",
+  "popup-goto",
+  "mobile-toggle",
+]);
+
+const VALID_ID = /^[A-Za-z0-9_.:-]+$/;
 
 /**
  * Defense-in-depth for `full_text`: it's rendered with dangerouslySetInnerHTML
@@ -57,7 +104,28 @@ export function sanitizeHtml(html: string): string {
   return sanitizeHtmlLib(html, {
     allowedTags: ALLOWED_TAGS,
     allowedAttributes: ALLOWED_ATTRIBUTES,
+    allowedStyles: ALLOWED_STYLES,
+    // Links still get http/https/mailto (this content is jurisdiction/legal
+    // citations that legitimately point at http:// gov sites); images are
+    // tightened to https/data since there's no legitimate reason for this
+    // content to hotlink a plaintext http:// image.
     allowedSchemes: ["http", "https", "mailto"],
+    allowedSchemesByTag: { img: ["https", "data"] },
+    transformTags: {
+      // Every link becomes noopener/noreferrer regardless of `target`, so a
+      // citation link out of the reader can't get a `window.opener` handle
+      // back on this page.
+      a: sanitizeHtmlLib.simpleTransform("a", { rel: "noopener noreferrer" }),
+      "*": (tagName, attribs) => {
+        const id = attribs.id;
+        if (id !== undefined && (!VALID_ID.test(id) || RESERVED_IDS.has(id))) {
+          const attribsWithoutId = { ...attribs };
+          delete attribsWithoutId.id;
+          return { tagName, attribs: attribsWithoutId };
+        }
+        return { tagName, attribs };
+      },
+    },
   });
 }
 
@@ -103,7 +171,7 @@ export async function fetchRegulationProvisions(
     const { data, error } = await supabase
       .from("provisions")
       .select(
-        "id, citation, title, jurisdiction_level, issuing_body, parent_id, full_text, ai_summary, source_url, last_verified_date, is_public, sort_order"
+        "id, citation, title, jurisdiction_level, issuing_body, parent_id, full_text, ai_summary, summary_status, source_url, last_verified_date, is_public, sort_order"
       )
       .like("id", `sec-${regNumber}-%`)
       .order("sort_order", { ascending: true })
@@ -258,8 +326,12 @@ export function summaryParagraphs(summary: string): string[] {
  * HTML, so it's escaped here; blank lines become paragraph breaks.
  */
 export function summaryPanelHtml(
-  p: Pick<Provision, "ai_summary" | "last_verified_date">
+  p: Pick<Provision, "ai_summary" | "last_verified_date" | "summary_status">
 ): string {
+  // A rejected summary is withheld from every reader entirely — it failed
+  // human review, so showing it (even labeled "not yet reviewed") would be
+  // actively misleading rather than just incomplete.
+  if (p.summary_status === "rejected") return "";
   const paragraphs = summaryParagraphs(p.ai_summary ?? "");
   if (!paragraphs.length) return "";
   const body = paragraphs.map((t) => `<p>${escapeHtml(t)}</p>`).join("");

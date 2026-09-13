@@ -35,6 +35,7 @@ const FOOTER_LINKS = [
   { href: "/disclaimer", label: "Disclaimer" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
+  { href: "/changelog", label: "Changelog" },
 ] as const;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

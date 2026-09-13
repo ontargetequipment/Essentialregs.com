@@ -14,8 +14,17 @@ import {
 import { RegulationReader } from "@/components/RegulationReader";
 import "../reader.css";
 
+// `reg` gets interpolated straight into a `like "sec-{reg}-%"` filter
+// (fetchRegulationProvisions) -- restricting it to alphanumerics before it
+// ever reaches that query closes off any PostgREST filter-syntax injection
+// via the URL segment, on top of just being a legitimate 404 for garbage input.
+const VALID_REG = /^[A-Za-z0-9]+$/;
+
 export async function generateMetadata(props: PageProps<"/regulations/[reg]">) {
   const { reg } = await props.params;
+  if (!VALID_REG.test(reg)) {
+    notFound();
+  }
   const all = await fetchRegulationProvisions(reg);
   const root = all.find((p) => kindOf(p.id) === "reg");
   return {
@@ -25,6 +34,9 @@ export async function generateMetadata(props: PageProps<"/regulations/[reg]">) {
 
 export default async function RegulationPage(props: PageProps<"/regulations/[reg]">) {
   const { reg } = await props.params;
+  if (!VALID_REG.test(reg)) {
+    notFound();
+  }
   const all = await fetchRegulationProvisions(reg);
 
   if (all.length === 0) {

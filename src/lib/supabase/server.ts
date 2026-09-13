@@ -13,6 +13,14 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // `secure` is left off in dev so the session cookie still works over
+      // plain http://localhost; `sameSite: "lax"` still blocks it being
+      // sent on cross-site requests while allowing normal top-level
+      // navigation (e.g. following the Supabase auth email link).
+      cookieOptions: {
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();

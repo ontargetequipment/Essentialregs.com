@@ -5,8 +5,46 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/safe-redirect";
+import type { AuthError } from "@supabase/supabase-js";
 
 export type AuthFormState = { error?: string; message?: string } | undefined;
+
+/**
+ * Maps a raw Supabase auth error to a generic, user-facing message. Supabase's
+ * `error.message` strings are meant for developers, not end users, and some
+ * of them leak information an attacker can use (e.g. confirming an email is
+ * already registered lets them enumerate accounts). Log the real message
+ * server-side for debugging, but only ever return one of these fixed strings
+ * to the client.
+ */
+function friendlyAuthError(error: AuthError, context: string): string {
+  console.error(`[auth:${context}]`, error.message);
+
+  const code = error.code ?? "";
+  const message = error.message.toLowerCase();
+
+  if (code === "invalid_credentials" || message.includes("invalid login credentials")) {
+    return "Email or password is incorrect.";
+  }
+  if (
+    code === "user_already_exists" ||
+    code === "email_exists" ||
+    message.includes("already registered") ||
+    message.includes("already been registered") ||
+    message.includes("user already registered")
+  ) {
+    return "An account with that email already exists. Try logging in.";
+  }
+  if (
+    code === "over_request_rate_limit" ||
+    code === "over_email_send_rate_limit" ||
+    error.status === 429 ||
+    message.includes("rate limit")
+  ) {
+    return "Too many attempts. Please wait a few minutes and try again.";
+  }
+  return "Something went wrong. Please try again.";
+}
 
 async function siteOrigin() {
   const headersList = await headers();
@@ -31,7 +69,7 @@ export async function login(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: error.message };
+    return { error: friendlyAuthError(error, "login") };
   }
 
   revalidatePath("/", "layout");
@@ -71,7 +109,7 @@ export async function signup(
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: friendlyAuthError(error, "signup") };
   }
 
   // signUp() returns no session when email confirmation is required — the
@@ -114,7 +152,7 @@ export async function requestPasswordReset(
   // avoid leaking which addresses have accounts — surface the same message
   // either way, and only report an actual failure (e.g. rate limiting).
   if (error) {
-    return { error: error.message };
+    return { error: friendlyAuthError(error, "reset-password-request") };
   }
 
   return {
@@ -143,7 +181,7 @@ export async function updatePassword(
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
-    return { error: error.message };
+    return { error: friendlyAuthError(error, "update-password") };
   }
 
   revalidatePath("/", "layout");

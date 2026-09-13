@@ -20,7 +20,8 @@ export function ProvisionCard({ provision }: { provision: Provision }) {
         ) : null}
       </h2>
 
-      {summaryParagraphs(provision.ai_summary ?? "").length > 0 && (
+      {provision.summary_status !== "rejected" &&
+        summaryParagraphs(provision.ai_summary ?? "").length > 0 && (
         <details className="mt-4 rounded-md bg-emerald-50 p-4" open>
           <summary className="cursor-pointer text-sm font-semibold text-emerald-900">
             Plain-English summary

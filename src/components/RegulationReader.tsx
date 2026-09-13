@@ -138,7 +138,7 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
       jumpResults.innerHTML = combined
         .map(
           (row) =>
-            `<div class="jr-item" data-slug="${row[0]}"><span class="jr-id">${escapeHtml(
+            `<div class="jr-item" data-slug="${escapeHtml(row[0])}"><span class="jr-id">${escapeHtml(
               row[1]
             )}</span><span class="jr-snip">${escapeHtml(row[2])}</span></div>`
         )
