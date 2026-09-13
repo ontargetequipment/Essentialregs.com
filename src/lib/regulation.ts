@@ -216,6 +216,62 @@ export function withItemIdBadge(html: string, citation: string): string {
   return badge + html;
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Formats a Postgres `date` string ("2026-09-12") as "Sep 12, 2026". Parsed
+ * by hand rather than via `new Date()` so a date-only value isn't shifted a
+ * day by the server's timezone. Anything that doesn't look like a date is
+ * returned untouched.
+ */
+export function formatReviewDate(isoDate: string): string {
+  const m = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return isoDate;
+  const month = MONTHS[Number(m[2]) - 1];
+  if (!month) return isoDate;
+  return `${month} ${Number(m[3])}, ${m[1]}`;
+}
+
+/**
+ * Provenance line shown under every AI summary, so a reader always knows
+ * whether a human has checked it against the official text yet.
+ */
+export function summaryStatusText(lastVerifiedDate: string | null): string {
+  return lastVerifiedDate
+    ? `AI-generated · reviewed ${formatReviewDate(lastVerifiedDate)}`
+    : "AI-generated · not yet human-reviewed — verify against the official text";
+}
+
+/** Splits plain-text summary into paragraphs on blank lines (drops empties). */
+export function summaryParagraphs(summary: string): string[] {
+  return summary
+    .split(/\n\s*\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/**
+ * The collapsible "Plain-English summary" panel rendered directly under a
+ * provision's text in the reader. Returns "" when there's no summary yet
+ * (the whole corpus starts out that way), so callers can concatenate it
+ * unconditionally like containsBoxHtml. `ai_summary` is plain text, not
+ * HTML, so it's escaped here; blank lines become paragraph breaks.
+ */
+export function summaryPanelHtml(
+  p: Pick<Provision, "ai_summary" | "last_verified_date">
+): string {
+  const paragraphs = summaryParagraphs(p.ai_summary ?? "");
+  if (!paragraphs.length) return "";
+  const body = paragraphs.map((t) => `<p>${escapeHtml(t)}</p>`).join("");
+  return (
+    `<details class="summary-panel">` +
+    `<summary>Plain-English summary</summary>` +
+    `<div class="summary-body">${body}</div>` +
+    `<div class="summary-status">${escapeHtml(summaryStatusText(p.last_verified_date))}</div>` +
+    `</details>`
+  );
+}
+
 /** The mini "here's what's inside this section" box shown under items/parts that have children. */
 export function containsBoxHtml(children: Provision[]): string {
   if (!children.length) return "";

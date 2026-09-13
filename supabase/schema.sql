@@ -81,8 +81,10 @@ create trigger provisions_set_updated_at
 -- profiles holds one row per Supabase Auth user (auth.users is managed by
 -- Supabase itself and lives outside this file). access_granted is the manual
 -- switch Brody flips (via SQL) to give a signed-in user full read access
--- before the paid subscription flow exists -- there is deliberately no
--- update policy letting a user grant it to themselves.
+-- without a paid subscription (comped accounts) -- there is deliberately no
+-- update policy letting a user grant it to themselves. The Stripe
+-- subscription columns (stripe_customer_id, subscription_status, ...) are
+-- added by supabase/migrations/002_subscriptions.sql.
 create table if not exists profiles (
   id             uuid primary key references auth.users(id) on delete cascade,
   email          text,
@@ -116,14 +118,14 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- Any signed-in user can read everything, not just is_public rows -- login
--- itself is the gate for now, ahead of any future paid subscription tier.
--- This composes with the "public can read public provisions" policies above
--- (Postgres ORs together permissive policies on the same table/command), so
--- nothing above needs to change.
---
--- profiles.access_granted is left in the table above, unused for now, in
--- case a stricter tier (e.g. paid vs. free account) is wanted again later.
+-- SUPERSEDED: the two "authenticated users can read all ..." policies below
+-- were the interim login-only gate. supabase/migrations/002_subscriptions.sql
+-- drops them and replaces them with "subscribers can read all ..." policies
+-- that require an active/trialing Stripe subscription or access_granted =
+-- true (it also adds the Stripe columns to profiles). They're kept here so a
+-- fresh project bootstraps the same way it always did; run the migration
+-- afterwards to switch to the paid gate. Don't edit the policy text here --
+-- the migration is the source of truth.
 drop policy if exists "granted users can read all provisions" on provisions;
 create policy "authenticated users can read all provisions"
   on provisions for select

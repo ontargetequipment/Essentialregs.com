@@ -40,3 +40,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent scratch (dev-only harnesses, screenshots)
+/scratch
+
+# Claude agent worktrees (sandbox-only)
+/.claude/
+
+# pipeline (Python) -- see pipeline/README.md
+pipeline/__pycache__/
+pipeline/*.pyc
+pipeline/failed.jsonl

@@ -1,0 +1,69 @@
+name: Generate summaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      reg:
+        description: "Regulation to process (e.g. 7, 3, 26, oooob). Leave blank for all."
+        required: false
+        default: ""
+      limit:
+        description: "Stop after this many rows (for test runs). Leave blank for no limit."
+        required: false
+        default: ""
+      dry_run:
+        description: "Dry run: print prompts/estimates, call nothing, write nothing."
+        type: boolean
+        required: false
+        default: false
+      model:
+        description: "Anthropic model id."
+        required: false
+        default: "claude-sonnet-4-5"
+      force:
+        description: "Force: regenerate summaries even for rows that already have one."
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360 # 6 hours -- batch jobs can take a while to finish processing
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run summarizer
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          ARGS=()
+          if [ -n "${{ inputs.reg }}" ]; then ARGS+=(--reg "${{ inputs.reg }}"); fi
+          if [ -n "${{ inputs.limit }}" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
+          if [ "${{ inputs.force }}" = "true" ]; then ARGS+=(--force); fi
+          ARGS+=(--model "${{ inputs.model }}")
+          echo "Running: python summarize.py ${ARGS[*]}"
+          python summarize.py "${ARGS[@]}"
+
+      - name: Upload failed rows (if any)
+        if: always() && hashFiles('pipeline/failed.jsonl') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-summaries
+          path: pipeline/failed.jsonl
+          retention-days: 30

@@ -3,7 +3,7 @@ import { ProvisionCard } from "@/components/ProvisionCard";
 import type { Provision } from "@/lib/types";
 
 export const metadata = {
-  title: "Sample — EssentialRegs",
+  title: "Sample",
 };
 
 export default async function SamplePage() {

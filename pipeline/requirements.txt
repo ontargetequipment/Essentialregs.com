@@ -1,0 +1,5 @@
+# Pin exact versions so a CI run behaves the same every time it fires.
+# Bump deliberately (and re-test) rather than letting these float.
+anthropic==1.5.0
+supabase==2.31.0
+httpx==0.27.2

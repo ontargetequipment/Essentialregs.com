@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { SignupForm } from "./SignupForm";
 
-export const metadata = { title: "Sign up — EssentialRegs" };
+export const metadata = { title: "Sign up" };
 
-export default function SignupPage() {
+export default async function SignupPage(props: PageProps<"/signup">) {
+  const { next } = await props.searchParams;
+  const nextPath = typeof next === "string" ? next : undefined;
+
   return (
     <div className="mx-auto max-w-sm px-6 py-16">
       <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Create an account</h1>
@@ -14,11 +17,11 @@ export default function SignupPage() {
         </Link>
       </p>
       <p className="mt-4 text-sm text-zinc-600">
-        Subscription checkout isn&apos;t live yet, so a new account gets sample
-        content only until early access is turned on for it.
+        An account is free and includes the sample content. Subscribe from
+        your account page to unlock the full regulations.
       </p>
 
-      <SignupForm />
+      <SignupForm next={nextPath} />
     </div>
   );
 }

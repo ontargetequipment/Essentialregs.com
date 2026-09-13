@@ -3,11 +3,13 @@
 import { useActionState } from "react";
 import { signup } from "../auth/actions";
 
-export function SignupForm() {
+export function SignupForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(signup, undefined);
 
   return (
     <form action={formAction} className="mt-8 space-y-4">
+      {/* Where to send the user once their email is confirmed (e.g. back to #pricing). */}
+      {next && <input type="hidden" name="next" value={next} />}
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-zinc-700">
           Email

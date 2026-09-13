@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { summaryParagraphs, summaryStatusText } from "@/lib/regulation";
 import type { Provision } from "@/lib/types";
 
 // Renders one regulation entry: citation/title, the plain-English summary in
@@ -19,13 +20,19 @@ export function ProvisionCard({ provision }: { provision: Provision }) {
         ) : null}
       </h2>
 
-      {provision.ai_summary && (
+      {summaryParagraphs(provision.ai_summary ?? "").length > 0 && (
         <details className="mt-4 rounded-md bg-emerald-50 p-4" open>
           <summary className="cursor-pointer text-sm font-semibold text-emerald-900">
             Plain-English summary
           </summary>
-          <p className="mt-2 text-sm leading-relaxed text-emerald-950">
-            {provision.ai_summary}
+          <div className="mt-2 flex flex-col gap-2 text-sm leading-relaxed text-emerald-950">
+            {summaryParagraphs(provision.ai_summary ?? "").map((para, i) => (
+              <p key={i}>{para}</p>
+            ))}
+          </div>
+          {/* Same provenance line the reader's summary panel shows. */}
+          <p className="mt-3 border-t border-dashed border-emerald-200 pt-2 font-mono text-[11px] text-emerald-800/80">
+            {summaryStatusText(provision.last_verified_date)}
           </p>
         </details>
       )}

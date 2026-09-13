@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/safe-redirect";
 
 export type AuthFormState = { error?: string; message?: string } | undefined;
 
@@ -57,11 +58,16 @@ export async function signup(
 
   const supabase = await createClient();
   const origin = await siteOrigin();
+  const next = safeNextPath(formData.get("next"), "/account");
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${origin}/auth/confirm` },
+    options: {
+      // /auth/confirm forwards the user to `next` once the emailed link is
+      // verified (e.g. back to the pricing card they came from).
+      emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(next)}`,
+    },
   });
 
   if (error) {
@@ -77,7 +83,7 @@ export async function signup(
   }
 
   revalidatePath("/", "layout");
-  redirect("/account");
+  redirect(next);
 }
 
 export async function logout() {

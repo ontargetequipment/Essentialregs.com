@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ResetPasswordForm } from "./ResetPasswordForm";
 
-export const metadata = { title: "Set a new password — EssentialRegs" };
+export const metadata = { title: "Set a new password" };
 
 export default async function ResetPasswordPage() {
   const supabase = await createClient();

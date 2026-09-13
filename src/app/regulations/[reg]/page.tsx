@@ -8,6 +8,7 @@ import {
   fetchRegulationProvisions,
   kindOf,
   stripHtml,
+  summaryPanelHtml,
   withItemIdBadge,
 } from "@/lib/regulation";
 import { RegulationReader } from "@/components/RegulationReader";
@@ -18,7 +19,7 @@ export async function generateMetadata(props: PageProps<"/regulations/[reg]">) {
   const all = await fetchRegulationProvisions(reg);
   const root = all.find((p) => kindOf(p.id) === "reg");
   return {
-    title: root ? `${root.citation} — EssentialRegs` : "Regulation — EssentialRegs",
+    title: root ? root.citation : "Regulation",
   };
 }
 
@@ -110,7 +111,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                   id={p.id}
                   className="reg-block"
                   dangerouslySetInnerHTML={{
-                    __html: `<div class="reg-eyebrow">${escapeHtml(p.citation)}</div>${p.full_text}`,
+                    __html: `<div class="reg-eyebrow">${escapeHtml(p.citation)}</div>${p.full_text}${summaryPanelHtml(p)}`,
                   }}
                 />
               );
@@ -122,9 +123,9 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                   id={p.id}
                   className="part-block"
                   dangerouslySetInnerHTML={{
-                    __html: `<div class="part-tag">${escapeHtml(p.citation)}</div>${p.full_text}${containsBoxHtml(
-                      children
-                    )}`,
+                    __html: `<div class="part-tag">${escapeHtml(p.citation)}</div>${p.full_text}${summaryPanelHtml(
+                      p
+                    )}${containsBoxHtml(children)}`,
                   }}
                 />
               );
@@ -136,7 +137,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                   id={p.id}
                   className="appendix-block"
                   dangerouslySetInnerHTML={{
-                    __html: `${p.full_text}${containsBoxHtml(children)}`,
+                    __html: `${p.full_text}${summaryPanelHtml(p)}${containsBoxHtml(children)}`,
                   }}
                 />
               );
@@ -156,7 +157,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                 id={p.id}
                 className={`item depth-${depth}${isFedRoot ? " fed-block" : ""}`}
                 dangerouslySetInnerHTML={{
-                  __html: `${withItemIdBadge(p.full_text, p.citation)}${containsBoxHtml(children)}`,
+                  __html: `${withItemIdBadge(p.full_text, p.citation)}${summaryPanelHtml(p)}${containsBoxHtml(children)}`,
                 }}
               />
             );

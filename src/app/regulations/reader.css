@@ -333,6 +333,73 @@
   color: var(--ink-soft);
 }
 
+/* ---------- Plain-English summary panel ----------
+   Emitted by summaryPanelHtml() in src/lib/regulation.ts directly under a
+   provision's text (before its "contains" box). Collapsed by default; a
+   native <details> so it needs no JS and survives being cloned into the
+   xref popup. */
+.reg-reader details.summary-panel {
+  margin: 10px 0 12px;
+  padding: 0;
+  background: var(--accent-soft);
+  border: 1px solid #d3e0d9;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.reg-reader .summary-panel > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--accent);
+  border-radius: 6px;
+}
+.reg-reader .summary-panel > summary::-webkit-details-marker {
+  display: none;
+}
+.reg-reader .summary-panel > summary::before {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-right: 8px;
+  vertical-align: 2px;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid var(--accent);
+  transition: transform 0.15s ease;
+}
+.reg-reader .summary-panel[open] > summary::before {
+  transform: rotate(90deg);
+}
+.reg-reader .summary-panel > summary:hover,
+.reg-reader .summary-panel > summary:focus-visible {
+  background: #d8e4dd;
+  outline: none;
+}
+.reg-reader .summary-panel[open] > summary {
+  border-radius: 6px 6px 0 0;
+}
+.reg-reader .summary-body {
+  padding: 2px 12px 0;
+}
+.reg-reader .summary-body p {
+  margin: 0 0 8px;
+}
+.reg-reader .summary-status {
+  padding: 6px 12px 9px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+  border-top: 1px dashed #c6d4cc;
+}
+
 .reg-reader .item {
   margin: 14px 0;
 }
@@ -478,6 +545,24 @@
   padding: 0;
   margin: 0;
 }
+/* The popup clones the whole element, summary panel included. Keep it (a
+   plain-English gloss is useful in a preview) but compact: the cloned
+   <details> keeps whatever open/closed state it had in the document and
+   still toggles natively inside the popup. */
+.reg-reader #popup-body .summary-panel {
+  margin: 8px 0 6px;
+  font-size: 13px;
+}
+.reg-reader #popup-body .summary-panel > summary {
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+.reg-reader #popup-body .summary-body {
+  padding: 0 10px;
+}
+.reg-reader #popup-body .summary-status {
+  padding: 5px 10px 7px;
+}
 .reg-reader #popup-footer {
   padding: 10px 20px 18px;
   font-family: var(--sans);
@@ -508,19 +593,26 @@
   display: none;
 }
 @media (max-width: 860px) {
+  /* Bottom-right FAB rather than a top-left fixed button: at top-left it
+     sat directly over the reading column and permanently obscured
+     whatever line of body text happened to scroll under it. Bottom-right
+     stays clear of the left-aligned text and is a familiar "menu" spot. */
   .reg-reader #mobile-toggle {
     display: block;
     position: fixed;
-    top: 76px;
-    left: 12px;
+    top: auto;
+    bottom: 20px;
+    left: auto;
+    right: 16px;
     z-index: 60;
     background: var(--accent);
     color: #fff;
     border: none;
-    border-radius: 6px;
-    padding: 8px 12px;
+    border-radius: 999px;
+    padding: 12px 18px;
     font-family: var(--sans);
     font-size: 13px;
+    box-shadow: 0 6px 20px rgba(20, 30, 25, 0.3);
   }
   .reg-reader #sidebar {
     position: fixed;
@@ -535,6 +627,47 @@
     left: 0;
   }
   .reg-reader #doc {
-    padding: 70px 22px 160px;
+    padding: 32px 22px 120px;
+  }
+}
+
+/* Phones narrower than ~480px: the 860px breakpoint above already switches
+   to the off-canvas sidebar, but the deep item indentation (up to 72px) and
+   40px table cell padding were still eating most of the available width.
+   Tighten both further rather than introducing a second sidebar behavior. */
+@media (max-width: 480px) {
+  .reg-reader #doc {
+    padding: 26px 14px 110px;
+  }
+  .reg-reader .reg-block h1 {
+    font-size: 22px;
+  }
+  .reg-reader .part-block h2 {
+    font-size: 19px;
+  }
+  .reg-reader .item.depth-2 {
+    margin-left: 0;
+  }
+  .reg-reader .item.depth-3 {
+    margin-left: 10px;
+  }
+  .reg-reader .item.depth-4 {
+    margin-left: 18px;
+  }
+  .reg-reader .item.depth-5 {
+    margin-left: 26px;
+  }
+  .reg-reader .item.depth-6 {
+    margin-left: 34px;
+  }
+  .reg-reader table.doc-table th,
+  .reg-reader table.doc-table td {
+    padding: 5px 7px;
+  }
+  .reg-reader #popup-body {
+    padding: 14px 16px 6px;
+  }
+  .reg-reader #popup-head {
+    padding: 14px 16px;
   }
 }
