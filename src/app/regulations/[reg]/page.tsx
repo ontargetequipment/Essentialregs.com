@@ -117,13 +117,18 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
             const children = childrenOf.get(p.id) ?? [];
 
             if (kind === "reg") {
+              const sourceLinkHtml = p.source_url
+                ? `<a href="${escapeHtml(
+                    p.source_url
+                  )}" target="_blank" rel="noopener noreferrer" class="reg-source-link">View official source ↗</a>`
+                : "";
               return (
                 <section
                   key={p.id}
                   id={p.id}
                   className="reg-block"
                   dangerouslySetInnerHTML={{
-                    __html: `<div class="reg-eyebrow">${escapeHtml(p.citation)}</div>${p.full_text}${summaryPanelHtml(p)}`,
+                    __html: `<div class="reg-eyebrow">${escapeHtml(p.citation)}</div>${sourceLinkHtml}${p.full_text}${summaryPanelHtml(p)}`,
                   }}
                 />
               );

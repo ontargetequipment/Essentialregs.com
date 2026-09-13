@@ -46,6 +46,16 @@ export default async function RegulationPreviewPage(
         {root.citation}
       </p>
       <h1 className="mt-1 text-2xl font-bold text-zinc-900">{root.title}</h1>
+      {root.source_url && (
+        <a
+          href={root.source_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 inline-block text-xs text-zinc-500 underline hover:text-zinc-700"
+        >
+          View official source ↗
+        </a>
+      )}
       <p className="mt-3 text-sm text-zinc-600">
         A preview of {root.citation} — its structure, and a few
         already-reviewed, plain-English summaries. The full cross-referenced

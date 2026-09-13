@@ -207,6 +207,16 @@
   text-transform: uppercase;
   margin-bottom: 10px;
 }
+.reg-reader .reg-source-link {
+  display: inline-block;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  margin: -4px 0 14px;
+}
+.reg-reader .reg-source-link:hover {
+  color: var(--accent);
+}
 .reg-reader .reg-block h1 {
   font-size: 28px;
   line-height: 1.25;

@@ -207,12 +207,12 @@ export async function fetchRegulationList(): Promise<Provision[]> {
 }
 
 /** Columns the public teaser is ever allowed to read. Never add full_text here. */
-const TEASER_COLUMNS = "id, citation, title, ai_summary, summary_status";
+const TEASER_COLUMNS = "id, citation, title, ai_summary, summary_status, source_url";
 
 /** Row shape returned by fetchRegulationTeaser — deliberately excludes full_text. */
 export type TeaserProvision = Pick<
   Provision,
-  "id" | "citation" | "title" | "ai_summary" | "summary_status"
+  "id" | "citation" | "title" | "ai_summary" | "summary_status" | "source_url"
 >;
 
 export type RegulationTeaser = {
