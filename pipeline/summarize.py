@@ -91,10 +91,32 @@ SYSTEM_PROMPT = (
     "key thresholds, dates, or numbers. Avoid legal jargon and formal "
     "throat-clearing like 'this provision' or 'this is a definitional "
     "provision' -- just say what it means. Spell out an acronym the first "
-    "time you use it. Never add requirements that are not in the text. If "
-    "a section is purely a definition or administrative detail, say that "
-    "plainly in one sentence. No preamble, no markdown, no bullet lists -- "
-    "output only the summary."
+    "time you use it, but ONLY expand an acronym the way this regulation "
+    "itself defines it -- never from general knowledge or what the acronym "
+    "usually means elsewhere. Two you will see often in this regulation: "
+    "MFCE means midstream fuel combustion equipment; AIMM means approved "
+    "instrument monitoring method. \"The Division\" means the Colorado Air "
+    "Pollution Control Division (part of CDPHE), not any other agency (e.g. "
+    "not COGCC) unless the text itself says otherwise.\n\n"
+    "Never state a date, deadline, number, threshold, percentage, or "
+    "geographic qualifier (e.g. a specific county) that is not literally "
+    "present in the text given to you -- not from context, not from what "
+    "the rest of the regulation usually says, not from general knowledge of "
+    "this regulation. If the text says a duty or deadline continues "
+    "'thereafter' or similar open-ended language, say that -- do not invent "
+    "an end date. Never assert a cross-reference, exception, or \"state-only\" "
+    "designation that is not explicitly stated in the text.\n\n"
+    "If the text you are given appears to start mid-sentence or mid-clause "
+    "(e.g. it opens with a lowercase word, a dangling clause, or a fragment "
+    "that doesn't stand alone), do not guess at what the missing opening "
+    "words might be from context or general knowledge. Say plainly that the "
+    "provision's beginning (e.g. its applicability or effective-date clause) "
+    "is not shown in the available text, and summarize only what is "
+    "actually present.\n\n"
+    "Never add requirements that are not in the text. If a section is "
+    "purely a definition or administrative detail, say that plainly in one "
+    "sentence. No preamble, no markdown, no bullet lists -- output only the "
+    "summary."
 )
 
 
@@ -159,10 +181,40 @@ def fetch_meta(client, reg: Optional[str]) -> dict[str, dict]:
     return meta
 
 
-def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int]):
+def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int],
+                     ids: Optional[list[str]] = None):
     """Yields full candidate rows (id, citation, title, parent_id, full_text,
     sort_order), ordered by sort_order, paginated DB_PAGE_SIZE at a time,
-    stopping once --limit rows have been yielded."""
+    stopping once --limit rows have been yielded.
+
+    When `ids` is given, this targets exactly those provision ids (e.g. a
+    specific list of rows flagged by a review pass) -- ignores --reg and the
+    "ai_summary IS NULL" gate entirely, since asking for a row by id is
+    itself the intent to regenerate it regardless of --force."""
+    if ids:
+        rows_by_id: dict[str, dict] = {}
+        for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
+            chunk = ids[chunk_start:chunk_start + DB_PAGE_SIZE]
+            q = (client.table("provisions")
+                 .select("id, citation, title, parent_id, full_text, sort_order")
+                 .in_("id", chunk))
+            for row in q.execute().data or []:
+                rows_by_id[row["id"]] = row
+        missing = [i for i in ids if i not in rows_by_id]
+        if missing:
+            print(f"  WARNING: {len(missing)} id(s) from --ids not found in the "
+                  f"database: {', '.join(missing)}", file=sys.stderr)
+        yielded = 0
+        for provision_id in ids:
+            row = rows_by_id.get(provision_id)
+            if row is None:
+                continue
+            yield row
+            yielded += 1
+            if limit is not None and yielded >= limit:
+                return
+        return
+
     like_prefix = f"sec-{reg.lower()}-" if reg else None
     start = 0
     yielded = 0
@@ -503,7 +555,17 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--force", action="store_true",
         help="Regenerate summaries even for rows that already have one "
-             "(default: only rows where ai_summary IS NULL).",
+             "(default: only rows where ai_summary IS NULL). Not needed "
+             "alongside --ids, which always regenerates the listed rows.",
+    )
+    parser.add_argument(
+        "--ids", default=None,
+        help="Comma-separated list of exact provision ids to regenerate "
+             "(e.g. from a review report flagging specific rows). Ignores "
+             "the ai_summary IS NULL gate -- every listed id is always "
+             "processed, --force is not needed. Also pass --reg so the "
+             "parent/citation metadata lookup is scoped to that regulation "
+             "rather than the whole corpus.",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -561,10 +623,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     meta = fetch_meta(client_supabase, args.reg)
     print(f"  {len(meta):,} rows loaded for context lookups.")
 
+    ids = [i.strip() for i in args.ids.split(",") if i.strip()] if args.ids else None
+
     print("Fetching candidate rows"
-          f"{f' (limit {args.limit})' if args.limit else ''}"
-          f"{' [force: regenerating existing summaries too]' if args.force else ''}...")
-    rows = list(iter_candidates(client_supabase, args.reg, args.force, args.limit))
+          f"{f' ({len(ids)} explicit id(s))' if ids else ''}"
+          f"{f' (limit {args.limit})' if args.limit and not ids else ''}"
+          f"{' [force: regenerating existing summaries too]' if args.force and not ids else ''}...")
+    rows = list(iter_candidates(client_supabase, args.reg, args.force, args.limit, ids=ids))
     print(f"  {len(rows):,} candidate rows.")
 
     if not rows:

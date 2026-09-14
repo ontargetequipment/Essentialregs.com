@@ -25,6 +25,10 @@ on:
         type: boolean
         required: false
         default: false
+      ids:
+        description: "Comma-separated exact provision ids to regenerate (e.g. from a review report). Overrides limit/force row selection; pair with reg for correct metadata scoping. Leave blank for normal reg/limit/force selection."
+        required: false
+        default: ""
 
 jobs:
   summarize:
@@ -56,6 +60,7 @@ jobs:
           if [ -n "${{ inputs.limit }}" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
           if [ "${{ inputs.force }}" = "true" ]; then ARGS+=(--force); fi
+          if [ -n "${{ inputs.ids }}" ]; then ARGS+=(--ids "${{ inputs.ids }}"); fi
           ARGS+=(--model "${{ inputs.model }}")
           echo "Running: python summarize.py ${ARGS[*]}"
           python summarize.py "${ARGS[@]}"
