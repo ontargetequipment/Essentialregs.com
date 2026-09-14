@@ -128,7 +128,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                   id={p.id}
                   className="reg-block"
                   dangerouslySetInnerHTML={{
-                    __html: `<div class="reg-eyebrow">${escapeHtml(p.citation)}</div>${sourceLinkHtml}${p.full_text}${summaryPanelHtml(p)}`,
+                    __html: `<div class="reg-eyebrow">${escapeHtml(p.citation)}</div>${sourceLinkHtml}${p.full_text}${summaryPanelHtml(p, root.source_url)}`,
                   }}
                 />
               );
@@ -141,7 +141,8 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                   className="part-block"
                   dangerouslySetInnerHTML={{
                     __html: `<div class="part-tag">${escapeHtml(p.citation)}</div>${p.full_text}${summaryPanelHtml(
-                      p
+                      p,
+                      root.source_url
                     )}${containsBoxHtml(children)}`,
                   }}
                 />
@@ -154,7 +155,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                   id={p.id}
                   className="appendix-block"
                   dangerouslySetInnerHTML={{
-                    __html: `${p.full_text}${summaryPanelHtml(p)}${containsBoxHtml(children)}`,
+                    __html: `${p.full_text}${summaryPanelHtml(p, root.source_url)}${containsBoxHtml(children)}`,
                   }}
                 />
               );
@@ -174,7 +175,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                 id={p.id}
                 className={`item depth-${depth}${isFedRoot ? " fed-block" : ""}`}
                 dangerouslySetInnerHTML={{
-                  __html: `${withItemIdBadge(p.full_text, p.citation)}${summaryPanelHtml(p)}${containsBoxHtml(children)}`,
+                  __html: `${withItemIdBadge(p.full_text, p.citation)}${summaryPanelHtml(p, root.source_url)}${containsBoxHtml(children)}`,
                 }}
               />
             );

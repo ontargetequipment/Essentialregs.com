@@ -380,31 +380,6 @@ export function withItemIdBadge(html: string, citation: string): string {
   return badge + html;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/**
- * Formats a Postgres `date` string ("2026-09-12") as "Sep 12, 2026". Parsed
- * by hand rather than via `new Date()` so a date-only value isn't shifted a
- * day by the server's timezone. Anything that doesn't look like a date is
- * returned untouched.
- */
-export function formatReviewDate(isoDate: string): string {
-  const m = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return isoDate;
-  const month = MONTHS[Number(m[2]) - 1];
-  if (!month) return isoDate;
-  return `${month} ${Number(m[3])}, ${m[1]}`;
-}
-
-/**
- * Provenance line shown under every AI summary, so a reader always knows
- * whether a human has checked it against the official text yet.
- */
-export function summaryStatusText(lastVerifiedDate: string | null): string {
-  return lastVerifiedDate
-    ? `AI-generated · reviewed ${formatReviewDate(lastVerifiedDate)}`
-    : "AI-generated · not yet human-reviewed — verify against the official text";
-}
 
 /** Splits plain-text summary into paragraphs on blank lines (drops empties). */
 export function summaryParagraphs(summary: string): string[] {
@@ -422,7 +397,8 @@ export function summaryParagraphs(summary: string): string[] {
  * HTML, so it's escaped here; blank lines become paragraph breaks.
  */
 export function summaryPanelHtml(
-  p: Pick<Provision, "ai_summary" | "last_verified_date" | "summary_status">
+  p: Pick<Provision, "ai_summary" | "summary_status" | "source_url">,
+  fallbackSourceUrl?: string | null
 ): string {
   // A rejected summary is withheld from every reader entirely — it failed
   // human review, so showing it (even labeled "not yet reviewed") would be
@@ -431,11 +407,23 @@ export function summaryPanelHtml(
   const paragraphs = summaryParagraphs(p.ai_summary ?? "");
   if (!paragraphs.length) return "";
   const body = paragraphs.map((t) => `<p>${escapeHtml(t)}</p>`).join("");
+  // No mention of who/what reviewed this or when, and no "AI-generated"
+  // label -- [Brody, Sep 14 2026] that line risked misleading readers once
+  // review passes started including an AI second-pass alongside human
+  // review, and the Disclaimer page already covers that summaries are
+  // AI-generated. A link to the source document lets a reader verify
+  // directly instead.
+  const sourceUrl = p.source_url ?? fallbackSourceUrl ?? null;
+  const sourceLinkHtml = sourceUrl
+    ? `<div class="summary-status"><a href="${escapeHtml(
+        sourceUrl
+      )}" target="_blank" rel="noopener noreferrer">View official source ↗</a></div>`
+    : "";
   return (
     `<details class="summary-panel">` +
     `<summary>Plain-English summary</summary>` +
     `<div class="summary-body">${body}</div>` +
-    `<div class="summary-status">${escapeHtml(summaryStatusText(p.last_verified_date))}</div>` +
+    sourceLinkHtml +
     `</details>`
   );
 }
