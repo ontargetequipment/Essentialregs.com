@@ -83,40 +83,14 @@ NBSP_RE = re.compile(r"&nbsp;")
 WS_RE = re.compile(r"\s+")
 
 SYSTEM_PROMPT = (
-    "You are explaining a legal/regulatory provision to an EHS or compliance "
-    "person at a Colorado oil & gas operator who is NOT a lawyer and does "
-    "not want to wade through legal language. Write 2-5 short sentences in "
-    "plain, everyday English, the way you'd explain it out loud to a "
-    "coworker: who it applies to, what it requires or prohibits, and any "
-    "key thresholds, dates, or numbers. Avoid legal jargon and formal "
-    "throat-clearing like 'this provision' or 'this is a definitional "
-    "provision' -- just say what it means. Spell out an acronym the first "
-    "time you use it, but ONLY expand an acronym the way this regulation "
-    "itself defines it -- never from general knowledge or what the acronym "
-    "usually means elsewhere. Two you will see often in this regulation: "
-    "MFCE means midstream fuel combustion equipment; AIMM means approved "
-    "instrument monitoring method. \"The Division\" means the Colorado Air "
-    "Pollution Control Division (part of CDPHE), not any other agency (e.g. "
-    "not COGCC) unless the text itself says otherwise.\n\n"
-    "Never state a date, deadline, number, threshold, percentage, or "
-    "geographic qualifier (e.g. a specific county) that is not literally "
-    "present in the text given to you -- not from context, not from what "
-    "the rest of the regulation usually says, not from general knowledge of "
-    "this regulation. If the text says a duty or deadline continues "
-    "'thereafter' or similar open-ended language, say that -- do not invent "
-    "an end date. Never assert a cross-reference, exception, or \"state-only\" "
-    "designation that is not explicitly stated in the text.\n\n"
-    "If the text you are given appears to start mid-sentence or mid-clause "
-    "(e.g. it opens with a lowercase word, a dangling clause, or a fragment "
-    "that doesn't stand alone), do not guess at what the missing opening "
-    "words might be from context or general knowledge. Say plainly that the "
-    "provision's beginning (e.g. its applicability or effective-date clause) "
-    "is not shown in the available text, and summarize only what is "
-    "actually present.\n\n"
-    "Never add requirements that are not in the text. If a section is "
-    "purely a definition or administrative detail, say that plainly in one "
-    "sentence. No preamble, no markdown, no bullet lists -- output only the "
-    "summary."
+    "You are summarizing a legal/regulatory provision for a Colorado oil & "
+    "gas EHS (environmental, health & safety) professional. Write 2-5 "
+    "sentences of plain English stating: who it applies to, what it "
+    "requires or prohibits, key thresholds/dates/numbers, and any "
+    "cross-references by citation. Never add requirements that are not in "
+    "the text. If the provision is purely definitional or administrative, "
+    "say so briefly. No preamble, no markdown, no bullet lists -- output "
+    "only the summary."
 )
 
 
@@ -181,40 +155,55 @@ def fetch_meta(client, reg: Optional[str]) -> dict[str, dict]:
     return meta
 
 
-def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int],
-                     ids: Optional[list[str]] = None):
+def load_ids_file(path: str) -> list[str]:
+    """Reads a --ids-file: one provision id per line, blank lines and lines
+    starting with '#' ignored. Order is preserved (deduplicated, first
+    occurrence wins) — this is what pipeline/import_ccr.py apply's
+    summary_regen_ids.txt looks like."""
+    ids: list[str] = []
+    seen: set[str] = set()
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        if s not in seen:
+            seen.add(s)
+            ids.append(s)
+    return ids
+
+
+def iter_candidates_by_ids(client, ids: list[str], force: bool):
+    """Yields full candidate rows for an explicit list of ids (e.g. from
+    --ids-file), in the given order, fetched in pages of DB_PAGE_SIZE via
+    `id in (...)`. Unlike the sort_order-scan path this never silently skips
+    an id: with --force every listed id is yielded even if some other
+    process already summarized it since the plan was generated; without
+    --force (the default combination for a re-import's regen list) a row
+    that already has a summary is skipped as a candidate — see
+    pipeline/README.md's "Re-importing a regulation" section for why
+    --ids-file is normally combined with --force."""
+    columns = "id, citation, title, parent_id, full_text, sort_order, ai_summary"
+    by_id: dict[str, dict] = {}
+    for start in range(0, len(ids), DB_PAGE_SIZE):
+        chunk = ids[start:start + DB_PAGE_SIZE]
+        rows = client.table("provisions").select(columns).in_("id", chunk).execute().data or []
+        for row in rows:
+            by_id[row["id"]] = row
+    for pid in ids:
+        row = by_id.get(pid)
+        if row is None:
+            print(f"warning: id from --ids-file not found in DB, skipping: {pid}", file=sys.stderr)
+            continue
+        if not force and row.get("ai_summary") is not None:
+            continue
+        row.pop("ai_summary", None)
+        yield row
+
+
+def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int]):
     """Yields full candidate rows (id, citation, title, parent_id, full_text,
     sort_order), ordered by sort_order, paginated DB_PAGE_SIZE at a time,
-    stopping once --limit rows have been yielded.
-
-    When `ids` is given, this targets exactly those provision ids (e.g. a
-    specific list of rows flagged by a review pass) -- ignores --reg and the
-    "ai_summary IS NULL" gate entirely, since asking for a row by id is
-    itself the intent to regenerate it regardless of --force."""
-    if ids:
-        rows_by_id: dict[str, dict] = {}
-        for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
-            chunk = ids[chunk_start:chunk_start + DB_PAGE_SIZE]
-            q = (client.table("provisions")
-                 .select("id, citation, title, parent_id, full_text, sort_order")
-                 .in_("id", chunk))
-            for row in q.execute().data or []:
-                rows_by_id[row["id"]] = row
-        missing = [i for i in ids if i not in rows_by_id]
-        if missing:
-            print(f"  WARNING: {len(missing)} id(s) from --ids not found in the "
-                  f"database: {', '.join(missing)}", file=sys.stderr)
-        yielded = 0
-        for provision_id in ids:
-            row = rows_by_id.get(provision_id)
-            if row is None:
-                continue
-            yield row
-            yielded += 1
-            if limit is not None and yielded >= limit:
-                return
-        return
-
+    stopping once --limit rows have been yielded."""
     like_prefix = f"sec-{reg.lower()}-" if reg else None
     start = 0
     yielded = 0
@@ -450,26 +439,15 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
     submitted to the Anthropic Batches API or is skipped as headings-only
     and cleared in the database."""
     batch_requests = []
-    # The Batches API restricts custom_id to ^[a-zA-Z0-9_-]{1,64}$, but many
-    # real provision ids contain parentheses (e.g.
-    # "sec-7-B-III-C-5-c-(iii)-(B)-(4)" for deeply-nested items like
-    # I.B.1.a.(ii)) and fail that pattern -- confirmed against the live
-    # corpus, 859 ids across all regs contain disallowed characters. A
-    # positional custom_id sidesteps the whole character-set question; this
-    # map translates it back to the real provision id wherever a result
-    # (success, error, or timeout) needs to be written or logged.
-    custom_id_to_provision_id: dict[str, str] = {}
 
-    for i, provision in enumerate(rows):
+    for provision in rows:
         result = build_prompt(provision, meta)
         if result.body_word_count < MIN_WORDS:
             stats.skipped_short += 1
             clear_summary_as_too_short(client_supabase, provision["id"])
             continue
-        custom_id = f"row-{i}"
-        custom_id_to_provision_id[custom_id] = provision["id"]
         batch_requests.append({
-            "custom_id": custom_id,
+            "custom_id": provision["id"],
             "params": {
                 "model": model,
                 "max_tokens": MAX_TOKENS,
@@ -500,7 +478,7 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
                 print(f"  WARNING: batch {batch.id} did not finish within "
                       f"{MAX_POLL_SECONDS}s -- leaving remaining rows for next run.")
                 for req in chunk:
-                    log_failure(custom_id_to_provision_id[req["custom_id"]], "batch poll timeout")
+                    log_failure(req["custom_id"], "batch poll timeout")
                     stats.failed += 1
                 break
             time.sleep(poll_interval)
@@ -513,7 +491,7 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
               f"canceled={counts.canceled} expired={counts.expired}")
 
         for item in client_anthropic.messages.batches.results(batch.id):
-            provision_id = custom_id_to_provision_id[item.custom_id]
+            custom_id = item.custom_id
             result = item.result
             if result.type == "succeeded":
                 message = result.message
@@ -524,14 +502,14 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
                 stats.add_usage(message.usage)
                 if not summary_text:
                     stats.failed += 1
-                    log_failure(provision_id, "empty response")
+                    log_failure(custom_id, "empty response")
                     continue
-                write_summary(client_supabase, provision_id, summary_text, model)
+                write_summary(client_supabase, custom_id, summary_text, model)
                 stats.processed += 1
             else:
                 stats.failed += 1
                 error_detail = getattr(getattr(result, "error", None), "message", result.type)
-                log_failure(provision_id, f"{result.type}: {error_detail}")
+                log_failure(custom_id, f"{result.type}: {error_detail}")
 
 
 # --------------------------------------------------------------------------
@@ -546,26 +524,26 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--reg", default=None,
         help="Limit to one regulation's id prefix, e.g. 7, 3, 26, oooob. "
-             "Omit to run against every regulation.",
+             "Omit to run against every regulation. Ignored if --ids-file is given.",
+    )
+    parser.add_argument(
+        "--ids-file", default=None,
+        help="Path to a text file of provision ids, one per line (as produced by "
+             "pipeline/import_ccr.py apply's summary_regen_ids.txt) — summarize "
+             "exactly this set, in file order, instead of scanning by --reg/sort_order. "
+             "Mutually exclusive with --reg and --limit. Normally combined with --force "
+             "so a `changed` row's stale summary is actually regenerated (without "
+             "--force, a row that already has ANY summary is skipped, which defeats "
+             "the point of re-running an id that just got new text).",
     )
     parser.add_argument(
         "--limit", type=int, default=None,
-        help="Stop after this many candidate rows (for test runs).",
+        help="Stop after this many candidate rows (for test runs). Ignored if --ids-file is given.",
     )
     parser.add_argument(
         "--force", action="store_true",
         help="Regenerate summaries even for rows that already have one "
-             "(default: only rows where ai_summary IS NULL). Not needed "
-             "alongside --ids, which always regenerates the listed rows.",
-    )
-    parser.add_argument(
-        "--ids", default=None,
-        help="Comma-separated list of exact provision ids to regenerate "
-             "(e.g. from a review report flagging specific rows). Ignores "
-             "the ai_summary IS NULL gate -- every listed id is always "
-             "processed, --force is not needed. Also pass --reg so the "
-             "parent/citation metadata lookup is scoped to that regulation "
-             "rather than the whole corpus.",
+             "(default: only rows where ai_summary IS NULL).",
     )
     parser.add_argument(
         "--dry-run", action="store_true",
@@ -601,6 +579,10 @@ def require_env(names: list[str]) -> None:
 def main(argv: Optional[list[str]] = None) -> int:
     args = parse_args(argv)
 
+    if args.ids_file and (args.reg or args.limit is not None):
+        print("--ids-file is mutually exclusive with --reg and --limit.", file=sys.stderr)
+        return 1
+
     required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
     if not args.dry_run:
         required.append("ANTHROPIC_API_KEY")
@@ -618,18 +600,25 @@ def main(argv: Optional[list[str]] = None) -> int:
     if not args.dry_run and FAILED_LOG_PATH.exists():
         FAILED_LOG_PATH.unlink()
 
+    # --ids-file may span more than one regulation in principle, so build
+    # context metadata across the whole table (cheap — see fetch_meta) rather
+    # than scoping to a single --reg prefix.
+    meta_reg = None if args.ids_file else args.reg
     print(f"Fetching parent/citation metadata"
-          f"{f' for reg {args.reg}' if args.reg else ' (all regulations)'}...")
-    meta = fetch_meta(client_supabase, args.reg)
+          f"{f' for reg {meta_reg}' if meta_reg else ' (all regulations)'}...")
+    meta = fetch_meta(client_supabase, meta_reg)
     print(f"  {len(meta):,} rows loaded for context lookups.")
 
-    ids = [i.strip() for i in args.ids.split(",") if i.strip()] if args.ids else None
-
-    print("Fetching candidate rows"
-          f"{f' ({len(ids)} explicit id(s))' if ids else ''}"
-          f"{f' (limit {args.limit})' if args.limit and not ids else ''}"
-          f"{' [force: regenerating existing summaries too]' if args.force and not ids else ''}...")
-    rows = list(iter_candidates(client_supabase, args.reg, args.force, args.limit, ids=ids))
+    if args.ids_file:
+        ids = load_ids_file(args.ids_file)
+        print(f"Fetching {len(ids):,} candidate row(s) from --ids-file {args.ids_file}"
+              f"{' [force: regenerating existing summaries too]' if args.force else ''}...")
+        rows = list(iter_candidates_by_ids(client_supabase, ids, args.force))
+    else:
+        print("Fetching candidate rows"
+              f"{f' (limit {args.limit})' if args.limit else ''}"
+              f"{' [force: regenerating existing summaries too]' if args.force else ''}...")
+        rows = list(iter_candidates(client_supabase, args.reg, args.force, args.limit))
     print(f"  {len(rows):,} candidate rows.")
 
     if not rows:
