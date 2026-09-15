@@ -40,6 +40,7 @@ requires, ANTHROPIC_API_KEY — no Anthropic call is made in dry-run mode.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -371,6 +372,48 @@ def print_report(stats: RunStats, model: str, batch: bool, dry_run: bool) -> Non
               f"re-selected while ai_summary is still NULL).")
 
 
+CUSTOM_ID_INVALID_RE = re.compile(r"[^a-zA-Z0-9_-]")
+CUSTOM_ID_MAX_LEN = 64
+
+
+def make_custom_id(provision_id: str, used: dict[str, str]) -> str:
+    """Build an Anthropic Batches API-safe custom_id for provision_id.
+
+    custom_id must match ^[a-zA-Z0-9_-]{1,64}$, but provision ids can
+    contain other characters -- e.g. citation ids like
+    'sec-7-B-I-C-1-e-(i)' contain parentheses -- and can exceed 64 chars
+    (e.g. 'sec-7-B-III-C-4-c-(ii)-(A)-(1)'). This sanitizes the id and,
+    when the sanitized form is too long or collides with a *different*
+    provision id already placed in `used`, truncates it and appends a
+    short content hash of the original id to keep it unique.
+
+    `used` maps custom_id -> provision_id and is mutated in place so the
+    caller can look the original provision id back up when reading batch
+    results (never write a summary under the sanitized id itself).
+    """
+    sanitized = CUSTOM_ID_INVALID_RE.sub("_", provision_id) or "_"
+    candidate = sanitized
+
+    def collides(cid: str) -> bool:
+        return cid in used and used[cid] != provision_id
+
+    if len(candidate) > CUSTOM_ID_MAX_LEN or collides(candidate):
+        suffix = "_" + hashlib.sha1(provision_id.encode("utf-8")).hexdigest()[:8]
+        candidate = sanitized[:CUSTOM_ID_MAX_LEN - len(suffix)] + suffix
+        # Vanishingly unlikely, but keep colliding even after the hash
+        # (e.g. two different provision ids happen to share the same
+        # truncated-prefix + hash) deterministically unique too.
+        n = 0
+        base = candidate
+        while collides(candidate):
+            n += 1
+            extra = f"_{n}"
+            candidate = base[:CUSTOM_ID_MAX_LEN - len(extra)] + extra
+
+    used[candidate] = provision_id
+    return candidate
+
+
 def log_failure(custom_id: str, reason: str) -> None:
     FAILED_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with FAILED_LOG_PATH.open("a", encoding="utf-8") as f:
@@ -439,6 +482,12 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
     submitted to the Anthropic Batches API or is skipped as headings-only
     and cleared in the database."""
     batch_requests = []
+    # custom_id (Batches API, ^[a-zA-Z0-9_-]{1,64}$) -> real provision id.
+    # Provision ids can contain parentheses (e.g. citation-derived ids like
+    # 'sec-7-B-I-C-1-e-(i)') and can exceed 64 chars, so the custom_id sent
+    # to Anthropic is a sanitized/possibly-hashed stand-in -- always map
+    # back through this dict before writing a summary or logging a failure.
+    custom_id_map: dict[str, str] = {}
 
     for provision in rows:
         result = build_prompt(provision, meta)
@@ -446,8 +495,9 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
             stats.skipped_short += 1
             clear_summary_as_too_short(client_supabase, provision["id"])
             continue
+        custom_id = make_custom_id(provision["id"], custom_id_map)
         batch_requests.append({
-            "custom_id": provision["id"],
+            "custom_id": custom_id,
             "params": {
                 "model": model,
                 "max_tokens": MAX_TOKENS,
@@ -478,7 +528,8 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
                 print(f"  WARNING: batch {batch.id} did not finish within "
                       f"{MAX_POLL_SECONDS}s -- leaving remaining rows for next run.")
                 for req in chunk:
-                    log_failure(req["custom_id"], "batch poll timeout")
+                    provision_id = custom_id_map.get(req["custom_id"], req["custom_id"])
+                    log_failure(provision_id, "batch poll timeout")
                     stats.failed += 1
                 break
             time.sleep(poll_interval)
@@ -492,6 +543,9 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
 
         for item in client_anthropic.messages.batches.results(batch.id):
             custom_id = item.custom_id
+            # Always resolve back to the real provision id -- never write a
+            # summary (or log a failure) under the sanitized custom_id.
+            provision_id = custom_id_map.get(custom_id, custom_id)
             result = item.result
             if result.type == "succeeded":
                 message = result.message
@@ -502,14 +556,14 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
                 stats.add_usage(message.usage)
                 if not summary_text:
                     stats.failed += 1
-                    log_failure(custom_id, "empty response")
+                    log_failure(provision_id, "empty response")
                     continue
-                write_summary(client_supabase, custom_id, summary_text, model)
+                write_summary(client_supabase, provision_id, summary_text, model)
                 stats.processed += 1
             else:
                 stats.failed += 1
                 error_detail = getattr(getattr(result, "error", None), "message", result.type)
-                log_failure(custom_id, f"{result.type}: {error_detail}")
+                log_failure(provision_id, f"{result.type}: {error_detail}")
 
 
 # --------------------------------------------------------------------------
