@@ -231,15 +231,24 @@ scripts for the full flag list).
 
 `import_ccr.py apply` also accepts `--execute --yes`, which performs the
 same plan directly against Supabase via `supabase-py` instead of writing
-SQL files — upserting in shape-homogeneous chunks of at most 100 rows,
-ordered so a parent is always written before any child that references it,
-then inserting the removal notes, then deleting obsolete ids last — using
-the same `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` environment variables
-as `summarize.py`. It refuses to run without `--yes`. A failed chunk raises
-and aborts the run immediately (a non-zero exit, no silent partial
-success) rather than continuing on to later chunks. This is the path the
-**Import regulation from official PDF** Actions workflow above uses when
-you check **execute**; it's not meant to be run by hand outside CI —
+SQL files, using the same `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`
+environment variables as `summarize.py`. `identical` and `changed` ids are
+always existing rows, so each gets its own `UPDATE ... WHERE id = ...`
+(never an upsert — PostgREST's upsert is `INSERT ... ON CONFLICT DO
+UPDATE`, and Postgres builds the INSERT row, with every omitted column set
+to NULL, before it even checks the conflict, so an upsert payload that
+deliberately omits a NOT NULL column to leave it alone on the UPDATE branch
+fails that column's constraint even though the row already exists); `new`
+ids are genuinely inserted, with every required column populated, in
+chunks of at most 100 rows. The whole stream is ordered by `sort_order` so
+a brand-new parent is always written before any child that references it,
+then the removal notes are inserted, then obsolete ids are deleted last.
+It refuses to run without `--yes`. A failed write (an exception, or an
+UPDATE that matches zero rows) aborts the run immediately (a non-zero
+exit, no silent partial success) rather than continuing on to later
+writes. This is the path the **Import regulation from official PDF**
+Actions workflow above uses when you check **execute**; it's not meant to
+be run by hand outside CI —
 prefer generating and reviewing the SQL files above for a manual import.
 See `pipeline/test_import_ccr.py` for the stub-client tests covering its
 chunking, field, and ordering behavior.

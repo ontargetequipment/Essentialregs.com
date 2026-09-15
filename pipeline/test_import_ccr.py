@@ -164,13 +164,25 @@ class ClassifyApplyExecuteFixtureTests(unittest.TestCase):
         self.assertEqual(c["obsolete"], [f"sec-{REG}-A-OLD"])
 
 
-class ExecuteUpsertChunksTests(unittest.TestCase):
+NOW_ISO = "2026-09-15T12:00:00+00:00"
+
+
+class ExecuteWritePlanTests(unittest.TestCase):
+    """`identical`/`changed` rows must become one `update` action each (never
+    an `upsert`, which -- per cmd_apply_execute's docstring -- evaluates the
+    INSERT row, with every omitted NOT NULL column set to NULL, before it
+    even checks the ON CONFLICT branch); `new` rows become `insert` actions
+    batched up to the chunk cap."""
+
     def test_global_sort_order_preserved_across_shapes(self):
         c = _build_classification()
-        chunks = list(ic._execute_upsert_chunks(c, today="2026-09-15", chunk_size=100))
-        # Flatten to (shape, id) pairs in emission order.
-        seen = [(shape, row["id"]) for shape, rows in chunks for row in rows]
-        ids_in_order = [pid for _shape, pid in seen]
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO, chunk_size=100)
+        ids_in_order = []
+        for action in actions:
+            if action["op"] == "insert":
+                ids_in_order.extend(p["id"] for p in action["payloads"])
+            else:
+                ids_in_order.append(action["id"])
         self.assertEqual(
             ids_in_order,
             [PART_A, f"sec-{REG}-A-I", f"sec-{REG}-A-II", f"sec-{REG}-A-III"],
@@ -178,37 +190,56 @@ class ExecuteUpsertChunksTests(unittest.TestCase):
             "(a new parent must always precede any child that references it)",
         )
 
+    def test_no_action_is_ever_an_upsert(self):
+        c = _build_classification()
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO, chunk_size=100)
+        self.assertTrue(actions)
+        for action in actions:
+            self.assertIn(action["op"], ("insert", "update"))
+
+    def test_identical_and_changed_are_update_ops(self):
+        c = _build_classification()
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO, chunk_size=100)
+        update_ids = {a["id"] for a in actions if a["op"] == "update"}
+        self.assertEqual(update_ids, {PART_A, f"sec-{REG}-A-I", f"sec-{REG}-A-II"})
+
     def test_identical_payload_omits_untouched_columns(self):
         c = _build_classification()
-        chunks = list(ic._execute_upsert_chunks(c, today="2026-09-15", chunk_size=100))
-        identical_rows = [row for shape, rows in chunks if shape == "identical" for row in rows]
-        self.assertEqual(len(identical_rows), 2)
-        for row in identical_rows:
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO, chunk_size=100)
+        identical_payloads = [
+            a["payload"] for a in actions if a["op"] == "update" and a["shape"] == "identical"
+        ]
+        self.assertEqual(len(identical_payloads), 2)
+        for payload in identical_payloads:
             self.assertEqual(
-                set(row.keys()), {"id", "citation", "title", "parent_id", "sort_order"},
-                "an `identical` row's payload must only carry columns the SQL "
-                "path's UPDATE SET clause touches for that class",
+                set(payload.keys()), {"citation", "title", "parent_id", "sort_order", "updated_at"},
+                "an `identical` row's UPDATE payload must only carry columns the SQL "
+                "path's UPDATE SET clause touches for that class -- no `id` (that's "
+                "the .eq() match key, not a SET column) and no jurisdiction_level/"
+                "issuing_body/source_url/last_verified_date/is_public/full_text/"
+                "summary_status/ai_summary",
             )
 
     def test_changed_payload_has_full_text_and_summary_reset_but_not_jurisdiction(self):
         c = _build_classification()
-        chunks = list(ic._execute_upsert_chunks(c, today="2026-09-15", chunk_size=100))
-        changed_rows = [row for shape, rows in chunks if shape == "changed" for row in rows]
-        self.assertEqual(len(changed_rows), 1)
-        row = changed_rows[0]
-        self.assertEqual(row["full_text"], "NEW visible text")
-        self.assertEqual(row["summary_status"], "pending")
-        self.assertIsNone(row["reviewed_by"])
-        self.assertIsNone(row["reviewed_at"])
-        self.assertIsNone(row["summary_original"])
-        for col in ("jurisdiction_level", "issuing_body", "source_url", "last_verified_date", "is_public"):
-            self.assertNotIn(col, row, f"changed rows must never overwrite {col} on an existing row")
-        self.assertNotIn("ai_summary", row)
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO, chunk_size=100)
+        changed = [a for a in actions if a["op"] == "update" and a["shape"] == "changed"]
+        self.assertEqual(len(changed), 1)
+        payload = changed[0]["payload"]
+        self.assertEqual(payload["full_text"], "NEW visible text")
+        self.assertEqual(payload["summary_status"], "pending")
+        self.assertIsNone(payload["reviewed_by"])
+        self.assertIsNone(payload["reviewed_at"])
+        self.assertIsNone(payload["summary_original"])
+        self.assertEqual(payload["updated_at"], NOW_ISO)
+        for col in ("id", "jurisdiction_level", "issuing_body", "source_url", "last_verified_date", "is_public"):
+            self.assertNotIn(col, payload, f"changed rows must never overwrite {col} on an existing row")
+        self.assertNotIn("ai_summary", payload)
 
     def test_new_payload_has_every_not_null_column(self):
         c = _build_classification()
-        chunks = list(ic._execute_upsert_chunks(c, today="2026-09-15", chunk_size=100))
-        new_rows = [row for shape, rows in chunks if shape == "new" for row in rows]
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO, chunk_size=100)
+        new_rows = [p for a in actions if a["op"] == "insert" for p in a["payloads"]]
         self.assertEqual(len(new_rows), 1)
         row = new_rows[0]
         for col in (
@@ -225,24 +256,73 @@ class ExecuteUpsertChunksTests(unittest.TestCase):
 
     def test_no_payload_ever_touches_ai_summary(self):
         c = _build_classification()
-        for _shape, rows in ic._execute_upsert_chunks(c, today="2026-09-15", chunk_size=100):
-            for row in rows:
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO, chunk_size=100)
+        for action in actions:
+            payloads = action["payloads"] if action["op"] == "insert" else [action["payload"]]
+            for row in payloads:
                 self.assertNotIn("ai_summary", row)
 
-    def test_chunk_never_mixes_shapes(self):
+    def test_insert_chunk_never_exceeds_cap(self):
         c = _build_classification()
-        for shape, rows in ic._execute_upsert_chunks(c, today="2026-09-15", chunk_size=1):
-            self.assertTrue(len(rows) >= 1)
+        for action in ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO, chunk_size=1):
+            if action["op"] == "insert":
+                self.assertLessEqual(len(action["payloads"]), 1)
 
     def test_chunk_size_cap_enforced(self):
-        # 250 synthetic `new` rows -> chunks of 100, 100, 50 at the default cap.
+        # 250 synthetic `new` rows -> insert chunks of 100, 100, 50 at the default cap.
         parsed = [_prow(f"sec-{REG}-A-{i:04d}", PART_A, 100 + i, f"text {i}") for i in range(250)]
         db: list[dict] = []
         c = ic.classify_apply(parsed, db)
         self.assertEqual(len(c["new"]), 250)
-        sizes = [len(rows) for _shape, rows in ic._execute_upsert_chunks(c, today="2026-09-15")]
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO)
+        sizes = [len(a["payloads"]) for a in actions if a["op"] == "insert"]
         self.assertEqual(sizes, [100, 100, 50])
         self.assertTrue(all(n <= ic.EXECUTE_CHUNK for n in sizes))
+
+    def test_parent_before_child_holds_for_real_reg7_data(self):
+        """Integration-style check against the actual committed Reg 7
+        parse/DB export (skipped if not present in this checkout): for
+        every action in emission order, track which ids have been written
+        so far, and assert every row's parent_id was already written (or
+        is the regulation root, which is never itself new/changed/
+        identical in a from-scratch corpus) before that row is."""
+        parsed_path = os.path.join(os.path.dirname(__file__), "out", "reg7_parsed.json")
+        db_path = os.path.join(os.path.dirname(__file__), "out", "reg7_db.json")
+        if not (os.path.exists(parsed_path) and os.path.exists(db_path)):
+            self.skipTest("pipeline/out/reg7_parsed.json and reg7_db.json not present in this checkout")
+        import json as _json
+        with open(parsed_path, encoding="utf-8") as f:
+            parsed = _json.load(f)
+        with open(db_path, encoding="utf-8") as f:
+            db = _json.load(f)
+        c = ic.classify_apply(parsed, db)
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO)
+
+        parent_of = {row["id"]: row["parent_id"] for row in parsed}
+        written: set[str] = set(c["obsolete"])  # untouched by this plan; parents can't depend on them here
+        # Any id NOT in identical/changed/new (i.e. already-existing rows this
+        # plan leaves alone, such as an ancestor further up an obsolete
+        # chain) is assumed already present in the DB before this run starts.
+        already_in_db = set(c["db_by_id"]) - set(c["obsolete"])
+        written |= already_in_db - (set(c["identical"]) | set(c["changed"]) | set(c["new"]))
+
+        for action in actions:
+            # A multi-row INSERT is one Postgres statement that applies its
+            # rows in order (immediate, non-deferred FK checks fire per row
+            # as the statement executes), so within one insert batch a later
+            # row may legitimately depend on an earlier row in that SAME
+            # batch -- check and record row-by-row, not batch-by-batch.
+            ids_this_step = (
+                [p["id"] for p in action["payloads"]] if action["op"] == "insert" else [action["id"]]
+            )
+            for pid in ids_this_step:
+                parent = parent_of.get(pid)
+                if parent is not None:
+                    self.assertIn(
+                        parent, written,
+                        f"{pid}'s parent {parent} must be written (or already exist) before {pid} itself",
+                    )
+                written.add(pid)
 
 
 # ---------------------------------------------------------------------------
@@ -255,17 +335,30 @@ class _FakeQuery:
         self.kind = kind
         self.payload = payload
         self.ids = None
+        self.eq_id = None
 
     def in_(self, col, ids):
         self.ids = list(ids)
         return self
 
+    def eq(self, col, val):
+        assert col == "id"
+        self.eq_id = val
+        return self
+
     def execute(self):
-        call = {"table": self.table.name, "kind": self.kind, "payload": self.payload, "ids": self.ids}
+        call = {
+            "table": self.table.name, "kind": self.kind, "payload": self.payload,
+            "ids": self.ids, "id": self.eq_id,
+        }
         self.table.client.calls.append(call)
         fail_at = self.table.client.fail_at_call
         if fail_at is not None and len(self.table.client.calls) == fail_at:
             raise RuntimeError(f"simulated failure on call #{fail_at}")
+        if self.kind == "update":
+            if self.eq_id in self.table.client.no_match_ids:
+                return SimpleNamespace(data=[])
+            return SimpleNamespace(data=[{"id": self.eq_id, **self.payload}])
         return SimpleNamespace(data=self.payload if isinstance(self.payload, list) else [])
 
 
@@ -274,20 +367,21 @@ class _FakeTable:
         self.name = name
         self.client = client
 
-    def upsert(self, payload, on_conflict=None):
-        return _FakeQuery(self, "upsert", payload)
-
     def insert(self, payload):
         return _FakeQuery(self, "insert", payload)
+
+    def update(self, payload):
+        return _FakeQuery(self, "update", payload)
 
     def delete(self):
         return _FakeQuery(self, "delete")
 
 
 class _FakeClient:
-    def __init__(self, fail_at_call=None):
+    def __init__(self, fail_at_call=None, no_match_ids=frozenset()):
         self.calls: list[dict] = []
         self.fail_at_call = fail_at_call
+        self.no_match_ids = no_match_ids  # ids whose .update().eq() simulates "matched zero rows"
         self._tables: dict[str, _FakeTable] = {}
 
     def table(self, name):
@@ -353,49 +447,77 @@ class CmdApplyExecuteEndToEndTests(unittest.TestCase):
         with _FakeSupabaseModuleCtx(fake):
             ic.cmd_apply_execute(self._args(yes=True), c, ancestor_for, "2026-09-15")
 
+        # No call is ever an upsert -- identical/changed go through update(),
+        # new rows through insert().
+        self.assertFalse(any(call["kind"] == "upsert" for call in fake.calls))
+
         kinds = [(call["table"], call["kind"]) for call in fake.calls]
-        # Every upsert call precedes every provision_changes insert, which
-        # precedes every provisions delete (rule 3/4 — deletes last).
-        first_insert = next(i for i, k in enumerate(kinds) if k == ("provision_changes", "insert"))
+        # Every provisions update/insert precedes every provision_changes
+        # insert, which precedes every provisions delete (rule 3/4 — deletes
+        # last).
+        provisions_writes = [i for i, k in enumerate(kinds) if k[0] == "provisions" and k[1] in ("update", "insert")]
+        first_note_insert = next(i for i, k in enumerate(kinds) if k == ("provision_changes", "insert"))
         first_delete = next(i for i, k in enumerate(kinds) if k == ("provisions", "delete"))
-        last_upsert = max(i for i, k in enumerate(kinds) if k == ("provisions", "upsert"))
-        self.assertLess(last_upsert, first_insert)
-        self.assertLess(first_insert, first_delete)
+        self.assertLess(max(provisions_writes), first_note_insert)
+        self.assertLess(first_note_insert, first_delete)
 
         # The removal note lands on the resolved surviving ancestor with the
         # right change_type, and the delete covers exactly the obsolete id.
-        note_call = next(call for call in fake.calls if call["kind"] == "insert")
+        note_call = next(call for call in fake.calls if call["kind"] == "insert" and call["table"] == "provision_changes")
         self.assertEqual(note_call["payload"]["provision_id"], PART_A)
         self.assertEqual(note_call["payload"]["change_type"], "provision_removed")
 
         delete_call = next(call for call in fake.calls if call["kind"] == "delete")
         self.assertEqual(delete_call["ids"], [f"sec-{REG}-A-OLD"])
 
-        # No upsert payload ever carries ai_summary; identical-class ids
-        # never carry full_text.
-        all_upsert_rows = [
-            row for call in fake.calls if call["kind"] == "upsert" for row in call["payload"]
-        ]
-        for row in all_upsert_rows:
-            self.assertNotIn("ai_summary", row)
+        # No provisions write ever carries ai_summary; identical-class
+        # updates never carry full_text or an `id` column.
+        update_calls = [call for call in fake.calls if call["table"] == "provisions" and call["kind"] == "update"]
+        insert_calls = [call for call in fake.calls if call["table"] == "provisions" and call["kind"] == "insert"]
+        for call in update_calls:
+            self.assertNotIn("ai_summary", call["payload"])
+            self.assertNotIn("jurisdiction_level", call["payload"])
+            self.assertNotIn("id", call["payload"])
+        for call in insert_calls:
+            for row in call["payload"]:
+                self.assertNotIn("ai_summary", row)
         identical_ids = {PART_A, f"sec-{REG}-A-I"}
-        for row in all_upsert_rows:
-            if row["id"] in identical_ids:
-                self.assertNotIn("full_text", row)
-                self.assertNotIn("summary_status", row)
+        for call in update_calls:
+            if call["id"] in identical_ids:
+                self.assertNotIn("full_text", call["payload"])
+                self.assertNotIn("summary_status", call["payload"])
+        insert_ids = {row["id"] for call in insert_calls for row in call["payload"]}
+        self.assertEqual(insert_ids, {f"sec-{REG}-A-III"})
+        for row in insert_calls[0]["payload"]:
+            self.assertIn("jurisdiction_level", row)
+            self.assertIn("full_text", row)
 
-    def test_failed_chunk_aborts_before_later_writes(self):
+    def test_failed_write_aborts_before_later_writes(self):
         c = _build_classification()
         ancestor_for = {f"sec-{REG}-A-OLD": PART_A}
-        # Fail on the very first call (the first upsert chunk) — nothing
-        # after it (notes, deletes) should ever be attempted.
+        # Fail on the very first call (the first identical/changed update) —
+        # nothing after it (notes, deletes) should ever be attempted.
         fake = _FakeClient(fail_at_call=1)
         with _FakeSupabaseModuleCtx(fake):
             with self.assertRaises(RuntimeError):
                 ic.cmd_apply_execute(self._args(yes=True), c, ancestor_for, "2026-09-15")
         self.assertEqual(len(fake.calls), 1)
         self.assertFalse(any(call["kind"] == "delete" for call in fake.calls))
-        self.assertFalse(any(call["kind"] == "insert" for call in fake.calls))
+        self.assertFalse(any(call["table"] == "provision_changes" for call in fake.calls))
+
+    def test_update_matching_zero_rows_aborts(self):
+        c = _build_classification()
+        ancestor_for = {f"sec-{REG}-A-OLD": PART_A}
+        # PART_A's update "succeeds" (no exception) but matches no row --
+        # PostgREST's own convention for an UPDATE whose WHERE matched
+        # nothing. This must still abort the run with a non-zero exit.
+        fake = _FakeClient(no_match_ids={PART_A})
+        with _FakeSupabaseModuleCtx(fake):
+            with self.assertRaises(SystemExit) as ctx:
+                ic.cmd_apply_execute(self._args(yes=True), c, ancestor_for, "2026-09-15")
+        self.assertNotEqual(ctx.exception.code, 0)
+        self.assertFalse(any(call["kind"] == "delete" for call in fake.calls))
+        self.assertFalse(any(call["table"] == "provision_changes" for call in fake.calls))
 
 
 if __name__ == "__main__":

@@ -36,7 +36,7 @@ import random
 import re
 import sys
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 try:
@@ -2465,53 +2465,55 @@ def _count_top_level_statements(sql_text: str) -> int:
     return count
 
 
-EXECUTE_CHUNK = 100  # supabase-py upsert/delete chunk size cap (rule 5)
+EXECUTE_CHUNK = 100  # supabase-py insert/delete chunk size cap (rule 5) -- update() is always one row at a time.
 
 
-def _execute_identical_payload(row: dict) -> dict:
+def _execute_identical_fields(row: dict, now_iso: str) -> dict:
     """Mirrors build_upsert_statement's UPDATE SET clause for an `identical`
-    row: citation/title/parent_id/sort_order only (updated_at is set by the
-    DB's own `provisions_set_updated_at` trigger on every UPDATE, so it is
-    never included here). jurisdiction_level/issuing_body/source_url/
-    last_verified_date/is_public/full_text/summary_status/ai_summary are
-    DELIBERATELY left out of the payload: PostgREST's upsert only assigns a
-    column in its `ON CONFLICT DO UPDATE SET` when that column is present in
-    the JSON payload, so omitting them here leaves the existing row's values
-    for those columns untouched -- exactly like the SQL path's SET clause,
-    which never mentions them for `identical` rows either."""
+    row: citation/title/parent_id/sort_order/updated_at only.
+    jurisdiction_level/issuing_body/source_url/last_verified_date/is_public/
+    full_text/summary_status/ai_summary are DELIBERATELY left out: this is
+    sent as a real SQL UPDATE (`.update(...).eq("id", pid)`, never
+    `.upsert()` -- see cmd_apply_execute's docstring for why upsert can
+    never be used here), so any column not in this dict is simply not
+    touched, exactly like the SQL path's SET clause for `identical` rows.
+    `updated_at` is included explicitly to mirror the SQL path even though
+    the `provisions_set_updated_at` trigger would set it on any UPDATE
+    regardless."""
     return {
-        "id": row["id"], "citation": row["citation"], "title": row["title"],
+        "citation": row["citation"], "title": row["title"],
         "parent_id": row["parent_id"], "sort_order": row["sort_order"],
+        "updated_at": now_iso,
     }
 
 
-def _execute_changed_payload(row: dict) -> dict:
+def _execute_changed_fields(row: dict, now_iso: str) -> dict:
     """Adds full_text + clears summary review state, matching
     build_upsert_statement's `touch_full_text` branch. Still omits
     jurisdiction_level/issuing_body/source_url/last_verified_date/is_public
     (an id classified `changed` is, by construction, already a row in the
     DB -- classify_apply's `changed` is the shared-id set with different
-    text -- so the UPDATE path is always what runs; those columns are never
-    touched by the SQL path's SET clause for this class either) and never
-    touches ai_summary."""
-    payload = _execute_identical_payload(row)
-    payload.update({
+    text -- so those columns are never touched by the SQL path's SET clause
+    for this class either) and never touches ai_summary."""
+    fields = _execute_identical_fields(row, now_iso)
+    fields.update({
         "full_text": row.get("full_text") or "",
         "summary_status": "pending",
         "reviewed_by": None,
         "reviewed_at": None,
         "summary_original": None,
     })
-    return payload
+    return fields
 
 
-def _execute_new_payload(row: dict, today: str) -> dict:
-    """A genuine insert (no existing row to preserve columns from), so every
+def _execute_new_payload(row: dict, today: str, now_iso: str) -> dict:
+    """A genuine INSERT (no existing row to preserve columns from), so every
     NOT NULL column the table requires is populated -- the same column list
-    as `build_upsert_statement`'s `cols` (minus `updated_at`, again handled
-    by the trigger)."""
-    payload = _execute_changed_payload(row)
+    as `build_upsert_statement`'s `cols`. Unlike `.update()`, `.insert()`
+    needs `id` in the payload."""
+    payload = _execute_changed_fields(row, now_iso)
     payload.update({
+        "id": row["id"],
         "jurisdiction_level": "state",
         "issuing_body": "CDPHE-APCD",
         "source_url": SOURCE_URL_DEFAULT,
@@ -2521,58 +2523,88 @@ def _execute_new_payload(row: dict, today: str) -> dict:
     return payload
 
 
-def _execute_upsert_chunks(c: dict, today: str, chunk_size: int = EXECUTE_CHUNK):
-    """Yields (shape, payload_chunk) pairs covering every identical/changed/
-    new row, in a SINGLE stream ordered by (sort_order, id) -- exactly like
-    the SQL path's `upsert_rows` -- so a brand-new parent is always upserted
-    before any child (of any class) that references it, per
-    `build_upsert_statement`'s ordering rationale. A chunk never mixes rows
-    that need different payload shapes: PostgREST's bulk upsert fills any
-    column missing from ONE row of a batch with NULL for every row in that
-    same call (it computes the column set as the union of keys across the
-    whole JSON array), so combining e.g. an `identical` row (no `full_text`
-    key) with a `changed` row (has one) in one call would send `full_text =
-    NULL` for the identical row and violate its NOT NULL constraint -- a
-    chunk boundary is therefore forced whenever the shape changes, in
-    addition to the `chunk_size` cap."""
+def _execute_write_plan(c: dict, today: str, now_iso: str, chunk_size: int = EXECUTE_CHUNK) -> list[dict]:
+    """Returns an ordered list of write actions for every identical/changed/
+    new row, covering the whole stream in a SINGLE (sort_order, id) order --
+    exactly like the SQL path's `upsert_rows` -- so a brand-new parent is
+    always written before any child (of any class) that references it: a
+    parent's sort_order is always lower than any of its descendants' (see
+    build_provisions' next_sort()), so processing strictly in that order and
+    performing each row's write no later than when it's reached guarantees
+    this regardless of class.
+
+    Each action is one of:
+      {"op": "insert", "payloads": [...]}   -- a contiguous run of up to
+        `chunk_size` `new` rows, inserted together in one call.
+      {"op": "update", "id": pid, "shape": "identical"|"changed", "payload": {...}}
+        -- one `identical`/`changed` row, applied with its own PATCH.
+
+    A pending run of `new` rows is flushed (turned into an "insert" action)
+    before emitting the next `identical`/`changed` update, and whenever it
+    reaches `chunk_size` -- so an insert is never left pending past a point
+    where a later-sorted row might depend on it, and no insert batch ever
+    exceeds `chunk_size` rows."""
     parsed_by_id = c["parsed_by_id"]
-    stream: list[tuple[int, str, str, dict]] = (
-        [(parsed_by_id[pid]["sort_order"], pid, "identical", parsed_by_id[pid]) for pid in c["identical"]]
-        + [(parsed_by_id[pid]["sort_order"], pid, "changed", parsed_by_id[pid]) for pid in c["changed"]]
-        + [(parsed_by_id[pid]["sort_order"], pid, "new", parsed_by_id[pid]) for pid in c["new"]]
+    stream: list[tuple[int, str, str]] = (
+        [(parsed_by_id[pid]["sort_order"], pid, "identical") for pid in c["identical"]]
+        + [(parsed_by_id[pid]["sort_order"], pid, "changed") for pid in c["changed"]]
+        + [(parsed_by_id[pid]["sort_order"], pid, "new") for pid in c["new"]]
     )
     stream.sort(key=lambda t: (t[0], t[1]))
 
-    builders = {
-        "identical": lambda row: _execute_identical_payload(row),
-        "changed": lambda row: _execute_changed_payload(row),
-        "new": lambda row: _execute_new_payload(row, today),
-    }
+    actions: list[dict] = []
+    pending_new: list[dict] = []
 
-    chunk: list[dict] = []
-    chunk_shape: str | None = None
-    for _sort_order, _pid, shape, row in stream:
-        if chunk and (shape != chunk_shape or len(chunk) >= chunk_size):
-            yield chunk_shape, chunk
-            chunk = []
-        chunk.append(builders[shape](row))
-        chunk_shape = shape
-    if chunk:
-        yield chunk_shape, chunk
+    def flush_new() -> None:
+        nonlocal pending_new
+        if pending_new:
+            actions.append({"op": "insert", "payloads": pending_new})
+            pending_new = []
+
+    for _sort_order, pid, shape in stream:
+        row = parsed_by_id[pid]
+        if shape == "new":
+            pending_new.append(_execute_new_payload(row, today, now_iso))
+            if len(pending_new) >= chunk_size:
+                flush_new()
+        else:
+            flush_new()
+            fields = _execute_identical_fields(row, now_iso) if shape == "identical" else _execute_changed_fields(row, now_iso)
+            actions.append({"op": "update", "id": pid, "shape": shape, "payload": fields})
+    flush_new()
+    return actions
 
 
 def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
     """The --execute path: performs the same plan via the Supabase REST API
     (supabase-py), for the GitHub Actions job. Requires --yes as an explicit
     double-check (refuses otherwise) and SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY
-    in the environment — same convention as summarize.py. Every write (each
-    upsert chunk, each provision_changes insert, each delete chunk) is
-    unguarded against exceptions: supabase-py/postgrest-py raises on a
-    non-2xx response, which — since nothing here catches it — propagates
-    out of this function and out of `main()`, giving a non-zero process
-    exit. There is deliberately no try/except that logs and continues: a
-    failed chunk must abort the run rather than leave the DB partially
-    updated with later chunks silently skipped."""
+    in the environment — same convention as summarize.py.
+
+    `identical`/`changed` rows are always existing rows (classify_apply's
+    `identical`/`changed` are exactly the shared-id set), so they're written
+    with a real `.update(payload).eq("id", pid)` PATCH, never `.upsert()`:
+    PostgREST's upsert is `INSERT ... ON CONFLICT DO UPDATE`, and Postgres
+    builds the INSERT row -- with every column missing from the payload set
+    to NULL -- before it even checks the conflict, so an upsert payload that
+    omits a NOT NULL column (as an `identical`/`changed` payload deliberately
+    does, to leave those columns alone on the UPDATE branch) fails the
+    table's NOT NULL constraints even though the row already exists and the
+    UPDATE branch is what was actually meant to run. `new` rows have no
+    existing row to preserve columns from, so they're genuinely `.insert()`ed
+    (not upserted) with every NOT NULL column populated, in chunks of at
+    most `EXECUTE_CHUNK` rows.
+
+    Every write (each update, each insert chunk, each provision_changes
+    insert, each delete chunk) is unguarded against exceptions:
+    supabase-py/postgrest-py raises on a non-2xx response, which — since
+    nothing here catches it — propagates out of this function and out of
+    `main()`, giving a non-zero process exit. There is deliberately no
+    try/except that logs and continues: a failed write must abort the run
+    rather than leave the DB partially updated with later writes silently
+    skipped. An `.update()` that matches zero rows is a *successful* HTTP
+    call by PostgREST's own convention (no exception raised), so that case
+    is checked explicitly and aborted here too."""
     import os
 
     if not args.yes:
@@ -2587,17 +2619,35 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
 
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     db_by_id = c["db_by_id"]
+    now_iso = datetime.now(timezone.utc).isoformat()
 
     total = len(c["identical"]) + len(c["changed"]) + len(c["new"])
     print(
-        f"Upserting {total} rows (identical={len(c['identical'])}, changed={len(c['changed'])}, "
-        f"new={len(c['new'])}) in shape-homogeneous chunks of <= {EXECUTE_CHUNK}, ordered by sort_order..."
+        f"Writing {total} rows (identical={len(c['identical'])} + changed={len(c['changed'])} via "
+        f"one UPDATE each, new={len(c['new'])} via INSERT in chunks of <= {EXECUTE_CHUNK}), "
+        f"ordered by sort_order so parents precede children..."
     )
     done = 0
-    for shape, chunk in _execute_upsert_chunks(c, today, EXECUTE_CHUNK):
-        client.table("provisions").upsert(chunk, on_conflict="id").execute()
-        done += len(chunk)
-        print(f"  upserted {done}/{total} ({shape} chunk of {len(chunk)})")
+    for action in _execute_write_plan(c, today, now_iso, EXECUTE_CHUNK):
+        if action["op"] == "insert":
+            payloads = action["payloads"]
+            client.table("provisions").insert(payloads).execute()
+            done += len(payloads)
+            print(f"  inserted {done}/{total} (new chunk of {len(payloads)})")
+        else:
+            pid = action["id"]
+            resp = client.table("provisions").update(action["payload"]).eq("id", pid).execute()
+            if not resp.data:
+                print(
+                    f"ERROR: UPDATE for {pid} ({action['shape']}) matched zero rows -- it should already "
+                    "exist (classify_apply only puts shared ids in identical/changed). Aborting rather than "
+                    "silently skipping it.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            done += 1
+            if done % 200 == 0 or done == total:
+                print(f"  updated {done}/{total}")
 
     if c["obsolete"]:
         print(f"Inserting {len(c['obsolete'])} provision_changes removal note(s)...")
