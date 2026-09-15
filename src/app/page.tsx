@@ -67,6 +67,16 @@ export default async function Home() {
               You&apos;ll be taken to Stripe&apos;s secure checkout and returned here.
             </p>
           )}
+          <p className="mt-4 text-xs text-zinc-500">
+            Need multiple seats for your team?{" "}
+            <Link
+              href="/contact-sales"
+              className="font-medium text-zinc-700 underline underline-offset-2 hover:text-emerald-700"
+            >
+              Contact sales
+            </Link>
+            .
+          </p>
         </div>
       </section>
     </div>

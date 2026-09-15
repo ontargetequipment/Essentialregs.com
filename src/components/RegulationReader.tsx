@@ -23,6 +23,7 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
     const popupGoto = document.getElementById("popup-goto") as HTMLAnchorElement | null;
     const sidebar = document.getElementById("sidebar");
     const toggle = document.getElementById("mobile-toggle");
+    const sidebarScrim = document.getElementById("sidebar-scrim");
     const jumpbox = document.getElementById("jumpbox") as HTMLInputElement | null;
     const jumpResults = document.getElementById("jump-results");
 
@@ -90,22 +91,31 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
       }
     }
     function onKeydown(e: KeyboardEvent) {
-      if (e.key === "Escape") closePopup();
+      if (e.key === "Escape") {
+        closePopup();
+        closeSidebar();
+      }
     }
     document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKeydown);
 
     function onToggleClick() {
       sidebar?.classList.toggle("open");
+      sidebarScrim?.classList.toggle("show");
     }
     toggle?.addEventListener("click", onToggleClick);
 
+    function closeSidebar() {
+      sidebar?.classList.remove("open");
+      sidebarScrim?.classList.remove("show");
+    }
     function onSidebarClick(e: MouseEvent) {
       if ((e.target as HTMLElement).closest("a.nav-link")) {
-        sidebar?.classList.remove("open");
+        closeSidebar();
       }
     }
     sidebar.addEventListener("click", onSidebarClick);
+    sidebarScrim?.addEventListener("click", closeSidebar);
 
     function escapeHtml(s: string) {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -174,6 +184,7 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
       document.removeEventListener("keydown", onKeydown);
       toggle?.removeEventListener("click", onToggleClick);
       sidebar.removeEventListener("click", onSidebarClick);
+      sidebarScrim?.removeEventListener("click", closeSidebar);
       jumpbox.removeEventListener("input", onJumpInput);
       jumpbox.removeEventListener("focus", onJumpFocus);
       jumpResults.removeEventListener("click", onJumpResultsClick);
@@ -186,6 +197,7 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
       <button id="mobile-toggle" aria-label="Toggle navigation" type="button">
         &#9776; Contents
       </button>
+      <div id="sidebar-scrim" aria-hidden="true" />
       <div id="backdrop">
         <div id="popup" role="dialog" aria-modal="true">
           <div id="popup-head">

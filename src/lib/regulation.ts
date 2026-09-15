@@ -1,5 +1,6 @@
 import sanitizeHtmlLib from "sanitize-html";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Provision } from "@/lib/types";
 
 export type ProvisionKind = "reg" | "part" | "appendix" | "item";
@@ -77,6 +78,7 @@ const RESERVED_IDS = new Set([
   "popup-footer",
   "popup-goto",
   "mobile-toggle",
+  "sidebar-scrim",
 ]);
 
 const VALID_ID = /^[A-Za-z0-9_.:-]+$/;
@@ -204,6 +206,100 @@ export async function fetchRegulationList(): Promise<Provision[]> {
   return (data ?? []) as Provision[];
 }
 
+/** Columns the public teaser is ever allowed to read. Never add full_text here. */
+const TEASER_COLUMNS = "id, citation, title, ai_summary, summary_status, source_url";
+
+/** Row shape returned by fetchRegulationTeaser — deliberately excludes full_text. */
+export type TeaserProvision = Pick<
+  Provision,
+  "id" | "citation" | "title" | "ai_summary" | "summary_status" | "source_url"
+>;
+
+export type RegulationTeaser = {
+  root: TeaserProvision | null;
+  /** Top-level Part/Appendix headings only (see kindOf) -- no section bodies. */
+  headings: TeaserProvision[];
+  /** Up to TEASER_SUMMARY_LIMIT reviewed, non-empty summaries for the teaser. */
+  summaries: TeaserProvision[];
+};
+
+/** Max plain-English summaries shown on a public /preview teaser page. */
+export const TEASER_SUMMARY_LIMIT = 5;
+
+/**
+ * Public, anonymous-safe read path for the SEO teaser page
+ * (/regulations/[reg]/preview). The real corpus is not `is_public` (see
+ * supabase/schema.sql), so an anonymous visitor's RLS-bound client
+ * (fetchRegulationProvisions above) returns nothing for it. This function
+ * deliberately bypasses RLS with the service-role client to expose a small,
+ * fixed slice of marketing-safe data:
+ *
+ *   - the regulation's own citation/title,
+ *   - its top-level Part/Appendix headings (citation/title only), and
+ *   - up to TEASER_SUMMARY_LIMIT already human-reviewed ai_summary rows.
+ *
+ * It NEVER selects `full_text` and is capped to a handful of rows. Do not
+ * widen this into a general-purpose fetch or add columns beyond
+ * TEASER_COLUMNS -- write a new, separately-scoped function instead.
+ */
+export async function fetchRegulationTeaser(
+  regNumber: string
+): Promise<RegulationTeaser> {
+  const supabase = createAdminClient();
+  const scopedToReg = () =>
+    supabase.from("provisions").select(TEASER_COLUMNS).like("id", `sec-${regNumber}-%`);
+
+  const [rootResult, headingsResult, summariesResult] = await Promise.all([
+    // The regulation's own top-level row (id contains "-top-REG-").
+    scopedToReg().like("id", "%-top-REG-%").limit(1),
+    // Top-level Part/Appendix headings only -- every such row's parent_id is
+    // the regulation root itself (verified against the live corpus), so no
+    // section body ever matches this filter.
+    scopedToReg()
+      .or("id.like.%-PART-%,id.like.%-APPENDIX-%")
+      .order("sort_order", { ascending: true }),
+    // A capped teaser of already-reviewed, non-empty plain-English summaries.
+    scopedToReg()
+      .in("summary_status", ["approved", "edited"])
+      .not("ai_summary", "is", null)
+      .neq("ai_summary", "")
+      .order("sort_order", { ascending: true })
+      .limit(TEASER_SUMMARY_LIMIT),
+  ]);
+
+  if (rootResult.error) throw new Error(rootResult.error.message);
+  if (headingsResult.error) throw new Error(headingsResult.error.message);
+  if (summariesResult.error) throw new Error(summariesResult.error.message);
+
+  return {
+    root: (rootResult.data?.[0] as TeaserProvision) ?? null,
+    headings: (headingsResult.data ?? []) as TeaserProvision[],
+    summaries: (summariesResult.data ?? []) as TeaserProvision[],
+  };
+}
+
+/**
+ * Reg-number list for enumerating /regulations/[reg]/preview URLs in
+ * src/app/sitemap.ts. NOTE: this deliberately does NOT reuse the ordinary
+ * (RLS-bound) fetchRegulationList() above -- that function is subject to the
+ * same anon-role RLS policy described on fetchRegulationTeaser (only
+ * `is_public` rows are visible), and none of the real regulations are
+ * `is_public`. Sitemap generation runs with no user session, so calling the
+ * RLS-bound version here would silently enumerate zero regulations and the
+ * teaser pages would never get linked/indexed. Bypasses RLS the same way,
+ * with the same full_text-free column list.
+ */
+export async function fetchRegulationRootsForSitemap(): Promise<TeaserProvision[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("provisions")
+    .select(TEASER_COLUMNS)
+    .like("id", "sec-%-top-REG-%")
+    .order("id", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as TeaserProvision[];
+}
+
 export type RegTree = {
   all: Provision[];
   byId: Map<string, Provision>;
@@ -284,31 +380,6 @@ export function withItemIdBadge(html: string, citation: string): string {
   return badge + html;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-/**
- * Formats a Postgres `date` string ("2026-09-12") as "Sep 12, 2026". Parsed
- * by hand rather than via `new Date()` so a date-only value isn't shifted a
- * day by the server's timezone. Anything that doesn't look like a date is
- * returned untouched.
- */
-export function formatReviewDate(isoDate: string): string {
-  const m = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return isoDate;
-  const month = MONTHS[Number(m[2]) - 1];
-  if (!month) return isoDate;
-  return `${month} ${Number(m[3])}, ${m[1]}`;
-}
-
-/**
- * Provenance line shown under every AI summary, so a reader always knows
- * whether a human has checked it against the official text yet.
- */
-export function summaryStatusText(lastVerifiedDate: string | null): string {
-  return lastVerifiedDate
-    ? `AI-generated · reviewed ${formatReviewDate(lastVerifiedDate)}`
-    : "AI-generated · not yet human-reviewed — verify against the official text";
-}
 
 /** Splits plain-text summary into paragraphs on blank lines (drops empties). */
 export function summaryParagraphs(summary: string): string[] {
@@ -326,7 +397,8 @@ export function summaryParagraphs(summary: string): string[] {
  * HTML, so it's escaped here; blank lines become paragraph breaks.
  */
 export function summaryPanelHtml(
-  p: Pick<Provision, "ai_summary" | "last_verified_date" | "summary_status">
+  p: Pick<Provision, "ai_summary" | "summary_status" | "source_url">,
+  fallbackSourceUrl?: string | null
 ): string {
   // A rejected summary is withheld from every reader entirely — it failed
   // human review, so showing it (even labeled "not yet reviewed") would be
@@ -335,11 +407,23 @@ export function summaryPanelHtml(
   const paragraphs = summaryParagraphs(p.ai_summary ?? "");
   if (!paragraphs.length) return "";
   const body = paragraphs.map((t) => `<p>${escapeHtml(t)}</p>`).join("");
+  // No mention of who/what reviewed this or when, and no "AI-generated"
+  // label -- [Brody, Sep 14 2026] that line risked misleading readers once
+  // review passes started including an AI second-pass alongside human
+  // review, and the Disclaimer page already covers that summaries are
+  // AI-generated. A link to the source document lets a reader verify
+  // directly instead.
+  const sourceUrl = p.source_url ?? fallbackSourceUrl ?? null;
+  const sourceLinkHtml = sourceUrl
+    ? `<div class="summary-status"><a href="${escapeHtml(
+        sourceUrl
+      )}" target="_blank" rel="noopener noreferrer">View official source ↗</a></div>`
+    : "";
   return (
     `<details class="summary-panel">` +
     `<summary>Plain-English summary</summary>` +
     `<div class="summary-body">${body}</div>` +
-    `<div class="summary-status">${escapeHtml(summaryStatusText(p.last_verified_date))}</div>` +
+    sourceLinkHtml +
     `</details>`
   );
 }

@@ -202,7 +202,22 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
                   />
                 </details>
 
-                <form className="mt-4 flex flex-col gap-2">
+                {/*
+                  `action`/`method` here are a defensive default, not the
+                  normal dispatch path: each button below overrides via its
+                  own `formAction`, which per the Next.js 16 docs
+                  (node_modules/next/dist/docs/01-app/01-getting-started/07-mutating-data.md)
+                  already progressively enhances without JS. Setting a
+                  same-effect default here just guarantees there's never an
+                  actionless/methodless native submit (e.g. pressing Enter in
+                  the note field) that could fall back to a GET on this URL
+                  with the row's fields as a query string.
+                */}
+                <form
+                  action={approveSummary}
+                  method="post"
+                  className="mt-4 flex flex-col gap-2"
+                >
                   <input type="hidden" name="id" value={row.id} />
                   <textarea
                     name="summary"

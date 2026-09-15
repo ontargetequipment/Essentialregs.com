@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { AuthStatus } from "@/components/AuthStatus";
 import { MobileNav } from "@/components/MobileNav";
 import { SITE_URL } from "@/lib/site";
@@ -88,6 +89,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </p>
           </div>
         </footer>
+        <Analytics />
       </body>
     </html>
   );

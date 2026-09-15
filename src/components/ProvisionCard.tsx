@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { summaryParagraphs, summaryStatusText } from "@/lib/regulation";
+import { summaryParagraphs } from "@/lib/regulation";
 import type { Provision } from "@/lib/types";
 
 // Renders one regulation entry: citation/title, the plain-English summary in
@@ -31,10 +31,10 @@ export function ProvisionCard({ provision }: { provision: Provision }) {
               <p key={i}>{para}</p>
             ))}
           </div>
-          {/* Same provenance line the reader's summary panel shows. */}
-          <p className="mt-3 border-t border-dashed border-emerald-200 pt-2 font-mono text-[11px] text-emerald-800/80">
-            {summaryStatusText(provision.last_verified_date)}
-          </p>
+          {/* No reviewer/AI-generated/reviewed-date mention here [Brody,
+              Sep 14 2026] -- the card's own "View official source" link
+              below already gives a reader a way to verify this directly,
+              and the Disclaimer page covers that summaries are AI-generated. */}
         </details>
       )}
 
