@@ -1,0 +1,132 @@
+name: Import regulation from official PDF
+
+on:
+  workflow_dispatch:
+    inputs:
+      reg:
+        description: "Regulation number to (re-)import, e.g. 7, 3, 26, oooob."
+        required: true
+      execute:
+        description: "Execute: actually write the plan to Supabase. Leave unchecked to only parse/export/diff/build the apply plan and upload the report -- no database writes."
+        type: boolean
+        required: false
+        default: false
+      regenerate_summaries:
+        description: "Regenerate summaries: after a successful execute, also run summarize.py --force on exactly the ids the apply plan says need a fresh summary. Ignored unless execute is also checked."
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      REG: ${{ inputs.reg }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Validate reg input
+        run: |
+          if [[ ! "$REG" =~ ^[A-Za-z0-9]+$ ]]; then
+            echo "::error::reg must be alphanumeric (e.g. 7, 3, 26, oooob) -- got: $REG"
+            exit 1
+          fi
+
+      - name: Install poppler-utils (pdftotext)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      - name: pdftotext (skip if the .txt is already committed)
+        run: |
+          PDF="pipeline/sources/REG_${REG}.pdf"
+          TXT="pipeline/sources/REG_${REG}.txt"
+          if [ -f "$TXT" ]; then
+            echo "$TXT already exists in the repo -- skipping pdftotext."
+          elif [ -f "$PDF" ]; then
+            pdftotext -layout "$PDF" "$TXT"
+            echo "Generated $TXT from $PDF."
+          else
+            echo "::error::Neither $TXT nor $PDF found. Commit the official PDF to pipeline/sources/ first."
+            exit 1
+          fi
+
+      - name: Parse PDF into provisions JSON
+        run: |
+          python pipeline/import_ccr.py parse \
+            --reg "$REG" \
+            --pdf "pipeline/sources/REG_${REG}.pdf" \
+            --out "pipeline/out/reg${REG}_parsed.json"
+
+      - name: Export current DB rows for this regulation
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python pipeline/import_ccr.py export \
+            --reg "$REG" \
+            --out "pipeline/out/reg${REG}_db.json"
+
+      - name: Diff parsed output against the DB export
+        run: |
+          python pipeline/import_ccr.py diff \
+            --reg "$REG" \
+            --parsed "pipeline/out/reg${REG}_parsed.json" \
+            --db "pipeline/out/reg${REG}_db.json" \
+            --out "pipeline/out/reg${REG}_diff_report.md"
+
+      - name: Build apply plan (and execute it, if requested)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          ARGS=(apply --reg "$REG" \
+            --parsed "pipeline/out/reg${REG}_parsed.json" \
+            --db "pipeline/out/reg${REG}_db.json" \
+            --out-dir "pipeline/out/apply_reg${REG}")
+          if [ "${{ inputs.execute }}" = "true" ]; then
+            ARGS+=(--execute --yes)
+          fi
+          echo "Running: python pipeline/import_ccr.py ${ARGS[*]}"
+          python pipeline/import_ccr.py "${ARGS[@]}"
+
+      - name: Print stats and diff report to the job log
+        if: always()
+        run: |
+          echo "### apply_reg${REG}/stats.md"
+          cat "pipeline/out/apply_reg${REG}/stats.md" || echo "(not found -- an earlier step must have failed)"
+          echo
+          echo "### reg${REG}_diff_report.md (first 60 lines)"
+          head -n 60 "pipeline/out/reg${REG}_diff_report.md" || echo "(not found -- an earlier step must have failed)"
+
+      - name: Regenerate summaries for the ids this import changed
+        if: ${{ inputs.execute == 'true' && inputs.regenerate_summaries == 'true' }}
+        working-directory: pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python summarize.py \
+            --ids-file "../pipeline/out/apply_reg${REG}/summary_regen_ids.txt" \
+            --force \
+            --model claude-sonnet-4-5
+
+      - name: Upload import report (no SQL batch files)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: import-reg${{ inputs.reg }}
+          path: |
+            pipeline/out/**
+            !pipeline/out/**/*.sql
+          retention-days: 30
+          if-no-files-found: warn
