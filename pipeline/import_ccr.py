@@ -223,6 +223,33 @@ def clean_pages(raw_text: str) -> tuple[list[str], set[int]]:
 
 
 # --------------------------------------------------------------------------
+# HTML escaping — full_text is rendered client-side with
+# dangerouslySetInnerHTML (see src/lib/regulation.ts), so any literal
+# '&', '<' or '>' in the source regulatory text must be entity-escaped
+# before it lands in full_text, or it corrupts (or is silently swallowed
+# by) the HTML parser downstream. Confirmed against the live Reg 7 corpus:
+# 'flow rate of < 60 grams/hour...' loses everything after the '<', table
+# cells containing '> 2 and < 12' break the same way, and URLs embedded in
+# text contain bare '&'. Quotes are intentionally left alone — only the
+# three characters that are structurally significant to an HTML parser are
+# escaped here.
+#
+# This must run on plain text BEFORE cross-reference <span>/<a> markup is
+# inserted (escaping afterward would mangle that markup's own '<'/'>'/'&');
+# escaping first is safe because the citation patterns link_citations()
+# matches are plain alphanumeric/punctuation ("Section 7.II.B.1.", "Part
+# A", etc.) and never contain '&', '<' or '>' themselves, so escaping
+# cannot create or destroy a citation match.
+# --------------------------------------------------------------------------
+
+def escape_html_text(text: str) -> str:
+    """Entity-escapes '&', '<', '>' (in that order, so '&' in the source
+    isn't re-escaped by the '<'/'>' replacements) in a plain-text node
+    destined for full_text HTML. Never escapes quotes."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+# --------------------------------------------------------------------------
 # Table extraction (pdfplumber) — reusable for any "Table N – caption" block,
 # not just the two the spec calls out as known-garbled in the current DB.
 # --------------------------------------------------------------------------
@@ -266,7 +293,7 @@ def extract_tables_from_pdf(pdf_path: str) -> dict[str, dict]:
 
 
 def render_table_html(table: dict) -> str:
-    caption = table["caption"]
+    caption = escape_html_text(table["caption"])
     rows = table["rows"]
     if not rows:
         return ""
@@ -274,7 +301,7 @@ def render_table_html(table: dict) -> str:
 
     def cell(c):
         c = (c or "").replace("\n", " ").strip()
-        return c
+        return escape_html_text(c)
 
     thead = "<tr>" + "".join(f"<th>{cell(c)}</th>" for c in header) + "</tr>"
     tbody = "".join(
@@ -1121,7 +1148,7 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
             title = f"{citation} — {heading}"
             provisions[pid] = dict(
                 id=pid, citation=citation, title=title, parent_id=root_id,
-                sort_order=next_sort(), full_text=title, kind="part",
+                sort_order=next_sort(), full_text=escape_html_text(title), kind="part",
             )
             order.append(pid)
             part_root_id[letter] = pid
@@ -1221,14 +1248,16 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
         kindtag = entry[0]
         if kindtag == "heading":
             _, text, citation, table_html, own_part, own_id = entry
-            linked, buckets = link_citations(text, reg, known_ids, CORPUS_REGS, own_part, own_id)
+            escaped = escape_html_text(text)
+            linked, buckets = link_citations(escaped, reg, known_ids, CORPUS_REGS, own_part, own_id)
             _merge(buckets)
             provisions[pid]["full_text"] = linked + table_html
         elif kindtag == "paras":
             _, paras, citation, table_html, own_part, own_id = entry
             rendered = []
             for p in paras:
-                linked, buckets = link_citations(p, reg, known_ids, CORPUS_REGS, own_part, own_id)
+                escaped = escape_html_text(p)
+                linked, buckets = link_citations(escaped, reg, known_ids, CORPUS_REGS, own_part, own_id)
                 _merge(buckets)
                 rendered.append(f"<p>{linked}</p>")
             provisions[pid]["full_text"] = "".join(rendered) + table_html
@@ -1236,11 +1265,13 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
             _, paras, title, table_html, own_part, own_id = entry
             rendered = []
             for p in paras:
-                linked, buckets = link_citations(p, reg, known_ids, CORPUS_REGS, own_part, own_id)
+                escaped = escape_html_text(p)
+                linked, buckets = link_citations(escaped, reg, known_ids, CORPUS_REGS, own_part, own_id)
                 _merge(buckets)
                 rendered.append(f"<p>{linked}</p>")
             body_html = "".join(rendered)
-            provisions[pid]["full_text"] = title if not paras else title + body_html
+            escaped_title = escape_html_text(title)
+            provisions[pid]["full_text"] = escaped_title if not paras else escaped_title + body_html
 
     return provisions, order, unresolved_all, table_hits
 
@@ -2203,9 +2234,15 @@ def build_delete_statement(ids: list[str]) -> str:
 
 
 def build_provision_change_insert(ancestor_id: str, note: str) -> str:
+    # change_type is DB-constrained to
+    # ('summary_approved','summary_edited','summary_rejected','text_updated',
+    # 'added') -- there is no 'provision_removed' value, so a removal note is
+    # logged as 'text_updated' against the surviving ancestor (this is what
+    # was actually run for the Reg 7 re-import -- see
+    # pipeline/out/apply_reg7/finish.sql).
     return (
         "INSERT INTO provision_changes (provision_id, change_type, note)\nVALUES ("
-        f"{sql_dollar_quote(ancestor_id)}, {sql_dollar_quote('provision_removed')}, "
+        f"{sql_dollar_quote(ancestor_id)}, {sql_dollar_quote('text_updated')}, "
         f"{sql_dollar_quote(note)});"
     )
 
@@ -2658,8 +2695,11 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
                 continue
             row = db_by_id[pid]
             note = f"{row.get('citation') or pid} removed in re-import from official CCR text (Sept 2026); no longer in the current regulation"
+            # change_type is DB-constrained (see build_provision_change_insert) --
+            # no 'provision_removed' value exists, so this is logged as
+            # 'text_updated' against the surviving ancestor.
             client.table("provision_changes").insert({
-                "provision_id": ancestor, "change_type": "provision_removed", "note": note,
+                "provision_id": ancestor, "change_type": "text_updated", "note": note,
             }).execute()
 
         print(f"Deleting {len(c['obsolete'])} obsolete row(s)...")

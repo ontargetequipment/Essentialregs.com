@@ -25,6 +25,69 @@ import import_ccr as ic  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
+# HTML escaping — full_text is rendered client-side with
+# dangerouslySetInnerHTML, so literal '&', '<', '>' in the source text must
+# be entity-escaped before cross-reference markup is inserted around them.
+# ---------------------------------------------------------------------------
+
+class EscapeHtmlTextTests(unittest.TestCase):
+    def test_escapes_amp_lt_gt(self):
+        self.assertEqual(
+            ic.escape_html_text("flow rate of < 60 grams/hour & > 2 tpy"),
+            "flow rate of &lt; 60 grams/hour &amp; &gt; 2 tpy",
+        )
+
+    def test_amp_escaped_before_lt_gt_no_double_escaping(self):
+        # '&' must be replaced first so that the '&' introduced by escaping
+        # '<'/'>' is never itself re-escaped into '&amp;lt;' etc.
+        self.assertEqual(ic.escape_html_text("<"), "&lt;")
+        self.assertEqual(ic.escape_html_text(">"), "&gt;")
+        self.assertEqual(ic.escape_html_text("&lt;"), "&amp;lt;")
+
+    def test_quotes_are_left_alone(self):
+        self.assertEqual(ic.escape_html_text('He said "hi" & left.'), 'He said "hi" &amp; left.')
+
+    def test_plain_text_unchanged(self):
+        self.assertEqual(ic.escape_html_text("no special chars here"), "no special chars here")
+
+
+class RenderTableHtmlEscapingTests(unittest.TestCase):
+    def test_cells_and_caption_are_escaped(self):
+        table = {
+            "caption": "Table 2 – Storage Tank Inspections",
+            "rows": [
+                ["Threshold (tpy)", "Frequency"],
+                ["> 2 and < 12", "Semi-annually & quarterly"],
+            ],
+        }
+        html = ic.render_table_html(table)
+        self.assertIn("&gt; 2 and &lt; 12", html)
+        self.assertIn("Semi-annually &amp; quarterly", html)
+        self.assertNotIn("> 2 and < 12", html)
+        # The table's own markup tags must still be real tags, not escaped.
+        self.assertIn("<table", html)
+        self.assertIn("<td>", html)
+
+
+class LinkCitationsAfterEscapingTests(unittest.TestCase):
+    """Escaping runs on plain text before link_citations() wraps citations in
+    <span>/<a> markup -- confirms that order doesn't break citation
+    matching (citations never contain '&', '<' or '>')."""
+
+    def test_citation_still_linked_after_escaping_surrounding_text(self):
+        # sec-7-B-I marks Part B as a "roman-numeral" part for
+        # _default_parts_order's own-part-first resolution of a bare
+        # "Section II.E.3." citation -- see import_ccr._default_parts_order.
+        known_ids = {"sec-7-B-I", "sec-7-B-II-E-3", "sec-7-B-II-E-1"}
+        text = "flow rate of < 60 grams/hour, see Section II.E.3. for details & more."
+        escaped = ic.escape_html_text(text)
+        linked, _buckets = ic.link_citations(escaped, "7", known_ids, set(), "B", "sec-7-B-II-E-1")
+        self.assertIn("&lt; 60 grams/hour", linked)
+        self.assertIn("&amp; more", linked)
+        self.assertIn('<span class="xref" data-target="sec-7-B-II-E-3">', linked)
+
+
+# ---------------------------------------------------------------------------
 # `export` / fetch_export_rows — paging stub
 # ---------------------------------------------------------------------------
 
@@ -465,7 +528,10 @@ class CmdApplyExecuteEndToEndTests(unittest.TestCase):
         # right change_type, and the delete covers exactly the obsolete id.
         note_call = next(call for call in fake.calls if call["kind"] == "insert" and call["table"] == "provision_changes")
         self.assertEqual(note_call["payload"]["provision_id"], PART_A)
-        self.assertEqual(note_call["payload"]["change_type"], "provision_removed")
+        # 'provision_removed' is not a valid change_type per the DB check
+        # constraint -- removal notes are logged as 'text_updated' (see
+        # build_provision_change_insert / pipeline/out/apply_reg7/finish.sql).
+        self.assertEqual(note_call["payload"]["change_type"], "text_updated")
 
         delete_call = next(call for call in fake.calls if call["kind"] == "delete")
         self.assertEqual(delete_call["ids"], [f"sec-{REG}-A-OLD"])

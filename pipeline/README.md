@@ -4,6 +4,14 @@ This runs entirely in GitHub Actions — you don't need to install anything or
 run any commands on your own computer. You just need to add three secrets
 once, then click a button to run it.
 
+## Working rule: fetch and merge before editing
+
+More than one Claude Code session works in this repo, sometimes at the same
+time. Before editing anything under `pipeline/`, run `git fetch` and merge
+`origin/main` into your branch first, and resolve any conflicts before you
+start — otherwise your changes can silently clobber another session's work
+(or vice versa) the next time either side pushes.
+
 ## One-time setup: add the three secrets
 
 1. Go to the repo on GitHub: **ontargetequipment/Essentialregs.com**.
