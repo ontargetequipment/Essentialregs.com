@@ -98,7 +98,13 @@ FAMILY_REGEX = {
     "roman": re.compile(r"^([IVXLCDM]+)\."),
     "upper": re.compile(r"^([A-Z]{1,2})\."),
     "digit": re.compile(r"^(\d{1,3})\."),
-    "lower": re.compile(r"^([a-z]{1,2})\."),
+    # Up to 4 repeated letters: confirmed printed depths reach "aaaa." (Reg 3's
+    # Part A, II.D.1's definitions list runs aa../zz., then aaa../zzz., then
+    # aaaa../zzzz. — same doubling/tripling/quadrupling convention as
+    # PART_C_LETTERS, just at an ordinary CYCLE_AB "lower" depth rather than a
+    # statement-of-basis top level). Reg 7/22 never need more than 2, so this
+    # is purely additive.
+    "lower": re.compile(r"^([a-z]{1,4})\."),
     "paren_roman": re.compile(r"^\(([ivxlcdm]+)\)"),
     "paren_upper": re.compile(r"^\(([A-Z]{1,2})\)"),
     "paren_digit": re.compile(r"^\((\d{1,3})\)"),
@@ -150,12 +156,19 @@ def tokens_to_id_suffix(tokens: list[tuple[str, str]]) -> str:
 
 # Part C top level: a strict alphabetic sequence A, B, ..., Z, AA, BB, ..., ZZ
 # (doubled letters, NOT AA/AB/AC...) — confirmed against the actual amendment
-# dates printed in the PDF (A. 1995 ... HH. 2026, II. 2026).
+# dates printed in the PDF (A. 1995 ... HH. 2026, II. 2026). Extended with a
+# third tier (AAA, BBB, ..., ZZZ) for Reg 3's Part F, whose amendment history
+# runs long enough to pass ZZ (confirmed printed labels up to "I.MMM." —
+# tripled letters, same doubling convention, not AAA/AAB/AAC...). Reg 7 never
+# indexes this far (its longest confirmed run is "II." — entry 39), so this
+# is purely additive and doesn't change any existing index.
 def part_c_letter_sequence():
     for i in range(26):
         yield chr(ord("A") + i)
     for i in range(26):
         yield chr(ord("A") + i) * 2
+    for i in range(26):
+        yield chr(ord("A") + i) * 3
 
 
 PART_C_LETTERS = list(part_c_letter_sequence())
@@ -208,6 +221,33 @@ SOB_PART_CONFIG: dict[str, dict] = {
         # list item anywhere in Part E starts with either.
         "top_opener_re": re.compile(r"^(?:Adopted:|\(Removed\b)"),
     },
+    # Reg 3's Part F prints every top-level statement-of-basis entry with a
+    # constant leading "I." that plays no numbering role at all — the entries
+    # are "I.A.   Adopted June 5, 1980", "I.B.   Adopted May 13, 1982", ...
+    # all the way to "I.MMM.  Adopted: May 21-22, 2026" (confirmed: the roman
+    # numeral is always "I", only the letter increments, following the same
+    # A..Z, AA..ZZ, AAA..ZZZ doubling/tripling convention as Reg 7's Part C —
+    # see part_c_letter_sequence). `roman_prefix` tells the letter_dated
+    # scanner to require and consume that literal "I." before the letter, so
+    # the resulting id is `sec-3-F-I-<letter>` (two tokens: roman "I" then
+    # upper <letter>), matching the small number of these ids that already
+    # exist correctly in the DB (e.g. `sec-3-F-I-A` .. `sec-3-F-I-Z`) — the
+    # DB's other Part F ids (bare `sec-3-F-II`, `sec-3-F-XIII-B-2`, etc.) are
+    # old-importer artifacts from citation-shaped continuation lines that
+    # were never real markers; see the diff report.
+    "3": {
+        "letter": "F", "top_family": "letter_dated", "roman_prefix": "I",
+        "top_opener_re": re.compile(r"^Adopted:?\s"),
+    },
+    # Reg 26's Part C top level is a plain roman-numeral sequence (I., II.,
+    # III., IV. — only 4 entries so far), each followed immediately by a
+    # bare date with no "Adopted"/"Adopted:" keyword at all (e.g. "I.
+    # April 20, 2023", "IV.     November 19-21, 2025 (Revisions to Part B,
+    # ...)") — the same bare-date opener Reg 7's Part C uses at its own top
+    # level (DATE_START_RE), just applied to the "roman_seq" family instead
+    # of "letter_dated" (Reg 22's Part E uses "roman_seq" too, but with a
+    # different, keyword-based opener — see its own entry above).
+    "26": {"letter": "C", "top_family": "roman_seq", "top_opener_re": DATE_START_RE},
 }
 
 
@@ -312,8 +352,23 @@ def escape_html_text(text: str) -> str:
 
 # Reg 7 captions use an en-dash/hyphen ("Table 2 – Storage Tank Inspections");
 # Reg 22 uses a colon instead ("Table 1: End-Use, Prohibited Substances, and
-# Date of Prohibition") — accept either separator.
-TABLE_CAPTION_RE = re.compile(r"^Table\s+(\d+)\s*[:–—-]\s*(.+)$")
+# Date of Prohibition") — accept either separator. Reg 26's Part B engine
+# tables (I.D.4./I.D.5./I.D.6.) are captioned bare, ALL-CAPS, with no
+# separator or description at all ("TABLE 1" ... "TABLE 6", confirmed
+# against pipeline/sources/REG_26.pdf pages 10-40 — pdfplumber's
+# `extract_tables()` finds all six as normal bordered tables; only the
+# caption-matching regex was too strict to recognize them as table starts).
+# The table id itself can also be a single letter, not just a number ("Table
+# A" / "Table B" under I.D.4.c., same bare-no-separator style) — confirmed
+# same pages 13-16. The letter form must match the WHOLE line with nothing
+# else on it (no optional separator/description branch, unlike the digit
+# form): Reg 22's Subpart A text has in-sentence references like "Table A-5
+# of Subpart A, 40 CFR 98.253" that would otherwise false-positive-match as
+# a "Table A" caption (with "-5 of Subpart A..." misread as its
+# description) and wrongly truncate that provision's real text.
+TABLE_CAPTION_RE = re.compile(
+    r"^(?:Table|TABLE)\s+(?:([0-9]+)\s*(?:[:–—-]\s*(.+))?|([A-Z]))$"
+)
 
 
 def extract_tables_from_pdf(pdf_path: str) -> dict[str, dict]:
@@ -348,7 +403,7 @@ def extract_tables_from_pdf(pdf_path: str) -> dict[str, dict]:
             # Pick the table whose first cell matches the caption line, else the first table.
             chosen = None
             for t in tables:
-                if t and t[0] and t[0][0] and t[0][0].strip().startswith("Table"):
+                if t and t[0] and t[0][0] and t[0][0].strip().lower().startswith("table"):
                     chosen = t
                     break
             if chosen is None:
@@ -587,7 +642,20 @@ def _default_parts_order(own_part: str | None, reg: str, known_ids: set[str]) ->
     sections are lettered rather than roman (Part C: "Statements of Basis")
     can never be the target of a roman-numeral citation (rule 3) — a
     provision there, or one with no clear enclosing part at all, tries B
-    then A, since Part C's prose describes revisions to A/B."""
+    then A, since Part C's prose describes revisions to A/B.
+
+    Deliberately NOT extended to add the SOB part itself as a same-reg
+    fallback target for a BARE (no "Part X," prefix) citation written from
+    within that SOB part: measured against Reg 3's Part F, doing so
+    misresolves bare "Section I.F."/"Section I.G." (Part A's own
+    abbreviations/definitions sections, which this parse doesn't capture as
+    separate ids) onto Part F's unrelated dated entries I.F/I.G, since a
+    bare "Section <letter>." citation from inside a `roman_prefix` SOB part
+    (Reg 3) or a same-shaped `roman_seq` SOB part (Reg 26) is indistinguishable
+    from that SOB part's own id shape (see the "Statement-of-basis
+    cross-reference targets" section of the diff report). Only the EXPLICIT
+    "Part F, Section I.AA." form is safe to resolve into the SOB part — see
+    `_link_part_clause`'s `part_is_roman` check."""
     roman_parts = _roman_part_letters(reg, known_ids)
     if own_part in roman_parts:
         return [own_part] + [p for p in roman_parts if p != own_part]
@@ -685,7 +753,21 @@ def _link_part_clause(html_text: str, letter_start: int, letter_end: int, letter
     pieces.append((span_start, letter_end, f'<span class="xref" data-target="{part_target}">Part {letter}</span>'))
     if seclist_text is None:
         return
-    part_is_roman = f"sec-{reg}-{letter}-I" in known_ids
+    sob_cfg = SOB_PART_CONFIG.get(reg, {})
+    # Ordinarily "sec-{reg}-{letter}-I" existing means the part's own
+    # top-level sections are roman-numbered (rule 1a's precondition). That
+    # bare-id check can never be true for a `letter_dated` SOB part WITH a
+    # `roman_prefix` (Reg 3's Part F: real ids are "sec-3-F-I-<letter>", a
+    # minimum of two tokens — "sec-3-F-I" alone never exists) even though a
+    # printed citation into it ("Part F, Section I.AA.") is perfectly valid
+    # and tokenizes the same way an ordinary roman-numeral citation does —
+    # so that specific SOB shape is special-cased in here too. This does NOT
+    # affect Reg 7 (Part C, letter_dated, no roman_prefix) or Reg 22/Reg 26
+    # (Part E / Part C, roman_seq — already covered by the plain bare-id
+    # check, since their SOB top level really is "sec-{reg}-{letter}-I").
+    part_is_roman = f"sec-{reg}-{letter}-I" in known_ids or (
+        letter == sob_cfg.get("letter") and sob_cfg.get("roman_prefix")
+    )
     if not part_is_roman:
         # This part's own sections are lettered (Part C), not roman — a
         # roman-numeral "Section" citation naming it can only be a reference
@@ -873,6 +955,22 @@ def fix_known_pdf_glitches(text: str) -> str:
 # --------------------------------------------------------------------------
 
 KNOWN_LABEL_FIXES: dict[str, list[dict]] = {
+    "3": [
+        dict(
+            old_label="V.D.2",
+            new_label="V.D.2.",
+            match_prefix="V.D.2 Non-creditable reductions",
+            line_hint=2527,
+            note=(
+                'Printed as "V.D.2 Non-creditable reductions" — missing the trailing '
+                'period every sibling heading in this same list has ("V.D.1.", "V.D.3.", '
+                '"V.D.4.", "V.D.5." all end in a period). Without it, "V.D.2" does not '
+                'tokenize as a label at all, so it — and all 7 of its children, '
+                '"V.D.2.a." through "V.D.2.g." — were silently dropped (no parent for '
+                "them to attach to)."
+            ),
+        ),
+    ],
     "7": [
         dict(
             old_label="I.H.5.a.",
@@ -990,7 +1088,8 @@ def split_into_paragraphs(lines: list[str]) -> list[str]:
 # --------------------------------------------------------------------------
 
 
-def _label_position_plausible(lines: list[str], idx: int, last_marker_line: int | None) -> bool:
+def _label_position_plausible(lines: list[str], idx: int, last_marker_line: int | None,
+                               seam_starts: set[int] | None = None) -> bool:
     """A genuine label line is preceded by a paragraph boundary: either a
     blank line, a line ending in terminal punctuation, or another label line
     (heading chained directly into its first child, e.g. "I.  Applicability"
@@ -998,17 +1097,49 @@ def _label_position_plausible(lines: list[str], idx: int, last_marker_line: int 
     looking at a citation-shaped fragment that happens to start a wrapped
     continuation line mid-sentence (confirmed instance: Reg 7 line ~3107,
     "...not already controlled under Sections\nI.D. or II.C.1.b. must be in
-    compliance..." — "I.D." here is NOT a new label)."""
+    compliance..." — "I.D." here is NOT a new label). Note: the identical
+    "...and Part E became Regulation Number\n26. The upstream oil and gas
+    ..." phrasing appears verbatim in both Reg 7 and Reg 26's Statement-of-
+    Basis prose and produces a bare "26." at a line start in both; Reg 7's
+    existing (DB-matching) output already treats that "26." as a one-off
+    digit-family item under its enclosing SOB entry, so "Number" is
+    deliberately NOT added to the disqualifying set below — doing so would
+    flip Reg 7's row count away from its established baseline. The same
+    quirk is left as-is in Reg 26's output for consistency; it is one
+    spurious row, documented here and in the diff report, not a structural
+    problem.
+
+    `idx` being a page seam (see `clean_pages`) softens ONLY the "or"/"and"/
+    "through" checks below, never the "Section"/"Part"/"Regulation" one: that
+    trio grammatically demands a citation next regardless of where the page
+    happens to break (confirmed instance: Reg 3's "...as specified in
+    Section" ends one page, "II.C.3.c. of Part A, if any control equipment
+    is added..." starts the next — still a dangling reference, not a new
+    label, seam or not). "or" is different — it's frequently just list
+    punctuation ("...; or") rather than a dangling citation, and at a seam
+    that's the ONLY plausible reading, since the "previous line" there is
+    really the tail of the PREVIOUS page, spliced on with no blank line by
+    design (confirmed instances: Reg 3's "III.J.5.c." and "III.C.1.c.(iii)"
+    each start a page immediately after a sibling list item ending "...; or"
+    / "...standards, or" — without this exemption both were silently
+    dropped, never even reaching the `_marker_column_signals` audit, since
+    this check runs first and short-circuits acceptance)."""
     if idx == 0:
         return True
     prev = lines[idx - 1].strip()
     if prev == "":
         return True
+    is_seam = seam_starts is not None and idx in seam_starts
     words = prev.split()
     last_word = words[-1].strip(".,;:") if words else ""
-    if last_word.rstrip("s") in ("Section", "Part", "Regulation") or last_word == "or":
+    if last_word.rstrip("s") in ("Section", "Part", "Regulation"):
         return False
+    if last_word == "or":
+        if not is_seam:
+            return False
     if last_word in ("and", "through") and ("Section" in prev or "Sections" in prev):
+        if is_seam:
+            return True
         # "...pursuant to Sections X.Y. and" / "...Sections X.Y.(i) through"
         # wrapping to a citation on the next line — still a citation-list
         # continuation, just with the trigger word earlier in the line
@@ -1122,6 +1253,63 @@ def _record_accepted_column(col_stats: dict, part: str, depth: int, indent: int)
     col_stats.setdefault((part, depth), Counter())[indent] += 1
 
 
+def _heading_marker_plausible(lines: list[str], idx: int, last_marker_line: int | None,
+                               seam_starts: set[int] | None) -> bool:
+    """A genuine PART/Appendix heading is paragraph-initial: preceded by a
+    blank line, chained directly onto the previous marker's own line, ending
+    in terminal punctuation, or sitting at a page seam (see clean_pages) —
+    never a non-blank, non-terminal-punctuated continuation of the previous
+    line. Without this guard, two confirmed false positives slip through:
+    Reg 3's Part F statement-of-basis prose is printed flush-left (indent 0,
+    unlike Parts A-D's 4-space margin), so a hard-wrapped line can start with
+    "Appendix A ..." / "Appendix B ..." mid-sentence (the regex alone can't
+    tell that apart from a real appendix heading); and Reg 26's rulemaking-
+    history table has a wrapped line reading "PART C IV eff. 01/14/2026."
+    mid-list, inside a comma-separated list of amended citations."""
+    sig = _prev_line_signals(lines, idx, last_marker_line)
+    is_seam = seam_starts is not None and idx in seam_starts
+    return sig["prev_blank"] or sig["prev_is_marker_line"] or sig["prev_ends_terminal"] or is_seam
+
+
+_MARKER_LOOKALIKE_RE = re.compile(r"^\s*PART\s+[A-Z]\b|^(?:Appendix|APPENDIX)\s+[A-Z]\b")
+# Any run of one or more short "<1-4 alnum chars>." or "(<1-4 alnum chars>)"
+# tokens with no space between them, followed by whitespace — matches a bare
+# label ("A.", "I.", "1.") AND a compound one ("I.A.", "I.J.1.a.(i)") without
+# needing to know which specific family/cycle is in play (CYCLE_AB, a
+# statement-of-basis top label like Reg 3's "I.A." or Reg 7's bare "A.",
+# etc.) — deliberately broader than tokenize_by_cycle here since a heading
+# continuation line must never be confused with ANY regulation's provision
+# label, not just the ones the currently-open part happens to use.
+_LABEL_LOOKALIKE_RE = re.compile(r"^(?:[A-Za-z0-9]{1,4}\.|\([A-Za-z0-9]{1,4}\))+\s")
+
+
+def _consume_heading_continuation(lines: list[str], idx: int, max_extra: int = 3) -> str:
+    """A PART/Appendix heading whose own text wraps onto subsequent physical
+    lines with no blank line before the next marker (confirmed instances:
+    Reg 3's Part D — "...MAJOR STATIONARY SOURCE NEW SOURCE\nREVIEW AND
+    PREVENTION OF SIGNIFICANT DETERIORATION" — and Part F — "...STATUTORY
+    AUTHORITY AND\nPURPOSE"). Consumes lines after `idx` while they're
+    non-blank and don't themselves look like a new PART/Appendix heading or a
+    provision label of any kind (see `_LABEL_LOOKALIKE_RE` — stopping there
+    is what keeps this from swallowing Part D's very next line, "I.
+    Applicability", or, when the current part is a statement-of-basis part
+    like Reg 7's Part C, its first dated entry, "A.      December 21, 1995
+    ..." — both genuine next markers with no blank line before them either),
+    up to `max_extra` lines (a heading is a short title, not a paragraph —
+    this bounds the heuristic if it's ever wrong). Returns the joined
+    continuation text (possibly "")."""
+    extra: list[str] = []
+    j = idx + 1
+    while j < len(lines) and len(extra) < max_extra:
+        raw = lines[j]
+        s = raw.strip()
+        if s == "" or _MARKER_LOOKALIKE_RE.match(raw) or _LABEL_LOOKALIKE_RE.match(s):
+            break
+        extra.append(s)
+        j += 1
+    return " ".join(extra)
+
+
 def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str | None = None) -> tuple[list[dict], list[dict]]:
     """Returns (markers, marker_audit). `marker_audit` records every A/B-part
     label candidate flagged by the continuation-line guard (column deviation
@@ -1162,8 +1350,11 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
         # real heading is the only thing this can still match, regardless of
         # its indent.
         m = re.match(r"^\s*PART\s+([A-Z])\s+(\S.*)$", raw_line)
-        if m:
+        if m and _heading_marker_plausible(lines, idx, last_marker_line, seam_starts):
             letter, heading = m.group(1), m.group(2).strip()
+            extra = _consume_heading_continuation(lines, idx)
+            if extra:
+                heading = f"{heading} {extra}"
             current_part = letter
             appendix_active = None
             emitted[("part", letter)] = set()
@@ -1171,9 +1362,19 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
             last_marker_line = idx
             continue
 
-        m = re.match(r"^Appendix\s+([A-Z])\s+(\S.*)$", raw_line)
-        if m and indent == 0:
-            letter, heading = m.group(1), m.group(2).strip()
+        # Case-insensitive on the word itself ("Appendix" — Reg 7/22/26 — or
+        # "APPENDIX" — Reg 3), and the title text may be entirely absent from
+        # the marker's own line (Reg 3's "APPENDIX C" sits alone on its line,
+        # with "Toxic Air Contaminant (TAC) List ..." starting only on the
+        # next physical line) — `_consume_heading_continuation` below
+        # recovers that either way, whether it's completing a same-line
+        # title or supplying the whole thing.
+        m = re.match(r"^(?:Appendix|APPENDIX)\s+([A-Z])\b(?:\s+(\S.*))?$", raw_line)
+        if m and indent == 0 and _heading_marker_plausible(lines, idx, last_marker_line, seam_starts):
+            letter, heading = m.group(1), (m.group(2) or "").strip()
+            extra = _consume_heading_continuation(lines, idx)
+            if extra:
+                heading = f"{heading} {extra}".strip()
             appendix_active = letter
             markers.append({
                 "line": idx, "type": "appendix", "letter": letter, "heading": heading,
@@ -1194,28 +1395,67 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
             top_tokens = None
             top_consumed = None
             top_family_tag = "upper" if sob_family == "letter_dated" else "roman"
+            roman_prefix = sob_cfg.get("roman_prefix") if sob_cfg else None
+            opener_re = (sob_cfg.get("top_opener_re") if sob_cfg else None) or DATE_START_RE
             if indent == 0 and nxt is not None:
                 if sob_family == "letter_dated":
-                    m2 = re.match(r"^([A-Z]{1,2})\.\s+(.*)$", stripped)
-                    if m2 and m2.group(1) == nxt and DATE_START_RE.match(m2.group(2)):
-                        top_tokens, top_consumed = [("upper", nxt)], len(nxt) + 1
+                    # `roman_prefix` (Reg 3's Part F): every entry is printed
+                    # with a constant leading "I." that carries no numbering
+                    # meaning of its own — require and consume it before the
+                    # letter, so `top_tokens` ends up as [roman I, upper
+                    # <letter>] and the id comes out `sec-3-F-I-<letter>`
+                    # (matching the DB's existing correctly-formed ids for
+                    # this range — see SOB_PART_CONFIG). Letters run up to 4
+                    # chars (confirmed printed labels reach 3, e.g. "MMM").
+                    if roman_prefix:
+                        pat = re.compile(rf"^{re.escape(roman_prefix)}\.([A-Z]{{1,4}})\.\s+(\S.*)$")
+                    else:
+                        pat = re.compile(r"^([A-Z]{1,2})\.\s+(\S.*)$")
+                    m2 = pat.match(stripped)
+                    if m2 and m2.group(1) == nxt and opener_re.match(m2.group(2)):
+                        top_tokens = ([("roman", roman_prefix)] if roman_prefix else []) + [("upper", nxt)]
+                        top_consumed = m2.end(1) + 1
                 elif sob_family == "roman_seq":
                     m2 = re.match(r"^([IVXLCDM]+)\.\s+(\S.*)$", stripped)
-                    opener_re = sob_cfg.get("top_opener_re") if sob_cfg else None
                     sig = _prev_line_signals(lines, idx, last_marker_line)
                     # Paragraph-initial = preceded by a blank line, OR directly
                     # chained onto the PREVIOUS top-level entry's own line with
                     # no blank line at all — confirmed instance: Reg 22's
                     # entries V and VI sit on consecutive lines with no blank
                     # between them once page-furniture stripping removes the
-                    # intervening page break (see clean_pages).
-                    paragraph_initial = sig["prev_blank"] or sig["prev_is_marker_line"]
-                    if (m2 and m2.group(1) == nxt and paragraph_initial
-                            and (opener_re is None or opener_re.match(m2.group(2)))):
+                    # intervening page break (see clean_pages) — OR `idx` is a
+                    # page seam, where the "previous line" is really the tail
+                    # of the previous page spliced on with no blank line by
+                    # design (confirmed instance: Reg 26's entry III opens a
+                    # page immediately after Part C's prior entry's own last
+                    # sentence, "...maximize the air quality benefits of\n
+                    # regulation in the most cost-effective manner." — not a
+                    # blank line, not a marker line, but still genuinely
+                    # paragraph-initial because a page boundary always is).
+                    paragraph_initial = (
+                        sig["prev_blank"] or sig["prev_is_marker_line"]
+                        or (seam_starts is not None and idx in seam_starts)
+                    )
+                    if m2 and m2.group(1) == nxt and paragraph_initial and opener_re.match(m2.group(2)):
                         top_tokens, top_consumed = [("roman", nxt)], len(nxt) + 1
             if top_tokens is not None:
                 disp = (nxt,)
                 emitted[ns] = {disp}
+                if roman_prefix and partc_next_idx == 0:
+                    # Every entry in this family carries the SAME leading
+                    # roman token (Reg 3's Part F: always "I."), which is
+                    # otherwise never emitted as its own row — synthesize it
+                    # once, on the first entry's line, exactly like the
+                    # ordinary CYCLE_AB gap-fill self-heal below (same
+                    # "synthetic" marker shares its line with the marker that
+                    # revealed the gap, so it gets no body text of its own —
+                    # see marker_own_lines) — so every top-level entry's
+                    # parent_id (`sec-3-F-I`) actually resolves to a row.
+                    markers.append({
+                        "line": idx, "type": "item", "ns": ns,
+                        "tokens": [("roman", roman_prefix)], "consumed": 0,
+                        "synthetic": True,
+                    })
                 partc_next_idx += 1
                 markers.append({
                     "line": idx, "type": "item", "ns": ns,
@@ -1223,7 +1463,7 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                 })
                 last_marker_line = idx
                 continue
-            if partc_next_idx > 0 and _label_position_plausible(lines, idx, last_marker_line):
+            if partc_next_idx > 0 and _label_position_plausible(lines, idx, last_marker_line, seam_starts):
                 cur_top = _sob_top_label(sob_family, partc_next_idx - 1)
                 tokens, consumed = tokenize_by_cycle(stripped, CYCLE_C_INNER)
                 if tokens:
@@ -1232,7 +1472,10 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                         disp = (cur_top,) + tuple(token_display(f, r) for f, r in tokens)
                         if disp[:-1] in emitted[ns]:
                             emitted[ns].add(disp)
-                            full_tokens = [(top_family_tag, cur_top)] + tokens
+                            full_tokens = (
+                                ([("roman", roman_prefix)] if roman_prefix else [])
+                                + [(top_family_tag, cur_top)] + tokens
+                            )
                             markers.append({
                                 "line": idx, "type": "item", "ns": ns,
                                 "tokens": full_tokens, "consumed": consumed,
@@ -1248,7 +1491,7 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                 rest = stripped[consumed:]
                 if rest == "" or rest[0] == " ":
                     depth = len(tokens)
-                    dangling_ok = _label_position_plausible(lines, idx, last_marker_line)
+                    dangling_ok = _label_position_plausible(lines, idx, last_marker_line, seam_starts)
                     colsig = _marker_column_signals(
                         lines, idx, indent, tokens, rest, current_part, last_marker_line, col_stats,
                         seam_starts, ab_stack.get(current_part),
@@ -1526,6 +1769,39 @@ def find_body_start(lines: list[str]) -> int:
     return last
 
 
+# --------------------------------------------------------------------------
+# Reg 26 Part C supplement: 40 CFR Part 60 Subpart JJJJ (incorporated by
+# reference). Confirmed by reading pipeline/sources/REG_26.pdf page-by-page
+# (pdftotext dump + pdfplumber) that Subpart JJJJ is only ever MENTIONED in
+# REG_26.pdf ("40 C.F.R. Part 60, Subpart JJJJ (July 1, 2023)", etc. — see
+# I.D.5.d.(i)(C)(1), I.D.6.c.(i)(C)(1), III.A.1., III.B.1., and the Part C
+# rulemaking-history narrative) — its ~20 rows of actual regulatory text
+# (root + §§ 60.4230-60.4248) are NEVER printed in REG_26.pdf itself, so
+# there is no PDF text for this importer to parse them out of. The existing
+# DB nonetheless carries this content under Part C (sec-26-C-FEDJJJJ and its
+# 19 children) — it must have been added via a separate eCFR import that
+# pre-dates this CCR PDF parser and whose source file isn't in
+# pipeline/sources/. Rather than fabricate or drop that content, this loads
+# it verbatim from a one-time snapshot of those DB rows
+# (pipeline/sources/reg26_fedjjjj_supplement.json, captured from
+# pipeline/out/reg26_db.json) and re-attaches it under the freshly-parsed
+# Part C root (`sec-26-P-C` — this parser's own id, NOT the old DB's
+# `sec-26-C-PART-C`), sort_order-ed immediately after the last real SOB
+# entry — so the parser stops silently dropping it (see the diff report's
+# "Ids only in DB" list) without inventing new text.
+def _load_reg26_fedjjjj_supplement(after_sort_order: int) -> list[dict]:
+    path = Path(__file__).resolve().parent / "sources" / "reg26_fedjjjj_supplement.json"
+    if not path.exists():
+        return []
+    rows = json.loads(path.read_text(encoding="utf-8"))
+    out = []
+    for i, row in enumerate(rows):
+        r = dict(row)
+        r["sort_order"] = after_sort_order + (i + 1) * 10
+        out.append(r)
+    return out
+
+
 def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
     raw = Path(txt_path).read_text(encoding="utf-8")
     lines, seam_starts = clean_pages(raw)
@@ -1566,6 +1842,10 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
             continue
         seen[pid] = row
         result.append(row)
+
+    if reg == "26":
+        max_sort = max((r["sort_order"] for r in result), default=0)
+        result.extend(_load_reg26_fedjjjj_supplement(max_sort))
 
     anomalies = KNOWN_LABEL_ANOMALIES.get(reg, [])
     return result, unresolved, table_hits, len(tables_by_caption), duplicate_ids, label_fixes_applied, anomalies, marker_audit
@@ -1664,11 +1944,26 @@ def find_page_leaks(text: str) -> bool:
 _FURNITURE_COMPARE_RE = re.compile(r"CODE OF COLORADO REGULATIONS\s*5\s*CCR\s*1001-9|Air Quality Control Commission")
 
 
+_QUOTE_COMPARE_TABLE = str.maketrans({
+    "‘": "'", "’": "'", "‚": "'", "′": "'",
+    "“": '"', "”": '"', "„": '"', "″": '"',
+})
+
+
 def _norm_for_compare(s: str) -> str:
     """Whitespace/page-furniture-insensitive normalization used ONLY for the
-    diff's identical/truncation classification — never for the stored output."""
+    diff's identical/truncation classification — never for the stored output.
+    Also folds curly quotes/apostrophes to their straight ASCII form: the
+    current Reg 26 DB rows were imported through a pipeline that flattened
+    "'"/'"'-family Unicode punctuation to ASCII, while this parser (correctly,
+    per IMPORTER_SPEC — keep the PDF's own text) preserves the PDF's actual
+    curly characters, e.g. Reg 26's `sec-26-B-II-A-3-a` — DB '"Affected
+    unit" means...' vs parsed '"Affected unit" means...' (same text) — that
+    would otherwise misclassify hundreds of purely-cosmetic rows as
+    "different" instead of "identical"."""
     s = re.sub(r"<[^>]+>", "", s or "")
     s = _FURNITURE_COMPARE_RE.sub(" ", s)
+    s = s.translate(_QUOTE_COMPARE_TABLE)
     return re.sub(r"\s+", " ", s).strip()
 
 
