@@ -129,7 +129,13 @@ jobs:
           head -n 60 "pipeline/out/reg${REG}_diff_report.md" || echo "(not found -- an earlier step must have failed)"
 
       - name: Regenerate summaries for the ids this import changed
-        if: ${{ inputs.execute == 'true' && inputs.regenerate_summaries == 'true' }}
+        # Both inputs are `type: boolean`, so in the `inputs` context they are
+        # real booleans. Comparing one to the string 'true' coerces both to
+        # numbers (true -> 1, 'true' -> NaN), which is never equal -- the old
+        # `== 'true'` form meant this step could never run, no matter what was
+        # checked. The shell steps above get away with `= "true"` because
+        # interpolating into bash renders the literal text `true`.
+        if: ${{ inputs.execute && inputs.regenerate_summaries }}
         working-directory: pipeline
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

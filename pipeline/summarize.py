@@ -58,6 +58,7 @@ DB_PAGE_SIZE = 200          # rows fetched per Supabase page while scanning cand
 META_PAGE_SIZE = 1000       # rows fetched per page when building the id->citation/parent map
 MIN_WORDS = 25              # tag-stripped word count below this = headings-only, skip
 MAX_PROMPT_WORDS = 6000     # cap on the provision's own text included in the prompt
+PARENT_TEXT_CHARS = 400     # chars of the immediate parent paragraph shown for scoping
 MAX_TOKENS = 400
 TEMPERATURE = 0
 DEFAULT_MODEL = "claude-sonnet-4-5"
@@ -114,6 +115,32 @@ SYSTEM_PROMPT = (
     "provision's beginning (e.g. its applicability or effective-date clause) "
     "is not shown in the available text, and summarize only what is "
     "actually present.\n\n"
+    "Scope the summary by the paragraph's OWN words plus its immediate "
+    "parent paragraph -- nothing wider. Never carry an equipment list, an "
+    "applicability date, or a scope qualifier down from the section heading "
+    "or the subpart title into a sub-paragraph. For example, a paragraph "
+    "under \"(c) storage vessel affected facilities\" is about storage "
+    "vessels only, even when the section heading above it also lists "
+    "compressors and pumps. The \"Under:\" lines and \"Parent paragraph "
+    "text:\" are there to tell you what this paragraph hangs off of, not to "
+    "be folded into it.\n\n"
+    "In federal CFR text (40 CFR parts, e.g. the OOOO subparts), the body "
+    "that approves, receives, or is notified is \"the Administrator\" (the "
+    "EPA Administrator) unless the text itself names someone else. Never "
+    "write \"the Division\" in a federal CFR summary -- that term belongs to "
+    "the Colorado regulations -- and never mention Colorado, CDPHE, or any "
+    "state or state agency unless the text you were given mentions it.\n\n"
+    "Do not invent illustrative examples for a defined term -- if the text "
+    "defines something without examples, don't supply your own. Do not "
+    "expand an acronym unless the text in front of you expands it; leave "
+    "CEDRI, subpart letters, and anything else the text only abbreviates "
+    "exactly as written.\n\n"
+    "eCFR equations are images and do not survive text extraction, so a "
+    "provision may say something like \"calculated as follows:\" and then "
+    "list only the variable definitions with no formula. When that happens, "
+    "say the equation itself is not shown in the available text and "
+    "describe only what the variables represent -- never reconstruct or "
+    "recite an equation that isn't there.\n\n"
     "Never add requirements that are not in the text. If a section is "
     "purely a definition or administrative detail, say that plainly in one "
     "sentence. No preamble, no markdown, no bullet lists -- output only the "
@@ -160,16 +187,21 @@ def make_supabase_client():
 
 
 def fetch_meta(client, reg: Optional[str]) -> dict[str, dict]:
-    """Fetches id/parent_id/citation/title for every provision in scope, to
-    build the regulation-root + parent-chain context for prompts. Scoped to
-    one regulation's id prefix when --reg is given; otherwise the whole
-    table (~4,400 rows of 4 skinny columns -- cheap either way), paginated
-    past PostgREST's row cap."""
+    """Fetches id/parent_id/citation/title/full_text for every provision in
+    scope, to build the regulation-root + parent-chain context for prompts.
+    Scoped to one regulation's id prefix when --reg is given; otherwise the
+    whole table, paginated past PostgREST's row cap.
+
+    full_text is included so build_prompt can show the immediate parent
+    paragraph's opening words -- a sub-paragraph like "(1) ..." often only
+    makes sense against its parent's scoping clause, and without it the
+    model tends to reach further up to the section heading and pull in
+    equipment or dates that don't apply."""
     meta: dict[str, dict] = {}
     like_prefix = f"sec-{reg.lower()}-" if reg else None
     start = 0
     while True:
-        q = client.table("provisions").select("id, parent_id, citation, title")
+        q = client.table("provisions").select("id, parent_id, citation, title, full_text")
         if like_prefix:
             q = q.like("id", f"{like_prefix}%")
         q = q.order("sort_order").range(start, start + META_PAGE_SIZE - 1)
@@ -327,6 +359,24 @@ def build_prompt(provision: dict, meta: dict[str, dict]) -> PromptResult:
     for node in chain:
         lines.append(f"Under: {node['citation']} — {node['title']}")
     lines.append(f"Provision: {provision['citation']} — {provision['title']}")
+
+    # The immediate parent's opening words, so the model can scope this
+    # paragraph against what it actually hangs off of rather than reaching
+    # up to the section heading. Only the nearest ancestor below the
+    # regulation root -- the root's own text is a document title, and its
+    # citation/title already appear on the "Regulation:" line above.
+    parent_excerpt = ""
+    if chain:
+        parent_stripped = strip_html(chain[-1].get("full_text") or "")
+        if parent_stripped:
+            parent_excerpt = parent_stripped[:PARENT_TEXT_CHARS]
+            if len(parent_stripped) > PARENT_TEXT_CHARS:
+                parent_excerpt += "…"
+    if parent_excerpt:
+        lines.append("")
+        lines.append(f"Parent paragraph text ({chain[-1]['citation']}):")
+        lines.append(parent_excerpt)
+
     lines.append("")
     lines.append("Provision text:")
     lines.append(body_text)
