@@ -586,5 +586,117 @@ class CmdApplyExecuteEndToEndTests(unittest.TestCase):
         self.assertFalse(any(call["table"] == "provision_changes" for call in fake.calls))
 
 
+# ---------------------------------------------------------------------------
+# Empty-DB path — a regulation not yet in the database at all (`db=[]`):
+# diff/apply must classify every parsed id as `new`, with zero `obsolete`
+# and zero parent-id mismatches, and every downstream step (plan/stats/SQL/
+# --execute) must run cleanly against that. See pipeline/README.md's
+# "make the CCR importer handle a regulation not yet in the database".
+# ---------------------------------------------------------------------------
+
+EMPTY_DB_REG = "Z"
+EMPTY_DB_ROOT = f"sec-{EMPTY_DB_REG}-top-REG-{EMPTY_DB_REG}"
+EMPTY_DB_PART_A = f"sec-{EMPTY_DB_REG}-P-A"
+
+
+def _empty_db_parsed_fixture() -> list[dict]:
+    return [
+        _prow(EMPTY_DB_ROOT, None, 0, "Regulation Z"),
+        _prow(EMPTY_DB_PART_A, EMPTY_DB_ROOT, 10, "Part A"),
+        _prow(f"sec-{EMPTY_DB_REG}-A-I", EMPTY_DB_PART_A, 20, "some text"),
+        _prow(f"sec-{EMPTY_DB_REG}-A-II", EMPTY_DB_PART_A, 30, "more text"),
+    ]
+
+
+class EmptyDbPathTests(unittest.TestCase):
+    def test_classify_apply_everything_new_no_obsolete(self):
+        parsed = _empty_db_parsed_fixture()
+        c = ic.classify_apply(parsed, [])
+        self.assertEqual(set(c["new"]), {r["id"] for r in parsed})
+        self.assertEqual(c["identical"], [])
+        self.assertEqual(c["changed"], [])
+        self.assertEqual(c["obsolete"], [])
+
+    def test_fetch_export_rows_for_reg_not_yet_in_db_is_empty_list(self):
+        # `export` on a regulation with no rows yet must write `[]`, not
+        # error or return something falsy-but-not-a-list.
+        client = _StubExportClient([])
+        out = ic.fetch_export_rows(client, EMPTY_DB_REG)
+        self.assertEqual(out, [])
+        self.assertIsInstance(out, list)
+
+    def test_execute_write_plan_is_pure_inserts_no_updates_no_deletes(self):
+        parsed = _empty_db_parsed_fixture()
+        c = ic.classify_apply(parsed, [])
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO)
+        self.assertTrue(actions)
+        self.assertTrue(all(a["op"] == "insert" for a in actions))
+        inserted_ids = {p["id"] for a in actions for p in a["payloads"]}
+        self.assertEqual(inserted_ids, {r["id"] for r in parsed})
+        # Root-before-child ordering must still hold with nothing pre-existing.
+        order = [p["id"] for a in actions for p in a["payloads"]]
+        self.assertLess(order.index(EMPTY_DB_ROOT), order.index(EMPTY_DB_PART_A))
+        self.assertLess(order.index(EMPTY_DB_PART_A), order.index(f"sec-{EMPTY_DB_REG}-A-I"))
+
+    def test_execute_write_plan_new_payloads_use_reg_meta(self):
+        # A reg present in REG_META (here, "22") must get ITS metadata on
+        # every inserted row, not the state/CDPHE-APCD fallback.
+        parsed = [
+            _prow("sec-22-top-REG-22", None, 0, "Regulation 22"),
+            _prow("sec-22-P-A", "sec-22-top-REG-22", 10, "Part A"),
+        ]
+        c = ic.classify_apply(parsed, [])
+        meta = ic.REG_META["22"]
+        actions = ic._execute_write_plan(c, today="2026-09-15", now_iso=NOW_ISO, meta=meta)
+        rows = [p for a in actions for p in a["payloads"]]
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            self.assertEqual(row["jurisdiction_level"], meta["jurisdiction_level"])
+            self.assertEqual(row["issuing_body"], meta["issuing_body"])
+            self.assertEqual(row["source_url"], meta["source_url"])
+
+    def test_build_upsert_statement_from_empty_db_new_rows(self):
+        # The SQL-generation path (cmd_apply, without --execute) must also
+        # build a valid statement when every row is `new`.
+        parsed = _empty_db_parsed_fixture()
+        c = ic.classify_apply(parsed, [])
+        upsert_rows = []
+        for pid in c["new"]:
+            row = c["parsed_by_id"][pid]
+            upsert_rows.append(dict(
+                id=pid, sort_order=row["sort_order"], touch_full_text=True,
+                values_sql=ic._row_values_sql(
+                    row, "state", "CDPHE-APCD", ic.SOURCE_URL_DEFAULT, "2026-09-15", False, "pending",
+                ),
+            ))
+        stmt = ic.build_upsert_statement(upsert_rows)
+        self.assertIn("INSERT INTO provisions", stmt)
+        self.assertIn("ON CONFLICT (id) DO UPDATE", stmt)
+        for r in parsed:
+            self.assertIn(r["id"], stmt)
+
+    def test_cmd_apply_execute_end_to_end_empty_db_is_pure_inserts(self):
+        parsed = _empty_db_parsed_fixture()
+        c = ic.classify_apply(parsed, [])
+        fake = _FakeClient()
+        env_patch = {"SUPABASE_URL": "https://stub.example.supabase.co", "SUPABASE_SERVICE_ROLE_KEY": "stub-key"}
+        old_env = {k: os.environ.get(k) for k in env_patch}
+        os.environ.update(env_patch)
+        try:
+            with _FakeSupabaseModuleCtx(fake):
+                ic.cmd_apply_execute(SimpleNamespace(yes=True, reg=EMPTY_DB_REG), c, {}, "2026-09-15")
+        finally:
+            for k, v in old_env.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+        self.assertTrue(fake.calls)
+        self.assertTrue(all(call["table"] == "provisions" and call["kind"] == "insert" for call in fake.calls))
+        inserted_ids = {row["id"] for call in fake.calls for row in call["payload"]}
+        self.assertEqual(inserted_ids, {r["id"] for r in parsed})
+
+
 if __name__ == "__main__":
     unittest.main()

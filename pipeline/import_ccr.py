@@ -165,6 +165,62 @@ DATE_START_RE = re.compile(
     r"November|December)\s+\d{1,2}(-\d{1,2})?(,|\s*[-–]\s*\d{1,2},)?\s+\d{4}\b"
 )
 
+# Which Part in each regulation is its "Statements of Basis..." part, and
+# what family its top-level entries are printed in. Every OTHER real part in
+# the regulation (any part letter that actually appears as a "PART X"
+# heading and isn't this one) is scanned as an ordinary roman/upper/digit/
+# lower/paren-* nested part (see scan_markers's `current_part != sob_letter`
+# branch) — so adding a new part to a regulation (e.g. Reg 22's Part D,
+# "General Provisions") needs no config here at all, only a reg missing from
+# this dict (or whose SOB part uses neither family below) is skipped.
+#   "letter_dated": Reg 7's Part C — top level is a strict A, B, ..., Z, AA,
+#     BB, ... ZZ letter sequence (see PART_C_LETTERS), and a candidate is
+#     only accepted as a NEW top-level entry when it's immediately followed
+#     by a recognizable date (DATE_START_RE) — distinguishing "A. December
+#     21, 1995 (...)" from an inner list item that also happens to start
+#     with a capital letter and a period.
+#   "roman_seq": Reg 22's Part E — top level is a plain roman-numeral
+#     sequence (I., II., III., ...), same family Parts A/B/C/D already use
+#     at their own top level, but re-started from I. and, unlike
+#     "letter_dated", NOT required to be followed by a date — some entries
+#     are short "(Removed and placed in Regulation Number 27 ...)" stubs
+#     with no date at all (see IMPORTER_SPEC.md / the diff report's Part E
+#     section). A candidate is accepted only when it's the exact next
+#     roman numeral in sequence AND is paragraph-initial (preceded by a
+#     blank line) — both needed because Part E entries themselves contain
+#     unrelated nested roman-numeral lists (e.g. entry IX's own "I. ... XII."
+#     factors list) that reuse "I.", "II.", ... but are never paragraph-
+#     initial at the SAME roman number the top-level scan is expecting next.
+SOB_PART_CONFIG: dict[str, dict] = {
+    "7": {"letter": "C", "top_family": "letter_dated"},
+    "22": {
+        "letter": "E", "top_family": "roman_seq",
+        # Reg 22's Part E contains its OWN nested roman-numeral lists (e.g.
+        # entry IX's "Additional Considerations" factors list, itself
+        # numbered I. through XII.) that reuse the exact roman numerals the
+        # top-level scan is expecting next once the real top-level entries
+        # run out at IX — "being the next expected roman numeral, at indent
+        # 0, paragraph-initial" is satisfied by BOTH, so an extra signature
+        # is needed: every real top-level entry's text starts with either
+        # "Adopted: <date>" or "(Removed ..." (confirmed against all 9 —
+        # I, II, VI, VII, VIII, IX are dated; III, IV, V are undated
+        # "(Removed and placed in Regulation Number ...)" stubs) — no inner
+        # list item anywhere in Part E starts with either.
+        "top_opener_re": re.compile(r"^(?:Adopted:|\(Removed\b)"),
+    },
+}
+
+
+def _sob_top_label(top_family: str, idx0: int) -> str | None:
+    """The printed label for the 0-indexed position `idx0` in a
+    statement-of-basis part's top-level sequence, or None past the range
+    a family supports."""
+    if top_family == "letter_dated":
+        return PART_C_LETTERS[idx0] if idx0 < len(PART_C_LETTERS) else None
+    if top_family == "roman_seq":
+        return int_to_roman(idx0 + 1) if idx0 < 4999 else None
+    return None
+
 
 # --------------------------------------------------------------------------
 # Page-furniture stripping (form-feed-delimited pages)
@@ -254,11 +310,24 @@ def escape_html_text(text: str) -> str:
 # not just the two the spec calls out as known-garbled in the current DB.
 # --------------------------------------------------------------------------
 
-TABLE_CAPTION_RE = re.compile(r"^Table\s+(\d+)\s*[–-]\s*(.+)$")
+# Reg 7 captions use an en-dash/hyphen ("Table 2 – Storage Tank Inspections");
+# Reg 22 uses a colon instead ("Table 1: End-Use, Prohibited Substances, and
+# Date of Prohibition") — accept either separator.
+TABLE_CAPTION_RE = re.compile(r"^Table\s+(\d+)\s*[:–—-]\s*(.+)$")
 
 
 def extract_tables_from_pdf(pdf_path: str) -> dict[str, dict]:
-    """Returns {caption_text: {"n": table_num, "caption": caption, "rows": [[...]]}}."""
+    """Returns {caption_text: {"n": table_num, "caption": caption, "rows": [[...]]}}.
+
+    A caption that recurs on more than one page (confirmed: Reg 22's Table 1
+    — "End-Use, Prohibited Substances, and Date of Prohibition" — spans 4
+    pages, its caption repeated at the top of each continuation page) means
+    the table itself continues across the page break: rows from every page
+    carrying that caption are concatenated, in page order, rather than the
+    later page's rows overwriting the earlier ones (which is what a plain
+    `out[caption] = ...` assignment would do). A repeated header row (the
+    continuation page reprinting the same column headers) is dropped so it
+    isn't duplicated mid-table."""
     import pdfplumber
 
     out: dict[str, dict] = {}
@@ -288,7 +357,17 @@ def extract_tables_from_pdf(pdf_path: str) -> dict[str, dict]:
             # Drop a leading row that's just the caption repeated as a merged cell.
             if rows and rows[0] and rows[0][0] and rows[0][0].strip() == caption:
                 rows = rows[1:]
-            out[caption] = {"caption": caption, "rows": rows}
+            # Drop any OTHER row that's purely the caption echoed again (seen
+            # on Reg 22's Table 1: the caption line re-appears as its own
+            # near-empty table row, not just at row 0, on some pages).
+            rows = [r for r in rows if not (r and r[0] and r[0].strip() == caption)]
+            if caption in out:
+                existing_rows = out[caption]["rows"]
+                if rows and existing_rows and rows[0] == existing_rows[0]:
+                    rows = rows[1:]  # repeated header row on the continuation page
+                existing_rows.extend(rows)
+            else:
+                out[caption] = {"caption": caption, "rows": rows}
     return out
 
 
@@ -327,7 +406,89 @@ def render_table_html(table: dict) -> str:
 # reference linking" section of the diff report for the full rationale.
 # --------------------------------------------------------------------------
 
-CORPUS_REGS = {"3": "3", "7": "7", "26": "26", "oooob": "oooob"}
+CORPUS_REGS = {
+    "3": "3", "7": "7", "22": "22", "26": "26",
+    "oooob": "oooob", "ooooa": "ooooa", "ooooc": "ooooc",
+}
+
+# Regulation Number 27 and 40 CFR Part 60 Subpart OOOO (the un-suffixed,
+# pre-2022 version) are deliberately NOT in CORPUS_REGS: citations to them
+# stay plain text (BUCKET_OTHER_REG / BUCKET_CFR) until/unless they're
+# imported too — see IMPORTER_SPEC.md and the diff report's "Other regulation
+# not in corpus" / "CFR part/subpart not in corpus" sections.
+
+# 40 CFR Part 60 Subpart lettering -> the id key it links to when that
+# subpart is in CORPUS_REGS. "OOOOB" -> "oooob" (matches the existing
+# `sec-oooob-top-REG-oooob` root); "OOOOA"/"OOOOC" mirror that same
+# four-O-plus-suffix id shape ("ooooa"/"ooooc" — see REG_META). Bare "OOOO"
+# (no letter suffix) has no entry here, so it always falls through to
+# BUCKET_CFR regardless of corpus membership.
+CFR_SUBPART_TO_REGKEY = {"OOOOA": "ooooa", "OOOOB": "oooob", "OOOOC": "ooooc"}
+
+# --------------------------------------------------------------------------
+# Per-regulation metadata for the root row + apply-time provisions columns
+# (jurisdiction_level, issuing_body, source_url) and the root row's own
+# citation/title — see IMPORTER_SPEC.md and the DB's existing root rows for
+# Reg 3/7/26/oooob (`select id, citation, title, jurisdiction_level,
+# issuing_body, source_url from provisions where parent_id is null`). A reg
+# not listed here falls back to the Reg 7-style state/CDPHE-APCD defaults
+# (see SOURCE_URL_DEFAULT and every REG_META.get(..., default) call site).
+# --------------------------------------------------------------------------
+
+REG_META: dict[str, dict] = {
+    "3": {
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "root_citation": "Code of Colorado Regulations · Regulation Number 3",
+        "root_title": "STATIONARY SOURCE PERMITTING AND AIR POLLUTANT EMISSION NOTICE REQUIREMENTS 5 CCR 1001-5",
+    },
+    "7": {
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "root_citation": "Regulation 7",
+        "root_title": "Regulation 7",
+    },
+    "22": {
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "root_citation": "Regulation 22",
+        "root_title": (
+            "Regulation Number 22 — Colorado Greenhouse Gas Reporting and "
+            "Emission Reduction Requirements (5 CCR 1001-26)"
+        ),
+    },
+    "26": {
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "root_citation": "Code of Colorado Regulations · Regulation Number 26",
+        "root_title": "CONTROL OF EMISSIONS FROM ENGINES AND MAJOR STATIONARY SOURCES 5 CCR 1001-30",
+    },
+    "oooob": {
+        "jurisdiction_level": "federal", "issuing_body": "EPA",
+        "source_url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOb",
+        "root_citation": "40 CFR Part 60 Subpart OOOOb",
+        "root_title": "40 CFR Part 60 Subpart OOOOb — Standards of Performance for Crude Oil and Natural Gas Facilities",
+    },
+    "ooooa": {
+        "jurisdiction_level": "federal", "issuing_body": "EPA",
+        "source_url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOa",
+        "root_citation": "40 CFR Part 60 Subpart OOOOa",
+        "root_title": (
+            "40 CFR Part 60 Subpart OOOOa — Standards of Performance for Crude Oil and Natural Gas "
+            "Facilities for Which Construction, Modification, or Reconstruction Commenced After "
+            "September 18, 2015, and On or Before December 6, 2022"
+        ),
+    },
+    "ooooc": {
+        "jurisdiction_level": "federal", "issuing_body": "EPA",
+        "source_url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOc",
+        "root_citation": "40 CFR Part 60 Subpart OOOOc",
+        "root_title": (
+            "40 CFR Part 60 Subpart OOOOc — Emissions Guidelines for Greenhouse Gas Emissions from "
+            "Existing Crude Oil and Natural Gas Facilities"
+        ),
+    },
+}
 
 # Bucket names used for citation/reference text we recognized as
 # reference-shaped but could not (or must not) turn into a link.
@@ -393,6 +554,31 @@ def _citation_to_id_suffix(citation: str, cycle=CYCLE_AB) -> str | None:
     return tokens_to_id_suffix(tokens)
 
 
+_ROMAN_PART_LETTER_RE_CACHE: dict[str, re.Pattern] = {}
+
+
+def _roman_part_letters(reg: str, known_ids: set[str]) -> list[str]:
+    """Every part letter (sorted) that actually has a roman-numeral-style
+    top level in this parse (an id `sec-{reg}-{L}-I` exists for a single
+    part letter L) — i.e. every ordinary part, EXCLUDING whichever part is
+    this reg's statement-of-basis part (letter_dated parts, like Reg 7's
+    Part C, never have a `-I` top level at all; roman_seq parts, like Reg
+    22's Part E, incidentally do start at `-I` too, but that's a
+    coincidence of the family sharing a symbol with CYCLE_AB's roman level,
+    not a normal nested part, so it's excluded by name via SOB_PART_CONFIG
+    rather than relying on that coincidence). Scans `known_ids` directly
+    (not the `sec-{reg}-P-{L}` part-root ids) so this works even against a
+    partial id set that never included the part roots (e.g. a unit test
+    fixture)."""
+    pat = _ROMAN_PART_LETTER_RE_CACHE.get(reg)
+    if pat is None:
+        pat = re.compile(r"^sec-" + re.escape(reg) + r"-([A-Z]{1,2})-I$")
+        _ROMAN_PART_LETTER_RE_CACHE[reg] = pat
+    sob_letter = SOB_PART_CONFIG.get(reg, {}).get("letter")
+    letters = {m.group(1) for i in known_ids if (m := pat.match(i))}
+    return sorted(letters - ({sob_letter} if sob_letter else set()))
+
+
 def _default_parts_order(own_part: str | None, reg: str, known_ids: set[str]) -> list[str]:
     """Which part(s) to try, in order, for a same-reg "Section X.Y." citation
     that is NOT preceded by an explicit "Part Z,". Parts A and B both number
@@ -402,7 +588,7 @@ def _default_parts_order(own_part: str | None, reg: str, known_ids: set[str]) ->
     can never be the target of a roman-numeral citation (rule 3) — a
     provision there, or one with no clear enclosing part at all, tries B
     then A, since Part C's prose describes revisions to A/B."""
-    roman_parts = [p for p in ("A", "B") if f"sec-{reg}-{p}-I" in known_ids]
+    roman_parts = _roman_part_letters(reg, known_ids)
     if own_part in roman_parts:
         return [own_part] + [p for p in roman_parts if p != own_part]
     return list(reversed(roman_parts))
@@ -425,7 +611,7 @@ def _resolve_cite(cite: str, reg: str, known_ids: set[str], parts_order: list[st
         target = f"sec-{reg}-{part}-{suffix}"
         if target in known_ids:
             return target, ""
-    exists_top = any(f"sec-{reg}-{p}-{top_raw}" in known_ids for p in ("A", "B"))
+    exists_top = any(f"sec-{reg}-{p}-{top_raw}" in known_ids for p in _roman_part_letters(reg, known_ids))
     return None, (BUCKET_HISTORICAL if not exists_top else BUCKET_UNPARSEABLE)
 
 
@@ -558,8 +744,9 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
             continue
         claim(m.start(), m.end())
         subpart = m.group(2)
-        if subpart and subpart.upper() == "OOOOB" and "oooob" in corpus_regs:
-            pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/oooob">{m.group(0)}</a>'))
+        regkey = CFR_SUBPART_TO_REGKEY.get((subpart or "").upper())
+        if regkey and regkey in corpus_regs:
+            pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
         else:
             buckets[BUCKET_CFR][m.group(0)] += 1
 
@@ -935,12 +1122,21 @@ def _record_accepted_column(col_stats: dict, part: str, depth: int, indent: int)
     col_stats.setdefault((part, depth), Counter())[indent] += 1
 
 
-def scan_markers(lines: list[str], seam_starts: set[int] | None = None) -> tuple[list[dict], list[dict]]:
+def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str | None = None) -> tuple[list[dict], list[dict]]:
     """Returns (markers, marker_audit). `marker_audit` records every A/B-part
     label candidate flagged by the continuation-line guard (column deviation
     and/or a previous line lacking terminal punctuation) — whether it was
     ultimately accepted as a real label or rejected as a continuation — for
-    the diff report's audit section."""
+    the diff report's audit section.
+
+    `reg` selects this regulation's statement-of-basis part (if any) via
+    SOB_PART_CONFIG; every part letter other than that one part is scanned
+    as an ordinary nested roman/upper/digit/lower/paren-* part regardless of
+    its own letter — see SOB_PART_CONFIG's docstring."""
+    sob_cfg = SOB_PART_CONFIG.get(reg or "")
+    sob_letter = sob_cfg["letter"] if sob_cfg else None
+    sob_family = sob_cfg["top_family"] if sob_cfg else None
+
     markers: list[dict] = []
     current_part = None
     appendix_active = None
@@ -957,8 +1153,16 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None) -> tuple
             continue
         indent = len(raw_line) - len(raw_line.lstrip(" "))
 
-        m = re.match(r"^PART\s+([A-Z])\s+(\S.*)$", raw_line)
-        if m and indent == 0:
+        # Matched against `raw_line` allowing leading whitespace: a real Part
+        # heading is normally at indent 0, but Reg 22's Part A heading keeps
+        # a 4-space left margin inherited from its page's column layout (see
+        # find_body_start's docstring) — by the time scan_markers ever sees
+        # these lines, find_body_start has already sliced away every
+        # front-matter "Outline of Regulation" occurrence of "PART X", so a
+        # real heading is the only thing this can still match, regardless of
+        # its indent.
+        m = re.match(r"^\s*PART\s+([A-Z])\s+(\S.*)$", raw_line)
+        if m:
             letter, heading = m.group(1), m.group(2).strip()
             current_part = letter
             appendix_active = None
@@ -984,30 +1188,51 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None) -> tuple
             # for the content-omission bug this recovers).
             continue
 
-        if current_part == "C":
-            ns = ("part", "C")
-            nxt = PART_C_LETTERS[partc_next_idx] if partc_next_idx < len(PART_C_LETTERS) else None
-            m2 = re.match(r"^([A-Z]{1,2})\.\s+(.*)$", stripped)
-            if indent == 0 and m2 and nxt and m2.group(1) == nxt and DATE_START_RE.match(m2.group(2)):
+        if sob_letter is not None and current_part == sob_letter:
+            ns = ("part", sob_letter)
+            nxt = _sob_top_label(sob_family, partc_next_idx)
+            top_tokens = None
+            top_consumed = None
+            top_family_tag = "upper" if sob_family == "letter_dated" else "roman"
+            if indent == 0 and nxt is not None:
+                if sob_family == "letter_dated":
+                    m2 = re.match(r"^([A-Z]{1,2})\.\s+(.*)$", stripped)
+                    if m2 and m2.group(1) == nxt and DATE_START_RE.match(m2.group(2)):
+                        top_tokens, top_consumed = [("upper", nxt)], len(nxt) + 1
+                elif sob_family == "roman_seq":
+                    m2 = re.match(r"^([IVXLCDM]+)\.\s+(\S.*)$", stripped)
+                    opener_re = sob_cfg.get("top_opener_re") if sob_cfg else None
+                    sig = _prev_line_signals(lines, idx, last_marker_line)
+                    # Paragraph-initial = preceded by a blank line, OR directly
+                    # chained onto the PREVIOUS top-level entry's own line with
+                    # no blank line at all — confirmed instance: Reg 22's
+                    # entries V and VI sit on consecutive lines with no blank
+                    # between them once page-furniture stripping removes the
+                    # intervening page break (see clean_pages).
+                    paragraph_initial = sig["prev_blank"] or sig["prev_is_marker_line"]
+                    if (m2 and m2.group(1) == nxt and paragraph_initial
+                            and (opener_re is None or opener_re.match(m2.group(2)))):
+                        top_tokens, top_consumed = [("roman", nxt)], len(nxt) + 1
+            if top_tokens is not None:
                 disp = (nxt,)
                 emitted[ns] = {disp}
                 partc_next_idx += 1
                 markers.append({
                     "line": idx, "type": "item", "ns": ns,
-                    "tokens": [("upper", nxt)], "consumed": len(nxt) + 1,
+                    "tokens": top_tokens, "consumed": top_consumed,
                 })
                 last_marker_line = idx
                 continue
             if partc_next_idx > 0 and _label_position_plausible(lines, idx, last_marker_line):
-                cur_letter = PART_C_LETTERS[partc_next_idx - 1]
+                cur_top = _sob_top_label(sob_family, partc_next_idx - 1)
                 tokens, consumed = tokenize_by_cycle(stripped, CYCLE_C_INNER)
                 if tokens:
                     rest = stripped[consumed:]
                     if rest == "" or rest[0] == " ":
-                        disp = (cur_letter,) + tuple(token_display(f, r) for f, r in tokens)
+                        disp = (cur_top,) + tuple(token_display(f, r) for f, r in tokens)
                         if disp[:-1] in emitted[ns]:
                             emitted[ns].add(disp)
-                            full_tokens = [("upper", cur_letter)] + tokens
+                            full_tokens = [(top_family_tag, cur_top)] + tokens
                             markers.append({
                                 "line": idx, "type": "item", "ns": ns,
                                 "tokens": full_tokens, "consumed": consumed,
@@ -1016,7 +1241,7 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None) -> tuple
                             continue
             continue
 
-        if current_part in ("A", "B"):
+        if current_part is not None and current_part != sob_letter:
             ns = ("part", current_part)
             tokens, consumed = tokenize_by_cycle(stripped, CYCLE_AB)
             if tokens:
@@ -1131,10 +1356,13 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
         sort["n"] += 10
         return sort["n"]
 
+    meta = REG_META.get(reg, {})
+    root_citation = meta.get("root_citation", f"Regulation {reg}")
+    root_title = meta.get("root_title", root_citation)
     root_id = f"sec-{reg}-top-REG-{reg}"
     provisions[root_id] = dict(
-        id=root_id, citation=f"Regulation {reg}", title=f"Regulation {reg}",
-        parent_id=None, sort_order=0, full_text=f"Regulation {reg}", kind="root",
+        id=root_id, citation=root_citation, title=root_title,
+        parent_id=None, sort_order=0, full_text=escape_html_text(root_title), kind="root",
     )
     order.append(root_id)
 
@@ -1276,11 +1504,26 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
     return provisions, order, unresolved_all, table_hits
 
 
+_PART_A_HEADING_RE = re.compile(r"^\s*PART\s+A\s+\S")
+
+
 def find_body_start(lines: list[str]) -> int:
+    """Finds where the real regulation body starts, skipping the front-matter
+    "Outline of Regulation" list that repeats every Part heading (including
+    "PART A ...") before the real content. Reg 7's real "PART A" heading sits
+    at indent 0 while the outline copy is indented, so matching indent 0 used
+    to be enough to tell them apart — but Reg 22's real "PART A" heading is
+    ALSO indented (its whole first page carries a 4-space left margin, a
+    pdftotext -layout quirk of that page's column layout; every part after A
+    resets to indent 0 on a later page). Taking the LAST "PART A ..." match
+    in the document instead of the first indent-0 one works for both: there
+    are only ever the two occurrences (the outline copy, then the real
+    heading), regardless of indentation."""
+    last = 0
     for i, l in enumerate(lines):
-        if l.startswith("PART A") and (len(l) - len(l.lstrip(" "))) == 0:
-            return i
-    return 0
+        if _PART_A_HEADING_RE.match(l):
+            last = i
+    return last
 
 
 def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
@@ -1298,7 +1541,7 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
         except Exception as exc:  # pdfplumber optional at parse time
             print(f"warning: table extraction failed: {exc}", file=sys.stderr)
 
-    markers, marker_audit = scan_markers(lines, seam_starts)
+    markers, marker_audit = scan_markers(lines, seam_starts, reg)
     provisions, order, unresolved, table_hits = build_provisions(reg, lines, markers, tables_by_caption)
 
     # De-duplicate: two different markers occasionally compute the same id —
@@ -1334,6 +1577,13 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
 
 
 def cmd_parse(args):
+    if args.reg.lower().startswith("ooo"):
+        # eCFR subparts (oooob/ooooa/ooooc) use a different source layout
+        # (eCFR "enhanced display" PDF prints, not a CCR PDF) and are parsed
+        # by pipeline/import_ecfr.py instead -- see IMPORTER_SPEC.md.
+        import import_ecfr
+
+        return import_ecfr.cmd_parse(args)
     (result, unresolved, table_hits, n_tables_found, duplicate_ids,
      label_fixes_applied, anomalies, marker_audit) = parse_reg(args.reg, args.txt, args.pdf)
     out_path = Path(args.out)
@@ -1477,7 +1727,7 @@ def _xref_report_section(reg: str, parsed: list[dict], db: list[dict], parsed_by
     # 2) Unresolved, by bucket (top 15 each) — from the parse-step sidecar file.
     lines.append("### Unresolved references, by bucket (top 15 each)\n")
     bucket_titles = {
-        BUCKET_HISTORICAL: "Historical (former structure — Reg 7 was renumbered; these no longer exist in current Parts A/B/C)",
+        BUCKET_HISTORICAL: "Historical (former structure — this regulation was renumbered/reorganized; these no longer exist in the current Parts)",
         BUCKET_OTHER_REG: "Other regulation not in corpus",
         BUCKET_CFR: "CFR part/subpart not in corpus",
         BUCKET_UNPARSEABLE: "Unparseable / genuine parser gap",
@@ -1509,13 +1759,13 @@ def _xref_report_section(reg: str, parsed: list[dict], db: list[dict], parsed_by
         for m in _BARE_SECTION_RE.finditer(stripped):
             remaining_total += 1
             roman = m.group(1)
-            exists_top = any(f"sec-{reg}-{p}-{roman}" in known_ids for p in ("A", "B"))
+            exists_top = any(f"sec-{reg}-{p}-{roman}" in known_ids for p in _roman_part_letters(reg, known_ids))
             if exists_top:
                 remaining_non_historical += 1
     lines.append(
         f"### Remaining unwrapped \"Section...\" text\n\n"
         f"- Total: **{remaining_total}**\n"
-        f"- Excluding ones whose roman numeral doesn't exist in current Part A/B at all "
+        f"- Excluding ones whose roman numeral doesn't exist in any current roman-numbered part at all "
         f"(historical, expected to stay unlinked): **{remaining_non_historical}**\n"
     )
 
@@ -1560,6 +1810,12 @@ def _xref_report_section(reg: str, parsed: list[dict], db: list[dict], parsed_by
     else:
         lines.append("_none found_")
     lines.append("")
+    if reg != "7":
+        lines.append(
+            "_(the hand-reviewed DB-vs-parsed xref-target writeup below is Reg 7-specific "
+            "and only applies when diffing Reg 7 against a pre-existing DB export)_\n"
+        )
+        return lines
     lines.append(
         "**Reviewed by hand against the source PDF** (Reg 7, 2026-09-14 print):\n\n"
         "- `sec-7-C-DD`, \"Sections III.C.4.\" and \"Section I.A.\": the source text is "
@@ -2253,6 +2509,10 @@ def cmd_apply(args):
         sys.exit(2)
 
     reg = args.reg
+    reg_meta = REG_META.get(reg, {})
+    jurisdiction_level = reg_meta.get("jurisdiction_level", "state")
+    issuing_body = reg_meta.get("issuing_body", "CDPHE-APCD")
+    source_url = reg_meta.get("source_url", SOURCE_URL_DEFAULT)
     parsed = json.loads(Path(args.parsed).read_text(encoding="utf-8"))
     db = json.loads(Path(args.db).read_text(encoding="utf-8"))
     out_dir = Path(args.out_dir)
@@ -2394,11 +2654,11 @@ def cmd_apply(args):
         upsert_rows.append(dict(
             id=pid, sort_order=row["sort_order"], touch_full_text=False,
             values_sql=_row_values_sql(
-                row, "state", "CDPHE-APCD", SOURCE_URL_DEFAULT, today, False,
+                row, jurisdiction_level, issuing_body, source_url, today, False,
                 # summary_status is never touched for `identical` (not in SET
                 # clause), but the INSERT branch still needs a legal value in
                 # case this exact id is somehow new by the time this runs —
-                # 'pending' matches every other Reg 7 row's default.
+                # 'pending' matches every other row's default.
                 "pending",
             ),
         ))
@@ -2407,7 +2667,7 @@ def cmd_apply(args):
         upsert_rows.append(dict(
             id=pid, sort_order=row["sort_order"], touch_full_text=True,
             values_sql=_row_values_sql(
-                row, "state", "CDPHE-APCD", SOURCE_URL_DEFAULT, today, False, "pending",
+                row, jurisdiction_level, issuing_body, source_url, today, False, "pending",
             ),
         ))
     upsert_rows.sort(key=lambda r: (r["sort_order"], r["id"]))
@@ -2543,24 +2803,30 @@ def _execute_changed_fields(row: dict, now_iso: str) -> dict:
     return fields
 
 
-def _execute_new_payload(row: dict, today: str, now_iso: str) -> dict:
+def _execute_new_payload(row: dict, today: str, now_iso: str, meta: dict | None = None) -> dict:
     """A genuine INSERT (no existing row to preserve columns from), so every
     NOT NULL column the table requires is populated -- the same column list
     as `build_upsert_statement`'s `cols`. Unlike `.update()`, `.insert()`
-    needs `id` in the payload."""
+    needs `id` in the payload. `meta` is this regulation's REG_META entry
+    (jurisdiction_level/issuing_body/source_url) -- defaults to the Reg
+    7-style state/CDPHE-APCD values when not given (unconfigured reg, or a
+    caller/test that doesn't pass one) — same fallback as cmd_apply's SQL
+    path (SOURCE_URL_DEFAULT)."""
+    meta = meta or {}
     payload = _execute_changed_fields(row, now_iso)
     payload.update({
         "id": row["id"],
-        "jurisdiction_level": "state",
-        "issuing_body": "CDPHE-APCD",
-        "source_url": SOURCE_URL_DEFAULT,
+        "jurisdiction_level": meta.get("jurisdiction_level", "state"),
+        "issuing_body": meta.get("issuing_body", "CDPHE-APCD"),
+        "source_url": meta.get("source_url", SOURCE_URL_DEFAULT),
         "last_verified_date": today,
         "is_public": False,
     })
     return payload
 
 
-def _execute_write_plan(c: dict, today: str, now_iso: str, chunk_size: int = EXECUTE_CHUNK) -> list[dict]:
+def _execute_write_plan(c: dict, today: str, now_iso: str, chunk_size: int = EXECUTE_CHUNK,
+                         meta: dict | None = None) -> list[dict]:
     """Returns an ordered list of write actions for every identical/changed/
     new row, covering the whole stream in a SINGLE (sort_order, id) order --
     exactly like the SQL path's `upsert_rows` -- so a brand-new parent is
@@ -2601,7 +2867,7 @@ def _execute_write_plan(c: dict, today: str, now_iso: str, chunk_size: int = EXE
     for _sort_order, pid, shape in stream:
         row = parsed_by_id[pid]
         if shape == "new":
-            pending_new.append(_execute_new_payload(row, today, now_iso))
+            pending_new.append(_execute_new_payload(row, today, now_iso, meta))
             if len(pending_new) >= chunk_size:
                 flush_new()
         else:
@@ -2657,6 +2923,7 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     db_by_id = c["db_by_id"]
     now_iso = datetime.now(timezone.utc).isoformat()
+    meta = REG_META.get(getattr(args, "reg", None), {})
 
     total = len(c["identical"]) + len(c["changed"]) + len(c["new"])
     print(
@@ -2665,7 +2932,7 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
         f"ordered by sort_order so parents precede children..."
     )
     done = 0
-    for action in _execute_write_plan(c, today, now_iso, EXECUTE_CHUNK):
+    for action in _execute_write_plan(c, today, now_iso, EXECUTE_CHUNK, meta):
         if action["op"] == "insert":
             payloads = action["payloads"]
             client.table("provisions").insert(payloads).execute()

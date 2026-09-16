@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       reg:
-        description: "Regulation number to (re-)import, e.g. 7, 3, 26, oooob."
+        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, oooob, ooooa, ooooc."
         required: true
       execute:
         description: "Execute: actually write the plan to Supabase. Leave unchecked to only parse/export/diff/build the apply plan and upload the report -- no database writes."
@@ -30,9 +30,29 @@ jobs:
       - name: Validate reg input
         run: |
           if [[ ! "$REG" =~ ^[A-Za-z0-9]+$ ]]; then
-            echo "::error::reg must be alphanumeric (e.g. 7, 3, 26, oooob) -- got: $REG"
+            echo "::error::reg must be alphanumeric (e.g. 7, 3, 26, oooob, ooooa, ooooc) -- got: $REG"
             exit 1
           fi
+
+      - name: Map reg to source file basename
+        run: |
+          # Numeric CCR regs (3, 7, 22, 26, ...) use pipeline/sources/REG_<n>.pdf/.txt.
+          # Federal eCFR subparts use their own subpart-code basename instead --
+          # oooob -> OOOOb.pdf/.txt, ooooa -> OOOOa.pdf/.txt, ooooc -> OOOOc.pdf/.txt.
+          if [[ "$REG" =~ ^[0-9]+$ ]]; then
+            SRC_BASENAME="REG_${REG}"
+          elif [ "$REG" = "oooob" ]; then
+            SRC_BASENAME="OOOOb"
+          elif [ "$REG" = "ooooa" ]; then
+            SRC_BASENAME="OOOOa"
+          elif [ "$REG" = "ooooc" ]; then
+            SRC_BASENAME="OOOOc"
+          else
+            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26) or one of oooob/ooooa/ooooc."
+            exit 1
+          fi
+          echo "SRC_BASENAME=${SRC_BASENAME}" >> "$GITHUB_ENV"
+          echo "Resolved reg '$REG' -> source basename '${SRC_BASENAME}'."
 
       - name: Install poppler-utils (pdftotext)
         run: sudo apt-get update && sudo apt-get install -y poppler-utils
@@ -47,8 +67,8 @@ jobs:
 
       - name: pdftotext (skip if the .txt is already committed)
         run: |
-          PDF="pipeline/sources/REG_${REG}.pdf"
-          TXT="pipeline/sources/REG_${REG}.txt"
+          PDF="pipeline/sources/${SRC_BASENAME}.pdf"
+          TXT="pipeline/sources/${SRC_BASENAME}.txt"
           if [ -f "$TXT" ]; then
             echo "$TXT already exists in the repo -- skipping pdftotext."
           elif [ -f "$PDF" ]; then
@@ -63,7 +83,8 @@ jobs:
         run: |
           python pipeline/import_ccr.py parse \
             --reg "$REG" \
-            --pdf "pipeline/sources/REG_${REG}.pdf" \
+            --pdf "pipeline/sources/${SRC_BASENAME}.pdf" \
+            --txt "pipeline/sources/${SRC_BASENAME}.txt" \
             --out "pipeline/out/reg${REG}_parsed.json"
 
       - name: Export current DB rows for this regulation
