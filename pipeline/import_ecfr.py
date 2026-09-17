@@ -792,9 +792,30 @@ KNOWN_LABEL_FIXES: dict[str, list[dict]] = {
 }
 
 
+# Hand-verified deletions of lines the eCFR print garbles. Each entry drops
+# `n_lines` lines starting at the ONE line whose stripped text starts with
+# `match_prefix` (again: exactly one hit expected, reported otherwise).
+KNOWN_LINE_DELETIONS: dict[str, list[dict]] = {
+    "oooob": [
+        dict(
+            match_prefix="(3) You must comply with the reporting requirements in § 60.5420b(b)(11) through (13).ecified in",
+            n_lines=2,
+            note=(
+                "§ 60.5415b(f)(3) is printed twice: first as an overprinted fragment "
+                '("...(13).ecified in § 60.5420b(c)(11) and (13).", the tail of (f)(2) '
+                "bleeding into it), then cleanly. Drop the garbled copy; the clean "
+                "one follows two lines later. Found Sept 17 2026 — this is the row "
+                "whose summarization kept failing."
+            ),
+        ),
+    ],
+}
+
+
 def apply_known_label_fixes(reg: str, lines: list[str]) -> tuple[list[str], list[dict]]:
     fixes = KNOWN_LABEL_FIXES.get(reg, [])
-    if not fixes:
+    deletions = KNOWN_LINE_DELETIONS.get(reg, [])
+    if not fixes and not deletions:
         return lines, []
     out = list(lines)
     applied: list[dict] = []
@@ -807,6 +828,11 @@ def apply_known_label_fixes(reg: str, lines: list[str]) -> tuple[list[str], list
                 out[i] = (" " * indent) + fix["new_label"] + rest
                 hits += 1
         applied.append(dict(old_label=fix["old_label"], new_label=fix["new_label"], note=fix["note"], hits=hits))
+    for d in deletions:
+        starts = [i for i, ln in enumerate(out) if ln.strip().startswith(d["match_prefix"])]
+        for i in reversed(starts):
+            del out[i : i + d["n_lines"]]
+        applied.append(dict(old_label=d["match_prefix"][:40] + "…", new_label=f"(deleted {d['n_lines']} lines)", note=d["note"], hits=len(starts)))
     return out, applied
 
 
