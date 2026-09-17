@@ -27,6 +27,10 @@ Examples:
     # Regenerate every summary in Reg 3 from scratch.
     python pipeline/summarize.py --reg 3 --force
 
+    # --reg takes any regulation id prefix: 1, 2, 3, 6, 7, 8, 22, 26,
+    # ooooa, oooob, ooooc. Regs listed in REG_PROMPT_HINTS get an extra
+    # regulation-specific paragraph appended to the system prompt per row.
+
 Required environment variables (all three, unless --dry-run — see below):
     ANTHROPIC_API_KEY
     SUPABASE_URL
@@ -147,6 +151,112 @@ SYSTEM_PROMPT = (
     "summary."
 )
 
+# Regulation-specific guidance appended to SYSTEM_PROMPT per ROW, keyed by
+# the row's own regulation key (the "<regkey>" in an id like
+# "sec-<regkey>-..."), so it applies in full-corpus runs (no --reg) and
+# --ids/--ids-file runs alike. Distilled from the importer agents' warnings
+# (SUMMARIZER_WARNINGS.md). Regs with no entry get SYSTEM_PROMPT unchanged.
+_COLORADO_AREA_SCOPE_HINT = (
+    "Many sections of this Colorado regulation are scoped to a specific area "
+    "-- the 8-hour Ozone Control Area, a named nonattainment or "
+    "attainment-maintenance area, or a listed set of counties -- while others "
+    "apply statewide. Do not infer either. Never write \"in Colorado\", "
+    "\"statewide\", or \"anywhere in the state\" for a provision unless the "
+    "text in front of you (its own words or the parent paragraph shown) says "
+    "so, and never name an area or county it does not name. If the text "
+    "states the area, repeat it exactly; if it says nothing about where it "
+    "applies, say nothing about where it applies."
+)
+
+REG_PROMPT_HINTS: dict[str, str] = {
+    "1": (
+        "This row is from Colorado Regulation Number 1 (particulates, smoke, "
+        "carbon monoxide, sulfur oxides). Reg 1 applies statewide unless a "
+        "provision names attainment, attainment-maintenance, or nonattainment "
+        "areas -- if the text names an area, say so; if it doesn't, don't add "
+        "one. Sections VII and VIII set unit-level limits for named facilities "
+        "(e.g. Public Service Company of Colorado stations); never generalize "
+        "them to all sources. Section X and its subsections (X.A-X.Q) are "
+        "rulemaking history, not current requirements. Appendices A and B are "
+        "test methods -- describe them as methods, not as history. Federal "
+        "methods (EPA Method 9, Methods 1-8, 40 CFR Part 60 appendices and "
+        "subparts) are incorporated by reference with a fixed edition date; do "
+        "not describe their contents. In formulas a caret is an exponent "
+        "((FI)^-0.26 is FI raised to the negative 0.26 power) and 10^6 BTU "
+        "means one million BTU. PE is the particulate emission variable "
+        "(pounds per hour or pounds per million BTU, as the text says), not "
+        "\"professional engineer\"; FI is fuel input; P is process weight "
+        "rate. \"Commission\" is the Air Quality Control Commission; "
+        "\"Division\" is the Air Pollution Control Division."
+    ),
+    "2": (
+        "This row is from Colorado Regulation Number 2 (odor). Part A is the "
+        "general odor standard for sources statewide; Part B applies only to "
+        "housed commercial swine feeding operations, so never generalize a "
+        "Part B row to other sources. In Part B, \"the Division\" means the "
+        "Division of Environmental Health and Sustainability of CDPHE, not "
+        "the Air Pollution Control Division; in Part A it is the Air "
+        "Pollution Control Division. Many Part B rows open with a bare "
+        "heading or defined term followed by the body -- treat that first "
+        "line as the heading, not a sentence. Section IX.B lists recommended "
+        "practices the Division may require, even where a sub-row says "
+        "\"shall\"; do not present them as blanket mandates unless the text "
+        "says so. Part C rows are statements of basis: rulemaking history, "
+        "not requirements, and sections they describe as removed no longer "
+        "exist. Leave SB 06-114, C.A.R.E., USPHS Pub. #999-AP-32, BOD, FTE, "
+        "and WQCC/Regulation 61 as written unless the text expands them; "
+        "cross-references to Regulation Number 6 or the Common Provisions "
+        "point outside this regulation."
+    ),
+    "6": (
+        "This row is from Colorado Regulation Number 6 (standards of "
+        "performance for new stationary sources). Part A rows are "
+        "adoption-by-reference records: a row that reads \"<title>. 40 CFR "
+        "Part 60, Subpart Xx (July 1, 2025).\" means Colorado adopts that "
+        "federal subpart by reference as of that CFR edition -- say exactly "
+        "that, and do not invent or summarize the subpart's requirements. The "
+        "date in parentheses is the incorporated CFR edition, not a "
+        "compliance date. If a row adds Colorado-specific deviations, "
+        "summarize only those. In Part 60-adopted text, \"Administrator\" "
+        "means the Colorado Air Pollution Control Division except where the "
+        "text or Table 1 says otherwise; in Part 75 text it means EPA. "
+        "Statement-of-basis rows (Part A Sections I-XXXII, Part B Section IX) "
+        "are rulemaking history, not requirements. Part B Section VIII is "
+        "Colorado's state-only mercury program for coal-fired power plants; "
+        "do not conflate it with the federal MATS rule (40 CFR 63 Subpart "
+        "UUUUU). Quote numeric limits and equations as written (a caret is an "
+        "exponent); never recompute them. Subparts Cb, Cc, Cf, DDDD, FFFF, "
+        "HHHH, and MMMM are emission guidelines for existing sources, not "
+        "new-source performance standards."
+    ),
+    "8": (
+        "This row is from Colorado Regulation Number 8 (hazardous air "
+        "pollutants, including asbestos). Parts A and E list 40 CFR Part 61 "
+        "and Part 63 subparts incorporated by reference with a CFR edition "
+        "date -- say the subpart is incorporated as of that version and do "
+        "not summarize or invent the subpart's requirements (an inline Title "
+        "V exemption stated in the row may be reported). Entries marked "
+        "\"Repealed\" or \"Reserved\" are placeholders. Part C "
+        "is repealed apart from its statement-of-basis entries. In Part B, "
+        "keep the distinction between school buildings (Section IV), other "
+        "facilities, and single-family residential dwellings, and mention "
+        "\"areas of public access\" or \"trigger levels\" only when the text "
+        "does. Reg 8 acronyms: AMS is Air Monitoring Specialist, GAC is "
+        "General Abatement Contractor, LEA is local education agency, MAAL is "
+        "Maximum Allowable Asbestos Level, NAM is negative air machine, LCF "
+        "is large contiguous facility, SFRD is single-family residential "
+        "dwelling; in Part D, \"source\" and \"base year\" carry Part D's own "
+        "definitions. Statement-of-basis rows are rulemaking history, not "
+        "requirements. Refer to fee and weighting tables rather than "
+        "restating every row. Ignore any trailing Editor's Notes revision "
+        "history."
+    ),
+    "3": _COLORADO_AREA_SCOPE_HINT,
+    "7": _COLORADO_AREA_SCOPE_HINT,
+    "22": _COLORADO_AREA_SCOPE_HINT,
+    "26": _COLORADO_AREA_SCOPE_HINT,
+}
+
 
 # --------------------------------------------------------------------------
 # Text helpers
@@ -172,6 +282,21 @@ def kind_of(provision_id: str) -> str:
     if "-APPENDIX-" in provision_id:
         return "appendix"
     return "item"
+
+
+def reg_key_of(provision_id: str) -> Optional[str]:
+    """Mirrors regKeyOf() in src/lib/changelog.ts -- the regulation key is
+    the segment after the "sec-" prefix (e.g. "7" for "sec-7-B-I-C",
+    "oooob" for "sec-oooob-5390"). None if the id isn't in that shape."""
+    m = re.match(r"^sec-([^-]+)-", provision_id or "")
+    return m.group(1).lower() if m else None
+
+
+def system_prompt_for(provision_id: str) -> str:
+    """SYSTEM_PROMPT plus this row's regulation hint (REG_PROMPT_HINTS),
+    when one exists; otherwise SYSTEM_PROMPT unchanged."""
+    hint = REG_PROMPT_HINTS.get(reg_key_of(provision_id) or "")
+    return f"{SYSTEM_PROMPT}\n\n{hint}" if hint else SYSTEM_PROMPT
 
 
 # --------------------------------------------------------------------------
@@ -314,6 +439,7 @@ def clear_summary_as_too_short(client, provision_id: str) -> None:
 @dataclass
 class PromptResult:
     prompt: str
+    system: str                   # SYSTEM_PROMPT (+ this row's REG_PROMPT_HINTS entry, if any)
     body_word_count: int          # tag-stripped word count of the provision's own text
     prompt_word_count: int        # words actually included in the prompt (post-cap)
     truncated: bool
@@ -388,6 +514,7 @@ def build_prompt(provision: dict, meta: dict[str, dict]) -> PromptResult:
 
     return PromptResult(
         prompt="\n".join(lines),
+        system=system_prompt_for(provision["id"]),
         body_word_count=body_word_count,
         prompt_word_count=len(used_words),
         truncated=truncated,
@@ -491,7 +618,7 @@ def run_sync(client_anthropic, client_supabase, rows: list[dict], meta: dict, mo
                 model=model,
                 max_tokens=MAX_TOKENS,
                 temperature=TEMPERATURE,
-                system=SYSTEM_PROMPT,
+                system=result.system,
                 messages=[{"role": "user", "content": result.prompt}],
             )
         except Exception as exc:  # noqa: BLE001 -- log and keep going
@@ -582,7 +709,7 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
                 "model": model,
                 "max_tokens": MAX_TOKENS,
                 "temperature": TEMPERATURE,
-                "system": SYSTEM_PROMPT,
+                "system": result.system,
                 "messages": [{"role": "user", "content": result.prompt}],
             },
         })
@@ -657,7 +784,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--reg", default=None,
-        help="Limit to one regulation's id prefix, e.g. 7, 3, 26, oooob. "
+        help="Limit to one regulation's id prefix, e.g. 1, 2, 3, 6, 7, 8, 26, oooob. "
              "Omit to run against every regulation. Ignored if --ids-file is given.",
     )
     parser.add_argument(
