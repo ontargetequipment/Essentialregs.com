@@ -422,6 +422,13 @@ def _try_marker(stack: list[_Level], indent: int, label: str):
         fam = stack[-1].family
         if shape_matches(fam, label) and label == next_of_family(fam, stack[-1].value):
             return ("sibling", fam)
+        if shape_matches(fam, label) and label == stack[-1].value:
+            # The same label printed again at the same level: a reprinted
+            # paragraph (the eCFR prints 60.5401b(i) twice). Treat it as a
+            # sibling so it gets its own row/buffer (and its children nest
+            # under it) instead of being swallowed as text of the previous
+            # item; add_row() then drops it if it is an exact reprint.
+            return ("sibling", fam)
     parent_indent = stack[-1].indent if stack else -1
     if indent > parent_indent + MIN_CHILD_DELTA - TOL:
         new_depth = len(stack) + 1
@@ -444,6 +451,13 @@ def parse_section_body(
     buffers: dict[str, list[str]] = defaultdict(list)
     stack: list[_Level] = []
     current_id = section_id
+    # Text buffers are keyed by the buffer key, which equals the row id
+    # except when the same id is produced a second time in one section
+    # (the eCFR prints 60.5401b's whole paragraph (i) twice): the repeat
+    # gets its own "<id>#dup<n>" buffer so the two printed copies can be
+    # compared -- and an exact reprint dropped -- in add_row(), instead of
+    # both copies silently accumulating under one key.
+    seen_ids: dict[str, int] = {}
 
     for raw in body_lines:
         stripped = raw.strip()
@@ -464,11 +478,14 @@ def parse_section_body(
         new_id = f"{parent_id}-({label})"
         depth = len(stack) + 1
         stack.append(_Level(indent, fam, label, new_id, depth))
-        current_id = new_id
-        rows.append({"id": new_id, "parent_id": parent_id, "label": label, "depth": depth})
+        n_seen = seen_ids.get(new_id, 0)
+        seen_ids[new_id] = n_seen + 1
+        buffer_key = new_id if n_seen == 0 else f"{new_id}#dup{n_seen}"
+        current_id = buffer_key
+        rows.append({"id": new_id, "parent_id": parent_id, "label": label, "depth": depth, "buffer_key": buffer_key})
         rest = m.group(2).strip()
         if rest:
-            buffers[new_id].append(rest)
+            buffers[buffer_key].append(rest)
     return rows, buffers
 
 
@@ -1076,7 +1093,7 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
                 }
             )
             for mr in marker_rows:
-                paras = split_paragraphs(buffers.get(mr["id"], []))
+                paras = split_paragraphs(buffers.get(mr.get("buffer_key", mr["id"]), []))
                 heading_word, _ = split_heading_from_text(paras[0]) if paras else (None, None)
                 item_citation = citation + "".join(
                     f"({p})" for p in re.findall(r"-\(([a-zA-Z0-9]{1,4})\)", mr["id"][len(sec_id):])

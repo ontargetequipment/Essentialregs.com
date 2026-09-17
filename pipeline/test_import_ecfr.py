@@ -198,6 +198,39 @@ class MarkerNestingTests(unittest.TestCase):
             "sec-oooob-60.5401b-(i)",
         )
 
+    def test_reprinted_paragraph_gets_its_own_buffer(self):
+        """The eCFR prints 60.5401b's whole paragraph (i) twice. The repeat
+        must become a second marker row with its OWN text buffer (so the
+        two copies never merge into one text), and its children must nest
+        under it rather than under the previous item's last leaf."""
+        body = [
+            "     (a) Repair requirements. First copy chapeau.",
+            "",
+            "           (1) First copy item one.",
+            "",
+            "           (2) First copy item two.",
+            "",
+            "     (a) Repair requirements. First copy chapeau.",
+            "",
+            "           (1) First copy item one.",
+            "",
+            "           (2) Second copy item two, worded differently.",
+        ]
+        rows, buffers = ie.parse_section_body("sec-oooob-60.5401b", body)
+        ids = [r["id"] for r in rows]
+        self.assertEqual(ids.count("sec-oooob-60.5401b-(a)"), 2)
+        self.assertEqual(ids.count("sec-oooob-60.5401b-(a)-(1)"), 2)
+        keys = [r.get("buffer_key", r["id"]) for r in rows if r["id"] == "sec-oooob-60.5401b-(a)-(2)"]
+        self.assertEqual(keys, ["sec-oooob-60.5401b-(a)-(2)", "sec-oooob-60.5401b-(a)-(2)#dup1"])
+        self.assertEqual(" ".join(buffers["sec-oooob-60.5401b-(a)-(2)"]).strip(), "First copy item two.")
+        self.assertEqual(
+            " ".join(buffers["sec-oooob-60.5401b-(a)-(2)#dup1"]).strip(),
+            "Second copy item two, worded differently.",
+        )
+        # The first copy's last leaf must not have swallowed the repeated chapeau.
+        self.assertNotIn("(a)", " ".join(buffers["sec-oooob-60.5401b-(a)-(2)"]))
+        self.assertTrue(all(r["parent_id"] == "sec-oooob-60.5401b-(a)" for r in rows if r["id"].endswith("-(1)")))
+
     def test_genuine_roman_sublevel_still_works(self):
         body = [
             "     (a) Top paragraph.",
