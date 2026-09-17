@@ -238,6 +238,18 @@ SOB_PART_CONFIG: dict[str, dict] = {
     "3": {
         "letter": "F", "top_family": "letter_dated", "roman_prefix": "I",
         "top_opener_re": re.compile(r"^Adopted:?\s"),
+        # Reg 3's Part F entries are long narrative documents whose inner
+        # numbered lists ("1.", "2.", "3." ...) restart many times inside a
+        # single entry (e.g. I.L., the July 1993 Title V statement, numbers
+        # its administrative/minor/significant-modification discussion 1-3,
+        # then numbers a later list of permit-content items 1-12, then
+        # another list...). Treating those as nested items produced ids like
+        # `sec-3-F-I-L-3` that collected EVERY "3." paragraph in the entry —
+        # one such row reached 540,000 characters of repeated text (found in
+        # the Sept 17 2026 second-pass review). Each Part F entry is
+        # therefore kept as ONE undivided row, like the ~110 entries that
+        # never had inner labels in the first place.
+        "inner_items": False,
     },
     # Reg 26's Part C top level is a plain roman-numeral sequence (I., II.,
     # III., IV. — only 4 entries so far), each followed immediately by a
@@ -970,6 +982,47 @@ KNOWN_LABEL_FIXES: dict[str, list[dict]] = {
                 "them to attach to)."
             ),
         ),
+        # Part C's exemption list prints the three children of II.E.3.nnn.
+        # ("Stationary Internal Combustion Engines that:") with a stray
+        # space after the roman numeral — "II. E.3.nnn.(i)" instead of
+        # "II.E.3.nnn.(i)". The tokenizer read each as a bare "II." marker,
+        # so the three items were lost and their text was appended to the
+        # Part C Section II heading row (found in the Sept 17 2026 review).
+        dict(
+            old_label="II. E.3.nnn.(i)",
+            new_label="II.E.3.nnn.(i)",
+            match_prefix="II. E.3.nnn.(i) Are power portable drilling rigs",
+            line_hint=8112,
+            note='Printed "II. E.3.nnn.(i)" with a stray space after "II." — a source-text typo for "II.E.3.nnn.(i)".',
+        ),
+        dict(
+            old_label="II. E.3.nnn.(ii)",
+            new_label="II.E.3.nnn.(ii)",
+            match_prefix="II. E.3.nnn.(ii) Are emergency power generators",
+            line_hint=8114,
+            note='Printed "II. E.3.nnn.(ii)" with a stray space after "II." — a source-text typo for "II.E.3.nnn.(ii)".',
+        ),
+        dict(
+            old_label="II. E.3.nnn.(iii)",
+            new_label="II.E.3.nnn.(iii)",
+            match_prefix="II. E.3.nnn.(iii)",
+            line_hint=8117,
+            note='Printed "II. E.3.nnn.(iii)" with a stray space after "II." — a source-text typo for "II.E.3.nnn.(iii)".',
+        ),
+    ],
+    "26": [
+        dict(
+            old_label="II.D.6.f.(i)(B)",
+            new_label="I.D.6.f.(i)(B)",
+            match_prefix="II.D.6.f.(i)(B) Beginning May 1, 2025, an identification of any",
+            line_hint=2107,
+            note=(
+                'Printed as "II.D.6.f.(i)(B)" directly after "I.D.6.f.(i)(A)" and before '
+                '"I.D.6.f.(i)(C)" in Part B Section I.D.6.f. (there is no Section II.D.6 '
+                "in Part B) — a source-text typo for \"I.D.6.f.(i)(B)\". Without the fix the "
+                "(B) paragraph was fused into the (A) row (found in the Sept 17 2026 review)."
+            ),
+        ),
     ],
     "7": [
         dict(
@@ -1463,14 +1516,21 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                 })
                 last_marker_line = idx
                 continue
-            if partc_next_idx > 0 and _label_position_plausible(lines, idx, last_marker_line, seam_starts):
+            inner_items_ok = (sob_cfg or {}).get("inner_items", True)
+            if inner_items_ok and partc_next_idx > 0 and _label_position_plausible(lines, idx, last_marker_line, seam_starts):
                 cur_top = _sob_top_label(sob_family, partc_next_idx - 1)
                 tokens, consumed = tokenize_by_cycle(stripped, CYCLE_C_INNER)
                 if tokens:
                     rest = stripped[consumed:]
                     if rest == "" or rest[0] == " ":
                         disp = (cur_top,) + tuple(token_display(f, r) for f, r in tokens)
-                        if disp[:-1] in emitted[ns]:
+                        # A label already emitted inside this statement-of-
+                        # basis entry is a restarted inner list (these
+                        # entries are narrative, not a numbered hierarchy),
+                        # NOT a second marker for the same row — leave the
+                        # line as body text of the current row rather than
+                        # merging two unrelated paragraphs under one id.
+                        if disp[:-1] in emitted[ns] and disp not in emitted[ns]:
                             emitted[ns].add(disp)
                             full_tokens = (
                                 ([("roman", roman_prefix)] if roman_prefix else [])

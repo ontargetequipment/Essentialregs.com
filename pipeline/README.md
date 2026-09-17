@@ -114,6 +114,18 @@ regulation's `provisions` rows from the source PDF while preserving ids,
 review status, and existing AI summaries wherever the text hasn't actually
 changed.
 
+Source-text typos the parser corrects by hand are listed in
+`KNOWN_LABEL_FIXES` (in `import_ccr.py` for the CCR regulations and
+`import_ecfr.py` for the federal subparts). Each entry rewrites exactly one
+line and the parse output reports its hit count — `OK` means 1 hit; anything
+else means the source text changed and the fix needs re-checking. When a
+second-pass review finds a mis-nested or fused provision, look at the source
+line first: it is usually a misprinted label (e.g. Reg 26's `II.D.6.f.(i)(B)`
+for `I.D.6.f.(i)(B)`, Reg 3's `II. E.3.nnn.(i)` with a stray space, OOOOc's
+`(vi)` for `(iv)` in § 60.5421c(b)(11)), and a fix entry is the right repair.
+Statement-of-basis parts whose entries contain restarted numbered lists are
+kept as one row per entry (`inner_items: False` in `SOB_PART_CONFIG`).
+
 ### Running it from GitHub Actions (the normal way — no computer needed)
 
 This is the recommended path: everything runs in the cloud, from the PDF

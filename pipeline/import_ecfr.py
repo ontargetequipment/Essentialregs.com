@@ -747,11 +747,62 @@ def link_citations(
 DEFINITIONS_RE = re.compile(r"definitions? appl", re.I)
 
 
+# Hand-verified corrections to labels the eCFR itself misprints. Each entry
+# rewrites the label at the start of the ONE line whose stripped text starts
+# with `match_prefix` (the same policy as import_ccr.py's KNOWN_LABEL_FIXES:
+# exactly one hit expected; 0 or >1 hits is reported so the fix gets
+# re-checked instead of firing blindly).
+KNOWN_LABEL_FIXES: dict[str, list[dict]] = {
+    "ooooc": [
+        dict(
+            old_label="(vi)",
+            new_label="(iv)",
+            match_prefix="(vi) The date of successful repair of the leak and the method of monitoring used to",
+            # The misprinted line is also indented deeper than its (A)-(C)
+            # children (column 27 vs the (iii)/(v) siblings' column 15), so
+            # even with the right label the indent-driven nesting would not
+            # accept it as (iii)'s sibling; re-indent it to the sibling column.
+            indent=15,
+            note=(
+                'In § 60.5421c(b)(11) the eCFR prints the item between (iii) and (v) as '
+                '"(vi)" (and its own text cites "paragraph (b)(11)(vi)(A) through (C)"); '
+                "it is (iv). Without the fix the parser could not accept it as a marker, "
+                "so its three (A)-(C) children were mis-attached to (iii) as duplicate "
+                "ids (found in the Sept 17 2026 second-pass review)."
+            ),
+        ),
+    ],
+}
+
+
+def apply_known_label_fixes(reg: str, lines: list[str]) -> tuple[list[str], list[dict]]:
+    fixes = KNOWN_LABEL_FIXES.get(reg, [])
+    if not fixes:
+        return lines, []
+    out = list(lines)
+    applied: list[dict] = []
+    for fix in fixes:
+        hits = 0
+        for i, ln in enumerate(out):
+            if ln.strip().startswith(fix["match_prefix"]):
+                indent = fix.get("indent", len(ln) - len(ln.lstrip(" ")))
+                rest = ln.lstrip(" ")[len(fix["old_label"]):]
+                out[i] = (" " * indent) + fix["new_label"] + rest
+                hits += 1
+        applied.append(dict(old_label=fix["old_label"], new_label=fix["new_label"], note=fix["note"], hits=hits))
+    return out, applied
+
+
+def _norm_text(html: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
+
+
 def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict], dict]:
     reg = _norm_reg(reg)
     suffix = SUBPART_LETTER[reg]
     raw = Path(txt_path).read_text(encoding="utf-8")
     lines = strip_page_furniture(raw)
+    lines, label_fixes_applied = apply_known_label_fixes(reg, lines)
     toc_end, body_start = find_body_start(lines)
     toc_sections, toc_groups = extract_toc(lines, toc_end)
 
@@ -911,13 +962,20 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
         # paragraph, with its whole (1)-(6) sub-list, is printed twice in
         # the source PDF text back to back). The `id` column is a primary
         # key, so the output can't carry two rows with the same id: keep the
-        # FIRST occurrence's citation/parent/title and append the later
-        # occurrence's text as trailing paragraphs, matching import_ccr.py's
-        # parse_reg() dedup policy.
+        # FIRST occurrence's citation/parent/title. If the later occurrence's
+        # text is the same text again (60.5401b's case: an exact reprint), it
+        # is dropped — until Sept 17 2026 it was appended, which produced 21
+        # rows reading "...low-e valve; or ...low-e valve; or" (the same
+        # sentence twice), caught by the second-pass review. If the text
+        # DIFFERS (a mis-nested paragraph, or 60.5401b(i)(2)(ii), whose two
+        # printed copies word their cross-reference differently) it is still
+        # appended so nothing is silently lost; every case is reported in
+        # `duplicate_ids` for the editor's notes.
         existing = by_id.get(row["id"])
         if existing is not None:
             duplicate_ids.append(row["id"])
-            existing["full_text"] += row["full_text"]
+            if _norm_text(existing["full_text"]) != _norm_text(row["full_text"]):
+                existing["full_text"] += row["full_text"]
             return
         by_id[row["id"]] = row
         rows.append(row)
@@ -1078,6 +1136,7 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
         "extra_sections": extra_sections,
         "toc_title_mismatches": toc_title_mismatches,
         "duplicate_ids": duplicate_ids,
+        "label_fixes_applied": label_fixes_applied,
         "unresolved": unresolved,
         "n_group_headings": group_counter,
         "n_tables": sum(1 for b in blocks if b["type"] == "table"),
@@ -1103,6 +1162,9 @@ def cmd_parse(args):
     print(f"  sections: TOC {report['n_sections_toc']}, body {report['n_sections_body']}")
     if report["missing_sections"]:
         print(f"  WARNING: {len(report['missing_sections'])} TOC sections missing from body: {report['missing_sections']}")
+    for fx in report.get("label_fixes_applied", []):
+        flag = "" if fx["hits"] == 1 else "  <-- EXPECTED EXACTLY 1 HIT, RE-CHECK"
+        print(f"  label fix {fx['old_label']} -> {fx['new_label']}: {fx['hits']} hit(s){flag}")
     if report["duplicate_ids"]:
         print(f"  WARNING: duplicate ids: {report['duplicate_ids']}")
     total_unresolved = sum(sum(c.values()) for c in report["unresolved"].values())
