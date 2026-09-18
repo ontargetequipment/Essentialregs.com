@@ -80,7 +80,7 @@ VOYAGE_BATCH_TEXTS = 128         # texts per request (API max 1000)
 VOYAGE_BATCH_CHARS = 400_000     # ≈100k tokens per request, well under the 1M-token cap
 DB_PAGE_SIZE = 500
 UPSERT_PAGE_SIZE = 100
-NEIGHBOR_BATCH_IDS = 200
+NEIGHBOR_BATCH_IDS = 25          # PostgREST caps each call at 8s; ~25 anchors ≈ 1s warm, well under
 MAX_RETRIES = 6
 
 TAG_RE = re.compile(r"<[^>]+>")
@@ -267,16 +267,45 @@ def delete_stale_chunks(client, provision_id: str, keep_upto: int) -> None:
      .eq("provision_id", provision_id).gt("chunk_index", keep_upto).execute())
 
 
+def fetch_embedded_ids(client) -> list[str]:
+    """Every provision that has a chunk-0 embedding, sorted."""
+    ids: list[str] = []
+    start = 0
+    while True:
+        rows = (client.table("provision_embeddings").select("provision_id")
+                .eq("chunk_index", 0).order("provision_id")
+                .range(start, start + 1000 - 1).execute().data or [])
+        ids.extend(r["provision_id"] for r in rows)
+        if len(rows) < 1000:
+            return ids
+        start += 1000
+
+
 def recompute_neighbors(client, ids: Optional[list[str]]) -> int:
-    """Calls the SQL-side neighbour builder in batches. None = whole corpus."""
-    total = 0
+    """Calls the SQL-side neighbour builder in small batches. None = every
+    embedded provision. Never sends the whole corpus in one RPC: PostgREST
+    enforces an 8-second statement timeout per call (the `authenticator`
+    role's setting), and a 200-id batch already blew through it once."""
     if ids is None:
-        res = client.rpc("recompute_provision_neighbors", {"target_ids": None}).execute()
-        return int(res.data or 0)
+        ids = fetch_embedded_ids(client)
+    total = 0
     for i in range(0, len(ids), NEIGHBOR_BATCH_IDS):
         batch = ids[i:i + NEIGHBOR_BATCH_IDS]
-        res = client.rpc("recompute_provision_neighbors", {"target_ids": batch}).execute()
-        total += int(res.data or 0)
+        last_exc: Optional[Exception] = None
+        for attempt in range(3):
+            try:
+                res = client.rpc("recompute_provision_neighbors", {"target_ids": batch}).execute()
+                total += int(res.data or 0)
+                last_exc = None
+                break
+            except Exception as exc:  # noqa: BLE001 -- timeout on a cold cache; retry smaller
+                last_exc = exc
+                time.sleep(2)
+        if last_exc is not None:
+            raise RuntimeError(f"neighbour batch starting at {batch[0]} failed 3x: {last_exc}")
+        done = min(i + NEIGHBOR_BATCH_IDS, len(ids))
+        if done % 500 < NEIGHBOR_BATCH_IDS or done == len(ids):
+            print(f"  neighbours: {done:,}/{len(ids):,} provisions")
     return total
 
 
