@@ -559,3 +559,169 @@ fix and are genuine source-text terms, not fallback artifacts).
 **Updated verdict: READY.** All three requested fixes are in place,
 verified individually and via the full gate/test/baseline re-run, with
 no regressions.
+
+## Delta 2: ladder mis-nesting from indentation drift, fixed and re-verified
+
+### Root cause
+
+`_ecmc_scan_markers`'s indentation stack decided depth PURELY from column
+position: pop every open level whose indent is >= the new candidate's,
+otherwise treat it as a new child. That assumption silently breaks
+whenever the source's own printed column drifts within a single,
+unbroken list — a page break reflowing the next line a few columns to the
+right (`Rule 406.e.(4)`'s "D." at column 11, then "E." at column 14 after
+a page break), or a heading that wraps onto extra lines before its first
+child shifting everything under it. A drifted label that's printed
+*deeper* than its true sibling's column never got popped, so it was
+recorded as that sibling's CHILD instead — `sec-ecmc-406-e-(4)-D-E`
+instead of the correct `sec-ecmc-406-e-(4)-D` / `-E` as siblings. The same
+pattern showed up at every ladder depth: `(4)` → `(5)` (paren-digit),
+`b` → `c` (plain letter), and `ii` → `iii` (bare roman).
+
+### The fix
+
+1. **Same-family "immediate next sibling" override** (`_ecmc_sibling_match_index`,
+   `_ecmc_label_ordinal_variants`): before consulting indentation at all,
+   a candidate is checked against the DEEPEST open level only. If it's the
+   same family and its ordinal is exactly that level's ordinal + 1 (under
+   some shared numbering scheme — see point 3), it's accepted as that
+   level's sibling and the level is replaced, *regardless of how far its
+   column drifted*. This is the same "immediate next sibling" idea Reg 8's
+   `SIBLING_CHAIN_REGS` already uses for a different symptom (a
+   continuation-line guard swallowing a whole list), applied here to
+   indentation instead.
+2. **Indentation tolerance** (`_ECMC_INDENT_TOL = 4`): when no sibling
+   match applies (the candidate is the first item of a list — ordinal
+   1/A/i/(1)/a can never be anyone's "+1" — or its true predecessor isn't
+   open), the ordinary indentation stack is still the tie-breaker, but a
+   candidate has to be printed **more than 4 columns deeper** than the
+   open top to be accepted as a new nested child; drift within that band
+   no longer opens a level by itself.
+3. **Numbering-scheme locking, to resolve the roman/doubled-letter
+   collision** (`_ecmc_lower_scheme_from_raw`): ECMC's "lower" family
+   already deliberately covers both plain letters and bare roman numerals
+   with no separate tag (documented at hand-off). This document also has
+   a confirmed 5th/6th ladder tier that doubles or triples a single
+   letter once a roman list runs out of single-character items (`aa.`,
+   `bb.`, ... — read the same way `PART_C_LETTERS` reads a statement-of-
+   basis's own overflow tier), and a token like `"ii."` is *simultaneously*
+   a valid roman "2" and a valid doubled-letter "9th letter, doubled" —
+   real numeric collisions, not just a theoretical concern (both
+   interpretations arise in real content). Two sub-bugs came from this
+   before it was locked down:
+   - An **unrestricted stack search** (my first attempt, searching every
+     open level rather than just the top) matched a deeply-nested roman
+     `"ii."` against an unrelated top-level letter `"a."` several levels
+     down the stack, purely because both are "lower" family and the roman
+     value of `"ii"` (2) equals the alphabetic ordinal of `"a"` (1) plus
+     one. Fixed by restricting the sibling check to the top of the stack
+     only (point 1 above) — the mis-nested predecessor is always sitting
+     there at the moment its rightful sibling arrives, so nothing is lost
+     by not searching deeper, and the coincidence can't arise between
+     labels that aren't actually adjacent in the document.
+   - Even with the top-only restriction, a doubled-letter tier's own
+     item that happens to *look* like a roman value (`"ii."`, the tier's
+     9th entry) could wrongly "continue" under the roman interpretation
+     into `"iii."` — when `"iii."` is really the OUTER roman list's true
+     next sibling, one level up, past the whole doubled-letter tier (real
+     example: Rule 315.a.B's `...gg. hh. ii.` doubled-letter list
+     followed by the real `iii.`/`iv.`/`v.` continuing roman items one
+     level up — before this fix, `iii`/`iv`/`v` were wrongly captured as
+     `-ii-iii`, `-ii-iv`, `-ii-v`, nested one level too deep under the
+     doubled-letter list instead of siblings of the roman `ii` two levels
+     up). Fixed by locking each ladder level's numbering scheme (`alpha`
+     for a level that opens with a repeated-letter token like `"aa."`,
+     which never opens anything else in this document; `roman` for an
+     unrepeated multi-character opener like `"iv."`; left `ambiguous` for
+     a single-character opener until its own second item settles which
+     scheme fits) and carrying that lock forward onto every later sibling
+     replacement at that same depth, so a scheme, once established, can't
+     drift into the other interpretation mid-list.
+
+### Verification: the same-family-nested count
+
+Computed as specified — for every item row, family-classify the last two
+`-`-separated id tokens (paren-digit / paren-roman / upper / lower;
+excluding the leading rule number) and flag same-family pairs, excluding
+a lower-letter immediately followed by the correct next letter:
+
+| | Count |
+|---|---|
+| Before this fix | **502** |
+| After this fix | **317** |
+
+**All 317 remaining pairs are the same single, legitimate, well-documented
+pattern**, not bugs: a bare-roman 4th ladder level correctly opening a
+fresh doubled-letter 5th level (`iii` → `aa`, `ii` → `aa`, etc.) — the
+family-based check above can't tell "the 4th level's own next roman
+sibling" apart from "a brand-new 5th-level list opening under it" purely
+from the family label, since both are "lower." This is confirmed correct,
+not a parser gap: the source text ITSELF prints the compound citation
+`"Rules 604.b.(4).A.i-vii and 604.b.(4).B.i.aa-dd"` (ECMC.txt:17674),
+proving `i.aa` (roman level 4 directly containing doubled-letter level 5)
+is the document's own intended structure. Filtering the 317 for exactly
+this pattern (family last token is a fresh doubled-letter opener AND the
+previous token is a valid roman value) accounts for all 317 with **zero
+left over** — confirmed by an independent script pass, not just the
+count matching by coincidence.
+
+### Rules whose ids changed
+
+Reconstructed the pre-fix parse from the previous `ecmc.patch` (applied
+against `import_ccr.ORIGINAL.py`) to diff id sets exactly: **392 item ids
+were replaced by 392 new ids** (pure re-nesting — no rows were added or
+removed by this fix; total row count is unchanged at 6,754). **54 rules**
+had at least one id change:
+
+205, 206, 208, 218, 301, 303, 304, 305, 306, 308, 309, 314, 315, 316, 406,
+408, 411, 412, 414, 417, 419, 424, 429, 434, 506, 509, 604, 605, 609, 614,
+615, 702, 703, 803, 901, 903, 905, 907, 909, 910, 913, 1002, 1101, 1102,
+1104, 1202, 1203, 1303, 1304, 1305, 1404, 1406, 1420, 1423
+
+### New row / definition counts
+
+**Unchanged: 6,754 total rows** (1 root + 14 series + 316 definitions +
+225 rules + 6,194 ladder items + 4 appendices), **316 definitions**. This
+fix only corrects ladder-item depth/parentage; it doesn't create, delete,
+merge, or split any row.
+
+### Re-verification results
+
+- **Duplicate ids**: still exactly **1** (`sec-ecmc-APPENDIX-VI`, the same
+  benign re-caption merge documented in gate D) — the sibling-matching fix
+  introduced, and then eliminated, additional duplicates during
+  development (peaked at 5 with an intermediate, incomplete version of
+  this fix — `sec-ecmc-431-E`, `-431-E-i`, `-431-E-ii`, `-1104-i`, plus
+  the pre-existing appendix one — all traced to the unrestricted-stack-
+  search and roman/doubled-letter collision bugs described above, both
+  now fixed).
+- **Orphans**: **0** (every `parent_id` resolves).
+- **Reg 1 baseline**: re-parsed and `cmp`'d against `out/reg1_baseline.json`
+  — **byte-identical**.
+- **Reg 26 baseline**: re-parsed and `cmp`'d against `out/reg26_baseline.json`
+  — **byte-identical**.
+- **Tests**: `python3 -m pytest -q test_import_ccr.py` → **97 passed, 6
+  skipped** (95 previous + 2 new fixture tests for this fix:
+  `test_drifted_indent_sibling_not_nested_one_level_deep` — an upper-
+  letter "A." → "B." pair with "B." printed several columns deeper,
+  simulating a page-break reflow, asserting they land as siblings, not
+  parent/child — and `test_drifted_paren_digit_sibling_not_nested_one_level_deep`
+  — the same drift pattern for a paren-digit "(4)." → "(5)." pair; the 6
+  skips are the same pre-existing, unrelated ones from the original
+  report).
+- **Diff report / apply plan**: regenerated (`out/ecmc_diff_report.md`,
+  `out/apply_ecmc/`) — `only_parsed=6754`, unchanged in shape (24 upsert
+  SQL batches + stats.md); the 392 changed item ids show up as ordinary
+  upserts (old ids simply don't reappear in the new parse; nothing needs
+  an explicit delete since `only_db=0` — this is a from-scratch load, not
+  a live diff against previously-loaded old ids).
+- **Patch**: `ecmc.patch` regenerated from `import_ccr.ORIGINAL.py` /
+  `merged/test_import_ccr.py` against the current files; re-verified it
+  applies cleanly with `patch -p0` in an isolated directory and
+  reproduces both files byte-for-byte.
+
+**Verdict: READY.** The ladder mis-nesting is fixed at its root cause (an
+indentation-only depth model), verified to bring the same-family-nested
+count down to a fully-explained, non-zero-but-justified residue (a real,
+source-confirmed 5th ladder tier, not a bug), with no regressions against
+either baseline or the existing test suite.

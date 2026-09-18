@@ -1635,6 +1635,24 @@ a.     Introductory text referencing Rule 201.a.(1) and the 200 Series.
 
 b.     Second top-level item.
 
+202. DRIFT TEST RULE
+
+a.     Intro text before a lettered list.
+
+       (1)    First item introducing a lettered list.
+
+             A.     Item A printed at the ordinary column.
+
+                   B.     Item B printed several columns deeper, simulating
+                   a page-break reflow — must still be A's sibling, not
+                   A's child.
+
+       (4)    A numbered item.
+
+             (5)    Item (5) printed several columns deeper, simulating a
+                   page-break reflow — must still be (4)'s sibling, not
+                   (4)'s child.
+
 APPENDIX I     SAMPLE APPENDIX
 
 Some appendix text mentioning Appendix I and Rule 201.
@@ -1698,6 +1716,37 @@ class RuleSeriesFamilyTests(unittest.TestCase):
         for pid in self.order:
             parent = self.by_id[pid]["parent_id"]
             self.assertTrue(parent is None or parent in self.by_id, pid)
+
+    def test_drifted_indent_sibling_not_nested_one_level_deep(self):
+        # Post-import review (2026-09-18): a page break or a wrapped
+        # heading can reflow the next label a few columns deeper than its
+        # true siblings printed ("D." at column 11, then "E." at column 14
+        # after a page break, in Rule 406.e.(4) of the real source) --
+        # confirmed to wrongly nest the drifted label one level deeper
+        # under its own sibling. "B." here is deliberately printed several
+        # columns to the right of "A." to reproduce that drift; it must
+        # still land as A's SIBLING (same depth, same parent), not A's
+        # child.
+        self.assertIn("sec-ecmc-202-a-(1)-A", self.by_id)
+        self.assertIn("sec-ecmc-202-a-(1)-B", self.by_id)
+        self.assertEqual(
+            self.by_id["sec-ecmc-202-a-(1)-B"]["parent_id"],
+            self.by_id["sec-ecmc-202-a-(1)-A"]["parent_id"],
+        )
+        self.assertEqual(self.by_id["sec-ecmc-202-a-(1)-B"]["citation"], "202.a.(1).B.")
+
+    def test_drifted_paren_digit_sibling_not_nested_one_level_deep(self):
+        # Same drift pattern, one level up: a paren-digit item ("(4)" ->
+        # "(5)") drifted deeper by a page break must stay (4)'s sibling,
+        # not become nested under it (a real confirmed instance:
+        # "205.c.(4).(5)").
+        self.assertIn("sec-ecmc-202-a-(4)", self.by_id)
+        self.assertIn("sec-ecmc-202-a-(5)", self.by_id)
+        self.assertEqual(
+            self.by_id["sec-ecmc-202-a-(5)"]["parent_id"],
+            self.by_id["sec-ecmc-202-a-(4)"]["parent_id"],
+        )
+        self.assertEqual(self.by_id["sec-ecmc-202-a-(5)"]["citation"], "202.a.(5).")
 
     def test_unresolved_table_reference_bucketed_not_dropped(self):
         # No PDF in this fixture, so "Table 201-1" can't resolve to a

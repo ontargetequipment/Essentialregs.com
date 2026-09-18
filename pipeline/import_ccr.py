@@ -3324,6 +3324,136 @@ def _ecmc_prevblank(lines: list[str], idx: int) -> bool:
     return idx == 0 or lines[idx - 1].strip() == ""
 
 
+# Post-import review (2026-09-18) found 193 item rows nested one level too
+# deep: the source's indentation drifts by a few columns WITHIN THE SAME
+# LIST (a page break, or a heading that wraps onto extra lines before its
+# first child, both reflow the next label a bit left or right of where its
+# true siblings printed) -- e.g. Rule 406.e.(4) prints "D. Remove the cellar
+# ring;" at column 11 and, after a page break, "E. Within 30 days..." at
+# column 14; the old pure indentation-stack treated the deeper column as a
+# new nested level, giving sec-ecmc-406-e-(4)-D-E instead of the correct
+# sibling ids sec-ecmc-406-e-(4)-D / -E. Fixed the same way Reg 8's
+# SIBLING_CHAIN_REGS treats "the immediate next sibling of an open level" as
+# a structural signal that overrides an indentation-only read: if a
+# candidate's family matches an OPEN level on the stack and its ordinal is
+# EXACTLY that level's ordinal + 1 (D->E, (4)->(5), ii->iii, b->c), it's
+# that level's sibling regardless of how far its column drifted. Indentation
+# is still the only signal for a genuinely NEW deeper level -- the first
+# item of any list is always ordinal 1/A/i/(1)/a, so it can never match an
+# existing level's "ordinal + 1" -- and gets a +/-4-column tolerance so
+# drift alone can never fake a new level either.
+_ECMC_INDENT_TOL = 4
+
+
+def _ecmc_label_ordinal_variants(fam: str, raw: str) -> dict[str, int]:
+    """Every plausible 1-based ordinal for an ECMC ladder label, keyed by
+    which NUMBERING SCHEME produced it. Most families have exactly one
+    scheme (paren_digit: the digit itself; paren_roman/upper: roman value
+    / alphabetic position). ECMC's "lower" family is the one genuinely
+    ambiguous case: it covers plain letters (a., b., ...), bare roman
+    numerals (i., ii., ...), AND a confirmed 5th/6th ladder tier that
+    doubles or triples a single letter once the plain alphabet is
+    exhausted (aa., bb., ... -- the same repeated-letter convention
+    `PART_C_LETTERS` already reads for a statement-of-basis's own
+    overflow tier), with no separate family tag distinguishing them (see
+    ECMC_LADDER_CYCLE's docstring) -- a raw token like "ii." is
+    SIMULTANEOUSLY a valid roman "2" and a valid doubled-letter "the 9th
+    letter, doubled" (position 35), and the same-family-sibling check
+    below tries both and accepts whichever one is internally consistent
+    with the level it's being compared against, never mixing schemes
+    across the two sides of a comparison. This is what lets the sibling
+    check correctly promote a page-break-drifted "dd." -> "ee." pair
+    (doubled-letter scheme: 30 -> 31) even though "EE" isn't a valid
+    roman numeral at all (E isn't a roman digit), while also correctly
+    promoting a drifted "ii." -> "iii." pair under the roman scheme (2 ->
+    3) without the doubled-letter scheme (35 -> 60ish) getting in the
+    way."""
+    variants: dict[str, int] = {}
+    if fam == "paren_digit":
+        variants["digit"] = int(raw)
+    elif fam == "paren_roman":
+        up = raw.upper()
+        if is_valid_roman(up):
+            variants["roman"] = roman_to_int(up)
+    elif fam == "upper":
+        up = raw.upper()
+        if up in PART_C_LETTERS:
+            variants["alpha"] = PART_C_LETTERS.index(up) + 1
+    elif fam == "lower":
+        up = raw.upper()
+        if up in PART_C_LETTERS:
+            variants["alpha"] = PART_C_LETTERS.index(up) + 1
+        if is_valid_roman(up):
+            variants["roman"] = roman_to_int(up)
+    return variants
+
+
+def _ecmc_lower_scheme_from_raw(raw: str) -> str:
+    """The numbering scheme a FRESH "lower"-family ladder level's own
+    first item establishes, from its shape alone: a repeated single
+    character of 2+ letters ("aa.", "bb.") only ever opens the doubled/
+    tripled-letter overflow tier in this document (a real list never
+    OPENS at "bb." or "cc.", only "aa."), so it unambiguously locks
+    "alpha"; an unrepeated 2+ character string ("iv.", "ix.") is
+    unambiguously a bare roman numeral, locking "roman"; a single
+    character ("a.", "i.") is genuinely ambiguous at the moment it opens
+    (it might continue as an ordinary lettered list, or turn out to be
+    the first item of a bare roman list) and is left "ambiguous" until
+    its own second item (see `_ecmc_sibling_match_index`) settles which
+    scheme actually fits, at which point that match's scheme is locked in
+    for the rest of the list."""
+    if len(raw) >= 2 and len(set(raw)) == 1:
+        return "alpha"
+    if len(raw) >= 2:
+        return "roman"
+    return "ambiguous"
+
+
+def _ecmc_sibling_match_index(stack: list[dict], fam: str, raw_lbl: str) -> tuple[int, str | None] | None:
+    """Checks only the DEEPEST open level (the top of the stack) for
+    whether it is the same family and exactly this candidate's immediate
+    predecessor under a numbering scheme consistent with that level (see
+    `_ecmc_label_ordinal_variants` and `_ecmc_lower_scheme_from_raw`).
+    Deliberately does NOT search further down the stack: the
+    mis-indentation bug this fixes always leaves the wrongly-nested
+    predecessor sitting at the top at the moment its rightful sibling
+    arrives (nothing else gets pushed in between a drifted "D."/"E." pair,
+    or a "(4)"/"(5)" pair), so checking the top is both necessary and
+    sufficient for every reported case. Searching deeper is deliberately
+    avoided -- confirmed during testing: an unrestricted search matched a
+    deeply-nested roman "ii." against an unrelated top-level letter "a."
+    several levels down the stack purely because both are "lower" family
+    and the roman value of "ii" (2) happens to equal the alphabetic
+    ordinal of "a" (1) plus one. For a "lower" level whose scheme is
+    already LOCKED (not "ambiguous" -- see `_ecmc_lower_scheme_from_raw`),
+    only that one scheme is tried: confirmed necessary during testing too
+    -- a doubled-letter tier's own coincidentally-roman-valued item
+    ("ii.", the tier's 9th entry) would otherwise "continue" under the
+    roman interpretation into "iii.", when "iii." is actually the OUTER
+    roman list's real next sibling (one level up, past the whole doubled-
+    letter tier), not a continuation of it. Returns (stack index to
+    treat as the sibling's own slot, the scheme the match was found
+    under -- None for a non-"lower" family) or None if the top doesn't
+    qualify (typically because the candidate is ordinal 1/A/i/(1)/a, or
+    the top is a different family)."""
+    if not stack:
+        return None
+    top = stack[-1]
+    lvl_fam, lvl_raw = top["chain"][-1]
+    if lvl_fam != fam:
+        return None
+    cand_variants = _ecmc_label_ordinal_variants(fam, raw_lbl)
+    lvl_variants = _ecmc_label_ordinal_variants(lvl_fam, lvl_raw)
+    locked_scheme = top.get("scheme") if fam == "lower" else None
+    schemes_to_try = [locked_scheme] if locked_scheme not in (None, "ambiguous") else cand_variants.keys()
+    for scheme in schemes_to_try:
+        cand_ord = cand_variants.get(scheme)
+        lvl_ord = lvl_variants.get(scheme)
+        if cand_ord is not None and lvl_ord is not None and cand_ord == lvl_ord + 1:
+            return len(stack) - 1, (scheme if fam == "lower" else None)
+    return None
+
+
 def _ecmc_is_ladder_label(stripped: str) -> tuple[str, str, int] | None:
     """The ladder family whose regex matches the START of `stripped`; returns
     (family, raw_label, chars_consumed) or None."""
@@ -3416,11 +3546,36 @@ def _ecmc_scan_markers(lines: list[str]) -> list[dict]:
                         rule_prefixed = True
                 if hit:
                     fam, raw_lbl, consumed = hit
-                    while stack and indent <= stack[-1]["indent"]:
-                        stack.pop()
+                    match = _ecmc_sibling_match_index(stack, fam, raw_lbl)
+                    if match is not None:
+                        # Exact next-ordinal sibling of an open level --
+                        # accept regardless of indentation drift (see
+                        # _ECMC_INDENT_TOL's docstring above). The matched
+                        # scheme (for a "lower" family level) is carried
+                        # forward onto the replacement frame so the list's
+                        # numbering scheme, once established, stays locked
+                        # for the rest of its siblings (see
+                        # _ecmc_sibling_match_index's docstring).
+                        sib_idx, matched_scheme = match
+                        stack = stack[:sib_idx]
+                        new_scheme = matched_scheme
+                    else:
+                        # No open level is this candidate's immediate
+                        # predecessor (it's the first item of a list, or its
+                        # true predecessor isn't open): fall back to the
+                        # indentation stack, with a +/-4-column tolerance so
+                        # drift ALONE never opens a new nested level -- only
+                        # a candidate printed CLEARLY deeper than the open
+                        # top (beyond the tolerance) stays a child of it.
+                        while stack and indent <= stack[-1]["indent"] + _ECMC_INDENT_TOL:
+                            stack.pop()
+                        new_scheme = _ecmc_lower_scheme_from_raw(raw_lbl) if fam == "lower" else None
                     parent_chain = stack[-1]["chain"] if stack else []
                     chain = parent_chain + [(fam, raw_lbl)]
-                    stack.append(dict(indent=indent, chain=chain))
+                    frame = dict(indent=indent, chain=chain)
+                    if fam == "lower":
+                        frame["scheme"] = new_scheme
+                    stack.append(frame)
                     markers.append(dict(type="item", line=idx, rule=in_rule, depth=len(stack),
                                          chain=chain, consumed=consumed, rule_prefixed=rule_prefixed))
                     continue
