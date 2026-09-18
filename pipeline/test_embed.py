@@ -133,6 +133,51 @@ def test_batches_respect_text_and_char_limits(monkeypatch):
     assert [len(b) for b in batches] == [2, 2, 2, 1]        # 25 chars → 2 texts of 10
 
 
+def test_fetch_provisions_pages_on_id_and_dedupes(monkeypatch):
+    """Paging on sort_order (non-unique across regs) returned duplicate rows in
+    the first full-corpus run; ensure we page on id and drop repeats."""
+    monkeypatch.setattr(embed, "DB_PAGE_SIZE", 2)
+    pages = [[row(pid="sec-1-A"), row(pid="sec-1-B")],
+             [row(pid="sec-1-B"), row(pid="sec-1-C")],   # overlap as PostgREST can return
+             [row(pid="sec-1-D")]]
+    orders: list[str] = []
+
+    class Q:
+        def __init__(self): self.i = None
+        def select(self, *_): return self
+        def like(self, *_): return self
+        def order(self, col): orders.append(col); return self
+        def range(self, start, end): self.i = start // 2; return self
+        def execute(self):
+            class R: data = pages[self.i] if self.i < len(pages) else []
+            return R()
+
+    class C:
+        def table(self, *_): return Q()
+
+    got = [r["id"] for r in embed.fetch_provisions(C(), None, None)]
+    assert got == ["sec-1-A", "sec-1-B", "sec-1-C", "sec-1-D"]
+    assert set(orders) == {"id"}
+
+
+def test_upsert_collapses_duplicate_keys():
+    calls = []
+
+    class T:
+        def upsert(self, rows, on_conflict): calls.append(rows); return self
+        def execute(self): return None
+
+    class C:
+        def table(self, *_): return T()
+
+    rows = [{"provision_id": "p", "chunk_index": 0, "v": 1},
+            {"provision_id": "p", "chunk_index": 0, "v": 2},
+            {"provision_id": "q", "chunk_index": 0, "v": 3}]
+    embed.upsert_embeddings(C(), rows)
+    sent = [r for batch in calls for r in batch]
+    assert [(r["provision_id"], r["v"]) for r in sent] == [("p", 2), ("q", 3)]
+
+
 def test_vector_literal_format():
     assert vector_literal([0.5, -1.0, 2]) == "[0.5,-1.0,2.0]"
 

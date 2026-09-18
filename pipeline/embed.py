@@ -208,15 +208,23 @@ def make_supabase_client():
 def fetch_provisions(client, reg: Optional[str], limit: Optional[int]) -> list[dict]:
     like_prefix = f"sec-{reg.lower()}-" if reg else None
     cols = "id, citation, title, parent_id, full_text, ai_summary, summary_status, jurisdiction_level, sort_order"
+    # Page on `id`, never on sort_order: sort_order is only unique within one
+    # regulation, and paging a whole-corpus query on a column with ties lets
+    # PostgREST hand back the same row twice and skip another (the duplicate
+    # (provision_id, chunk_index) pairs that broke the first full run).
     rows: list[dict] = []
+    seen: set[str] = set()
     start = 0
     while True:
         q = client.table("provisions").select(cols)
         if like_prefix:
             q = q.like("id", f"{like_prefix}%")
-        q = q.order("sort_order").range(start, start + DB_PAGE_SIZE - 1)
+        q = q.order("id").range(start, start + DB_PAGE_SIZE - 1)
         page = q.execute().data or []
-        rows.extend(page)
+        for r in page:
+            if r["id"] not in seen:
+                seen.add(r["id"])
+                rows.append(r)
         if limit is not None and len(rows) >= limit:
             return rows[:limit]
         if len(page) < DB_PAGE_SIZE:
@@ -255,6 +263,12 @@ def vector_literal(vec: list[float]) -> str:
 
 
 def upsert_embeddings(client, rows: list[dict]) -> None:
+    # Defensive: Postgres rejects an upsert that touches the same key twice
+    # in one statement, so collapse any duplicate (provision_id, chunk_index).
+    uniq: dict[tuple[str, int], dict] = {}
+    for r in rows:
+        uniq[(r["provision_id"], r["chunk_index"])] = r
+    rows = list(uniq.values())
     for i in range(0, len(rows), UPSERT_PAGE_SIZE):
         client.table("provision_embeddings").upsert(
             rows[i:i + UPSERT_PAGE_SIZE], on_conflict="provision_id,chunk_index"
