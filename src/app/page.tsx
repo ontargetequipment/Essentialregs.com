@@ -31,6 +31,12 @@ export default async function Home() {
           Browse the full regulations
         </Link>
         <Link
+          href="/federal"
+          className="rounded-md border border-zinc-300 px-5 py-3 text-center text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
+        >
+          Federal regulations
+        </Link>
+        <Link
           href="/sample"
           className="rounded-md border border-zinc-300 px-5 py-3 text-center text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
         >

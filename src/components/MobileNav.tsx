@@ -105,6 +105,9 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
         <Link href="/regulations" className="hover:text-zinc-950">
           Regulations
         </Link>
+        <Link href="/federal" className="hover:text-zinc-950">
+          Federal
+        </Link>
         <Link href="/sample" className="hover:text-zinc-950">
           Sample
         </Link>
