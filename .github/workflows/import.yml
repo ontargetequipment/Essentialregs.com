@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       reg:
-        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, ecmc, oooob, ooooa, ooooc."
+        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, cp, ecmc, oooob, ooooa, ooooc."
         required: true
       execute:
         description: "Execute: actually write the plan to Supabase. Leave unchecked to only parse/export/diff/build the apply plan and upload the report -- no database writes."
@@ -46,6 +46,8 @@ jobs:
           # oooob -> OOOOb.pdf/.txt, ooooa -> OOOOa.pdf/.txt, ooooc -> OOOOc.pdf/.txt.
           if [[ "$REG" =~ ^[0-9]+$ ]]; then
             SRC_BASENAME="REG_${REG}"
+          elif [ "$REG" = "cp" ]; then
+            SRC_BASENAME="REG_CP"
           elif [ "$REG" = "ecmc" ]; then
             SRC_BASENAME="ECMC"
           elif [ "$REG" = "oooob" ]; then
@@ -55,7 +57,7 @@ jobs:
           elif [ "$REG" = "ooooc" ]; then
             SRC_BASENAME="OOOOc"
           else
-            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), ecmc, or one of oooob/ooooa/ooooc."
+            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), cp, ecmc, or one of oooob/ooooa/ooooc."
             exit 1
           fi
           echo "SRC_BASENAME=${SRC_BASENAME}" >> "$GITHUB_ENV"
