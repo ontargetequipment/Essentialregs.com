@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+
+/** The two regulation indexes behind the "Regulations" header entry. */
+const REGULATION_LINKS = [
+  { href: "/regulations", label: "Colorado (state)" },
+  { href: "/federal", label: "Federal" },
+] as const;
 
 /** Small magnifying-glass glyph for the header search button/link. */
 function SearchIcon() {
@@ -25,6 +31,7 @@ function SearchIcon() {
  */
 export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [regsOpen, setRegsOpen] = useState(false);
   const pathname = usePathname();
 
   // Close the menu on navigation. The root layout doesn't remount between
@@ -36,7 +43,30 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
   if (pathname !== prevPathname) {
     setPrevPathname(pathname);
     setOpen(false);
+    setRegsOpen(false);
   }
+
+  // Desktop "Regulations" dropdown: click to open (not hover, so it works
+  // the same for keyboard, touch and mouse), closes on outside click, Escape
+  // or navigation. Listeners are only attached while it's open.
+  const regsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!regsOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (regsRef.current && !regsRef.current.contains(e.target as Node)) {
+        setRegsOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setRegsOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [regsOpen]);
 
   return (
     <>
@@ -102,12 +132,50 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
         >
           <SearchIcon />
         </Link>
-        <Link href="/regulations" className="hover:text-zinc-950">
-          Regulations
-        </Link>
-        <Link href="/federal" className="hover:text-zinc-950">
-          Federal
-        </Link>
+        {/* Mobile: "Regulations" as a small heading with the two indexes
+            indented beneath it. Desktop: a click-to-open dropdown. */}
+        <div className="flex flex-col gap-2 sm:hidden">
+          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Regulations
+          </span>
+          {REGULATION_LINKS.map((l) => (
+            <Link key={l.href} href={l.href} className="pl-3 hover:text-zinc-950">
+              {l.label}
+            </Link>
+          ))}
+        </div>
+        <div ref={regsRef} className="relative hidden sm:block">
+          <button
+            type="button"
+            onClick={() => setRegsOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={regsOpen}
+            className="flex items-center gap-1 hover:text-zinc-950"
+          >
+            Regulations
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 8l5 5 5-5" />
+            </svg>
+          </button>
+          {regsOpen && (
+            <div
+              role="menu"
+              className="absolute left-0 top-full z-10 mt-2 flex min-w-40 flex-col rounded-md border border-zinc-200 bg-white py-1 shadow-md"
+            >
+              {REGULATION_LINKS.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  role="menuitem"
+                  onClick={() => setRegsOpen(false)}
+                  className="px-4 py-2 hover:bg-zinc-100 hover:text-zinc-950"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
         <Link href="/sample" className="hover:text-zinc-950">
           Sample
         </Link>
