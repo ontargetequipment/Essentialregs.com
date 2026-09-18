@@ -164,7 +164,7 @@ def test_upsert_collapses_duplicate_keys():
     calls = []
 
     class T:
-        def upsert(self, rows, on_conflict): calls.append(rows); return self
+        def upsert(self, rows, on_conflict, returning=None): calls.append(rows); return self
         def execute(self): return None
 
     class C:
@@ -221,6 +221,29 @@ def test_parent_lookups_use_small_id_batches(monkeypatch):
 
     embed.fetch_parents(C(), [f"p{i}" for i in range(7)])
     assert sizes == [3, 3, 1]
+
+
+def test_upsert_splits_page_on_statement_timeout(monkeypatch):
+    """A page that hits the 8s statement timeout (57014) is halved and retried
+    instead of failing the run."""
+    monkeypatch.setattr(embed, "UPSERT_PAGE_SIZE", 4)
+    sizes: list[int] = []
+
+    class T:
+        def __init__(self): self.rows = None
+        def upsert(self, rows, on_conflict, returning=None): self.rows = rows; return self
+        def execute(self):
+            sizes.append(len(self.rows))
+            if len(self.rows) > 2:
+                raise RuntimeError("{'code': '57014', 'message': 'canceling statement due to statement timeout'}")
+            return None
+
+    class C:
+        def table(self, *_): return T()
+
+    rows = [{"provision_id": f"p{i}", "chunk_index": 0} for i in range(4)]
+    embed.upsert_embeddings(C(), rows)
+    assert sizes == [4, 2, 2]
 
 
 def test_vector_literal_format():

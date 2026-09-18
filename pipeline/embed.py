@@ -79,7 +79,7 @@ MIN_BODY_CHARS = 1               # rows with no text at all still get embedded (
 VOYAGE_BATCH_TEXTS = 128         # texts per request (API max 1000)
 VOYAGE_BATCH_CHARS = 400_000     # ≈100k tokens per request, well under the 1M-token cap
 DB_PAGE_SIZE = 500
-UPSERT_PAGE_SIZE = 100
+UPSERT_PAGE_SIZE = 25            # each row is also an HNSW insert; 100 rows crossed the 8s cap
 IN_BATCH = 40                    # ids per in.(...) filter; long ids must fit the request URL
 NEIGHBOR_BATCH_IDS = 25          # PostgREST caps each call at 8s; ~25 anchors ≈ 1s warm, well under
 MAX_RETRIES = 6
@@ -280,6 +280,24 @@ def vector_literal(vec: list[float]) -> str:
     return "[" + ",".join(repr(float(x)) for x in vec) + "]"
 
 
+def _upsert_page(client, page: list[dict]) -> None:
+    """One upsert call. Every row also has to be slotted into the HNSW index,
+    which is what makes big pages slow; a page that still hits PostgREST's
+    8-second statement timeout is split in half and retried, down to single
+    rows, rather than failing the run."""
+    try:
+        client.table("provision_embeddings").upsert(
+            page, on_conflict="provision_id,chunk_index", returning="minimal"
+        ).execute()
+    except Exception as exc:  # noqa: BLE001
+        if len(page) == 1 or "57014" not in str(exc):
+            raise
+        mid = len(page) // 2
+        print(f"  upsert of {len(page)} rows timed out; retrying as {mid} + {len(page) - mid}")
+        _upsert_page(client, page[:mid])
+        _upsert_page(client, page[mid:])
+
+
 def upsert_embeddings(client, rows: list[dict]) -> None:
     # Defensive: Postgres rejects an upsert that touches the same key twice
     # in one statement, so collapse any duplicate (provision_id, chunk_index).
@@ -288,9 +306,7 @@ def upsert_embeddings(client, rows: list[dict]) -> None:
         uniq[(r["provision_id"], r["chunk_index"])] = r
     rows = list(uniq.values())
     for i in range(0, len(rows), UPSERT_PAGE_SIZE):
-        client.table("provision_embeddings").upsert(
-            rows[i:i + UPSERT_PAGE_SIZE], on_conflict="provision_id,chunk_index"
-        ).execute()
+        _upsert_page(client, rows[i:i + UPSERT_PAGE_SIZE])
 
 
 def delete_stale_chunks(client, provision_id: str, keep_upto: int) -> None:
