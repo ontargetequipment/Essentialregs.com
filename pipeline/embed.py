@@ -80,6 +80,7 @@ VOYAGE_BATCH_TEXTS = 128         # texts per request (API max 1000)
 VOYAGE_BATCH_CHARS = 400_000     # ≈100k tokens per request, well under the 1M-token cap
 DB_PAGE_SIZE = 500
 UPSERT_PAGE_SIZE = 100
+IN_BATCH = 40                    # ids per in.(...) filter; long ids must fit the request URL
 NEIGHBOR_BATCH_IDS = 25          # PostgREST caps each call at 8s; ~25 anchors ≈ 1s warm, well under
 MAX_RETRIES = 6
 
@@ -233,10 +234,14 @@ def fetch_provisions(client, reg: Optional[str], limit: Optional[int]) -> list[d
 
 
 def fetch_parents(client, parent_ids: Iterable[str]) -> dict[str, dict]:
+    """Parents are looked up by id list, which PostgREST puts in the request
+    URL. Ids like 'sec-7-B-III-C-4-c-(ii)-(A)-(1)' are long, and 500 of them
+    exceeded the URL limit (HTTP 400 'Bad Request') on the first full-corpus
+    run -- hence the small IN_BATCH."""
     ids = sorted({p for p in parent_ids if p})
     out: dict[str, dict] = {}
-    for i in range(0, len(ids), DB_PAGE_SIZE):
-        chunk = ids[i:i + DB_PAGE_SIZE]
+    for i in range(0, len(ids), IN_BATCH):
+        chunk = ids[i:i + IN_BATCH]
         rows = (client.table("provisions").select("id, citation, full_text")
                 .in_("id", chunk).execute().data or [])
         for r in rows:
@@ -244,17 +249,30 @@ def fetch_parents(client, parent_ids: Iterable[str]) -> dict[str, dict]:
     return out
 
 
-def fetch_existing_hashes(client, ids: list[str]) -> dict[tuple[str, int], str]:
-    """(provision_id, chunk_index) -> chunk_text_hash for rows already embedded."""
+def fetch_existing_hashes(client, ids: list[str], reg: Optional[str] = None
+                          ) -> dict[tuple[str, int], str]:
+    """(provision_id, chunk_index) -> chunk_text_hash for rows already embedded.
+
+    Reads the (small, three-column) embeddings index straight through in
+    pages -- optionally narrowed to one regulation's id prefix -- instead of
+    sending id lists in the URL, then keeps only the ids in scope."""
+    wanted = set(ids)
     out: dict[tuple[str, int], str] = {}
-    for i in range(0, len(ids), DB_PAGE_SIZE):
-        chunk = ids[i:i + DB_PAGE_SIZE]
-        rows = (client.table("provision_embeddings")
-                .select("provision_id, chunk_index, chunk_text_hash")
-                .in_("provision_id", chunk).execute().data or [])
+    like_prefix = f"sec-{reg.lower()}-" if reg else None
+    start = 0
+    while True:
+        q = (client.table("provision_embeddings")
+             .select("provision_id, chunk_index, chunk_text_hash"))
+        if like_prefix:
+            q = q.like("provision_id", f"{like_prefix}%")
+        q = q.order("provision_id").order("chunk_index").range(start, start + 1000 - 1)
+        rows = q.execute().data or []
         for r in rows:
-            out[(r["provision_id"], r["chunk_index"])] = r["chunk_text_hash"]
-    return out
+            if r["provision_id"] in wanted:
+                out[(r["provision_id"], r["chunk_index"])] = r["chunk_text_hash"]
+        if len(rows) < 1000:
+            return out
+        start += 1000
 
 
 def vector_literal(vec: list[float]) -> str:
@@ -470,7 +488,7 @@ def run(args: argparse.Namespace) -> int:
     provisions = fetch_provisions(client, args.reg, args.limit)
     print(f"  {len(provisions):,} rows.")
     parents = fetch_parents(client, (p.get("parent_id") for p in provisions))
-    existing = {} if args.force else fetch_existing_hashes(client, [p["id"] for p in provisions])
+    existing = {} if args.force else fetch_existing_hashes(client, [p["id"] for p in provisions], args.reg)
     print(f"  {len(existing):,} existing embedding chunks found for these rows.")
 
     todo, counts = plan_work(provisions, parents, existing, model, args.force, stats)

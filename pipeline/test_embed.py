@@ -178,6 +178,51 @@ def test_upsert_collapses_duplicate_keys():
     assert [(r["provision_id"], r["v"]) for r in sent] == [("p", 2), ("q", 3)]
 
 
+def test_existing_hashes_pages_without_id_lists(monkeypatch):
+    """Never put provision-id lists in the URL: a 500-id in.(...) filter of
+    long ids returned HTTP 400. The index is paged straight through instead."""
+    pages = [[{"provision_id": "sec-7-A", "chunk_index": 0, "chunk_text_hash": "h1"},
+              {"provision_id": "sec-7-B", "chunk_index": 0, "chunk_text_hash": "h2"}],
+             []]
+    used: list[str] = []
+
+    class Q:
+        def __init__(self): self.i = 0
+        def select(self, *_): return self
+        def like(self, *_): used.append("like"); return self
+        def in_(self, *_): used.append("in_"); return self
+        def order(self, *_): return self
+        def range(self, start, end): self.i = start // 1000; return self
+        def execute(self):
+            class R: data = pages[self.i] if self.i < len(pages) else []
+            return R()
+
+    class C:
+        def table(self, *_): return Q()
+
+    got = embed.fetch_existing_hashes(C(), ["sec-7-A", "sec-7-Z"], reg="7")
+    assert got == {("sec-7-A", 0): "h1"}          # only ids in scope are kept
+    assert "in_" not in used and "like" in used
+
+
+def test_parent_lookups_use_small_id_batches(monkeypatch):
+    monkeypatch.setattr(embed, "IN_BATCH", 3)
+    sizes: list[int] = []
+
+    class Q:
+        def select(self, *_): return self
+        def in_(self, col, vals): sizes.append(len(vals)); return self
+        def execute(self):
+            class R: data = []
+            return R()
+
+    class C:
+        def table(self, *_): return Q()
+
+    embed.fetch_parents(C(), [f"p{i}" for i in range(7)])
+    assert sizes == [3, 3, 1]
+
+
 def test_vector_literal_format():
     assert vector_literal([0.5, -1.0, 2]) == "[0.5,-1.0,2.0]"
 
@@ -201,7 +246,7 @@ def test_dry_run_estimate_never_needs_voyage_key(monkeypatch):
     monkeypatch.setattr(embed, "make_supabase_client", lambda: FakeClient())
     monkeypatch.setattr(embed, "fetch_provisions", fake_fetch)
     monkeypatch.setattr(embed, "fetch_parents", lambda c, ids: {})
-    monkeypatch.setattr(embed, "fetch_existing_hashes", lambda c, ids: {})
+    monkeypatch.setattr(embed, "fetch_existing_hashes", lambda c, ids, reg=None: {})
     monkeypatch.setattr(embed, "VoyageClient",
                         lambda *a, **k: calls.setdefault("voyage", True) and (_ for _ in ()).throw(AssertionError("Voyage called in dry run")))
     rc = embed.main(["--dry-run", "--reg", "7"])
