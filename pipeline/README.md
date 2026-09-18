@@ -272,3 +272,57 @@ be run by hand outside CI —
 prefer generating and reviewing the SQL files above for a manual import.
 See `pipeline/test_import_ccr.py` for the stub-client tests covering its
 chunking, field, and ordering behavior.
+
+# Semantic embeddings (`embed.py`)
+
+`pipeline/embed.py` turns every provision into a Voyage AI embedding
+(`voyage-3.5-lite`, 1024 dims) stored in `provision_embeddings`, then
+rebuilds `provision_neighbors` (the "Related provisions" panel) through the
+`recompute_provision_neighbors` SQL function. Both tables and the
+`match_provisions` search RPC come from `supabase/migrations/005_embeddings.sql`
+and `006_neighbors_rpc.sql`.
+
+What goes into each embedding: `<Colorado|Federal> regulation <key>: citation — title`,
+the first 300 characters of the immediate parent paragraph, the row's
+`ai_summary` (unless its `summary_status` is `rejected`), and the tag-stripped
+`full_text`. Rows over 6,000 characters are split into overlapping chunks
+(~1,500 tokens, 150 overlap); chunk 0 always carries the summary. Each chunk
+is content-hashed with the model name, so a re-run only re-embeds rows whose
+text or summary changed (or everything, with `--force`).
+
+Secrets: `VOYAGE_API_KEY` (GitHub Actions secret and Vercel env var), plus the
+existing `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`. Never commit the key.
+
+## Running it
+
+**Embed provisions** workflow (Actions tab), inputs: `reg`, `limit`, `dry_run`,
+`force`, `neighbors_only`. Always dry-run first — it prints the chunk count,
+token estimate and cost, and calls nothing:
+
+```
+python pipeline/embed.py --dry-run --show 3      # whole corpus estimate
+python pipeline/embed.py --reg 7                 # embed Reg 7 (changed rows only)
+python pipeline/embed.py                         # whole corpus, resumable
+python pipeline/embed.py --neighbors-only        # rebuild related panel, no API calls
+```
+
+The **Import regulation** workflow has an `embed` checkbox that runs
+`embed.py --reg <reg>` after a successful execute (and after summaries, if
+`regenerate_summaries` is also checked), so new regulations are searchable
+without a separate step. Note that `--reg` runs only recompute neighbours for
+the rows they touched; run `--neighbors-only` once afterwards if you want
+older rows to be able to point at the newly added ones.
+
+## Cost
+
+`voyage-3.5-lite` is $0.02 per million tokens. The whole corpus is roughly
+3.4M tokens ≈ **$0.07** one-time (September 2026 estimate; Voyage's free tier
+covers far more than that). A single search query is ~30 tokens. The related
+panel costs nothing at runtime. A new Voyage account has a low starter rate
+limit until a payment method is added; the script retries 429s with backoff,
+but adding a card in the Voyage dashboard makes the full run take minutes
+instead of hours.
+
+Failures are written to `pipeline/embed_failed.jsonl` (uploaded as a workflow
+artifact) and retried automatically on the next run, because a failed row
+still has no matching hash on record.

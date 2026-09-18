@@ -660,6 +660,15 @@ TABLE_CAPTION_RE = re.compile(
 # whitespace-normalized text (see `_table_caption_key`).
 TABLE_CAPTION_EXTRA_RE: dict[str, re.Pattern] = {
     "8": re.compile(r"^Table\s+([0-9]+)\.\s+(\S.*)$"),
+    # ECMC captions its tables "Table <rule>-<n>" (the rule number the table
+    # lives in, then a per-rule sequence number) — "Table 423-1 – Maximum
+    # Permissible Noise Levels", bare "Table 915-1" (a huge multi-page
+    # groundwater/soil cleanup-standards table with no inline caption text,
+    # continuation pages captioned "Table 915-1 (continued)"), and one
+    # ALL-CAPS "TABLE 437-1. Chemical Additives..." form (period, no dash).
+    # Confirmed against ECMC.pdf: pages that contain ANY of these caption
+    # forms as their own line always contain the actual bordered table.
+    "ecmc": re.compile(r"^(?:Table|TABLE)\s+([0-9]+-[0-9]+)\s*(?:\(continued\))?[.:]?\s*(?:[–—-]\s*)?(.*)$"),
 }
 
 
@@ -748,9 +757,22 @@ def extract_tables_from_pdf(pdf_path: str, reg: str | None = None) -> dict[str, 
                     caption = key
                     break
             if not caption:
+                # A large PDF (600+ pages, e.g. ECMC) otherwise accumulates
+                # unbounded memory: pdfplumber caches each page's parsed
+                # objects (chars/rects/images) once touched by
+                # extract_text() above and never releases them across a
+                # `for page in pdf.pages` walk of the whole document.
+                # Flushing a page's cache as soon as we know it holds no
+                # table changes no regulation's OUTPUT (nothing was read
+                # from `page` afterwards either way) — purely a memory fix,
+                # confirmed additive by the byte-identical reg1/reg26
+                # baselines (both far under the page count where this
+                # matters, but exercised through the same code path).
+                page.flush_cache()
                 continue
             tables = page.extract_tables()
             if not tables:
+                page.flush_cache()
                 continue
             # Pick the table whose first cell matches the caption line, else the first table.
             chosen = None
@@ -775,6 +797,7 @@ def extract_tables_from_pdf(pdf_path: str, reg: str | None = None) -> dict[str, 
                 existing_rows.extend(rows)
             else:
                 out[caption] = {"caption": caption, "rows": rows}
+            page.flush_cache()
     return out
 
 
@@ -817,6 +840,7 @@ CORPUS_REGS = {
     "1": "1",
     "2": "2", "3": "3", "6": "6", "7": "7", "8": "8", "22": "22", "26": "26",
     "oooob": "oooob", "ooooa": "ooooa", "ooooc": "ooooc",
+    "ecmc": "ecmc",
 }
 
 # Regulation Number 27 and 40 CFR Part 60 Subpart OOOO (the un-suffixed,
@@ -952,6 +976,28 @@ REG_META: dict[str, dict] = {
             "Existing Crude Oil and Natural Gas Facilities"
         ),
     },
+    # ECMC rules (2 CCR 404-1) — a completely different document shape from
+    # every AQCC regulation above: no "PART X" headings at all, no roman-
+    # numeral top sections. Instead the body is organized as "N00 SERIES
+    # <title>" headings, each containing numbered "NNN. <title>" RULES, each
+    # rule containing a lettered/numbered/lettered/roman ladder
+    # (a. -> (1) -> A. -> i.). `family: "rule_series"` gates a completely
+    # separate parsing path (see `parse_reg_rule_series` and the
+    # "ECMC rule-series family" section below) that this key alone selects —
+    # every other regulation's `family` is absent/None and keeps using the
+    # AQCC Part/Section pipeline unchanged. See ECMC_BRIEF.md.
+    "ecmc": {
+        "family": "rule_series",
+        "jurisdiction_level": "state", "issuing_body": "ECMC",
+        "source_url": "https://ecmc.colorado.gov/regulatory/rules",
+        "root_citation": "Code of Colorado Regulations · 2 CCR 404-1",
+        # Title page (page 1 of ECMC.pdf / ECMC.txt lines 1-24) prints, after
+        # the Dept./Commission lines: "PRACTICE AND PROCEDURE" then "2 CCR
+        # 404-1" on their own lines — that IS the document's printed title
+        # (the official CCR name for this whole rule set), even though it
+        # covers far more than Part 500's "Rules of Practice and Procedure".
+        "root_title": "PRACTICE AND PROCEDURE 2 CCR 404-1",
+    },
 }
 
 # Bucket names used for citation/reference text we recognized as
@@ -960,7 +1006,16 @@ BUCKET_HISTORICAL = "historical"     # former structure (renumbered away; Part D
 BUCKET_OTHER_REG = "other_reg"       # another regulation number not in the corpus
 BUCKET_CFR = "cfr"                   # a CFR part/subpart not in the corpus
 BUCKET_UNPARSEABLE = "unparseable"   # reference-shaped text that didn't tokenize, or a claimed-valid-part target that's still missing
-ALL_BUCKETS = [BUCKET_HISTORICAL, BUCKET_OTHER_REG, BUCKET_CFR, BUCKET_UNPARSEABLE]
+# ECMC-only buckets (see link_citations_ecmc): "Form N" and "§ ..., C.R.S."
+# citations are recognized reference shapes that are DELIBERATELY left as
+# plain text (per ECMC_BRIEF.md — no Form/statute rows exist to link to) but
+# still worth counting separately from a genuine parser gap. Additive for
+# every other regulation: their `unresolved` dicts are built fresh from
+# ALL_BUCKETS at parse time, so they simply get two permanently-empty
+# counters that print as "0 distinct" and change no parsed JSON output.
+BUCKET_FORM = "form"                 # "Form 2A", "Form 41", ...
+BUCKET_CRS = "crs"                   # "§ 34-60-106, C.R.S." statute citations
+ALL_BUCKETS = [BUCKET_HISTORICAL, BUCKET_OTHER_REG, BUCKET_CFR, BUCKET_UNPARSEABLE, BUCKET_FORM, BUCKET_CRS]
 
 # A citation "piece" is a compound label like "I.A.3." or "I.D.3.b.(x)" or the
 # compact-paren form "I.D.3.b.(x)(A)". The trailing plain-letter/digit segment
@@ -1985,6 +2040,33 @@ KNOWN_LABEL_FIXES: dict[str, list[dict]] = {
                 'unrelated "VII.A.20." (“Oil and natural gas compression segment”) '
                 'in Section VII’s own definitions. A source-text typo for "VIII.A.20."'
             ),
+        ),
+    ],
+    "ecmc": [
+        # Rule 525.b lists violation-duration rules (1)-(6), then its own
+        # PRINTED numbering restarts at "(4)" for two more items (ECMC.txt
+        # 16352-16357) that plainly continue the SAME list (mid-sentence
+        # topic continuity with (6) "With respect to violations..." just
+        # above; nothing about "Penalty Adjustments" or a new sub-topic that
+        # would justify a fresh (1)) rather than genuinely restarting — a
+        # source-text renumbering slip, not two different lists. Corrected
+        # to continue the sequence as (7) and (8); without this both
+        # collide with the earlier (4)/(5) into the same
+        # `sec-ecmc-525-b-(4)` / `sec-ecmc-525-b-(5)` rows (see the parse
+        # step's "id(s) produced by more than one marker" warning).
+        dict(
+            old_label="(4)", new_label="(7)",
+            match_prefix="(4)   A penalty will be assessed for each day the evidence shows a violation",
+            line_hint=16352,
+            note='Printed "(4)" — a source-text renumbering slip continuing Rule 525.b\'s '
+                 '(1)-(6) list; corrected to "(7)".',
+        ),
+        dict(
+            old_label="(5)", new_label="(8)",
+            match_prefix="(5)   The number of days of violation does not include any period necessary to",
+            line_hint=16355,
+            note='Printed "(5)" — a source-text renumbering slip continuing Rule 525.b\'s '
+                 '(1)-(6) list; corrected to "(8)".',
         ),
     ],
 }
@@ -3188,6 +3270,776 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
     return provisions, order, unresolved_all, table_hits
 
 
+# ==========================================================================
+# ECMC rule-series family (2 CCR 404-1, reg key "ecmc") — see ECMC_BRIEF.md.
+#
+# This document has NO "PART X" headings and no roman-numeral top level: the
+# body is organized as "N00 SERIES <title>" headings (100-1200, then a
+# differently-printed 1300 and 1400 series), each containing numbered
+# "NNN. <title>" RULES, each rule optionally containing a lettered/numbered/
+# lettered/roman ladder (a. -> (1) -> A. -> (i)), followed by four
+# APPENDIX blocks and an Editor's Notes/History tail. None of this matches
+# `scan_markers`'s hardcoded "PART <letter>" detection, so it is parsed by
+# this wholly separate, additive code path instead of reusing
+# scan_markers/build_provisions (which stay untouched for every other reg).
+# ==========================================================================
+
+# A genuine series/rule/appendix heading is always the first line of a new
+# paragraph in this pdftotext -layout dump (confirmed: the one place a bare
+# "NNN." pattern appears WITHOUT a preceding blank line is a wrapped
+# cross-reference — "...pursuant to Rule\n701." at ECMC.txt:670 — every real
+# heading has a blank line, or start-of-body, immediately before it).
+_ECMC_SERIES_RE = re.compile(r"^(\d{3,4})\s+[Ss][Ee][Rr][Ii][Ee][Ss]\b\s*[-–—:]?\s*(.*)$")
+_ECMC_RULE_RE = re.compile(r"^(\d{3,4})\.\s+(\S.*)$")
+_ECMC_APPENDIX_RE = re.compile(r"^(?:APPENDIX|Appendix)\s+([IVXLCDM]+)\b[:.]?\s*(.*)$")
+
+# The ladder under a rule (see ECMC_BRIEF.md: confirmed in Rule 604 —
+# "604.a.(1)", "604.b.(3).A"). ECMC_BRIEF.md describes the 4th level as
+# parenthesized roman ("(i)") from Rule 604 alone; reading the FULL document
+# shows that is the rare case (4 lines total) — the dominant 4th-level (and
+# occasionally 5th-level) convention is a BARE lower-case roman numeral
+# ("i.", "ii.", "iii." — 1347 lines, e.g. Rule 205.c.(3).A.i) which is
+# LEXICALLY IDENTICAL to an ordinary depth-1 lettered item ("a.", "b." ...
+# "h.", "i." IS a legal 9th plain letter too) — "i." cannot be told apart
+# from a 9th sequential lettered item by its text alone. Depth is therefore
+# resolved by INDENTATION (a classic indent-stack: pop while indent <= the
+# open stack top's indent, then push), not by which family regex matched;
+# family only affects citation punctuation (paren vs bare-with-dot) via
+# `token_display`, where a bare roman numeral and an ordinary letter render
+# identically ("i.") — so both can safely share the "lower" family, and no
+# separate "roman" family is needed at all for THIS (row-building) purpose.
+# `ECMC_LADDER_CYCLE` (kept for `link_citations_ecmc`'s compound-citation
+# tokenizer only, e.g. "604.b.(3).A" or the deeper "205.c.(3).A.i") repeats
+# the 3-part (letter, number, upper) pattern to cover a confirmed 5th level
+# without hard-capping at 4.
+ECMC_LADDER_CYCLE = ["lower", "paren_digit", "upper", "lower", "paren_digit", "upper", "lower"]
+
+# Mutually exclusive by construction (first non-space character differs):
+# "(" + digit, "(" + roman letters, one/two upper-case letters + ".", or
+# 1-4 lower-case letters + "." (plain letter OR bare roman numeral alike).
+_ECMC_ITEM_FAMILY_ORDER = ["paren_digit", "paren_roman", "upper", "lower"]
+
+
+def _ecmc_prevblank(lines: list[str], idx: int) -> bool:
+    return idx == 0 or lines[idx - 1].strip() == ""
+
+
+def _ecmc_is_ladder_label(stripped: str) -> tuple[str, str, int] | None:
+    """The ladder family whose regex matches the START of `stripped`; returns
+    (family, raw_label, chars_consumed) or None."""
+    for fam in _ECMC_ITEM_FAMILY_ORDER:
+        rx = FAMILY_REGEX[fam]
+        m = rx.match(stripped)
+        if not m:
+            continue
+        raw = m.group(1)
+        if fam == "paren_roman" and not is_valid_roman(raw.upper()):
+            continue
+        return fam, raw, m.end()
+    return None
+
+
+def find_body_start_ecmc(lines: list[str]) -> int:
+    """The title page / cover matter (Secretary of State boilerplate,
+    Department/Commission name, printed document title, Editor's Notes
+    forward-reference) precedes the real body; the real body starts at the
+    first "100 SERIES DEFINITIONS" heading."""
+    for i, l in enumerate(lines):
+        if _ECMC_SERIES_RE.match(l.strip()):
+            return i
+    return 0
+
+
+def _ecmc_scan_markers(lines: list[str]) -> list[dict]:
+    """One flat, document-order pass building every series/rule/appendix/
+    definition/ladder-item marker. A ladder item's depth and parent chain
+    are resolved by an INDENTATION STACK (see ECMC_LADDER_CYCLE's docstring
+    for why family alone can't disambiguate a bare roman numeral from an
+    ordinary lettered item): pop every open level whose indent is >= the
+    new candidate's indent (a shallower level, or a sibling at the same
+    indent), then the new item's parent is whatever remains on top (or the
+    rule itself, if the stack is now empty) and depth = len(stack)+1. This
+    also means a rule that skips a level, or nests deeper than 4, is
+    handled automatically — no hard-coded depth cap."""
+    markers: list[dict] = []
+    in_rule: str | None = None      # current rule number, or None outside any rule
+    in_series: str | None = None    # current series number
+    stack: list[dict] = []          # open ladder levels: [{"indent": int, "chain": [...]}]
+    in_appendix = False
+
+    for idx, raw in enumerate(lines):
+        stripped = raw.strip()
+        if stripped == "":
+            continue
+        prevblank = _ecmc_prevblank(lines, idx)
+        indent = len(raw) - len(raw.lstrip(" "))
+
+        if prevblank:
+            m = _ECMC_SERIES_RE.match(stripped)
+            if m:
+                in_series, in_rule, in_appendix = m.group(1), None, False
+                stack = []
+                markers.append(dict(type="series", line=idx, num=m.group(1), heading=m.group(2)))
+                continue
+            m = _ECMC_APPENDIX_RE.match(stripped)
+            if m:
+                in_appendix, in_rule = True, None
+                markers.append(dict(type="appendix", line=idx, letter=m.group(1), heading=m.group(2)))
+                continue
+            if not in_appendix:
+                m = _ECMC_RULE_RE.match(stripped)
+                if m:
+                    in_rule = m.group(1)
+                    stack = []
+                    markers.append(dict(type="rule", line=idx, num=m.group(1), rest=m.group(2),
+                                         series=in_series))
+                    continue
+            if in_rule is not None:
+                rule_prefixed = False
+                hit = _ecmc_is_ladder_label(stripped)
+                if not hit:
+                    # The 1100 (Flowline) series' rules 1101-1105 print their
+                    # OWN top-level letter re-prefixed with the full rule
+                    # number ("1101.a.", "1105.g." — confirmed the only
+                    # rules doing this: grep "^\d{3,4}\.[a-z]{1,3}\.\s"
+                    # across the whole document only ever matches these 5),
+                    # instead of Rule 604's bare "a." — without this, the
+                    # line doesn't start with '(' or a letter so it isn't
+                    # recognized as a label at all, and every rule's "(1)"
+                    # that follows wrongly opens at depth 1 instead of
+                    # nesting under the (never-recorded) "a."/"b." level,
+                    # colliding across sections ("sec-ecmc-1101-(1)" printed
+                    # once under "a." and again, unrelated, under "b.").
+                    m = re.match(rf"^{re.escape(in_rule)}\.([a-z]{{1,4}})\.\s+(\S.*)$", stripped)
+                    if m:
+                        hit = ("lower", m.group(1), m.start(2))
+                        rule_prefixed = True
+                if hit:
+                    fam, raw_lbl, consumed = hit
+                    while stack and indent <= stack[-1]["indent"]:
+                        stack.pop()
+                    parent_chain = stack[-1]["chain"] if stack else []
+                    chain = parent_chain + [(fam, raw_lbl)]
+                    stack.append(dict(indent=indent, chain=chain))
+                    markers.append(dict(type="item", line=idx, rule=in_rule, depth=len(stack),
+                                         chain=chain, consumed=consumed, rule_prefixed=rule_prefixed))
+                    continue
+    return markers
+
+
+# 100-Series definitions: "TERM means ..." / "TERM shall mean ..." (also,
+# confirmed present in this document: "shall be", "shall include", "is
+# defined", "when used", "for purposes of", "used to", "includes",
+# "refers to", "has the meaning", or a bare "TERM:" opener) — one paragraph
+# (occasionally several, with lettered/numbered/bulleted sub-items) per
+# defined term, no printed labels at all. A defined term is recognized by
+# testing the FIRST LINE of each blank-line-delimited paragraph inside the
+# 100 Series against this opener list; every paragraph that doesn't open a
+# new term (a lettered/numbered/bulleted sub-item, a wrapped continuation, a
+# nested sub-definition like "Wellhead Line means...") is folded into the
+# CURRENT term's full_text as an additional paragraph rather than becoming
+# its own row.
+_ECMC_DEF_OPENERS = (
+    r"shall mean|means|shall be|shall include|is defined|when used|"
+    r"for purposes of|used to|includes|refers to|has the meaning"
+)
+_ECMC_DEF_START_RE = re.compile(
+    rf"^([A-Za-z0-9][A-Za-z0-9 ()&,\-/’'.]*?)(?:\s+(?:{_ECMC_DEF_OPENERS})\b|:\s+\S)"
+)
+
+# Fallback for a term with NO opener verb at all — confirmed exactly once:
+# "COMPLETION An oil well shall be considered completed when..." (the term
+# is directly followed by an ordinary capitalized sentence, no "means"/
+# "shall mean"/etc. and no colon). Recognized structurally: 1-3 ALL-CAPS
+# words immediately followed by a Capitalized-then-lowercase word (a real
+# sentence start, not another all-caps run or a lone lettered sub-item
+# label like "A." — "A" is 1 letter, this requires 2+ uppercase letters
+# with no separating punctuation before the sentence begins). Verified
+# against every OTHER 100-Series paragraph that doesn't match the opener
+# list above: this pattern matches nothing else in the document, so it is
+# not loosening the primary opener-based detection.
+_ECMC_DEF_NOVERB_RE = re.compile(r"^([A-Z][A-Z]+(?:\s[A-Z]+){0,2})\s+(?=[A-Z][a-z])")
+
+
+def _ecmc_def_term(first_line: str) -> str | None:
+    m = _ECMC_DEF_START_RE.match(first_line)
+    if m:
+        term = m.group(1).strip()
+        letters = [c for c in term if c.isalpha()]
+        ok = bool(letters) and len(term.split()) <= 8
+        if ok and sum(c.isupper() for c in letters) / len(letters) > 0.9:
+            return term
+        # Falls through to the no-opener fallback below rather than
+        # returning None here: the lazy capture in _ECMC_DEF_START_RE can
+        # match past the real term (e.g. "COMPLETION An oil well" before
+        # hitting a LATER "shall be" inside the sentence), which fails the
+        # ratio check above without proving there's no term at all.
+    m2 = _ECMC_DEF_NOVERB_RE.match(first_line)
+    if m2:
+        term = m2.group(1).strip()
+        if term.isupper() and 1 <= len(term.split()) <= 3:
+            return term
+    return None
+
+
+def _ecmc_def_slug(term: str) -> str:
+    slug = re.sub(r"[^A-Z0-9]+", "-", term.upper()).strip("-")
+    return slug or "TERM"
+
+
+# Common short lower-case connectors that legitimately appear INSIDE an
+# otherwise ALL-CAPS rule title (confirmed: Rule 604 "SETBACKS and SITING
+# REQUIREMENTS", Rule 402 "...AND UNIT DESIGNATION RULE") — everything else
+# in a title is either ALL-CAPS or pure punctuation/digits.
+_ECMC_TITLE_CONNECTORS = {"a", "an", "the", "of", "in", "on", "for", "and", "or", "to", "at", "by", "with", "from"}
+
+
+def _ecmc_title_word_ok(word: str) -> bool:
+    core = word.strip(",.;:()")
+    alpha = [c for c in core if c.isalpha()]
+    if not alpha:
+        return True  # pure punctuation/digits, e.g. "2A," "600" — title-safe
+    if all(c.isupper() for c in alpha):
+        return True
+    return core.lower() in _ECMC_TITLE_CONNECTORS
+
+
+def _ecmc_rule_title(rest: str, own_lines: list[str]) -> tuple[str, str, int]:
+    """Splits a rule heading's title from (a) an inline body lead sharing the
+    heading's own physical line (confirmed once: Rule 409, "REPORT OF
+    RESERVOIR PRESSURE TEST. Where the Director believes..." — the first
+    word that isn't ALL-CAPS/punctuation/a title connector, "Where", starts
+    the body, not the title) or (b) a title that wraps onto one or more
+    ALL-CAPS continuation lines with no blank line before the real body
+    starts (confirmed 27 times, e.g. Rule 211 "PLUGGING AND ABANDONMENT OF
+    WELLS AND CLOSURE OF OIL AND" / "GAS FACILITIES AND LOCATIONS"). A
+    period-position heuristic (title ends at the first ". " before a
+    lower-case letter) looks tempting but is WRONG here: Rule 409's own
+    body text starts with "Where" — capitalized, like any normal English
+    sentence — so the real signal is ALL-CAPS-ness word by word, not case
+    at a period. Returns (title, body_lead, n_continuation_lines_consumed)."""
+    # Rule 437's title, alone in the document, is printed in ordinary Title
+    # Case rather than ALL-CAPS ("Hydraulic Fracturing Chemical Additives.")
+    # — a single clean sentence-fragment ending in exactly one period with
+    # nothing else on the line, which the ALL-CAPS word scan below would
+    # otherwise reject at its very first word. Recognized structurally (one
+    # terminal period, no other punctuation implying a second sentence) so
+    # it doesn't have to be hard-coded to that one rule number.
+    if re.fullmatch(r"[A-Z][A-Za-z0-9 ,()'/&\-]*\.", rest):
+        return rest, "", 0
+    words0 = rest.split()
+    stop_idx = next((i for i, w in enumerate(words0) if not _ecmc_title_word_ok(w)), None)
+    if stop_idx is not None:
+        title = " ".join(words0[:stop_idx])
+        body_lead = " ".join(words0[stop_idx:])
+        return re.sub(r"\s+", " ", title).strip(), body_lead.strip(), 0
+    title_words = words0[:]
+    consumed = 0
+    for ln in own_lines:
+        if ln.strip() == "":
+            break
+        lwords = ln.split()
+        if lwords and all(_ecmc_title_word_ok(w) for w in lwords):
+            title_words.extend(lwords)
+            consumed += 1
+        else:
+            break
+    return re.sub(r"\s+", " ", " ".join(title_words)).strip(), "", consumed
+
+
+_ECMC_ITEM_HEADING_WORDS_MAX = 12
+
+
+def _ecmc_item_heading_split(inline_text: str, own_lines: list[str]) -> tuple[str | None, str, int]:
+    """For a 'rule_prefixed' 1100-series ladder item (see the caller):
+    distinguishes a genuine short printed heading from ordinary body prose
+    that simply happens to start with a capitalized word. Word-by-word
+    ALL-CAPS scanning (used for rule titles, which ARE printed ALL-CAPS)
+    does not work here because these headings are Title-Case or even just
+    sentence-case ("Isolation valve repair and maintenance.") — case alone
+    cannot tell "Material." (a heading) from "Any valve, flange..." (a
+    sentence, also capitalized at the start). The reliable structural
+    signal instead: a printed heading here is always a short noun-phrase
+    ending in ITS OWN period within a handful of words — either on the
+    marker's own physical line ("Material. Materials for pipe...", period
+    after 1 word) or, when the heading itself wraps, on the immediately
+    following continuation line ("Crude Oil Transfer Line and Produced
+    Water Transfer System" / "Registration.", period after 1 word on line
+    2). Ordinary body prose, by contrast, does not reach a period until
+    much later (confirmed for every 1103.b/.c/.d, 1105.a/.b/.g instance:
+    no period appears anywhere in the first physical line at all). Returns
+    (heading_or_None, body_lead, n_continuation_lines_consumed)."""
+
+    def _first_period_idx(words: list[str]) -> int | None:
+        return next((i for i, w in enumerate(words) if w.endswith(".")), None)
+
+    words = inline_text.split()
+    idx = _first_period_idx(words)
+    if idx is not None and idx < _ECMC_ITEM_HEADING_WORDS_MAX:
+        heading = " ".join(words[: idx + 1])
+        body_lead = " ".join(words[idx + 1:]).strip()
+        return heading, body_lead, 0
+
+    if idx is None and own_lines and own_lines[0].strip():
+        cont_words = own_lines[0].split()
+        cidx = _first_period_idx(cont_words)
+        if cidx is not None and len(words) + cidx + 1 <= _ECMC_ITEM_HEADING_WORDS_MAX:
+            heading = " ".join(words + cont_words[: cidx + 1])
+            body_lead = " ".join(cont_words[cidx + 1:]).strip()
+            return heading, body_lead, 1
+
+    return None, inline_text, 0
+
+
+# Distinct citation shapes this linker recognizes and deliberately leaves as
+# plain text rather than resolving (per ECMC_BRIEF.md: no Form/statute rows
+# exist in this corpus to link to) — counted separately from a genuine gap
+# via BUCKET_FORM / BUCKET_CRS so the diff report can tell the two apart.
+_ECMC_FORM_RE = re.compile(r"\bForm\s+\d+[A-Z]?\b")
+_ECMC_CRS_RE = re.compile(r"§+\s*[\d\-.]+(?:\([a-zA-Z0-9]+\))*,?\s*C\.R\.S\.")
+_ECMC_RULE_CITE_RE = re.compile(
+    # A printed compound citation attaches each token DIRECTLY to the last
+    # one (confirmed: "604.b.(3).A", "201.a.(1)") — a bare letter/number
+    # token supplies its OWN leading+trailing dot (".a.", ".A" — trailing
+    # dot optional, since mid-sentence the last token often drops it), while
+    # a parenthesized token has no dot of its own at all (it attaches
+    # directly to whatever came before, and the NEXT token's leading dot,
+    # if any, is that next token's own). So "\.[a-z]{1,4}\.?" (or upper) and
+    # a bare "(...)" are the only two per-token shapes, repeated freely.
+    r"\bRules?\s+(\d{3,4})((?:\.[a-zA-Z]{1,4}\.?|\(\d{1,3}\)|\([ivxlcdmA-Z]{1,4}\))*)"
+)
+_ECMC_RULE_THROUGH_RE = re.compile(r"\bRules\s+(\d{3,4})\s+through\s+(\d{3,4})\b")
+_ECMC_SERIES_CITE_RE = re.compile(r"\b(?:the\s+)?(\d{3,4})\s+Series\b")
+_ECMC_TABLE_CITE_RE = re.compile(r"\bTable\s+(\d{3,4}-\d+)\b")
+_ECMC_APPENDIX_CITE_RE = re.compile(r"\bAppendix\s+([IVXLCDM]+)\b")
+_ECMC_OTHER_REG_RE = re.compile(r"\bRegulation Number\s+(\d+)\b")
+
+
+def _ecmc_rule_sub_id(rule_num: str, sub_citation: str) -> str | None:
+    """'.b.(3).A' -> 'sec-ecmc-604-b-(3)-A' (tokenizes against
+    ECMC_LADDER_CYCLE, same convention as the parser's own ids)."""
+    text = sub_citation.lstrip(".")
+    if not text:
+        return None
+    if not text.endswith((".", ")")):
+        text += "."
+    tokens, consumed = tokenize_by_cycle(text, ECMC_LADDER_CYCLE)
+    if not tokens or text[consumed:] not in ("", "."):
+        return None
+    return f"sec-ecmc-{rule_num}-" + tokens_to_id_suffix(tokens)
+
+
+def link_citations_ecmc(text: str, known_ids: set[str], corpus_regs: set[str],
+                         table_owner: dict[str, str]) -> tuple[str, dict[str, Counter]]:
+    """ECMC's cross-reference linker (see ECMC_BRIEF.md "Cross-reference
+    linking"). Independent of `link_citations` (the AQCC Part/roman linker)
+    because the id/citation shapes are unrelated; written against plain
+    `text` (already HTML-escaped) using non-overlapping regex passes over a
+    `pieces` splice list, the same output convention `link_citations` uses."""
+    buckets: dict[str, Counter] = {b: Counter() for b in ALL_BUCKETS}
+    pieces: list[tuple[int, int, str]] = []
+    claimed: list[tuple[int, int]] = []
+
+    def _claim(start: int, end: int) -> bool:
+        for s, e in claimed:
+            if start < e and end > s:
+                return False
+        claimed.append((start, end))
+        return True
+
+    # 1) "Rules N through M" — link the two endpoints, leave "through" as text.
+    for m in _ECMC_RULE_THROUGH_RE.finditer(text):
+        for grp in (1, 2):
+            num = m.group(grp)
+            target = f"sec-ecmc-{num}"
+            span = m.span(grp)
+            if target in known_ids and _claim(*span):
+                pieces.append((span[0], span[1], f'<span class="xref" data-target="{target}">{num}</span>'))
+
+    # 2) "Rule N" / "Rules N" with an optional compound sub-citation.
+    for m in _ECMC_RULE_CITE_RE.finditer(text):
+        if not _claim(*m.span()):
+            continue
+        num, sub = m.group(1), m.group(2)
+        target = f"sec-ecmc-{num}"
+        if sub:
+            deep_target = _ecmc_rule_sub_id(num, sub)
+            if deep_target and deep_target in known_ids:
+                target = deep_target
+            elif target not in known_ids:
+                target = None
+        elif target not in known_ids:
+            target = None
+        if target:
+            pieces.append((m.start(), m.end(), f'<span class="xref" data-target="{target}">{m.group(0)}</span>'))
+        else:
+            top_target = f"sec-ecmc-{num}"
+            bucket = BUCKET_UNPARSEABLE if top_target in known_ids else BUCKET_HISTORICAL
+            buckets[bucket][m.group(0)] += 1
+
+    # 3) "N Series" / "the N00 Series".
+    for m in _ECMC_SERIES_CITE_RE.finditer(text):
+        if not _claim(*m.span()):
+            continue
+        num = m.group(1)
+        target = f"sec-ecmc-S-{num}"
+        if target in known_ids:
+            pieces.append((m.start(1), m.end(1), f'<span class="xref" data-target="{target}">{num}</span>'))
+        else:
+            buckets[BUCKET_UNPARSEABLE][m.group(0)] += 1
+
+    # 4) "Table N-N" — link to the row the table is actually rendered in.
+    for m in _ECMC_TABLE_CITE_RE.finditer(text):
+        if not _claim(*m.span()):
+            continue
+        key = m.group(1)
+        target = table_owner.get(key)
+        if target and target in known_ids:
+            pieces.append((m.start(), m.end(), f'<span class="xref" data-target="{target}">{m.group(0)}</span>'))
+        else:
+            buckets[BUCKET_UNPARSEABLE][m.group(0)] += 1
+
+    # 5) "Appendix N".
+    for m in _ECMC_APPENDIX_CITE_RE.finditer(text):
+        if not _claim(*m.span()):
+            continue
+        letter = m.group(1)
+        target = f"sec-ecmc-APPENDIX-{letter}"
+        if target in known_ids:
+            pieces.append((m.start(), m.end(), f'<span class="xref" data-target="{target}">{m.group(0)}</span>'))
+        else:
+            buckets[BUCKET_UNPARSEABLE][m.group(0)] += 1
+
+    # 6) "Form N" / "§ ..., C.R.S." — recognized, deliberately plain text.
+    for m in _ECMC_FORM_RE.finditer(text):
+        if _claim(*m.span()):
+            buckets[BUCKET_FORM][m.group(0)] += 1
+    for m in _ECMC_CRS_RE.finditer(text):
+        if _claim(*m.span()):
+            buckets[BUCKET_CRS][m.group(0)] += 1
+
+    # 7) "Regulation Number N" — another regulation in (or outside) the corpus.
+    for m in _ECMC_OTHER_REG_RE.finditer(text):
+        if not _claim(*m.span()):
+            continue
+        num = m.group(1)
+        if num == "404":  # "2 CCR 404-1" self-mentions are not "Regulation Number 404"
+            continue
+        if num in corpus_regs and num != "ecmc":
+            root_target = f"sec-{num}-top-REG-{num}"
+            pieces.append((m.start(), m.end(),
+                            f'<a class="xref-external-reg" href="/regulations/{num}">{m.group(0)}</a>'))
+        else:
+            buckets[BUCKET_OTHER_REG][m.group(0)] += 1
+
+    pieces.sort(key=lambda p: p[0])
+    out = []
+    pos = 0
+    for start, end, html in pieces:
+        if start < pos:
+            continue
+        out.append(text[pos:start])
+        out.append(html)
+        pos = end
+    out.append(text[pos:])
+    return "".join(out), buckets
+
+
+def parse_reg_rule_series(reg: str, lines: list[str], tables_by_caption: dict[str, dict]):
+    """The ECMC ("rule_series" family) counterpart to build_provisions — see
+    the module docstring above this section. Returns the same 4-tuple shape
+    as build_provisions (provisions_dict, order, unresolved, table_hits)."""
+    meta = REG_META.get(reg, {})
+    root_citation = meta.get("root_citation", f"Regulation {reg}")
+    root_title = meta.get("root_title", root_citation)
+    root_id = f"sec-{reg}-top-REG-{reg}"
+
+    provisions: dict[str, dict] = {}
+    order: list[str] = []
+    sort = {"n": 0}
+    table_hits = {"used": 0, "captions_used": []}
+
+    def next_sort():
+        sort["n"] += 10
+        return sort["n"]
+
+    provisions[root_id] = dict(
+        id=root_id, citation=root_citation, title=root_title,
+        parent_id=None, sort_order=0, full_text=escape_html_text(root_title), kind="root",
+    )
+    order.append(root_id)
+
+    markers = _ecmc_scan_markers(lines)
+
+    # pending[id] = (kind_tag, ...) — raw (unlinked) content, resolved into
+    # full_text in the second pass below, exactly like build_provisions.
+    pending: dict[str, tuple] = {}
+    series_row_id: dict[str, str] = {}
+    table_owner: dict[str, str] = {}  # "423-1" -> row id the table is rendered in
+
+    def _cut_table(own_lines: list[str], row_id: str) -> tuple[list[str], str]:
+        table_html = ""
+        for li, ln in enumerate(own_lines):
+            caption_key = _table_caption_key(ln, reg)
+            if not caption_key:
+                continue
+            table = tables_by_caption.get(caption_key)
+            if not table:
+                # A captioned table pdfplumber's line-based detector found
+                # no bordered table for (confirmed: Rule 423's "Table 423-1
+                # – Maximum Permissible Noise Levels" is printed with NO
+                # ruling lines at all on ECMC.pdf page 228 — extract_tables()
+                # returns zero tables there). Leaving `own_lines` untouched
+                # keeps the table's actual data as plain (column-garbled but
+                # PRESENT) paragraph text — cutting here without a `table`
+                # to replace it with would silently drop the content
+                # entirely, which is worse than a garbled render.
+                continue
+            table_html = render_table_html(table)
+            table_hits["used"] += 1
+            table_hits["captions_used"].append(caption_key)
+            m = re.match(r"^(?:Table|TABLE)\s+([0-9]+-[0-9]+)", caption_key)
+            if m:
+                table_owner.setdefault(m.group(1), row_id)
+            return own_lines[:li], table_html
+        return own_lines, table_html
+
+    for i, mk in enumerate(markers):
+        if mk["type"] == "series":
+            sid = f"sec-ecmc-S-{mk['num']}"
+            heading = re.sub(r"\s+", " ", mk["heading"]).strip()
+            citation = f"{mk['num']} Series"
+            title = f"{citation} — {heading}" if heading else citation
+            provisions[sid] = dict(
+                id=sid, citation=citation, title=title, parent_id=root_id,
+                sort_order=next_sort(), full_text=escape_html_text(title), kind="series",
+            )
+            order.append(sid)
+            series_row_id[mk["num"]] = sid
+            if mk["num"] == "100":
+                # 100 Series definitions: no printed labels; see
+                # _ecmc_def_term. Walk this series' own text (up to the next
+                # marker, i.e. the 200 Series heading) as paragraphs.
+                own_lines = marker_own_lines(lines, markers, i)
+                paras = split_into_paragraphs(own_lines)
+                terms_seen: Counter = Counter()
+                cur_id = None
+                def_paras: list[str] = []
+
+                def _flush():
+                    if cur_id is not None:
+                        pending[cur_id] = ("def", def_paras[:], cur_id)
+
+                for p in paras:
+                    term = _ecmc_def_term(p)
+                    if term:
+                        _flush()
+                        slug = _ecmc_def_slug(term)
+                        terms_seen[slug] += 1
+                        suffix = slug if terms_seen[slug] == 1 else f"{slug}-{terms_seen[slug]}"
+                        cur_id = f"sec-ecmc-100-DEF-{suffix}"
+                        provisions[cur_id] = dict(
+                            id=cur_id, citation=f"100 Series — {term}", title=term,
+                            parent_id=sid, sort_order=next_sort(), full_text="", kind="definition",
+                        )
+                        order.append(cur_id)
+                        def_paras = [p]
+                    elif cur_id is not None:
+                        def_paras.append(p)
+                    # else: stray text before the first recognized term
+                    # (none confirmed) — silently dropped rather than
+                    # crashing; would show up as a row-count shortfall.
+                _flush()
+            continue
+
+        if mk["type"] == "appendix":
+            aid = f"sec-ecmc-APPENDIX-{mk['letter']}"
+            heading = re.sub(r"\s+", " ", mk["heading"]).strip()
+            citation = f"Appendix {mk['letter']}"
+            title = f"{citation} — {heading}" if heading else citation
+            own_lines = marker_own_lines(lines, markers, i)
+            own_lines, table_html = _cut_table(own_lines, aid)
+            paras = split_into_paragraphs(own_lines)
+            provisions[aid] = dict(
+                id=aid, citation=citation, title=title, parent_id=root_id,
+                sort_order=next_sort(), full_text="", kind="appendix",
+            )
+            pending[aid] = ("appendix", paras, title, table_html, aid)
+            order.append(aid)
+            continue
+
+        if mk["type"] == "rule":
+            num = mk["num"]
+            rid = f"sec-ecmc-{num}"
+            own_lines_full = marker_own_lines(lines, markers, i)
+            title, body_lead, consumed = _ecmc_rule_title(mk["rest"], own_lines_full)
+            own_lines = own_lines_full[consumed:]
+            own_lines, table_html = _cut_table(own_lines, rid)
+            citation = f"Rule {num}."
+            row_title = f"{citation} — {title}" if title else citation
+            paras = split_into_paragraphs(([body_lead] if body_lead else []) + own_lines)
+            parent_id = series_row_id.get(mk["series"], root_id)
+            provisions[rid] = dict(
+                id=rid, citation=citation, title=row_title, parent_id=parent_id,
+                sort_order=next_sort(), full_text="", kind="section",
+            )
+            # "heading_body": the printed heading (row_title, e.g. "Rule
+            # 604. — SETBACKS and SITING REQUIREMENTS") is always rendered —
+            # alone (plain, unwrapped — same convention as an AQCC Part/
+            # bare-item heading row, e.g. Reg 26's `sec-26-A-I` full_text
+            # "I. General Provisions") when the rule has no lead-in body
+            # text of its own before its first ladder item/table, or as the
+            # FIRST <p> paragraph followed by the body paragraphs (the way
+            # an AQCC section with printed lead-in text does) when it does.
+            pending[rid] = ("heading_body", row_title, paras, table_html)
+            order.append(rid)
+            continue
+
+        # type == "item" — a ladder entry inside a rule.
+        chain = mk["chain"]
+        rule_num = mk["rule"]
+        item_id = f"sec-ecmc-{rule_num}-" + tokens_to_id_suffix(chain)
+        citation = f"{rule_num}." + tokens_to_citation(chain)
+        if len(chain) == 1:
+            parent_id = f"sec-ecmc-{rule_num}"
+        else:
+            parent_id = f"sec-ecmc-{rule_num}-" + tokens_to_id_suffix(chain[:-1])
+
+        inline_line = lines[mk["line"]]
+        inline_text = fix_known_pdf_glitches(inline_line.strip()[mk["consumed"]:].strip())
+        own_lines_full = marker_own_lines(lines, markers, i)
+        own_lines, table_html = _cut_table(own_lines_full, item_id)
+        extra_nonblank = [ln for ln in own_lines if ln.strip() != ""]
+
+        if mk.get("rule_prefixed"):
+            # The 1100 (Flowline) series' own top-level letters re-print the
+            # FULL rule number ("1101.a.     Flowline and Crude Oil Transfer
+            # Line Statuses."). MANY, but not all, of these letters print a
+            # genuine short descriptive HEADING first (a noun-phrase label
+            # ending in its own period — "Material.", "Isolation valve repair
+            # and maintenance.", occasionally wrapping onto one continuation
+            # line before that period — "Crude Oil Transfer Line and Produced
+            # Water Transfer System" / "Registration."); others have NO
+            # heading at all and start directly with ordinary body prose
+            # (confirmed: 1103.b/.c/.d, 1105.a/.b/.g — e.g. "Any valve,
+            # flange, fitting..."). `_ecmc_item_heading_split` tells the two
+            # apart structurally (see its own docstring) rather than
+            # assuming every rule_prefixed line is a heading.
+            heading, body_lead, cont_used = _ecmc_item_heading_split(inline_text, own_lines)
+            if heading is not None:
+                remaining = own_lines[cont_used:]
+                paras = split_into_paragraphs(([body_lead] if body_lead else []) + remaining)
+                pending[item_id] = ("heading_body", heading, paras, table_html)
+                provisions[item_id] = dict(
+                    id=item_id, citation=citation, title=heading, parent_id=parent_id,
+                    sort_order=next_sort(), full_text="", kind="item",
+                )
+            else:
+                # No genuine printed heading under this letter — ordinary
+                # body prose from the first word. Falls back to the same
+                # convention as any other ladder item with body text: title
+                # stays the bare citation (not a truncated sentence
+                # fragment), full_text is the body paragraphs.
+                all_lines = ([inline_text] if inline_text else []) + own_lines
+                paras = split_into_paragraphs(all_lines)
+                pending[item_id] = ("paras", paras, item_id, table_html)
+                provisions[item_id] = dict(
+                    id=item_id, citation=citation, title=citation, parent_id=parent_id,
+                    sort_order=next_sort(), full_text="", kind="item",
+                )
+        elif not extra_nonblank and not inline_text and not table_html:
+            text = citation
+            pending[item_id] = ("heading", text, item_id, "")
+            provisions[item_id] = dict(
+                id=item_id, citation=citation, title=text, parent_id=parent_id,
+                sort_order=next_sort(), full_text="", kind="item",
+            )
+        elif not extra_nonblank:
+            text = f"{citation} {inline_text}".strip() if inline_text else citation
+            pending[item_id] = ("heading", text, item_id, table_html)
+            provisions[item_id] = dict(
+                id=item_id, citation=citation, title=text, parent_id=parent_id,
+                sort_order=next_sort(), full_text="", kind="item",
+            )
+        else:
+            all_lines = ([inline_text] if inline_text else []) + own_lines
+            paras = split_into_paragraphs(all_lines)
+            pending[item_id] = ("paras", paras, item_id, table_html)
+            provisions[item_id] = dict(
+                id=item_id, citation=citation, title=citation, parent_id=parent_id,
+                sort_order=next_sort(), full_text="", kind="item",
+            )
+        order.append(item_id)
+
+    # Second pass: link cross-references now that every id is known.
+    known_ids = set(provisions.keys())
+    unresolved_all: dict[str, Counter] = {b: Counter() for b in ALL_BUCKETS}
+
+    def _merge(b: dict[str, Counter]) -> None:
+        for k, ctr in b.items():
+            unresolved_all[k].update(ctr)
+
+    for pid, entry in pending.items():
+        kindtag = entry[0]
+        if kindtag == "def":
+            paras = entry[1]
+            rendered = []
+            for p in paras:
+                escaped = escape_html_text(p)
+                linked, b = link_citations_ecmc(escaped, known_ids, CORPUS_REGS, table_owner)
+                _merge(b)
+                rendered.append(f"<p>{linked}</p>")
+            provisions[pid]["full_text"] = "".join(rendered)
+        elif kindtag == "heading":
+            _, text, own_id, table_html = entry
+            escaped = escape_html_text(text)
+            linked, b = link_citations_ecmc(escaped, known_ids, CORPUS_REGS, table_owner)
+            _merge(b)
+            provisions[pid]["full_text"] = linked + table_html
+        elif kindtag == "paras":
+            _, paras, own_id, table_html = entry
+            rendered = []
+            for p in paras:
+                escaped = escape_html_text(p)
+                linked, b = link_citations_ecmc(escaped, known_ids, CORPUS_REGS, table_owner)
+                _merge(b)
+                rendered.append(f"<p>{linked}</p>")
+            provisions[pid]["full_text"] = "".join(rendered) + table_html
+        elif kindtag == "heading_body":
+            # Rule rows and "rule_prefixed" ladder items (the 1100/Flowline
+            # series): the heading text ALWAYS appears in full_text, either
+            # alone (no lead-in body) or as the first paragraph followed by
+            # the body paragraphs — matching the existing AQCC convention
+            # for e.g. sec-26-P-A / sec-26-A-I heading rows.
+            _, heading_text, paras, table_html = entry
+            escaped_heading = escape_html_text(heading_text)
+            linked_heading, b = link_citations_ecmc(escaped_heading, known_ids, CORPUS_REGS, table_owner)
+            _merge(b)
+            if not paras:
+                provisions[pid]["full_text"] = linked_heading + table_html
+            else:
+                rendered = [f"<p>{linked_heading}</p>"]
+                for p in paras:
+                    escaped = escape_html_text(p)
+                    linked, b = link_citations_ecmc(escaped, known_ids, CORPUS_REGS, table_owner)
+                    _merge(b)
+                    rendered.append(f"<p>{linked}</p>")
+                provisions[pid]["full_text"] = "".join(rendered) + table_html
+        elif kindtag == "appendix":
+            _, paras, title, table_html, own_id = entry
+            rendered = []
+            for p in paras:
+                escaped = escape_html_text(p)
+                linked, b = link_citations_ecmc(escaped, known_ids, CORPUS_REGS, table_owner)
+                _merge(b)
+                rendered.append(f"<p>{linked}</p>")
+            body_html = "".join(rendered)
+            escaped_title = escape_html_text(title)
+            provisions[pid]["full_text"] = table_html + (escaped_title if not paras else escaped_title + body_html)
+
+    return provisions, order, unresolved_all, table_hits
+
+
 _PART_A_HEADING_RE = re.compile(r"^\s*PART\s+A\s+\S")
 _PART_A_BARE_HEADING_RE = re.compile(r"^\s*PART\s+A\s*$")
 
@@ -3284,7 +4136,13 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
     lines, label_fixes_applied = apply_known_label_fixes(reg, lines)
     lines, text_fixes_applied = apply_known_text_fixes(reg, lines)
     label_fixes_applied = label_fixes_applied + text_fixes_applied
-    start = find_body_start_no_parts(lines) if reg_has_no_parts(reg) else find_body_start(lines, reg)
+    is_rule_series = REG_META.get(reg, {}).get("family") == "rule_series"
+    if is_rule_series:
+        start = find_body_start_ecmc(lines)
+    elif reg_has_no_parts(reg):
+        start = find_body_start_no_parts(lines)
+    else:
+        start = find_body_start(lines, reg)
     lines = lines[start:]
     seam_starts = {i - start for i in seam_starts if i >= start}
     skip_candidates, continuation_hits = find_known_continuation_lines(reg, lines)
@@ -3297,8 +4155,12 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
         except Exception as exc:  # pdfplumber optional at parse time
             print(f"warning: table extraction failed: {exc}", file=sys.stderr)
 
-    markers, marker_audit = scan_markers(lines, seam_starts, reg, skip_candidates)
-    provisions, order, unresolved, table_hits = build_provisions(reg, lines, markers, tables_by_caption)
+    if is_rule_series:
+        marker_audit = []
+        provisions, order, unresolved, table_hits = parse_reg_rule_series(reg, lines, tables_by_caption)
+    else:
+        markers, marker_audit = scan_markers(lines, seam_starts, reg, skip_candidates)
+        provisions, order, unresolved, table_hits = build_provisions(reg, lines, markers, tables_by_caption)
 
     # De-duplicate: two different markers occasionally compute the same id —
     # either a genuine source-text labeling duplicate (two real items printed
@@ -3510,6 +4372,8 @@ def _xref_report_section(reg: str, parsed: list[dict], db: list[dict], parsed_by
         BUCKET_OTHER_REG: "Other regulation not in corpus",
         BUCKET_CFR: "CFR part/subpart not in corpus",
         BUCKET_UNPARSEABLE: "Unparseable / genuine parser gap",
+        BUCKET_FORM: "Form N (ECMC) — recognized, deliberately left as plain text",
+        BUCKET_CRS: "C.R.S. statute citation (ECMC) — recognized, deliberately left as plain text",
     }
     if not unresolved_buckets:
         lines.append("_none recorded (run `parse` first to generate the sidecar file)_\n")

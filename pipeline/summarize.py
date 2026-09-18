@@ -27,7 +27,7 @@ Examples:
     # Regenerate every summary in Reg 3 from scratch.
     python pipeline/summarize.py --reg 3 --force
 
-    # --reg takes any regulation id prefix: 1, 2, 3, 6, 7, 8, 22, 26,
+    # --reg takes any regulation id prefix: 1, 2, 3, 6, 7, 8, 22, 26, ecmc,
     # ooooa, oooob, ooooc. Regs listed in REG_PROMPT_HINTS get an extra
     # regulation-specific paragraph appended to the system prompt per row.
 
@@ -88,9 +88,19 @@ TAG_RE = re.compile(r"<[^>]+>")
 NBSP_RE = re.compile(r"&nbsp;")
 WS_RE = re.compile(r"\s+")
 
-SYSTEM_PROMPT = (
-    "You are explaining a legal/regulatory provision to an EHS or compliance "
-    "person at a Colorado oil & gas operator who is NOT a lawyer and does "
+DEFAULT_AUDIENCE = (
+    "an EHS or compliance person at a Colorado oil & gas operator"
+)
+
+# Per-regulation override of the audience clause in SYSTEM_PROMPT, keyed by
+# the row's own regulation key (see REG_PROMPT_HINTS below for the same
+# keying). Regs with no entry get DEFAULT_AUDIENCE -- this is the hook for a
+# future non-oil-and-gas regulation to swap in its own reader description;
+# ECMC is still oil & gas, so it gets no entry here.
+REG_AUDIENCE: dict[str, str] = {}
+
+SYSTEM_PROMPT_TEMPLATE = (
+    "You are explaining a legal/regulatory provision to {audience} who is NOT a lawyer and does "
     "not want to wade through legal language. Write 2-5 short sentences in "
     "plain, everyday English, the way you'd explain it out loud to a "
     "coworker: who it applies to, what it requires or prohibits, and any "
@@ -150,6 +160,11 @@ SYSTEM_PROMPT = (
     "sentence. No preamble, no markdown, no bullet lists -- output only the "
     "summary."
 )
+
+# The rendered prompt for the default (oil & gas) audience -- every existing
+# call site and test refers to this literal string, so it must stay
+# byte-identical to the pre-audience-hook wording.
+SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATE.format(audience=DEFAULT_AUDIENCE)
 
 # Regulation-specific guidance appended to SYSTEM_PROMPT per ROW, keyed by
 # the row's own regulation key (the "<regkey>" in an id like
@@ -255,6 +270,27 @@ REG_PROMPT_HINTS: dict[str, str] = {
     "7": _COLORADO_AREA_SCOPE_HINT,
     "22": _COLORADO_AREA_SCOPE_HINT,
     "26": _COLORADO_AREA_SCOPE_HINT,
+    "ecmc": (
+        "This row is from Colorado's ECMC rules (2 CCR 404-1). \"Commission\" "
+        "means the Energy and Carbon Management Commission (ECMC, formerly "
+        "COGCC), never the AQCC. This document has no APCD \"Division\" -- "
+        "don't default to that expansion; \"Director\" and \"LGD\" (Local "
+        "Governmental Designee) are ECMC-specific roles instead. \"Relevant "
+        "Local Government\" and \"Proximate Local Government\" are distinct "
+        "defined terms -- never conflate them. Use Disproportionately "
+        "Impacted Community, Cumulative Impacts, Working Pad Surface, Oil "
+        "and Gas Location, and High Priority Habitat only as this text "
+        "itself defines them. A \"Form N\" reference (e.g. Form 2, 5, 7, 19, "
+        "42) is an ECMC form -- name it, don't describe its contents. Quote "
+        "setback distances exactly; never round or generalize them. A 1300 "
+        "Series (Deep Geothermal) or 1400 Series (Class VI UIC) rule "
+        "incorporates the 200-1200 Series rules by cross-reference rather "
+        "than restating them -- say that rather than treating the rule as "
+        "short and self-contained. 100 Series rows are definitions. Table "
+        "423-1/423-2 render as plain text, not a grid. The History tail at "
+        "the end of Appendix IX is a rulemaking changelog, not part of Form "
+        "41."
+    ),
 }
 
 
@@ -293,10 +329,15 @@ def reg_key_of(provision_id: str) -> Optional[str]:
 
 
 def system_prompt_for(provision_id: str) -> str:
-    """SYSTEM_PROMPT plus this row's regulation hint (REG_PROMPT_HINTS),
-    when one exists; otherwise SYSTEM_PROMPT unchanged."""
-    hint = REG_PROMPT_HINTS.get(reg_key_of(provision_id) or "")
-    return f"{SYSTEM_PROMPT}\n\n{hint}" if hint else SYSTEM_PROMPT
+    """SYSTEM_PROMPT_TEMPLATE rendered for this row's audience
+    (REG_AUDIENCE.get(key, DEFAULT_AUDIENCE)) plus this row's regulation hint
+    (REG_PROMPT_HINTS), when one exists. No reg currently overrides
+    REG_AUDIENCE, so this renders byte-identically to SYSTEM_PROMPT for every
+    existing reg; it's the hook for a future non-oil-and-gas regulation."""
+    key = reg_key_of(provision_id) or ""
+    base = SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE.get(key, DEFAULT_AUDIENCE))
+    hint = REG_PROMPT_HINTS.get(key)
+    return f"{base}\n\n{hint}" if hint else base
 
 
 # --------------------------------------------------------------------------
@@ -784,7 +825,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--reg", default=None,
-        help="Limit to one regulation's id prefix, e.g. 1, 2, 3, 6, 7, 8, 26, oooob. "
+        help="Limit to one regulation's id prefix, e.g. 1, 2, 3, 6, 7, 8, 26, ecmc, oooob. "
              "Omit to run against every regulation. Ignored if --ids-file is given.",
     )
     parser.add_argument(

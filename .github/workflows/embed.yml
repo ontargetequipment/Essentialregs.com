@@ -1,0 +1,73 @@
+name: Embed provisions
+
+on:
+  workflow_dispatch:
+    inputs:
+      reg:
+        description: "Regulation to embed (e.g. 7, 3, 26, oooob). Leave blank for all."
+        required: false
+        default: ""
+      limit:
+        description: "Stop after this many provisions (for test runs). Leave blank for no limit."
+        required: false
+        default: ""
+      dry_run:
+        description: "Dry run: count tokens and quote the cost. Calls nothing, writes nothing."
+        type: boolean
+        required: false
+        default: false
+      force:
+        description: "Force: re-embed rows even when their content hash is unchanged."
+        type: boolean
+        required: false
+        default: false
+      neighbors_only:
+        description: "Only rebuild the related-provisions table for the whole corpus (no Voyage calls)."
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  embed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest
+
+      - name: Unit tests
+        run: python -m pytest test_embed.py -q
+
+      - name: Run embedder
+        env:
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          ARGS=()
+          if [ -n "${{ inputs.reg }}" ]; then ARGS+=(--reg "${{ inputs.reg }}"); fi
+          if [ -n "${{ inputs.limit }}" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run --show 3); fi
+          if [ "${{ inputs.force }}" = "true" ]; then ARGS+=(--force); fi
+          if [ "${{ inputs.neighbors_only }}" = "true" ]; then ARGS+=(--neighbors-only); fi
+          echo "Running: python embed.py ${ARGS[*]}"
+          python embed.py "${ARGS[@]}"
+
+      - name: Upload failed rows (if any)
+        if: always() && hashFiles('pipeline/embed_failed.jsonl') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-embeddings
+          path: pipeline/embed_failed.jsonl
+          retention-days: 30

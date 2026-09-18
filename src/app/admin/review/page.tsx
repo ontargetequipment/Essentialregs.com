@@ -7,7 +7,7 @@ import { approveSummary, rejectSummary, saveEditAndApprove } from "./actions";
 
 export const metadata = { title: "Review queue" };
 
-const REG_KEYS = ["1", "2", "3", "6", "7", "8", "22", "26", "ooooa", "oooob", "ooooc"] as const;
+const REG_KEYS = ["1", "2", "3", "6", "7", "8", "22", "26", "ecmc", "ooooa", "oooob", "ooooc"] as const;
 const REG_LABELS: Record<string, string> = {
   "1": "Reg 1",
   "2": "Reg 2",
@@ -17,6 +17,7 @@ const REG_LABELS: Record<string, string> = {
   "8": "Reg 8",
   "22": "Regulation 22",
   "26": "Reg 26",
+  ecmc: "ECMC rules",
   ooooa: "40 CFR 60 Subpart OOOOa",
   oooob: "OOOOb",
   ooooc: "40 CFR 60 Subpart OOOOc",

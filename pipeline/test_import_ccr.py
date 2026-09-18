@@ -1605,5 +1605,166 @@ class Reg6MetaTests(unittest.TestCase):
         self.assertFalse(ic.SOB_PART_CONFIG["6"]["inner_items"])
 
 
+# ---------------------------------------------------------------------------
+# ECMC (2 CCR 404-1) — the "rule_series" family: no PART headings, "N00
+# SERIES" top level, "NNN." rules, a lettered/numbered/lettered/roman ladder,
+# 100-Series definitions with no printed labels, and APPENDIX blocks. See
+# ECMC_BRIEF.md.
+# ---------------------------------------------------------------------------
+
+_ECMC_FIXTURE = """\
+100 SERIES DEFINITIONS
+
+WIDGET means a small mechanical device used in Operations.
+
+GADGET used to describe an ancillary tool that supports a Widget.
+
+200 SERIES GENERAL PROVISIONS
+
+201. SAMPLE RULE FOR TESTING AND
+VERIFICATION
+
+a.     Introductory text referencing Rule 201.a.(1) and the 200 Series.
+
+       (1)   First item, see Table 201-1.
+
+             A.     Nested item under A.
+
+                    i.     Bare roman item under A. — lexically identical to
+                    a 9th plain letter, disambiguated by indentation only.
+
+b.     Second top-level item.
+
+APPENDIX I     SAMPLE APPENDIX
+
+Some appendix text mentioning Appendix I and Rule 201.
+"""
+
+
+class RuleSeriesFamilyTests(unittest.TestCase):
+    """Synthetic-fixture coverage for parse_reg_rule_series / link_citations_ecmc."""
+
+    @classmethod
+    def setUpClass(cls):
+        raw_lines = _ECMC_FIXTURE.split("\n")
+        cls.rows, cls.order, cls.unresolved, cls.table_hits = ic.parse_reg_rule_series(
+            "ecmc", raw_lines, {}
+        )
+        cls.by_id = {pid: cls.rows[pid] for pid in cls.order}
+
+    def test_series_rule_and_appendix_ids(self):
+        self.assertIn("sec-ecmc-top-REG-ecmc", self.by_id)
+        self.assertIn("sec-ecmc-S-100", self.by_id)
+        self.assertIn("sec-ecmc-S-200", self.by_id)
+        self.assertEqual(self.by_id["sec-ecmc-S-200"]["citation"], "200 Series")
+        self.assertIn("sec-ecmc-201", self.by_id)
+        self.assertEqual(self.by_id["sec-ecmc-201"]["parent_id"], "sec-ecmc-S-200")
+        self.assertIn("sec-ecmc-APPENDIX-I", self.by_id)
+        self.assertEqual(self.by_id["sec-ecmc-APPENDIX-I"]["parent_id"], "sec-ecmc-top-REG-ecmc")
+
+    def test_wrapped_rule_title_joined(self):
+        self.assertIn("SAMPLE RULE FOR TESTING AND VERIFICATION", self.by_id["sec-ecmc-201"]["title"])
+
+    def test_ladder_ids_and_bare_roman_depth_by_indent(self):
+        for pid, expected_parent in [
+            ("sec-ecmc-201-a", "sec-ecmc-201"),
+            ("sec-ecmc-201-a-(1)", "sec-ecmc-201-a"),
+            ("sec-ecmc-201-a-(1)-A", "sec-ecmc-201-a-(1)"),
+            ("sec-ecmc-201-a-(1)-A-i", "sec-ecmc-201-a-(1)-A"),
+            ("sec-ecmc-201-b", "sec-ecmc-201"),
+        ]:
+            self.assertIn(pid, self.by_id, pid)
+            self.assertEqual(self.by_id[pid]["parent_id"], expected_parent, pid)
+        self.assertEqual(self.by_id["sec-ecmc-201-a-(1)-A-i"]["citation"], "201.a.(1).A.i.")
+
+    def test_definitions_one_row_per_term_no_printed_labels(self):
+        widget = self.by_id["sec-ecmc-100-DEF-WIDGET"]
+        self.assertEqual(widget["title"], "WIDGET")
+        self.assertEqual(widget["citation"], "100 Series — WIDGET")
+        self.assertEqual(widget["parent_id"], "sec-ecmc-S-100")
+        self.assertIn("small mechanical device", widget["full_text"])
+        self.assertIn("sec-ecmc-100-DEF-GADGET", self.by_id)  # "used to" opener
+
+    def test_same_reg_cross_references_link(self):
+        intro = self.by_id["sec-ecmc-201-a"]["full_text"]
+        self.assertIn('data-target="sec-ecmc-201-a-(1)"', intro)
+        self.assertIn('data-target="sec-ecmc-S-200"', intro)
+        appendix_text = self.by_id["sec-ecmc-APPENDIX-I"]["full_text"]
+        self.assertIn('data-target="sec-ecmc-APPENDIX-I"', appendix_text)
+        self.assertIn('data-target="sec-ecmc-201"', appendix_text)
+
+    def test_no_duplicate_ids_and_every_parent_resolves(self):
+        self.assertEqual(len(self.order), len(set(self.order)))
+        for pid in self.order:
+            parent = self.by_id[pid]["parent_id"]
+            self.assertTrue(parent is None or parent in self.by_id, pid)
+
+    def test_unresolved_table_reference_bucketed_not_dropped(self):
+        # No PDF in this fixture, so "Table 201-1" can't resolve to a
+        # rendered table — it must land in a bucket (proving the linker
+        # SAW it), not silently vanish from both the text and every bucket.
+        total_unresolved = sum(sum(c.values()) for c in self.unresolved.values())
+        self.assertGreaterEqual(total_unresolved, 1)
+
+
+ECMC_TXT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "ECMC.txt")
+ECMC_PDF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "ECMC.pdf")
+
+
+class EcmcFullParseTests(unittest.TestCase):
+    """End-to-end parse of the real source (skipped when it's not present).
+    No --pdf here (table extraction is slow on a 675-page PDF and is
+    exercised separately by the `parse` CLI run that produced
+    out/ecmc_parsed.json) — these assertions don't depend on table HTML."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(ECMC_TXT):
+            raise unittest.SkipTest("sources/ECMC.txt not present in this checkout")
+        (cls.rows, cls.unresolved, _th, _nt, cls.dupes, cls.fixes, _an, _audit) = ic.parse_reg(
+            "ecmc", ECMC_TXT, None
+        )
+        cls.by_id = {r["id"]: r for r in cls.rows}
+
+    def test_row_counts_and_no_duplicates(self):
+        # 225 "NNN. TITLE" headings confirmed by grep (paragraph-initial,
+        # excluding the one wrapped-citation false positive at line 670 —
+        # see ECMC_BRIEF.md gate A / REPORT.md); the brief's estimate of 232
+        # does not match the current in-force text.
+        self.assertEqual(sum(1 for r in self.rows if r["kind"] == "section"), 225)
+        self.assertEqual(sum(1 for r in self.rows if r["kind"] == "series"), 14)
+        self.assertEqual(sum(1 for r in self.rows if r["kind"] == "appendix"), 4)
+        # Appendix VI prints its own "APPENDIX VI  PUBLIC WATER SYSTEMS"
+        # heading, then its body text ITSELF opens with "Appendix VI: List
+        # of Public Water Systems..." — a second, genuine match of the same
+        # appendix-heading pattern for the SAME appendix, not a distinct
+        # appendix; the two are correctly merged into one
+        # `sec-ecmc-APPENDIX-VI` row (see REPORT.md).
+        self.assertEqual(self.dupes, ["sec-ecmc-APPENDIX-VI"])
+        self.assertTrue(all(r["parent_id"] in self.by_id for r in self.rows if r["parent_id"]))
+
+    def test_label_fixes_all_hit_once(self):
+        self.assertTrue(all(f["hits"] == 1 for f in self.fixes))
+
+    def test_key_ids_present(self):
+        for rid in ("sec-ecmc-604", "sec-ecmc-604-a", "sec-ecmc-604-a-(3)-A",
+                    "sec-ecmc-100-DEF-ANNULUS", "sec-ecmc-S-600", "sec-ecmc-APPENDIX-IX"):
+            self.assertIn(rid, self.by_id, rid)
+
+    def test_no_page_furniture_leaks(self):
+        for r in self.rows:
+            self.assertNotRegex(r["full_text"], r"CODE OF COLORADO REGULATIONS")
+
+
+class EcmcMetaTests(unittest.TestCase):
+    def test_corpus_and_meta_entries(self):
+        self.assertEqual(ic.CORPUS_REGS["ecmc"], "ecmc")
+        m = ic.REG_META["ecmc"]
+        self.assertEqual(m["family"], "rule_series")
+        self.assertEqual(m["jurisdiction_level"], "state")
+        self.assertEqual(m["issuing_body"], "ECMC")
+        self.assertIn("2 CCR 404-1", m["root_citation"])
+
+
 if __name__ == "__main__":
     unittest.main()

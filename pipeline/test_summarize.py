@@ -104,8 +104,11 @@ import pytest  # noqa: E402
 
 import summarize  # noqa: E402
 from summarize import (  # noqa: E402
+    DEFAULT_AUDIENCE,
+    REG_AUDIENCE,
     REG_PROMPT_HINTS,
     SYSTEM_PROMPT,
+    SYSTEM_PROMPT_TEMPLATE,
     build_prompt,
     reg_key_of,
     system_prompt_for,
@@ -247,6 +250,109 @@ def test_build_prompt_user_prompt_unchanged_shape():
     assert "Provision text:" in result.prompt
     assert result.body_word_count == 40
     assert result.truncated is False
+
+
+# --------------------------------------------------------------------------
+# ECMC hint (added Sept 17 2026)
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("provision_id", [
+    "sec-ecmc-100-a",
+    "sec-ecmc-604-b-(1)",
+    "sec-ecmc-1301-a",
+    "sec-ecmc-APPENDIX-IX",
+])
+def test_ecmc_hint_selected_by_id_prefix(provision_id):
+    system = system_prompt_for(provision_id)
+    assert system == f"{SYSTEM_PROMPT}\n\n{REG_PROMPT_HINTS['ecmc']}"
+    assert "Energy and Carbon Management Commission" in system
+    assert "AQCC" in system
+
+
+def test_ecmc_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["ecmc"]
+    for marker in (
+        "ECMC", "formerly", "COGCC", "APCD", "Division", "Director", "LGD",
+        "Local Governmental Designee", "Relevant Local Government",
+        "Proximate Local Government", "Disproportionately Impacted "
+        "Community", "Cumulative Impacts", "Working Pad Surface",
+        "Oil and Gas Location", "High Priority Habitat", "ECMC form",
+        "setback", "1300 Series", "1400 Series", "200-1200 Series",
+        "100 Series", "definitions", "Table 423-1", "423-2", "History",
+        "Appendix IX", "Form 41",
+    ):
+        assert marker in hint, f"missing {marker!r} from ecmc hint"
+
+
+def test_ecmc_hint_reasonably_short():
+    assert len(REG_PROMPT_HINTS["ecmc"].split()) <= 190
+
+
+def test_reg7_prompt_has_no_ecmc_specific_text():
+    system = system_prompt_for("sec-7-B-I-C-1")
+    assert REG_PROMPT_HINTS["ecmc"] not in system
+    for ecmc_only in ("ECMC", "1300 Series", "Form 41"):
+        assert ecmc_only not in system
+
+
+# --------------------------------------------------------------------------
+# Audience hook (REG_AUDIENCE / DEFAULT_AUDIENCE / SYSTEM_PROMPT_TEMPLATE)
+# --------------------------------------------------------------------------
+
+def test_system_prompt_is_template_rendered_with_default_audience():
+    assert SYSTEM_PROMPT == SYSTEM_PROMPT_TEMPLATE.format(audience=DEFAULT_AUDIENCE)
+
+
+def test_default_audience_matches_original_wording():
+    assert DEFAULT_AUDIENCE == (
+        "an EHS or compliance person at a Colorado oil & gas operator"
+    )
+
+
+def test_no_reg_overrides_audience_yet():
+    # ECMC stays on the O&G default -- REG_AUDIENCE is a hook for a future
+    # non-oil-and-gas regulation, not yet populated.
+    assert REG_AUDIENCE == {}
+
+
+@pytest.mark.parametrize("provision_id", [
+    "sec-7-B-I-C-1",
+    "sec-ecmc-100-a",
+    "sec-oooob-5390",
+    "sec-1-III-C-1",
+])
+def test_every_existing_and_new_reg_uses_default_audience(provision_id):
+    system = system_prompt_for(provision_id)
+    assert system.startswith(SYSTEM_PROMPT_TEMPLATE.format(audience=DEFAULT_AUDIENCE))
+
+
+# --------------------------------------------------------------------------
+# Byte-identical guarantee: adding the ecmc hint/audience hook must not
+# change the rendered prompt for any pre-existing regulation.
+# --------------------------------------------------------------------------
+
+def _load_orig_summarize():
+    import importlib.util
+
+    orig_path = Path(__file__).resolve().parent / "orig_summarize.py"
+    spec = importlib.util.spec_from_file_location("orig_summarize", orig_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["orig_summarize"] = module
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
+    return module
+
+
+@pytest.mark.parametrize("provision_id", [
+    "sec-7-B-I-C-1",
+    "sec-oooob-5390",
+])
+def test_rendered_prompt_byte_identical_to_before_ecmc_change(provision_id):
+    # orig_summarize.py is a local pre-change copy used during review only;
+    # it is not committed, so this guard test skips in CI.
+    if not (Path(__file__).resolve().parent / "orig_summarize.py").exists():
+        pytest.skip("orig_summarize.py (pre-change copy) not present in this checkout")
+    orig = _load_orig_summarize()
+    assert system_prompt_for(provision_id) == orig.system_prompt_for(provision_id)
 
 
 def test_call_sites_use_per_row_system(monkeypatch):

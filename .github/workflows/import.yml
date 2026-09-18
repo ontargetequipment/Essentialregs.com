@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       reg:
-        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, oooob, ooooa, ooooc."
+        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, ecmc, oooob, ooooa, ooooc."
         required: true
       execute:
         description: "Execute: actually write the plan to Supabase. Leave unchecked to only parse/export/diff/build the apply plan and upload the report -- no database writes."
@@ -13,6 +13,11 @@ on:
         default: false
       regenerate_summaries:
         description: "Regenerate summaries: after a successful execute, also run summarize.py --force on exactly the ids the apply plan says need a fresh summary. Ignored unless execute is also checked."
+        type: boolean
+        required: false
+        default: false
+      embed:
+        description: "Embed: after a successful execute (and summaries, if requested), run embed.py for this regulation so semantic search and the related-provisions panel pick up the new/changed rows. Only rows whose text or summary changed are sent to Voyage. Ignored unless execute is also checked."
         type: boolean
         required: false
         default: false
@@ -41,6 +46,8 @@ jobs:
           # oooob -> OOOOb.pdf/.txt, ooooa -> OOOOa.pdf/.txt, ooooc -> OOOOc.pdf/.txt.
           if [[ "$REG" =~ ^[0-9]+$ ]]; then
             SRC_BASENAME="REG_${REG}"
+          elif [ "$REG" = "ecmc" ]; then
+            SRC_BASENAME="ECMC"
           elif [ "$REG" = "oooob" ]; then
             SRC_BASENAME="OOOOb"
           elif [ "$REG" = "ooooa" ]; then
@@ -48,7 +55,7 @@ jobs:
           elif [ "$REG" = "ooooc" ]; then
             SRC_BASENAME="OOOOc"
           else
-            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26) or one of oooob/ooooa/ooooc."
+            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), ecmc, or one of oooob/ooooa/ooooc."
             exit 1
           fi
           echo "SRC_BASENAME=${SRC_BASENAME}" >> "$GITHUB_ENV"
@@ -146,6 +153,16 @@ jobs:
             --ids-file "../pipeline/out/apply_reg${REG}/summary_regen_ids.txt" \
             --force \
             --model claude-sonnet-4-5
+
+      - name: Embed new/changed rows for semantic search
+        if: ${{ inputs.execute && inputs.embed }}
+        working-directory: pipeline
+        env:
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python embed.py --reg "$REG"
 
       - name: Upload import report (no SQL batch files)
         if: always()
