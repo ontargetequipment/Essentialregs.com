@@ -296,6 +296,89 @@ def test_reg7_prompt_has_no_ecmc_specific_text():
 
 
 # --------------------------------------------------------------------------
+# Batch 3 hints: cp, 9, 24, 30 (added Sept 18 2026)
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("provision_id, expected", [
+    ("sec-cp-I-G-1", "cp"),
+    ("sec-9-B-I-A", "9"),
+    ("sec-24-B-II-C", "24"),
+    ("sec-30-B-I-A", "30"),
+])
+def test_batch3_reg_key_of(provision_id, expected):
+    assert reg_key_of(provision_id) == expected
+
+
+@pytest.mark.parametrize("provision_id, key, marker", [
+    ("sec-cp-I-G-1", "cp", "Common Provisions Regulation"),
+    ("sec-9-B-I-A", "9", "Regulation Number 9"),
+    ("sec-24-B-II-C", "24", "Regulation Number 24"),
+    ("sec-30-B-I-A", "30", "Regulation Number 30"),
+])
+def test_batch3_hint_selected_by_id_prefix(provision_id, key, marker):
+    system = system_prompt_for(provision_id)
+    assert system == f"{SYSTEM_PROMPT}\n\n{REG_PROMPT_HINTS[key]}"
+    assert marker in system
+
+
+def test_cp_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["cp"]
+    for marker in (
+        "Common Provisions Regulation", "AQCC", "Air Quality Control "
+        "Commission", "APCD", "definition", "SOURCE DEFINTIONS",
+        "(State Only)", "Reserved", "V.A-V.V", "Table 1", "III.B.3",
+    ):
+        assert marker in hint, f"missing {marker!r} from cp hint"
+
+
+def test_reg9_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["9"]
+    for marker in (
+        "Regulation Number 9", "Authorized Local Agency", "planned ignition",
+        "unplanned ignition", "Land Manager",
+        "Significant User of Prescribed Fire", "Section VIII", "Section IX",
+        "Appendix A", "Appendix B", "PM10",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 9 hint"
+
+
+def test_reg24_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["24"]
+    for marker in (
+        "Regulation Number 24", "Appendix A", "8-hour Ozone Control Area",
+        "(State Only)", "Reid vapor pressure", "torr", "psia", "Table 1",
+        "Appendices B and C", "Part C", "2026 reorganization",
+        "40 CFR Part 60",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 24 hint"
+
+
+def test_reg30_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["30"]
+    for marker in (
+        "Regulation Number 30", "TAC", "PTAC", "Appendix A", "Appendix B",
+        "HQ", "IUR", "RfC", "AIRS ID", "HEPA", "Division", "Part C",
+        "25-7-109.5",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 30 hint"
+
+
+@pytest.mark.parametrize("key", ["cp", "9", "24", "30"])
+def test_batch3_hints_reasonably_short(key):
+    assert len(REG_PROMPT_HINTS[key].split()) <= 190
+
+
+def test_reg7_prompt_has_no_batch3_specific_text():
+    system = system_prompt_for("sec-7-B-I-C-1")
+    for key in ("cp", "9", "24", "30"):
+        assert REG_PROMPT_HINTS[key] not in system
+    for batch3_only in (
+        "SOURCE DEFINTIONS", "Authorized Local Agency", "PTAC", "AIRS ID",
+    ):
+        assert batch3_only not in system
+
+
+# --------------------------------------------------------------------------
 # Audience hook (REG_AUDIENCE / DEFAULT_AUDIENCE / SYSTEM_PROMPT_TEMPLATE)
 # --------------------------------------------------------------------------
 

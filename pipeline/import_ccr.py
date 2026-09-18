@@ -192,9 +192,151 @@ def part_c_letter_sequence():
 
 PART_C_LETTERS = list(part_c_letter_sequence())
 
+# --------------------------------------------------------------------------
+# "Bare ladder" regulations — a shape distinct from every regulation above:
+# Reg 9 (5 CCR 1001-11) prints EVERY level of its outline bare (just "A.",
+# "1.", "a."), never the FULL compound path ("II.A.", "II.A.1.") every
+# Part/Section-based regulation above compounds every label into (confirmed:
+# grepping REG_9.txt for a label line finds not one dot-joined compound
+# label in its 2,480 lines — every accepted marker matches exactly ONE
+# FAMILY_REGEX family, never two). `tokenize_by_cycle` walks the FULL cycle
+# from depth 0 every time (see its own docstring), so it can't parse this at
+# all: a bare "F." never even matches `cycle_ab`'s first family ("roman"),
+# so it produces zero tokens and the whole line would be silently dropped as
+# body text — and the letters that ARE valid bare roman numerals in their
+# own right ("I.", "V.", "X." — Reg 9's own Section II Definitions runs
+# "H. General Open Burn" / "I. Land Manager" / ... / "V. Suppression Action"
+# / ... / "X. Wildfire" as its 9th/22nd/24th definitions, all at the same
+# indent as a genuine top-level section) would be wrongly accepted as a
+# brand-new top-level SECTION instead, colliding with the real "I. Scope" /
+# "V. Planned Ignition Fire Permits" / "X." (never printed — the document
+# only reaches "IX.") rows.
+#
+# `_bare_ladder_tokens` (used ONLY for a reg listed here; every other reg
+# keeps calling `tokenize_by_cycle` exactly as before) resolves both
+# problems the same way the rest of this parser resolves an identical
+# problem elsewhere (SOB's CYCLE_C_INNER + prepended top token; ECMC's
+# ladder — see its own docstring for why family alone can't fix a depth):
+# depth is never read off the label text alone, only off which position in
+# the FULL ancestor chain of the last ACCEPTED marker the candidate is the
+# immediate NEXT item of. A bare "I." right after "H." is the 9th
+# definitions letter (continues the open letter list), NOT the 9th
+# top-level section, because depth is resolved from context, never from the
+# token's own shape.
+BARE_LADDER_REGS: frozenset[str] = frozenset({"9"})
+
+
+def _bare_ladder_family(depth: int) -> str:
+    """The family a bare-ladder document expects at 0-indexed depth `depth`
+    of its own token chain: roman (top-level section), upper (first
+    subsection level, "A." .. "BB."), digit, then "lower" for every level
+    after that. Reg 9's deepest confirmed nesting (Editor's Notes History:
+    "VIII.C.4.a.i") is 5 tokens — roman, upper, digit, lower, lower — the
+    5th being a BARE lower-case roman numeral ("i.", "ii." .. "xi."),
+    lexically identical to an ordinary continued lettered list (see
+    `_bare_ladder_ordinal_variants`); reusing "lower" for every depth past 3
+    (rather than hard-capping at one) means a list that nested even deeper
+    would still parse instead of silently stopping."""
+    return ["roman", "upper", "digit"][depth] if depth < 3 else "lower"
+
+
+def _bare_ladder_ordinal_variants(fam: str, raw: str) -> dict[str, int]:
+    """Every plausible 1-based ordinal for a bare-ladder label token, keyed
+    by which numbering SCHEME produced it — mirrors `_ecmc_label_ordinal_
+    variants` (see its docstring for the general problem: a "lower"/"upper"
+    token may be simultaneously a valid plain alphabet position, e.g. "H" is
+    the 8th letter, AND a valid roman numeral, e.g. "D" is 500 — trying both
+    and requiring the SAME scheme to match on both sides of a comparison is
+    what lets "H." -> "I." resolve as the alphabet's 8th -> 9th letter
+    without "I" -> "V" (both valid romans, 1 -> 5) ever being considered a
+    match for an unrelated pair)."""
+    variants: dict[str, int] = {}
+    if fam == "digit":
+        variants["digit"] = int(raw)
+        return variants
+    up = raw.upper()
+    if fam == "roman":
+        if is_valid_roman(up):
+            variants["roman"] = roman_to_int(up)
+        return variants
+    if up in PART_C_LETTERS:
+        variants["alpha"] = PART_C_LETTERS.index(up) + 1
+    if is_valid_roman(up):
+        variants["roman"] = roman_to_int(up)
+    return variants
+
+
+def _bare_ladder_is_next(prev_fam: str, prev_raw: str, fam: str, raw: str) -> bool:
+    """True when (fam, raw) is the immediate next item after (prev_fam,
+    prev_raw) under ANY numbering scheme they both support (see
+    `_bare_ladder_ordinal_variants`)."""
+    prev_v = _bare_ladder_ordinal_variants(prev_fam, prev_raw)
+    cand_v = _bare_ladder_ordinal_variants(fam, raw)
+    for scheme, cand_ord in cand_v.items():
+        prev_ord = prev_v.get(scheme)
+        if prev_ord is not None and cand_ord == prev_ord + 1:
+            return True
+    return False
+
+
+def _bare_ladder_tokens(stripped: str, chain: list[tuple[str, str]]) -> tuple[list[tuple[str, str]], int]:
+    """`tokenize_by_cycle`'s counterpart for a BARE_LADDER_REGS document
+    (see that frozenset's comment for the full rationale). `chain` is the
+    FULL token path of the last marker `scan_markers` accepted anywhere in
+    the document so far (empty before the first one — this reg's own
+    `ab_stack` entry). A candidate is tried, in order:
+      1. the immediate next SIBLING of the deepest currently-open level
+         (same family slot, next ordinal);
+      2. the first child of a brand-new list one level deeper than whatever
+         is currently open (opens at "A"/"I"/"1");
+      3. the next sibling of an ANCESTOR, closing every level below it —
+         tried from the deepest ancestor up to the document root (this is
+         what promotes a bare "I."/"V."/"X." back to a genuine new
+         top-level section once it really is the next one in sequence,
+         exactly like every other level).
+    Returns (tokens, chars_consumed) in exactly the shape `tokenize_by_cycle`
+    returns — the FULL new chain, not just the one changed token — so every
+    downstream check in `scan_markers` (column learning, the dangling-word
+    guard, the parent-known / self-heal test, `ab_stack` bookkeeping) runs
+    completely unchanged; this function's only job is picking the tokens."""
+    if not chain:
+        m = FAMILY_REGEX["roman"].match(stripped)
+        if m and m.group(1) == "I":
+            return [("roman", "I")], m.end()
+        return [], 0
+    fam = _bare_ladder_family(len(chain) - 1)
+    m = FAMILY_REGEX[fam].match(stripped)
+    if m and _bare_ladder_is_next(chain[-1][0], chain[-1][1], fam, m.group(1)):
+        return chain[:-1] + [(fam, m.group(1))], m.end()
+    fam = _bare_ladder_family(len(chain))
+    m = FAMILY_REGEX[fam].match(stripped)
+    if m and m.group(1).upper() in ("A", "I", "1"):
+        return chain + [(fam, m.group(1))], m.end()
+    for d in range(len(chain) - 2, -1, -1):
+        fam = _bare_ladder_family(d)
+        m = FAMILY_REGEX[fam].match(stripped)
+        if m and _bare_ladder_is_next(chain[d][0], chain[d][1], fam, m.group(1)):
+            return chain[:d] + [(fam, m.group(1))], m.end()
+    return [], 0
+
+
 DATE_START_RE = re.compile(
     r"^(January|February|March|April|May|June|July|August|September|October|"
     r"November|December)\s+\d{1,2}(-\d{1,2})?(,|\s*[-–]\s*\d{1,2},)?\s+\d{4}\b"
+)
+
+# Reg 9's Section IX statement-of-basis entries open either "Adopted <full
+# month> <day>, <year>" (14 of 15 entries), a bare date with no "Adopted" at
+# all ("M.      February 19, 2015"), or "Adopted" followed by an ABBREVIATED
+# month ("O.      Adopted Feb. 15, 2024" — the only abbreviated one, and the
+# only entry with no comma before the day... no, it has the ordinary comma;
+# just the abbreviated month DATE_START_RE's full-month-name list doesn't
+# match). Optional "Adopted[:] " prefix, then either a full or abbreviated
+# month name.
+REG9_SOB_OPENER_RE = re.compile(
+    r"^(?:Adopted:?\s+)?(?:January|February|March|April|May|June|July|August|"
+    r"September|October|November|December|Jan\.|Feb\.|Mar\.|Apr\.|Jun\.|Jul\.|"
+    r"Aug\.|Sep\.|Sept\.|Oct\.|Nov\.|Dec\.)\s+\d{1,2}(-\d{1,2})?,?\s+\d{4}\b"
 )
 
 # Which Part in each regulation is its "Statements of Basis..." part, and
@@ -279,6 +421,28 @@ SOB_PART_CONFIG: dict[str, dict] = {
     # of "letter_dated" (Reg 22's Part E uses "roman_seq" too, but with a
     # different, keyword-based opener — see its own entry above).
     "26": {"letter": "C", "top_family": "roman_seq", "top_opener_re": DATE_START_RE},
+    # Reg 24's Part C is the same top-level shape as Reg 26's: a plain
+    # roman-numeral sequence (only 2 entries so far), each followed
+    # immediately by a bare date with no "Adopted"/"Adopted:" keyword —
+    # "I.        April 20, 2023", "II.     April 15-17, 2026 (Revisions to
+    # Part B, Section VI.)" (confirmed sources/REG_24.txt lines 2563, 3115).
+    # Unlike Reg 26, entry I's own narrative wraps a citation-shaped
+    # fragment onto a line start — "...became a new Regulation Number\n26.
+    # The upstream oil and gas intensity..." (line 2607) — and "Number" is
+    # deliberately not in `_label_position_plausible`'s disqualifying set
+    # (see the Reg 2 config comment above), so with `inner_items` at its
+    # default (True) that line was accepted as a CYCLE_C_INNER digit marker
+    # and produced a `sec-24-C-I-26` row that swallowed the rest of entry
+    # I's ~23,000 characters of text (found by the giant/fused-row gate).
+    # Entry II's own narrative numbered lists ("(I)" .. "(XII)" findings,
+    # twice) are upper-case paren-roman, which CYCLE_C_INNER never starts
+    # with, so it was already one undivided row regardless. Both entries are
+    # therefore kept as ONE row each (`inner_items: False`), exactly like
+    # Reg 3's Part F / Reg 2's Part C / Reg 6's Part A.
+    "24": {
+        "letter": "C", "top_family": "roman_seq", "top_opener_re": DATE_START_RE,
+        "inner_items": False,
+    },
     # Reg 2's Part C ("STATEMENT OF BASIS, SPECIFIC STATUTORY AUTHORITY, AND
     # PURPOSE") is a plain roman sequence of only four entries, each printed
     # as "<roman>. Adopted <date>" — "I. Adopted February 19, 1999", "II.
@@ -333,6 +497,73 @@ SOB_PART_CONFIG: dict[str, dict] = {
         "top_opener_re": re.compile(r"^Adopted:?\s"),
         "inner_items": False,
     },
+    # Common Provisions Regulation (5 CCR 1001-2, reg key "cp") has NO "PART
+    # X" headings (REG_META["cp"]["no_parts"], same shape as Reg 1) and its
+    # statement of basis is the LAST top-level SECTION, "V. Statements of
+    # Basis, Specific Statutory Authority, and Purpose" — confirmed: 22
+    # entries "V.A. Adopted December 14, 1978 - Definitions" through "V.V.
+    # Adopted October 17, 2025" (line 4354), a letter_dated sequence carrying
+    # the section's own "V." as a constant roman prefix, exactly Reg 1's "X."
+    # shape (see REG_META["1"]'s comment) and Reg 3's Part F shape. Entries
+    # V.C. onward use a plain hyphen or em-dash between the date and the
+    # topic ("V.C.    Adopted May 13, 1982 - Public Comment"); some (V.L.,
+    # V.M., V.N., V.O., V.T., V.U., V.V.) carry no topic at all, just the
+    # date. `inner_items: False` for the same reason as Reg 1/Reg 3's Part
+    # F: these are narrative statements whose own numbered findings lists
+    # ("1.", "2.", "3." ...) restart inside a single entry (confirmed: V.D.'s
+    # Class I area findings restart their "1." list three separate times).
+    "cp": {
+        "section": "V", "top_family": "letter_dated", "roman_prefix": "V",
+        "top_opener_re": re.compile(r"^Adopted:?\s"),
+        "inner_items": False,
+    },
+    # Reg 9 (5 CCR 1001-11) is also part-less (see REG_META["9"]["no_parts"])
+    # and its statement of basis is likewise the LAST top-level SECTION,
+    # "IX. Statement of Basis, Specific Statutory Authority and Purpose" —
+    # but unlike Reg 1's Section X, Reg 9's entries print BARE letters with
+    # no constant leading roman prefix at all: "A.      Adopted January 17,
+    # 2002" .. "O.      Adopted Feb. 15, 2024" (15 entries, confirmed against
+    # every dated heading in Section IX), so `roman_prefix` (which requires
+    # and consumes a literal prefix) doesn't fit — `implicit_section_prefix`
+    # instead PREPENDS the section's own roman token without requiring it in
+    # the text, so the resulting ids are `sec-9-IX-A` .. `sec-9-IX-O` under
+    # the ordinary section row `sec-9-IX` (which already exists from the
+    # bare-ladder scan accepting "IX." as a top-level section — see
+    # BARE_LADDER_REGS) rather than colliding with Section II's own
+    # definitions letter A (`sec-9-II-A`) at a bare `sec-9-A`.
+    # `top_opener_re` is `REG9_SOB_OPENER_RE`, not the shared `DATE_START_RE`
+    # or a bare "Adopted" keyword test, because Reg 9 mixes all three
+    # printed shapes (see that regex's own comment). Every entry is kept as
+    # ONE undivided row (`inner_items: False`, same reasoning as Reg 3's
+    # Part F / Reg 6's Part A): each entry's own narrative restarts bare
+    # parenthesized-roman "finding" lists — "(I)" .. "(XII)" — printed
+    # identically in at least four separate entries (confirmed: entries J,
+    # N and O each have their own "(I)".."(XII)"/"(III)" findings list), and
+    # Reg 9 has no digit/lower inner lists inside Section IX at all to lose
+    # by collapsing each entry to one row. Appendices A/B/C are printed
+    # AFTER every SOB entry (not interleaved, unlike Reg 1's own appendices),
+    # so no section-scoped appendix-closing special case is needed here.
+    "9": {
+        "section": "IX", "top_family": "letter_dated",
+        "top_opener_re": REG9_SOB_OPENER_RE,
+        "inner_items": False, "implicit_section_prefix": True,
+    },
+    # Reg 30's Part C ("Statements of Basis, Specific Statutory Authority and
+    # Purpose") is a plain roman sequence like Reg 2/26's Part C, only three
+    # entries so far, each opening "<roman>.  Adopted: <date>" — "I. Adopted:
+    # January 17, 2025", "II. Adopted: September 19, 2025", "III. Adopted:
+    # April 17, 2026" (confirmed: every one uses the colon, unlike Reg 2's
+    # mixed colon/no-colon). Takes the same "Adopted" keyword opener Reg 2/3
+    # use, on the "roman_seq" family. `inner_items` is left at its default
+    # (True): unlike Reg 2/3, no Part C entry here contains a restarting
+    # digit-led inner list of its own — the only "1./2./3." list in this part
+    # is Appendix B's "Table Notes:", which sits inside an APPENDIX block
+    # (never scanned as SOB inner items at all, see the appendix-closing fix
+    # below) — so CYCLE_C_INNER never has anything to accidentally capture.
+    # The Commission's own findings lists inside each entry ("I. Existing
+    # data...V. Input from the scientific community.", "(I)..(V)") are bare
+    # roman/paren-roman, which CYCLE_C_INNER (digit-first) never starts on.
+    "30": {"letter": "C", "top_family": "roman_seq", "top_opener_re": re.compile(r"^Adopted:?\s")},
     # Reg 6 has NO separate statement-of-basis part: Part A carries its own
     # "STATEMENTS OF BASIS, SPECIFIC STATUTORY AUTHORITY AND PURPOSE (For
     # Part A)" block at its tail (after the incorporation-by-reference
@@ -507,6 +738,69 @@ def _flat_entry_title(citation: str, first_para: str) -> str:
     return f"{citation} — {name}" if name else citation
 
 
+# --------------------------------------------------------------------------
+# Unlabeled term-definitions section (Common Provisions "I.G. Definitions",
+# reg key "cp"). Unlike every other AQCC definitions list seen so far (Reg
+# 1's I.B.1./I.B.2./..., Reg 8's I.B.72./I.B.73./...), Common Provisions
+# prints each defined term as its OWN ALL-CAPS line ("ABSOLUTE VAPOR
+# PRESSURE", "ACT", "AIR POLLUTANT", ...) with NO printed number at all,
+# followed by a blank line and the definition's prose (confirmed: 123 such
+# terms between the "I.G.    Definitions" heading and the next top-level
+# section, "II.     General" — checked against the source PDF page-by-page,
+# not just the pdftotext dump, to rule out a layout artifact). Rather than
+# leave this whole ~2,600-line block as one fused row under `sec-cp-I-G` (the
+# giant/fused-row bug quality gate D is built to catch), each term becomes
+# its own row with a SYNTHESIZED sequential digit label — `sec-cp-I-G-1`
+# (ABSOLUTE VAPOR PRESSURE) through `sec-cp-I-G-123` (WOOD RESIDUE), in
+# printed order — the same `sec-{reg}-{part}-{suffix}` id shape every other
+# item in the corpus uses, just with a label this parser assigns rather than
+# one the source prints. `TERM_DEFINITIONS_SECTION[reg]` names the exact
+# token chain (family, raw) of the section this applies inside (`I.G.` for
+# `cp`); a reg absent from this dict is completely unaffected — the branch
+# that consults it in scan_markers only runs when `tokenize_by_cycle` found
+# NO ordinary compound-label tokens at all on the line (a real "II." marker,
+# or an "I.G.4." compound label if this section ever DOES start numbering,
+# always tokenizes first and takes priority; see the branch in scan_markers's
+# ordinary-item loop). Reg 3/7/22/26/1/... every existing regulation is
+# byte-identical before and after (verified: no other reg is listed here, so
+# `TERM_DEFINITIONS_SECTION.get(reg or "")` is always None for them and the
+# new branch's body never executes).
+TERM_DEFINITIONS_SECTION: dict[str, list[tuple[str, str]]] = {
+    "cp": [("roman", "I"), ("upper", "G")],
+}
+
+# A term heading line: starts with an uppercase letter, and every other
+# character is an uppercase letter, digit, space, or one of the small set of
+# punctuation marks actually used in these 123 terms' names (parens —
+# "CONTROL DEVICE (STATIONARY)"; slash — "FOSSIL FUEL AND/OR WOOD RESIDUE
+# FIRED STEAM GENERATING UNIT"; ampersand, comma, hyphen, apostrophe, period
+# — "U.S. EPA" doesn't appear as a term name but the class is kept generic).
+# Confirmed against all 123 printed term lines plus their surrounding text:
+# no ordinary body sentence in this section is written ALL CAPS, so this
+# alone (checked only while already inside the configured section — see
+# above) does not false-positive on prose.
+_TERM_HEADING_RE = re.compile(r"^[A-Z][A-Z0-9()&,/'’.\- ]{0,90}$")
+
+
+def _match_term_heading_line(lines: list[str], idx: int, seam_starts: set[int] | None) -> str | None:
+    """Recognize one term-definition heading line inside a
+    TERM_DEFINITIONS_SECTION-configured section: an all-caps line, standing
+    alone on its own paragraph (blank line — or a page seam, since a page
+    break is always paragraph-initial — immediately before it, blank line
+    immediately after), with at least one letter. Returns the term text or
+    None."""
+    stripped = lines[idx].strip()
+    if not stripped or not _TERM_HEADING_RE.match(stripped):
+        return None
+    if not any(c.isalpha() for c in stripped):
+        return None
+    prev_ok = idx == 0 or lines[idx - 1].strip() == "" or (seam_starts is not None and idx in seam_starts)
+    next_ok = idx + 1 < len(lines) and lines[idx + 1].strip() == ""
+    if not (prev_ok and next_ok):
+        return None
+    return stripped
+
+
 def _sob_scope(reg: str | None) -> tuple[str | None, str | None]:
     """(part_letter, section_roman) for this reg's statement-of-basis
     scope: exactly one of the two is set — `letter` for a part-scoped SOB
@@ -660,6 +954,14 @@ TABLE_CAPTION_RE = re.compile(
 # whitespace-normalized text (see `_table_caption_key`).
 TABLE_CAPTION_EXTRA_RE: dict[str, re.Pattern] = {
     "8": re.compile(r"^Table\s+([0-9]+)\.\s+(\S.*)$"),
+    # Reg 30's Part B chromium-plating section captions its one inline table
+    # the same period-then-spaces way Reg 8 does — "Table 1. Approved
+    # Chemical Fume Suppressants and Surface Tensions" (III.B.4.d., line 462)
+    # — confirmed against REG_30.pdf page 9: pdfplumber's extract_tables()
+    # finds it as one normal 4-column bordered table (chemical/manufacturer,
+    # application, stalagmometer value, tensiometer value), caption included
+    # as its own merged first row, entirely on that page.
+    "30": re.compile(r"^Table\s+([0-9]+)\.\s+(\S.*)$"),
     # ECMC captions its tables "Table <rule>-<n>" (the rule number the table
     # lives in, then a per-rule sequence number) — "Table 423-1 – Maximum
     # Permissible Noise Levels", bare "Table 915-1" (a huge multi-page
@@ -669,7 +971,100 @@ TABLE_CAPTION_EXTRA_RE: dict[str, re.Pattern] = {
     # Confirmed against ECMC.pdf: pages that contain ANY of these caption
     # forms as their own line always contain the actual bordered table.
     "ecmc": re.compile(r"^(?:Table|TABLE)\s+([0-9]+-[0-9]+)\s*(?:\(continued\))?[.:]?\s*(?:[–—-]\s*)?(.*)$"),
+    # Reg 9's Appendix B captions its two tables with a bare ROMAN numeral,
+    # not the digit or single-letter forms TABLE_CAPTION_RE knows — "TABLE I
+    # EXAMPLE BURNS               Estimated to Potentially Produce 10 Tons
+    # of PM10 Emissions" and "TABLE II SOURCES OF INFORMATION/DATA USED IN
+    # TABLE I" (confirmed: REG_9.pdf page 38-39, both recovered by
+    # pdfplumber as ordinary bordered tables).
+    "9": re.compile(r"^(?:Table|TABLE)\s+([IVXLCDM]+)\s+(\S.*)$"),
 }
+
+# Regulations whose APPENDIX rows may contain more than one captioned table
+# with real narrative text between them (Reg 9's Appendix B: an intro
+# paragraph, TABLE I, two worked "Example" paragraphs, then TABLE II) — see
+# `_splice_appendix_tables`. A reg not listed here keeps the ordinary
+# appendix build path (`split_into_paragraphs` over the raw own_lines)
+# completely unchanged.
+APPENDIX_TABLE_SPLICE_REGS: frozenset[str] = frozenset({"9"})
+
+# Regulations whose APPENDIX heading-continuation text (see `title_end_line`
+# on an "appendix" marker) must NOT also be re-included as the row's own
+# first body paragraph. This is gated per-reg, not applied everywhere,
+# because Reg 1's OWN two appendices (APPENDIX A / APPENDIX B, each a
+# two-physical-line heading) already duplicate their title this exact way in
+# the baselined DB/output (`sec-1-APPENDIX-A` currently reads "...Emission
+# Sources<p>Method for Measuring Opacity from Fugitive Particulate Emission
+# Sources</p><p>a. Principle...") — fixing it there would change Reg 1's
+# required byte-identical baseline, so it's left exactly as before there and
+# fixed only for the new regulation that exposed it (see the batch-3 brief's
+# "existing behaviour must not change" rule); it is not a Reg-9-specific
+# BUG, just a Reg-9-specific FIX, in case a later batch wants to extend it.
+# Reg 30's Appendix B has the same wrapped-title-onto-a-second-physical-line
+# shape as Reg 9's ("Appendix B: Chronic Health-Protective Benchmarks for
+# Priority Toxic Air\nContaminants" — without this, "Contaminants" reappeared
+# as a stray first paragraph), so it needs the same fix.
+APPENDIX_HEADING_DEDUP_REGS: frozenset[str] = frozenset({"9", "30"})
+
+
+def _splice_appendix_tables(own_lines: list[str], reg: str, tables_by_caption: dict[str, dict],
+                             table_hits: dict) -> list[str]:
+    """Replace every recognized "Table N ..." caption block inside an
+    APPENDIX row's own lines with a `_TABLE_SENTINEL` placeholder for the
+    pdfplumber-recovered table (rendered in place by build_provisions's
+    second pass — the same sentinel convention `UNCAPTIONED_TABLES` uses),
+    leaving any prose before/after each table untouched. This generalizes
+    the single-table cut already used for an ordinary item/entry row (see
+    the `mk.get("table_caption")` branch below) to run more than once per
+    row, since an ordinary item never embeds more than one table but Reg 9's
+    Appendix B embeds two with narrative in between."""
+    out: list[str] = []
+    i, n = 0, len(own_lines)
+    while i < n:
+        ln = own_lines[i]
+        caption_key = _table_caption_key(ln, reg)
+        table = tables_by_caption.get(caption_key) if caption_key else None
+        if not table:
+            out.append(ln)
+            i += 1
+            continue
+        # Matched by STARTSWITH, not the line's first whitespace-split token:
+        # a multi-word row key ("Piled Slash", "Oakbrush or Aspen") never
+        # equals its own first token alone, so a single-token comparison
+        # (as the flat-entry table cut uses, where every key IS one token)
+        # would stop one row short and leave that last data row as a
+        # dangling paragraph fragment (confirmed: Reg 9's Appendix B "TABLE
+        # I", whose last row is "Piled Slash").
+        keys = sorted((r[0] or "").strip() for r in table["rows"] if r and (r[0] or "").strip())
+        j = i + 1
+        last_row = i
+        while j < n:
+            if _table_caption_key(own_lines[j], reg):
+                break
+            stripped_j = own_lines[j].strip()
+            if any(stripped_j.startswith(k) for k in keys):
+                last_row = j
+            j += 1
+        # A cell that wraps onto more than one physical line (Reg 9's Table
+        # II last row, "Piled Slash", wraps its Reference cells across 3
+        # lines) leaves its OWN continuation lines unmatched by the
+        # startswith check above, since only the row's first physical line
+        # begins with the row key — consume forward through the immediately
+        # following non-blank lines too (the raw table dump is always one
+        # blank-delimited block; nothing legitimate continues right after
+        # the last data row with no blank line first).
+        k = last_row + 1
+        while k < n and own_lines[k].strip() != "":
+            last_row = k
+            k += 1
+        # Blank lines around the sentinel keep `split_into_paragraphs` from
+        # fusing it with the prose immediately before/after the table (the
+        # same convention `UNCAPTIONED_TABLES`' own sentinel insertion uses).
+        out.extend(["", _TABLE_SENTINEL + caption_key, ""])
+        table_hits["used"] += 1
+        table_hits["captions_used"].append(caption_key)
+        i = last_row + 1
+    return out
 
 
 # UNCAPTIONED bordered tables, per regulation. Reg 8's Part B prints its
@@ -709,8 +1104,70 @@ UNCAPTIONED_TABLES: dict[str, list[dict]] = {
         dict(row_id="sec-8-B-III-P-3-a-(ii)", page=66, table_index=0, start_prefix="State-Permitted Project in",
              caption="Minimum number of clearance air samples"),
     ],
+    # Reg 30's own Appendix A (Priority Toxic Air Contaminants — a 3-column
+    # CAS Number / chemical / date-identified list) and Appendix B (Chronic
+    # Health-Protective Benchmarks — a multi-row-header CAS/chemical/cancer
+    # value/source/year/non-cancer value/source/year table) are printed with
+    # NO "Table N" caption line at all (see APPENDICES_BY_PART in
+    # REG_30.txt): the caption-driven mechanism never sees them, and
+    # pdftotext -layout's column dump is flattened into unreadable prose the
+    # same way Reg 8's uncaptioned tables were. Both recover cleanly as one
+    # normal pdfplumber bordered table (confirmed REG_30.pdf pages 71 and 83
+    # — Appendix B's table has several visually-merged header rows, which
+    # pdfplumber returns as `None` cells in the header row; render_table_html
+    # renders them as empty `<th>` cells, matching what's actually on the
+    # page). `to_end: True` (see UNCAPTIONED_TABLES' consumer below): unlike
+    # Reg 8's tables, the pdftotext flattened dump for each of these has
+    # blank lines INSIDE it (every wrapped table cell that pdftotext prints
+    # on its own line is followed by pdftotext's usual paragraph-gap blank),
+    # so "run to the next blank line" would stop after the first row and
+    # leave the rest of the table as unreplaced prose — instead the
+    # replacement runs from `start_prefix`'s line to the END of the
+    # provision's own lines, which is exactly the whole table in both cases
+    # (Appendix A's table is the entirety of its content after the "Appendix
+    # A: ..." heading; the same is true for Appendix B after its "Table
+    # Notes:" 1-3 paragraphs, which are collected as ordinary body text
+    # before the replaced block, same as Reg 8's post-table footnotes).
+    "30": [
+        dict(row_id="sec-30-C-APPENDIX-A", page=71, table_index=0, start_prefix="CAS Number",
+             caption="Priority Toxic Air Contaminants", to_end=True),
+        dict(row_id="sec-30-C-APPENDIX-B", page=83, table_index=0,
+             start_prefix="Proposed Chronic Health-Protective Benchmarks",
+             caption="Chronic Health-Protective Benchmarks for Priority Toxic Air Contaminants", to_end=True),
+    ],
 }
 _TABLE_SENTINEL = "\x00TABLE:"
+
+
+def _swap_uncaptioned_table(own_lines: list[str], row_id: str, reg: str | None,
+                             tables_by_caption: dict[str, dict], table_hits: dict) -> list[str]:
+    """Swap the flattened pdftotext block for one of `row_id`'s
+    UNCAPTIONED_TABLES entries (if any) with a `_TABLE_SENTINEL` paragraph,
+    rendered in place during build_provisions' second pass. Shared by the
+    ordinary item branch and the appendix branch of build_provisions — a
+    no-op (returns `own_lines` unchanged) for any row with no matching entry.
+    By default the replaced block runs from the `start_prefix` line to the
+    next BLANK line (Reg 8's tables: the flattened dump has no blank lines
+    of its own). `to_end: True` instead runs the replacement all the way to
+    the end of `own_lines` — needed when the flattened dump itself contains
+    blank lines (a wrapped table cell followed by pdftotext's usual
+    paragraph gap, e.g. Reg 30's Appendix A/B — see UNCAPTIONED_TABLES)."""
+    for entry in UNCAPTIONED_TABLES.get(reg or "", []):
+        if entry["row_id"] != row_id or entry["caption"] not in tables_by_caption:
+            continue
+        for li, ln in enumerate(own_lines):
+            if ln.strip().startswith(entry["start_prefix"]):
+                if entry.get("to_end"):
+                    lj = len(own_lines)
+                else:
+                    lj = li
+                    while lj < len(own_lines) and own_lines[lj].strip() != "":
+                        lj += 1
+                own_lines = own_lines[:li] + ["", _TABLE_SENTINEL + entry["caption"], ""] + own_lines[lj:]
+                table_hits["used"] += 1
+                table_hits["captions_used"].append(entry["caption"])
+                break
+    return own_lines
 
 
 def _table_caption_key(line: str, reg: str | None) -> str | None:
@@ -798,7 +1255,34 @@ def extract_tables_from_pdf(pdf_path: str, reg: str | None = None) -> dict[str, 
             else:
                 out[caption] = {"caption": caption, "rows": rows}
             page.flush_cache()
+        if reg == "9":
+            _fix_reg9_appendix_tables(pdf, out)
     return out
+
+
+def _fix_reg9_appendix_tables(pdf, out: dict[str, dict]) -> None:
+    """The generic per-page walk above assumes at most one table per
+    captioned page; REG_9.pdf page 38 breaks that assumption — Appendix A's
+    own UNCAPTIONED "De Minimis Threshold" table and Appendix B's captioned
+    "TABLE I" both sit on that one page, and `extract_tables()` returns the
+    De Minimis table FIRST (it's physically higher on the page), so the
+    generic walk's "first table on the page" fallback wrongly attaches it to
+    the "TABLE I" caption instead of the real fuel-type table that follows
+    it. Re-pull both of Reg 9's captioned tables directly by their confirmed
+    (1-based page, 0-based table index) — the same explicit pinning
+    `UNCAPTIONED_TABLES` uses for a table with no caption at all, just
+    applied here to correct a caption that WAS found but matched to the
+    wrong table on a multi-table page."""
+    fixes = [
+        ("TABLE I EXAMPLE BURNS Estimated to Potentially Produce 10 Tons of PM10 Emissions", 38, 1),
+        ("TABLE II SOURCES OF INFORMATION/DATA USED IN TABLE I", 39, 0),
+    ]
+    for caption, page_no, table_index in fixes:
+        if caption not in out:
+            continue
+        tables = pdf.pages[page_no - 1].extract_tables()
+        if table_index < len(tables):
+            out[caption] = {"caption": caption, "rows": tables[table_index]}
 
 
 def render_table_html(table: dict) -> str:
@@ -838,9 +1322,10 @@ def render_table_html(table: dict) -> str:
 
 CORPUS_REGS = {
     "1": "1",
-    "2": "2", "3": "3", "6": "6", "7": "7", "8": "8", "22": "22", "26": "26",
+    "2": "2", "3": "3", "6": "6", "7": "7", "8": "8", "9": "9", "22": "22", "24": "24", "26": "26",
+    "30": "30",
     "oooob": "oooob", "ooooa": "ooooa", "ooooc": "ooooc",
-    "ecmc": "ecmc",
+    "ecmc": "ecmc", "cp": "cp",
 }
 
 # Regulation Number 27 and 40 CFR Part 60 Subpart OOOO (the un-suffixed,
@@ -912,11 +1397,50 @@ REG_META: dict[str, dict] = {
         "root_citation": "Code of Colorado Regulations · Regulation Number 1",
         "root_title": "EMISSION CONTROL FOR PARTICULATE MATTER, SMOKE, CARBON MONOXIDE, AND SULFUR OXIDES 5 CCR 1001-3",
     },
+    # Common Provisions Regulation (5 CCR 1001-2, reg key "cp") — like Reg 1,
+    # no "PART X" headings at all (`grep -n "^\s*PART [A-Z]" sources/REG_CP.txt`
+    # is empty): the body runs straight from "I. Definitions, Statement of
+    # Intent, and General Provisions..." through "V. Statements of Basis,
+    # Specific Statutory Authority, and Purpose". Subsections print their
+    # FULL dotted path as the label at every depth ("I.A.", "II.C.2.a.",
+    # confirmed through depth 4) — the SAME shape `tokenize_by_cycle` already
+    # expects for every other AQCC regulation (a compound label like
+    # "II.C.2.a." is exactly [roman "II", upper "C", digit "2", lower "a"]),
+    # so no new tokenizing capability is needed; only the printed INDENT
+    # drifts (I.A./I.B. are indented 4 spaces — a page-one column-layout
+    # quirk — while I.C. onward sit at indent 0), which the ordinary item
+    # scan already tolerates (indent only feeds the column-drift AUDIT, never
+    # marker acceptance — see `_marker_column_signals`). Section I.G.
+    # ("Definitions") is the one genuinely new shape: see
+    # TERM_DEFINITIONS_SECTION for its unlabeled, one-term-per-line
+    # definitions list. See SOB_PART_CONFIG["cp"] for the section V
+    # statement-of-basis family.
+    "cp": {
+        "no_parts": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "root_citation": "Code of Colorado Regulations · Common Provisions Regulation",
+        "root_title": "COMMON PROVISIONS REGULATION 5 CCR 1001-2",
+    },
     "3": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
         "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
         "root_citation": "Code of Colorado Regulations · Regulation Number 3",
         "root_title": "STATIONARY SOURCE PERMITTING AND AIR POLLUTANT EMISSION NOTICE REQUIREMENTS 5 CCR 1001-5",
+    },
+    # Reg 9 is part-less like Reg 1 (no "PART X" headings — confirmed:
+    # `grep -n "^\s*PART [A-Z]" sources/REG_9.txt` is empty), but ALSO prints
+    # every level of its outline bare rather than compound (see
+    # BARE_LADDER_REGS) — the second, independent trait Reg 1 doesn't share.
+    # `no_parts: True` still applies unchanged: ids omit the part segment
+    # (`sec-9-I`, `sec-9-III-B-1-a`, `sec-9-IX-A`, `sec-9-APPENDIX-A`) and
+    # every top-level section's parent is the root row.
+    "9": {
+        "no_parts": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "root_citation": "Code of Colorado Regulations · Regulation Number 9",
+        "root_title": "OPEN BURNING, PRESCRIBED FIRE, AND PERMITTING 5 CCR 1001-11",
     },
     "6": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
@@ -950,6 +1474,21 @@ REG_META: dict[str, dict] = {
         "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
         "root_citation": "Code of Colorado Regulations · Regulation Number 8",
         "root_title": "CONTROL OF HAZARDOUS AIR POLLUTANTS 5 CCR 1001-10",
+    },
+    "24": {
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "root_citation": "Code of Colorado Regulations · Regulation Number 24",
+        # Title page (sources/REG_24.txt lines 12-15) prints "REGULATION
+        # NUMBER 24" and the title on one wrapped block, then "5 CCR 1001-28"
+        # as its own line — same convention as Reg 3/6/8/26 (root_title omits
+        # the "REGULATION NUMBER 24" prefix, keeping just the descriptive
+        # title + CCR cite).
+        "root_title": (
+            "CONTROL OF EMISSIONS FROM VOLATILE ORGANIC COMPOUNDS AND "
+            "PETROLEUM LIQUIDS STORAGE AND PETROLEUM PROCESSING AND "
+            "REFINING 5 CCR 1001-28"
+        ),
     },
     "oooob": {
         "jurisdiction_level": "federal", "issuing_body": "EPA",
@@ -998,6 +1537,15 @@ REG_META: dict[str, dict] = {
         # covers far more than Part 500's "Rules of Practice and Procedure".
         "root_title": "PRACTICE AND PROCEDURE 2 CCR 404-1",
     },
+    "30": {
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "root_citation": "Code of Colorado Regulations · Regulation Number 30",
+        # Title page (REG_30.txt lines 1-25) prints "REGULATION NUMBER 30
+        # TOXIC AIR CONTAMINANTS" then "5 CCR 1001-34" on its own line — the
+        # name, with the number stripped off, plus the cite.
+        "root_title": "TOXIC AIR CONTAMINANTS 5 CCR 1001-34",
+    },
 }
 
 # Bucket names used for citation/reference text we recognized as
@@ -1045,12 +1593,37 @@ SECTION_RE = re.compile(r"\b(Sections?)\s+(" + _CITATION_LIST + r")")
 PART_RE = re.compile(r"\bPart\s+([A-Z])\b(?:,\s*(Sections?)\s+(" + _CITATION_LIST + r"))?")
 # "Regulation Number N[, Part X[, Section(s) <list>]]" or
 # "Regulation Number N[, Section(s) <list>]" (no Part named).
+# Reg 30's statement-of-basis narrative cites two OTHER regulations as
+# "Commission Regulation No. 3, Part B, Section III.B.5.d." and
+# "Regulation No. 27, Part B, Section II.A.6." (line 4863-4864 of
+# REG_30.txt) — the abbreviated "No." Reg 1/2/26 never use (confirmed:
+# no "Regulation No." anywhere in their source text, so accepting it
+# here is a no-op for them). Without this, "Regulation No. 3" doesn't
+# match this pattern's literal "Number" keyword at all, so the citation
+# falls through to a bare "Section III.B.5.d." attempt against Reg 30's
+# OWN ids (BUCKET_UNPARSEABLE) instead of correctly linking to Reg 3
+# (which IS in the corpus) as an external-regulation reference.
 REG_NUM_RE = re.compile(
-    r"\bRegulation\s+Number\s+(?P<num>\d+)\b"
+    r"\bRegulation\s+(?:Number|No\.?)\s+(?P<num>\d+)\b"
     r"(?:,\s*Part\s+(?P<part>[A-Z])\b(?:,\s*(?P<kw_p>Sections?)\s+(?P<seclist_p>" + _CITATION_LIST + r"))?"
     r"|,\s*(?P<kw_np>Sections?)\s+(?P<seclist_np>" + _CITATION_LIST + r"))?"
 )
-BARE_REG_RE = re.compile(r"\bRegulation\s+(?:Number\s+)?(\d+)\b")
+BARE_REG_RE = re.compile(r"\bRegulation\s+(?:(?:Number|No\.?)\s+)?(\d+)\b")
+# The Common Provisions Regulation (reg key "cp") is cited by NAME, not by
+# number, throughout the AQCC corpus — "Common Provisions Regulation",
+# "Common Provisions regulation" (lower-case "r"), or bare "Common
+# Provisions" with no "Regulation" word at all (confirmed: Reg 2 "the
+# Commission's Common Provisions", Reg 26 "AQCC Common Provisions" — every
+# instance checked names this regulation, no generic non-title use of the
+# phrase exists in the corpus), optionally followed by a same-style
+# "[,] Section(s) <list>" clause naming a specific provision of it (e.g.
+# "Common Provisions Regulation, Section I.G.", "Common Provisions
+# Regulation Section II.C." with no comma — both printed forms confirmed).
+# See link_citations and _cp_known_ids.
+COMMON_PROVISIONS_RE = re.compile(
+    r"\bCommon Provisions(?:\s+[Rr]egulation)?\b"
+    r"(?:,?\s*(Sections?)\s+(" + _CITATION_LIST + r"))?"
+)
 CFR_RE = re.compile(r"\b40\s+CFR\s+Part\s+(\d+)(?:,\s*Subpart\s+([A-Za-z0-9]+))?")
 # Reg 8 writes almost every CFR citation with the abbreviation dotted — "40
 # C.F.R. Part 61", "40 C. F. R. Part 63, Subparts F (July 1, 2025)" (391
@@ -1240,6 +1813,66 @@ def _emit_section_list(html_text: str, keyword_start: int, keyword: str, list_st
             buckets[bucket][cite] += 1
 
 
+_CP_KNOWN_IDS_CACHE: set[str] | None = None
+
+
+def _cp_known_ids() -> set[str]:
+    """Lazily parses Common Provisions' own source text once (module-level
+    cache, for the life of the process) so a cross-reference TO it from
+    another regulation (see COMMON_PROVISIONS_RE) can be verified against
+    ids that actually exist — the same "IF AND ONLY IF the target id exists"
+    rule every same-reg citation already follows — rather than just being
+    syntactically well-formed. Never raises: a build without
+    sources/REG_CP.txt (e.g. cp not merged in yet) returns an empty set, so
+    every "Common Provisions Regulation" mention is left as plain text
+    (BUCKET_OTHER_REG/BUCKET_UNPARSEABLE) instead of crashing every other
+    regulation's parse. Not consulted when `reg == "cp"` itself (a
+    self-mention resolves against the CURRENT parse's own known_ids, like
+    any other same-reg citation — see link_citations)."""
+    global _CP_KNOWN_IDS_CACHE
+    if _CP_KNOWN_IDS_CACHE is not None:
+        return _CP_KNOWN_IDS_CACHE
+    cp_txt = Path(__file__).resolve().parent / "sources" / "REG_CP.txt"
+    if not cp_txt.exists():
+        _CP_KNOWN_IDS_CACHE = set()
+        return _CP_KNOWN_IDS_CACHE
+    try:
+        result = parse_reg("cp", str(cp_txt), None)
+        _CP_KNOWN_IDS_CACHE = {r["id"] for r in result[0]}
+    except Exception:
+        _CP_KNOWN_IDS_CACHE = set()
+    return _CP_KNOWN_IDS_CACHE
+
+
+def _emit_cp_section_list(list_text: str, list_start: int, keyword_start: int, keyword: str,
+                           pieces: list[tuple[int, int, str]], buckets: dict[str, Counter],
+                           cp_ids: set[str]) -> None:
+    """Cross-regulation twin of `_emit_section_list`, for a "Section(s)
+    <list>" clause naming a Common Provisions section from another
+    regulation's text. Same first-citation-carries-the-keyword convention,
+    but wrapped as an `<a>` (not a same-reg `<span data-target>`) — the
+    reader is leaving this regulation's own page — carrying BOTH
+    `data-provision-id` (the resolved sec-cp-... id, for a deep link/scroll
+    on the target page) and `href="/regulations/cp"` (an ordinary page
+    link), mirroring the plain external-reg link's class."""
+    matches = list(CITATION_RE.finditer(list_text))
+    keyword_used = False
+    for idx, cm in enumerate(matches):
+        cite = cm.group(0)
+        abs_start = list_start + cm.start()
+        abs_end = list_start + cm.end()
+        target, bucket = _resolve_cite(cite, "cp", cp_ids, [NO_PART])
+        if target:
+            text = f"{keyword} {cite}" if (not keyword_used and idx == 0) else cite
+            start = keyword_start if (not keyword_used and idx == 0) else abs_start
+            pieces.append((start, abs_end,
+                            f'<a class="xref-external-reg" data-provision-id="{target}" '
+                            f'href="/regulations/cp">{text}</a>'))
+            keyword_used = True
+        else:
+            buckets[bucket][cite] += 1
+
+
 def _link_part_clause(html_text: str, letter_start: int, letter_end: int, letter: str,
                        keyword: str | None, kw_start: int | None, seclist_text: str | None, seclist_start: int | None,
                        pieces: list[tuple[int, int, str]], buckets: dict[str, Counter], reg: str, known_ids: set[str]) -> None:
@@ -1351,6 +1984,44 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         else:
             buckets[BUCKET_CFR][m.group(0)] += 1
 
+    # 1.5) "Common Provisions [Regulation][, Section(s) list]" — see
+    # COMMON_PROVISIONS_RE. Run before steps 2-4 so the trailing "Section(s)
+    # list" (if any) is claimed as part of THIS phrase, not later picked up
+    # by the bare SECTION_RE (step 4) and wrongly resolved against the
+    # CITING regulation's own known_ids.
+    for m in COMMON_PROVISIONS_RE.finditer(html_text):
+        if is_claimed(m.start(), m.end()):
+            continue
+        claim(m.start(), m.end())
+        keyword, seclist = m.group(1), m.group(2)
+        name_end = m.start(1) if keyword else m.end()
+        name_text = html_text[m.start():name_end].rstrip(", ")
+        name_end = m.start() + len(name_text)
+        if reg == "cp":
+            cp_ids, root_target = known_ids, f"sec-{reg}-top-REG-{reg}"
+        elif "cp" in corpus_regs:
+            cp_ids, root_target = _cp_known_ids(), "sec-cp-top-REG-cp"
+        else:
+            # "cp" not in the corpus at all (pre-merge / no-op proof runs) —
+            # never touch sources/REG_CP.txt or produce a link; count only,
+            # exactly like any other regulation not (yet) in the corpus.
+            cp_ids, root_target = set(), "sec-cp-top-REG-cp"
+        if root_target in cp_ids:
+            if reg == "cp":
+                pieces.append((m.start(), name_end, f'<span class="xref" data-target="{root_target}">{name_text}</span>'))
+            else:
+                pieces.append((m.start(), name_end,
+                                f'<a class="xref-external-reg" data-provision-id="{root_target}" '
+                                f'href="/regulations/cp">{name_text}</a>'))
+        else:
+            buckets[BUCKET_OTHER_REG if reg != "cp" else BUCKET_UNPARSEABLE][name_text] += 1
+        if keyword:
+            if reg == "cp":
+                _emit_section_list(html_text, m.start(1), keyword, m.start(2), seclist,
+                                    [NO_PART], pieces, buckets, reg, cp_ids)
+            else:
+                _emit_cp_section_list(seclist, m.start(2), m.start(1), keyword, pieces, buckets, cp_ids)
+
     # 2) "Regulation Number N[, Part X[, Section(s) list]]" / "..., Section(s) list".
     for m in REG_NUM_RE.finditer(html_text):
         if is_claimed(m.start(), m.end()):
@@ -1361,12 +2032,18 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         keyword = m.group("kw_p") or m.group("kw_np")
         seclist = m.group("seclist_p") or m.group("seclist_np")
         num_span = (m.start(), m.end("num"))
+        # The printed keyword between "Regulation" and the number — "Number"
+        # for every existing regulation, or Reg 30's abbreviated "No."/"No"
+        # (see REG_NUM_RE) — is preserved verbatim in the link/span text
+        # rather than hardcoded, so "Regulation No. 3" doesn't render (or
+        # get counted) as "Regulation Number 3".
+        num_text = html_text[num_span[0]:num_span[1]]
 
         if num != reg:
             if num in corpus_regs:
                 # Bare "Regulation Number N" only — a trailing Part/Section
                 # on THAT regulation is left unlinked (see docstring).
-                pieces.append((num_span[0], num_span[1], f'<a class="xref-external-reg" href="/regulations/{num}">Regulation Number {num}</a>'))
+                pieces.append((num_span[0], num_span[1], f'<a class="xref-external-reg" href="/regulations/{num}">{num_text}</a>'))
             else:
                 buckets[BUCKET_OTHER_REG][m.group(0)] += 1
             continue
@@ -1376,9 +2053,9 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         # independently linked to their own more specific targets.
         root_target = f"sec-{reg}-top-REG-{reg}"
         if root_target in known_ids:
-            pieces.append((num_span[0], num_span[1], f'<span class="xref" data-target="{root_target}">Regulation Number {num}</span>'))
+            pieces.append((num_span[0], num_span[1], f'<span class="xref" data-target="{root_target}">{num_text}</span>'))
         else:
-            buckets[BUCKET_UNPARSEABLE]["Regulation Number " + num] += 1
+            buckets[BUCKET_UNPARSEABLE][num_text] += 1
 
         if part is not None:
             _link_part_clause(html_text, m.start("part"), m.end("part"), part,
@@ -2069,6 +2746,27 @@ KNOWN_LABEL_FIXES: dict[str, list[dict]] = {
                  '(1)-(6) list; corrected to "(8)".',
         ),
     ],
+    "30": [
+        # III.D.1.g.'s four "Notice of Applicability..." sub-items are
+        # printed "III.D.1.g.(i)" / "(ii)" / "(iii)", but the fourth carries
+        # a stray space between "III.D.1." and "g.(iv)" — "III.D.1. g.(iv)
+        # Notice of Applicability after a stationary source modifies..."
+        # (confirmed the PDF's own text layer, not a pdftotext artifact).
+        # Without the fix, the tokenizer stops at "III.D.1." (the space
+        # blocks the "g." lower-letter token from ever being reached),
+        # re-matching the ALREADY-emitted section heading `sec-30-B-III-D-1`
+        # a second time and dropping the whole (iv) sub-item's structure —
+        # confirmed by the parser's own "id(s) produced by more than one
+        # marker" warning for both `sec-30-B-III-D-1` and its child
+        # `sec-30-B-III-D-1-g` before this fix.
+        dict(
+            old_label="III.D.1. g.(iv)", new_label="III.D.1.g.(iv)",
+            match_prefix="III.D.1. g.(iv) Notice of Applicability after a stationary source",
+            line_hint=1246,
+            note='Printed "III.D.1. g.(iv)" (stray space before "g.") — a source-text typo for '
+                 '"III.D.1.g.(iv)", the fourth sibling of III.D.1.g.(i)-(iii).',
+        ),
+    ],
 }
 
 # Documented but deliberately NOT auto-corrected: the source PDF really does
@@ -2641,6 +3339,7 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
     ab_stack: dict[str, list[tuple[str, str]]] = {}  # part letter -> current open token chain
     last_marker_line: int | None = None
     col_stats: dict[tuple, Counter] = {}
+    term_def_next_n: dict[tuple, int] = {}  # ns -> next synthesized term number (see TERM_DEFINITIONS_SECTION)
     marker_audit: list[dict] = []
 
     def _match_sob_top(stripped: str, indent: int, idx: int) -> tuple[list | None, int | None]:
@@ -2649,6 +3348,19 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
         SOB. Returns (top_tokens, top_consumed) or (None, None)."""
         nxt = _sob_top_label(sob_family, partc_next_idx)
         roman_prefix = sob_cfg.get("roman_prefix") if sob_cfg else None
+        # Reg 9's Section IX entries are bare letters with NO constant
+        # leading roman at all in the printed text ("A.      Adopted
+        # January 17, 2002", not "IX.A. ..."), unlike Reg 1's Section X
+        # (which prints "X.A." literally) or Reg 3's Part F ("I.A."). The id
+        # still needs to nest under the section root (`sec-9-IX-A`, not a
+        # bare `sec-9-A` colliding with Section II's own definitions letter
+        # A — see SOB_PART_CONFIG["9"]'s comment), so `implicit_section_
+        # prefix` prepends the section's own roman token WITHOUT requiring
+        # or consuming it from the line (contrast `roman_prefix`, which
+        # requires and consumes a literal prefix that's actually printed).
+        implicit_prefix = (
+            sob_section if (sob_cfg and sob_cfg.get("implicit_section_prefix") and sob_section) else None
+        )
         opener_re = (sob_cfg.get("top_opener_re") if sob_cfg else None) or DATE_START_RE
         if indent != 0 or nxt is None:
             return None, None
@@ -2667,7 +3379,12 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                 pat = re.compile(r"^([A-Z]{1,2})\.\s+(\S.*)$")
             m2 = pat.match(stripped)
             if m2 and m2.group(1) == nxt and opener_re.match(m2.group(2)):
-                return ([("roman", roman_prefix)] if roman_prefix else []) + [("upper", nxt)], m2.end(1) + 1
+                prefix_tokens = (
+                    [("roman", roman_prefix)] if roman_prefix
+                    else [("roman", implicit_prefix)] if implicit_prefix
+                    else []
+                )
+                return prefix_tokens + [("upper", nxt)], m2.end(1) + 1
         elif sob_family == "roman_seq":
             m2 = re.match(r"^([IVXLCDM]+)\.\s+(\S.*)$", stripped)
             sig = _prev_line_signals(lines, idx, last_marker_line)
@@ -2780,11 +3497,18 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
         # next physical line) — `_consume_heading_continuation` below
         # recovers that either way, whether it's completing a same-line
         # title or supplying the whole thing.
-        m = re.match(r"^(?:Appendix|APPENDIX)\s+([A-Z])\b(?:\s+(\S.*))?$", raw_line)
+        # Reg 30 prints its own appendices with a colon directly after the
+        # letter, no space — "Appendix A: Priority Toxic Air Contaminants"
+        # (line 3821 of REG_30.txt), "Appendix B: Chronic Health-Protective
+        # Benchmarks..." (line 4407) — the optional `:?` consumes it when
+        # present and is a no-op for every other regulation, none of which
+        # print the colon.
+        m = re.match(r"^(?:Appendix|APPENDIX)\s+([A-Z])\b:?(?:\s+(\S.*))?$", raw_line)
         if m and indent == 0 and _heading_marker_plausible(lines, idx, last_marker_line, seam_starts):
             letter, heading = m.group(1), (m.group(2) or "").strip()
-            extra = _consume_heading_continuation(lines, idx)
-            if not extra and not heading and no_parts:
+            extra_lines = _heading_continuation_lines(lines, idx)
+            title_end_line = idx + len(extra_lines)
+            if not extra_lines and not heading and no_parts:
                 # Reg 1 prints "APPENDIX A" alone on its line, then a BLANK
                 # line, then the title ("Method for Measuring Opacity from
                 # Fugitive Particulate Emission Sources") — one blank
@@ -2793,13 +3517,15 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                 # the title isn't demoted to the appendix's first body
                 # paragraph (gated to part-less regs so no other reg's
                 # appendix heading can change).
-                extra = _consume_heading_continuation(lines, idx + 1, max_extra=1)
-            if extra:
-                heading = f"{heading} {extra}".strip()
+                extra_lines = _heading_continuation_lines(lines, idx + 1, max_extra=1)
+                if extra_lines:
+                    title_end_line = idx + 1 + len(extra_lines)
+            if extra_lines:
+                heading = f"{heading} {' '.join(extra_lines)}".strip()
             appendix_active = letter
             markers.append({
                 "line": idx, "type": "appendix", "letter": letter, "heading": heading,
-                "owner_part": current_part,
+                "owner_part": current_part, "title_end_line": title_end_line,
             })
             last_marker_line = idx
             continue
@@ -2807,13 +3533,29 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
         if appendix_active is not None:
             # Everything until the next marker is one undivided blob for this
             # appendix (matches how the current DB stores it; see diff report
-            # for the content-omission bug this recovers). One exception, for
-            # a SECTION-scoped statement of basis only: Reg 1's own APPENDIX
-            # A / APPENDIX B are printed in the middle of its statement-of-
-            # basis section (between entries X.K. and X.L.), so the next
-            # top-level SOB entry line must close the open appendix rather
-            # than be swallowed by it.
-            if not (sob_active and _match_sob_top(stripped, indent, idx)[0] is not None):
+            # for the content-omission bug this recovers). Two exceptions,
+            # both closing the appendix on the next top-level statement-of-
+            # basis entry rather than letting it swallow that entry too:
+            #   - a SECTION-scoped statement of basis (Reg 1): its own
+            #     APPENDIX A / APPENDIX B are printed in the middle of its
+            #     statement-of-basis SECTION (between entries X.K. and X.L.).
+            #   - a PART-scoped statement of basis whose own PART is the one
+            #     currently open (Reg 30's Part C): its own Appendix A /
+            #     Appendix B are printed in the middle of Part C's dated
+            #     entries (between entries I./II. and II./III. — see
+            #     "APPENDICES, BY PART" in REG_30.txt), the exact same shape
+            #     as Reg 1's section-scoped case, just under a lettered part
+            #     instead of a numbered section. `current_part == sob_letter`
+            #     is only ever true here for a part whose SOB is part-scoped
+            #     (SOB_PART_CONFIG's `letter`, not `section`); no existing
+            #     regulation (1/2/3/6/7/22/26) prints an appendix inside its
+            #     own SOB part, so this is a no-op for all of them (confirmed
+            #     by the byte-identical reg1/reg2/reg26 baselines).
+            sob_top_here = (
+                sob_letter is not None and current_part == sob_letter
+                and _match_sob_top(stripped, indent, idx)[0] is not None
+            )
+            if not (sob_top_here or (sob_active and _match_sob_top(stripped, indent, idx)[0] is not None)):
                 continue
             appendix_active = None
 
@@ -2884,7 +3626,13 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
             if skip_candidates and idx in skip_candidates:
                 continue
             ns = ("part", current_part)
-            tokens, consumed = tokenize_by_cycle(stripped, cycle_ab)
+            if reg in BARE_LADDER_REGS:
+                # See BARE_LADDER_REGS: Reg 9 prints every label bare, so
+                # depth must come from the currently open chain, not from
+                # matching the full cycle from scratch.
+                tokens, consumed = _bare_ladder_tokens(stripped, ab_stack.get(current_part, []))
+            else:
+                tokens, consumed = tokenize_by_cycle(stripped, cycle_ab)
             if tokens:
                 rest = stripped[consumed:]
                 # Statement-of-basis SECTION guard (see SOB_SECTION_CONFIG):
@@ -2989,6 +3737,41 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                             })
                             last_marker_line = idx
                             continue
+            elif TERM_DEFINITIONS_SECTION.get(reg or ""):
+                # Unlabeled term-definitions section (see
+                # TERM_DEFINITIONS_SECTION): only reached when the line
+                # carried NO ordinary compound label at all (`tokens` above
+                # is empty) — a real "II." marker, or a compound "I.G.4."
+                # label if this section ever starts numbering, always
+                # tokenizes and is handled by the `if tokens:` branch above,
+                # never falls through here. Only regs listed in
+                # TERM_DEFINITIONS_SECTION reach this branch at all.
+                term_tokens = TERM_DEFINITIONS_SECTION[reg]
+                term_disp = tuple(r for _, r in term_tokens)
+                chain_disp = tuple(t[1] for t in ab_stack.get(current_part, []))
+                # "in the section" = the last accepted marker IS the
+                # section heading itself (about to emit the first term), or
+                # IS a previously emitted term (about to emit its sibling).
+                in_term_section = (
+                    chain_disp[: len(term_disp)] == term_disp
+                    and len(chain_disp) in (len(term_disp), len(term_disp) + 1)
+                )
+                if in_term_section:
+                    term = _match_term_heading_line(lines, idx, seam_starts)
+                    if term is not None:
+                        n = term_def_next_n.get(ns, 0) + 1
+                        term_def_next_n[ns] = n
+                        new_tokens = list(term_tokens) + [("digit", str(n))]
+                        disp = tuple(token_display(f, r) for f, r in new_tokens)
+                        emitted[ns].add(disp)
+                        ab_stack[current_part] = new_tokens
+                        markers.append({
+                            "line": idx, "type": "item", "ns": ns,
+                            "tokens": new_tokens, "consumed": 0,
+                            "term": term,
+                        })
+                        last_marker_line = idx
+                        continue
             continue
 
     return markers, marker_audit
@@ -3069,7 +3852,29 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
             aid = provision_id(reg, owner, f"APPENDIX-{letter}")
             citation = f"Appendix {letter}"
             title = f"{citation} — {heading}"
-            own_lines = marker_own_lines(lines, markers, i)
+            # `marker_own_lines` starts right after the marker's OWN physical
+            # line; when its heading wrapped onto further physical lines
+            # (`_consume_heading_continuation` — see `title_end_line`), those
+            # lines are already folded into `heading` above and must be
+            # skipped here too, or their text is duplicated as the
+            # appendix's own first body paragraph (confirmed: Reg 9's
+            # Appendix B, "...WHETHER\n     A LANDOWNER/MANAGER IS A
+            # SIGNIFICANT USER OF PRESCRIBED FIRE" — without this, "A
+            # LANDOWNER/MANAGER IS A SIGNIFICANT USER OF PRESCRIBED FIRE"
+            # printed twice). Gated to APPENDIX_HEADING_DEDUP_REGS — see its
+            # own comment for why this isn't applied to every regulation.
+            if reg in APPENDIX_HEADING_DEDUP_REGS:
+                body_start = mk.get("title_end_line", mk["line"]) + 1
+                own_lines = lines[body_start:markers[i + 1]["line"] if i + 1 < len(markers) else len(lines)]
+            else:
+                own_lines = marker_own_lines(lines, markers, i)
+            if reg in APPENDIX_TABLE_SPLICE_REGS:
+                own_lines = _splice_appendix_tables(own_lines, reg, tables_by_caption, table_hits)
+            # An appendix's own uncaptioned table(s) — Reg 30's Appendix A/B
+            # (see UNCAPTIONED_TABLES) — are swapped the same way an
+            # ordinary item's are; a no-op for every reg without an entry
+            # keyed to this appendix's own id.
+            own_lines = _swap_uncaptioned_table(own_lines, aid, reg, tables_by_caption, table_hits)
             paras = split_into_paragraphs(own_lines)
             provisions[aid] = dict(
                 id=aid, citation=citation, title=title, parent_id=root_id,
@@ -3180,21 +3985,13 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
         # Uncaptioned bordered tables (see UNCAPTIONED_TABLES): swap the
         # flattened pdftotext block for a sentinel paragraph, rendered in
         # place during the second pass below.
-        for entry in UNCAPTIONED_TABLES.get(reg, []):
-            if entry["row_id"] != item_id or entry["caption"] not in tables_by_caption:
-                continue
-            for li, ln in enumerate(own_lines):
-                if ln.strip().startswith(entry["start_prefix"]):
-                    lj = li
-                    while lj < len(own_lines) and own_lines[lj].strip() != "":
-                        lj += 1
-                    own_lines = own_lines[:li] + ["", _TABLE_SENTINEL + entry["caption"], ""] + own_lines[lj:]
-                    table_hits["used"] += 1
-                    table_hits["captions_used"].append(entry["caption"])
-                    break
-            extra_nonblank = [ln for ln in own_lines if ln.strip() != ""]
+        own_lines = _swap_uncaptioned_table(own_lines, item_id, reg, tables_by_caption, table_hits)
+        extra_nonblank = [ln for ln in own_lines if ln.strip() != ""]
 
         kind = "section" if len(tokens) == 1 else "item"
+        term = mk.get("term")  # see TERM_DEFINITIONS_SECTION
+        if term is not None:
+            kind = "definition"
 
         if not extra_nonblank:
             # Heading-type: entire own text fit on the marker's own physical
@@ -3209,8 +4006,12 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
             all_lines = ([inline_text] if inline_text else []) + own_lines
             paras = split_into_paragraphs(all_lines)
             pending[item_id] = ("paras", paras, citation, table_html, part_letter, item_id)
+            # A synthesized term-definition row (see TERM_DEFINITIONS_SECTION)
+            # is titled with the defined term itself, not the bare synthetic
+            # citation — "I.G.1." carries no information a reader can use.
+            title = f"{citation} {term}" if term is not None else citation
             provisions[item_id] = dict(
-                id=item_id, citation=citation, title=citation, parent_id=parent_id,
+                id=item_id, citation=citation, title=title, parent_id=parent_id,
                 sort_order=next_sort(), full_text="", kind=kind,
             )
         order.append(item_id)
@@ -3250,6 +4051,9 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
             _, paras, citation, table_html, own_part, own_id = entry
             rendered = []
             for p in paras:
+                if p.startswith(_TABLE_SENTINEL):
+                    rendered.append(render_table_html(tables_by_caption[p[len(_TABLE_SENTINEL):]]))
+                    continue
                 escaped = escape_html_text(p)
                 linked, buckets = link_citations(escaped, reg, known_ids, CORPUS_REGS, own_part, own_id)
                 _merge(buckets)
@@ -3259,6 +4063,11 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
             _, paras, title, table_html, own_part, own_id = entry
             rendered = []
             for p in paras:
+                if p.startswith(_TABLE_SENTINEL):
+                    # See `_splice_appendix_tables` (Reg 9's Appendix B, the
+                    # only reg with more than one table per appendix row).
+                    rendered.append(render_table_html(tables_by_caption[p[len(_TABLE_SENTINEL):]]))
+                    continue
                 escaped = escape_html_text(p)
                 linked, buckets = link_citations(escaped, reg, known_ids, CORPUS_REGS, own_part, own_id)
                 _merge(buckets)
