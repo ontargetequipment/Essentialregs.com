@@ -1,0 +1,767 @@
+<?xml version="1.0"?>
+<DIV5 N="194" TYPE="PART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-194&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 194&amp;quot;}">
+<HEAD>PART 194&#x2014;RESPONSE PLANS FOR ONSHORE OIL PIPELINES
+</HEAD>
+<AUTH>
+<HED>Authority:</HED><PSPACE>33 U.S.C. 1231, 1321(j)(1)(C), (j)(5) and (j)(6); sec. 2, E.O. 12777, 56 FR 54757, 3 CFR, 1991 Comp., p. 351; 49 CFR 1.53.
+</PSPACE></AUTH>
+<SOURCE>
+<HED>Source:</HED><PSPACE>58 FR 253, Jan. 5, 1993, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV6 N="A" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-194/subpart-A&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 194 Subpart A&amp;quot;}">
+<HEAD>Subpart A&#x2014;General</HEAD>
+<DIV8 N="194.1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.1&quot;,&quot;citation&quot;:&quot;49 CFR 194.1&quot;}">
+<HEAD>&#xA7; 194.1 Purpose.</HEAD>
+<P>This part contains requirements for oil spill response plans to reduce the environmental impact of oil discharged from onshore oil pipelines.</P>
+</DIV8>
+
+<DIV8 N="194.3" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.3&quot;,&quot;citation&quot;:&quot;49 CFR 194.3&quot;}">
+<HEAD>&#xA7; 194.3 Applicability.</HEAD>
+<P>This part applies to an operator of an onshore oil pipeline that, because of its location, could reasonably be expected to cause substantial harm, or significant and substantial harm to the environment by discharging oil into or on any navigable waters of the United States or adjoining shorelines.</P>
+</DIV8>
+
+<DIV8 N="194.5" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.5&quot;,&quot;citation&quot;:&quot;49 CFR 194.5&quot;}">
+<HEAD>&#xA7; 194.5 Definitions.</HEAD>
+<P><I>Adverse weather</I> means the weather conditions that the operator will consider when identifying response systems and equipment to be deployed in accordance with a response plan. Factors to consider include ice conditions, temperature ranges, weather-related visibility, significant wave height as specified in 33 CFR Part 154, Appendix C, Table 1, and currents within the areas in which those systems or equipment are intended to function.</P>
+<P><I>Barrel</I> means 42 United States gallons (159 liters) at 60 &#xB0;Fahrenheit (15.6 &#xB0;Celsius).</P>
+<P><I>Breakout tank</I> means a tank used to:</P>
+<P>(1) Relieve surges in an oil pipeline system or</P>
+<P>(2) Receive and store oil transported by a pipeline for reinjection and continued transportation by pipeline.</P>
+<P><I>Contract or other approved means</I> is:</P>
+<P>(1) A written contract or other legally binding agreement between the operator and a response contractor or other spill response organization identifying and ensuring the availability of the specified personnel and equipment within stipulated response times for a specified geographic area;</P>
+<P>(2) Certification that specified equipment is owned or operated by the pipeline operator, and operator personnel and equipment are available within stipulated response times for a specified geographic area; or</P>
+<P>(3) Active membership in a local or regional oil spill removal organization that has identified specified personnel and equipment to be available within stipulated response times for a specified geographic area.</P>
+<P><I>Environmentally sensitive area</I> means an area of environmental importance which is in or adjacent to navigable waters.</P>
+<P><I>High volume area</I> means an area which an oil pipeline having a nominal outside diameter of 20 inches (508 millimeters) or more crosses a major river or other navigable waters, which, because of the velocity of the river flow and vessel traffic on the river, would require a more rapid response in case of a worst case discharge or substantial threat of such a discharge. Appendix B to this part contains a list of some of the high volume areas in the United States.</P>
+<P><I>Line section</I> means a continuous run of pipe that is contained between adjacent pressure pump stations, between a pressure pump station and a terminal or breakout tank, between a pressure pump station and a block valve, or between adjacent block valves.</P>
+<P><I>Major river</I> means a river that, because of its velocity and vessel traffic, would require a more rapid response in case of a worst case discharge. For a list of rivers see &#x201C;<I>Rolling Rivers, An Encyclopedia of America's Rivers,&#x201D;</I> Richard A. Bartlett, Editor, McGraw-Hill Book Company, 1984.</P>
+<P><I>Maximum extent practicable</I> means the limits of available technology and the practical and technical limits on a pipeline operator in planning the response resources required to provide the on-water recovery capability and the shoreline protection and cleanup capability to conduct response activities for a worst case discharge from a pipeline in adverse weather.</P>
+<P><I>Navigable waters</I> means the waters of the United States, including the territorial sea and such waters as lakes, rivers, streams; waters which are used for recreation; and waters from which fish or shellfish are taken and sold in interstate or foreign commerce.</P>
+<P><I>Oil</I> means oil of any kind or in any form, including, but not limited to, petroleum, fuel oil, vegetable oil, animal oil, sludge, oil refuse, oil mixed with wastes other than dredged spoil.</P>
+<P><I>Oil spill removal organization</I> means an entity that provides response resources.</P>
+<P><I>On-Scene Coordinator (OSC)</I> means the federal official designated by the Administrator of the EPA or by the Commandant of the USCG to coordinate and direct federal response under subpart D of the National Contingency Plan (40 CFR part 300).</P>
+<P><I>Onshore oil pipeline facilities</I> means new and existing pipe, rights-of-way and any equipment, facility, or building used in the transportation of oil located in, on, or under, any land within the United States other than submerged land.</P>
+<P><I>Operator</I> means a person who owns or operates onshore oil pipeline facilities.</P>
+<P><I>Pipeline</I> means all parts of an onshore pipeline facility through which oil moves including, but not limited to, line pipe, valves, and other appurtenances connected to line pipe, pumping units, fabricated assemblies associated with pumping units, metering and delivery stations and fabricated assemblies therein, and breakout tanks.</P>
+<P><I>Qualified individual</I> means an English-speaking representative of an operator, located in the United States, available on a 24-hour basis, with full authority to: activate and contract with required oil spill removal organization(s); activate personnel and equipment maintained by the operator; act as liaison with the OSC; and obligate any funds required to carry out all required or directed oil response activities.</P>
+<P><I>Response activities</I> means the containment and removal of oil from the water and shorelines, the temporary storage and disposal of recovered oil, or the taking of other actions as necessary to minimize or mitigate damage to the environment.</P>
+<P><I>Response plan</I> means the operator's core plan and the response zone appendices for responding, to the maximum extent practicable, to a worse case discharge of oil, or the substantial threat of such a discharge.</P>
+<P><I>Response resources</I> means the personnel, equipment, supplies, and other resources necessary to conduct response activities.</P>
+<P><I>Response zone</I> means a geographic area either along a length of pipeline or including multiple pipelines, containing one or more adjacent line sections, for which the operator must plan for the deployment of, and provide, spill response capabilities. The size of the zone is determined by the operator after considering available capability, resources, and geographic characteristics.</P>
+<P><I>Specified minimum yield strength</I> means the minimum yield strength, expressed in pounds per square inch, prescribed by the specification under which the material is purchased from the manufacturer.</P>
+<P><I>Stress level</I> means the level of tangential or hoop stress, usually expressed as a percentage of specified minimum yield strength.</P>
+<P><I>Worst case discharge</I> means the largest foreseeable discharge of oil, including a discharge from fire or explosion, in adverse weather conditions. This volume will be determined by each pipeline operator for each response zone and is calculated according to &#xA7; 194.105.</P>
+<CITA TYPE="N">[58 FR 253, Jan. 5, 1993, as amended by Amdt. 194-3, 63 FR 37505, July 13, 1998; Amdt. 194-4, 70 FR 8746, Feb. 23, 2005]
+</CITA>
+</DIV8>
+
+<DIV8 N="194.7" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.7&quot;,&quot;citation&quot;:&quot;49 CFR 194.7&quot;}">
+<HEAD>&#xA7; 194.7 Operating restrictions and interim operating authorization.</HEAD>
+<P>(a) An operator of a pipeline for which a response plan is required under &#xA7; 194.101, may not handle, store, or transport oil in that pipeline unless the operator has submitted a response plan meeting the requirements of this part.</P>
+<P>(b) An operator must operate its onshore pipeline facilities in accordance with the applicable response plan.</P>
+<P>(c) The operator of a pipeline line section described in &#xA7; 194.103(c), may continue to operate the pipeline for two years after the date of submission of a response plan, pending approval or disapproval of that plan, only if the operator has submitted the certification required by &#xA7; 194.119(e).</P>
+<CITA TYPE="N">[Amdt. 194-4, 70 FR 8746, Feb. 23, 2005]
+</CITA>
+</DIV8>
+
+</DIV6>
+<DIV6 N="B" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-194/subpart-B&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 194 Subpart B&amp;quot;}">
+<HEAD>Subpart B&#x2014;Response Plans</HEAD>
+<DIV8 N="194.101" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.101&quot;,&quot;citation&quot;:&quot;49 CFR 194.101&quot;}">
+<HEAD>&#xA7; 194.101 Operators required to submit plans.</HEAD>
+<P>(a) Except as provided in paragraph (b) of this section, unless OPS grants a request from an Federal On-Scene Coordinator (FOSC) to require an operator of a pipeline in paragraph (b) to submit a response plan, each operator of an onshore pipeline facility shall prepare and submit a response plan to PHMSA as provided in &#xA7; 194.119. A pipeline which does not meet the criteria for significant and substantial harm as defined in &#xA7; 194.103(c) and is not eligible for an exception under &#xA7; 194.101(b), can be expected to cause substantial harm. Operators of substantial harm pipeline facilities must prepare and submit plans to PHMSA for review.</P>
+<P>(b) <I>Exception.</I> An operator need not submit a response plan for:</P>
+<P>(1) A pipeline that is 6
+<FR>5/8</FR> inches (168 millimeters) or less in outside nominal diameter, is 10 miles (16 kilometers) or less in length, and all of the following conditions apply to the pipeline:</P>
+<P>(i) The pipeline has not experienced a release greater than 1,000 barrels (159 cubic meters) within the previous five years,</P>
+<P>(ii) The pipeline has not experienced at least two reportable releases, as defined in &#xA7; 195.50, within the previous five years,</P>
+<P>(iii) A pipeline containing any electric resistance welded pipe, manufactured prior to 1970, does not operate at a maximum operating pressure established under &#xA7; 195.406 that corresponds to a stress level greater than 50 percent of the specified minimum yield strength of the pipe, and</P>
+<P>(iv) The pipeline is not in proximity to navigable waters, public drinking water intakes, or environmentally sensitive areas.</P>
+<P>(2)(i) A line section that is greater than 6
+<FR>5/8</FR> inches in outside nominal diameter and is greater than 10 miles in length, where the operator determines that it is unlikely that the worst case discharge from any point on the line section would adversely affect, within 12 hours after the initiation of the discharge, any navigable waters, public drinking water intake, or environmentally sensitive areas.</P>
+<P>(ii) A line section that is 6
+<FR>5/8</FR> inches (168 millimeters) or less in outside nominal diameter and is 10 miles (16 kilometers) or less in length, where the operator determines that it is unlikely that the worst case discharge from any point on the line section would adversely affect, within 4 hours after the initiation of the discharge, any navigable waters, public drinking water intake, or environmentally sensitive areas.</P>
+<CITA TYPE="N">[58 FR 253, Jan. 5, 1993, as amended by Amdt. 194-3, 63 FR 37505, July 13, 1998; Amdt. 194-4, 70 FR 8747, Feb. 23, 2005; 70 FR 11140, Mar. 8, 2005]
+</CITA>
+</DIV8>
+
+<DIV8 N="194.103" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.103&quot;,&quot;citation&quot;:&quot;49 CFR 194.103&quot;}">
+<HEAD>&#xA7; 194.103 Significant and substantial harm; operator's statement.</HEAD>
+<P>(a) Each operator shall submit a statement with its response plan, as required by &#xA7;&#xA7; 194.107 and 194.113, identifying which line sections in a response zone can be expected to cause significant and substantial harm to the environment in the event of a discharge of oil into or on the navigable waters or adjoining shorelines.</P>
+<P>(b) If an operator expects a line section in a response zone to cause significant and substantial harm, then the entire response zone must, for the purpose of response plan review and approval, be treated as if it is expected to cause significant and substantial harm. However, an operator will not have to submit separate plans for each line section.</P>
+<P>(c) A line section can be expected to cause significant and substantial harm to the environment in the event of a discharge of oil into or on the navigable waters or adjoining shorelines if; the pipeline is greater than 6
+<FR>5/8</FR> inches (168 millimeters) in outside nominal diameter, greater than 10 miles (16 kilometers) in length, and the line section&#x2014;</P>
+<P>(1) Has experienced a release greater than 1,000 barrels (159 cubic meters) within the previous five years,</P>
+<P>(2) Has experienced two or more reportable releases, as defined in &#xA7; 195.50, within the previous five years,</P>
+<P>(3) Containing any electric resistance welded pipe, manufactured prior to 1970, operates at a maximum operating pressure established under &#xA7; 195.406 that corresponds to a stress level greater than 50 percent of the specified minimum yield strength of the pipe,</P>
+<P>(4) Is located within a 5 mile (8 kilometer) radius of potentially affected public drinking water intakes and could reasonably be expected to reach public drinking water intakes, or</P>
+<P>(5) Is located within a 1 mile (1.6 kilometer) radius of potentially affected environmentally sensitive areas, and could reasonably be expected to reach these areas.</P>
+<CITA TYPE="N">[58 FR 253, Jan. 5, 1993, as amended by Amdt. 194-3, 63 FR 37505, July 13, 1998]
+</CITA>
+</DIV8>
+
+<DIV8 N="194.105" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.105&quot;,&quot;citation&quot;:&quot;49 CFR 194.105&quot;}">
+<HEAD>&#xA7; 194.105 Worst case discharge.</HEAD>
+<P>(a) Each operator shall determine the worst case discharge for each of its response zones and provide the methodology, including calculations, used to arrive at the volume.</P>
+<P>(b) The worst case discharge is the largest volume, in barrels (cubic meters), of the following:</P>
+<P>(1) The pipeline's maximum release time in hours, plus the maximum shutdown response time in hours (based on historic discharge data or in the absence of such historic data, the operator's best estimate), multiplied by the maximum flow rate expressed in barrels per hour (based on the maximum daily capacity of the pipeline), plus the largest line drainage volume after shutdown of the line section(s) in the response zone expressed in barrels (cubic meters); or</P>
+<P>(2) The largest foreseeable discharge for the line section(s) within a response zone, expressed in barrels (cubic meters), based on the maximum historic discharge, if one exists, adjusted for any subsequent corrective or preventive action taken; or</P>
+<P>(3) If the response zone contains one or more breakout tanks, the capacity of the single largest tank or battery of tanks within a single secondary containment system, adjusted for the capacity or size of the secondary containment system, expressed in barrels (cubic meters).</P>
+<P>(4) Operators may claim prevention credits for breakout tank secondary containment and other specific spill prevention measures as follows:</P>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">Prevention measure</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Standard</TH>
+<TH class="center border-top-single border-bottom-single">Credit<br/>(percent)</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">Secondary containment &gt;100%</TD>
+<TD class="left border-right-single">NFPA 30</TD>
+<TD class="right">50</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Built/repaired to API standards</TD>
+<TD class="left border-right-single">API STD 620/650/653</TD>
+<TD class="right">10</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Overfill protection standards</TD>
+<TD class="left border-right-single">API RP 2350</TD>
+<TD class="right">5</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Testing/cathodic protection</TD>
+<TD class="left border-right-single">API STD 650/651/653</TD>
+<TD class="right">5</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Tertiary containment/drainage/treatment</TD>
+<TD class="left border-right-single">NFPA 30</TD>
+<TD class="right">5</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">Maximum allowable credit</TD>
+<TD class="left border-bottom-single border-right-single"/>
+<TD class="right border-bottom-single">75</TD>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+<CITA TYPE="N">[58 FR 253, Jan. 5, 1993, as amended by Amdt. 194-3, 63 FR 37505, July 13, 1998; Amdt. 194-4, 70 FR 8747, Feb. 23, 2005; Amdt. 194-5, 70 FR 35042, June 16, 2005]
+</CITA>
+</DIV8>
+
+<DIV8 N="194.107" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.107&quot;,&quot;citation&quot;:&quot;49 CFR 194.107&quot;}">
+<HEAD>&#xA7; 194.107 General response plan requirements.</HEAD>
+<P>(a) Each response plan must include procedures and a list of resources for responding, to the maximum extent practicable, to a worst case discharge and to a substantial threat of such a discharge. The &#x201C;substantial threat&#x201D; term is equivalent to abnormal operations outlined in 49 CFR 195.402(d). To comply with this requirement, an operator can incorporate by reference into the response plan the appropriate procedures from its manual for operations, maintenance, and emergencies, which is prepared in compliance with 49 CFR 195.402.</P>
+<P>(b) An operator must certify in the response plan that it reviewed the NCP and each applicable ACP and that its response plan is consistent with the NCP and each applicable ACP as follows:</P>
+<P>(1) As a minimum to be consistent with the NCP a facility response plan must:</P>
+<P>(i) Demonstrate an operator's clear understanding of the function of the Federal response structure, including procedures to notify the National Response Center reflecting the relationship between the operator's response organization's role and the Federal On Scene Coordinator's role in pollution response;</P>
+<P>(ii) Establish provisions to ensure the protection of safety at the response site; and</P>
+<P>(iii) Identify the procedures to obtain any required Federal and State permissions for using alternative response strategies such as in-situ burning and dispersants as provided for in the applicable ACPs; and</P>
+<P>(2) As a minimum, to be consistent with the applicable ACP the plan must:</P>
+<P>(i) Address the removal of a worst case discharge and the mitigation or prevention of a substantial threat of a worst case discharge;</P>
+<P>(ii) Identify environmentally and economically sensitive areas;</P>
+<P>(iii) Describe the responsibilities of the operator and of Federal, State and local agencies in removing a discharge and in mitigating or preventing a substantial threat of a discharge; and</P>
+<P>(iv) Establish the procedures for obtaining an expedited decision on use of dispersants or other chemicals.</P>
+<P>(c) Each response plan must include:</P>
+<P>(1) A core plan consisting of&#x2014;</P>
+<P>(i) An information summary as required in &#xA7; 194.113,</P>
+<P>(ii) Immediate notification procedures,</P>
+<P>(iii) Spill detection and mitigation procedures,</P>
+<P>(iv) The name, address, and telephone number of the oil spill response organization, if appropriate,</P>
+<P>(v) Response activities and response resources,</P>
+<P>(vi) Names and telephone numbers of Federal, State and local agencies which the operator expects to have pollution control responsibilities or support,</P>
+<P>(vii) Training procedures,</P>
+<P>(viii) Equipment testing,</P>
+<P>(ix) Drill program&#x2014;an operator will satisfy the requirement for a drill program by following the National Preparedness for Response Exercise Program (PREP) guidelines. An operator choosing not to follow PREP guidelines must have a drill program that is equivalent to PREP. The operator must describe the drill program in the response plan and OPS will determine if the program is equivalent to PREP.</P>
+<P>(x) Plan review and update procedures;</P>
+<P>(2) An appendix for each response zone that includes the information required in paragraph (c)(1)(i)-(ix) of this section and the worst case discharge calculations that are specific to that response zone. An operator submitting a response plan for a single response zone does not need to have a core plan and a response zone appendix. The operator of a single response zone onshore pipeline shall have a single summary in the plan that contains the required information in &#xA7; 194.113.7; and</P>
+<P>(3) A description of the operator's response management system including the functional areas of finance, logistics, operations, planning, and command. The plan must demonstrate that the operator's response management system uses common terminology and has a manageable span of control, a clearly defined chain of command, and sufficient trained personnel to fill each position.</P>
+<CITA TYPE="N">[Amdt. 194-4, 70 FR 8747, Feb. 23, 2005]
+</CITA>
+</DIV8>
+
+<DIV8 N="194.109" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.109&quot;,&quot;citation&quot;:&quot;49 CFR 194.109&quot;}">
+<HEAD>&#xA7; 194.109 Submission of state response plans.</HEAD>
+<P>(a) In lieu of submitting a response plan required by &#xA7; 194.103, an operator may submit a response plan that complies with a state law or regulation, if the state law or regulation requires a plan that provides equivalent or greater spill protection than a plan required under this part.</P>
+<P>(b) A plan submitted under this section must</P>
+<P>(1) Have an information summary required by &#xA7; 194.113;</P>
+<P>(2) List the names or titles and 24-hour telephone numbers of the qualified individual(s) and at least one alternate qualified individual(s); and</P>
+<P>(3) Ensure through contract or other approved means the necessary private personnel and equipment to respond to a worst case discharge or a substantial threat of such a discharge.</P>
+<CITA TYPE="N">[58 FR 253, Jan. 5, 1993, as amended by Amdt. 194-4, 70 FR 8748, Feb. 23, 2005]
+</CITA>
+</DIV8>
+
+<DIV8 N="194.111" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.111&quot;,&quot;citation&quot;:&quot;49 CFR 194.111&quot;}">
+<HEAD>&#xA7; 194.111 Response plan retention.</HEAD>
+<P>(a) Each operator shall maintain relevant portions of its response plan at:</P>
+<P>(1) The operator's headquarters and other locations from which response activities may be conducted, for example in field offices, supervisors' vehicles, or spill response trailers; or</P>
+<P>(2) Electronic storage on a readily accessible secured portable device.</P>
+<P>(b) Each operator shall provide a copy of its response plan to each qualified individual.</P>
+<CITA TYPE="N">[58 FR 253, Jan. 5, 1993, as amended by Amdt. 194-4, 70 FR 8748, Feb. 23, 2005; Amdt. 194-6, 91 FR 22039, Apr. 24, 2026]
+</CITA>
+</DIV8>
+
+<DIV8 N="194.113" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.113&quot;,&quot;citation&quot;:&quot;49 CFR 194.113&quot;}">
+<HEAD>&#xA7; 194.113 Information summary.</HEAD>
+<P>(a) The information summary for the core plan, required by &#xA7; 194.107, must include:</P>
+<P>(1) The name and address of the operator; and</P>
+<P>(2) For each response zone which contains one or more line sections that meet the criteria for determining significant and substantial harm as described in &#xA7; 194.103, a listing and description of the response zones, including county(s) and state(s).</P>
+<P>(b) The information summary for the response zone appendix, required in &#xA7; 194.107, must include:</P>
+<P>(1) The information summary for the core plan;</P>
+<P>(2) The names or titles and 24-hour telephone numbers of the qualified individual(s) and at least one alternate qualified individual(s);</P>
+<P>(3) The description of the response zone, including county(s) and state(s), for those zones in which a worst case discharge could cause substantial harm to the environment;</P>
+<P>(4) A list of line sections for each pipeline contained in the response zone, identified by milepost or survey station number, or other operator designation;</P>
+<P>(5) The basis for the operator's determination of significant and substantial harm; and</P>
+<P>(6) The type of oil and volume of the worst case discharge.</P>
+<CITA TYPE="N">[58 FR 253, Jan. 5, 1993, as amended by Amdt. 194-4, 70 FR 8748, Feb. 23, 2005]
+</CITA>
+</DIV8>
+
+<DIV8 N="194.115" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.115&quot;,&quot;citation&quot;:&quot;49 CFR 194.115&quot;}">
+<HEAD>&#xA7; 194.115 Response resources.</HEAD>
+<P>(a) Each operator shall identify and ensure, by contract or other approved means, the resources necessary to remove, to the maximum extent practicable, a worst case discharge and to mitigate or prevent a substantial threat of a worst case discharge.</P>
+<P>(b) An operator shall identify in the response plan the response resources which are available to respond within the time specified, after discovery of a worst case discharge, or to mitigate the substantial threat of such a discharge, as follows:</P>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single"> </TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Tier 1</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Tier 2</TH>
+<TH class="center border-top-single border-bottom-single">Tier 3</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">High volume area</TD>
+<TD class="left border-right-single">6 hrs</TD>
+<TD class="left border-right-single">30 hrs</TD>
+<TD class="left">54 hrs.</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">All other areas</TD>
+<TD class="left border-bottom-single border-right-single">12 hrs</TD>
+<TD class="left border-bottom-single border-right-single">36 hrs</TD>
+<TD class="left border-bottom-single">60 hrs.</TD>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+</DIV8>
+
+<DIV8 N="194.117" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.117&quot;,&quot;citation&quot;:&quot;49 CFR 194.117&quot;}">
+<HEAD>&#xA7; 194.117 Training.</HEAD>
+<P>(a) Each operator shall conduct training to ensure that:</P>
+<P>(1) All personnel know&#x2014;</P>
+<P>(i) Their responsibilities under the response plan,</P>
+<P>(ii) The name and address of, and the procedure for contacting, the operator on a 24-hour basis, and</P>
+<P>(iii) The name of, and procedures for contacting, the qualified individual on a 24-hour basis;</P>
+<P>(2) Reporting personnel know&#x2014;</P>
+<P>(i) The content of the information summary of the response plan,</P>
+<P>(ii) The toll-free telephone number of the National Response Center, and</P>
+<P>(iii) The notification process; and</P>
+<P>(3) Personnel engaged in response activities know&#x2014;</P>
+<P>(i) The characteristics and hazards of the oil discharged,</P>
+<P>(ii) The conditions that are likely to worsen emergencies, including the consequences of facility malfunctions or failures, and the appropriate corrective actions,</P>
+<P>(iii) The steps necessary to control any accidental discharge of oil and to minimize the potential for fire, explosion, toxicity, or environmental damage, and</P>
+<P>(iv) The proper firefighting procedures and use of equipment, fire suits, and breathing apparatus.</P>
+<P>(b) Each operator shall maintain a training record for each individual that has been trained as required by this section. These records must be maintained in the following manner as long as the individual is assigned duties under the response plan:</P>
+<P>(1) Records for operator personnel must be maintained at the operator's headquarters; and</P>
+<P>(2) Records for personnel engaged in response, other than operator personnel, shall be maintained as determined by the operator.</P>
+<P>(c) Nothing in this section relieves an operator from the responsibility to ensure that all response personnel are trained to meet the Occupational Safety and Health Administration (OSHA) standards for emergency response operations in 29 CFR 1910.120, including volunteers or casual laborers employed during a response who are subject to those standards pursuant to 40 CFR part 311.</P>
+</DIV8>
+
+<DIV8 N="194.119" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.119&quot;,&quot;citation&quot;:&quot;49 CFR 194.119&quot;}">
+<HEAD>&#xA7; 194.119 Submission and approval procedures.</HEAD>
+<P>(a) Each operator shall submit two copies of the response plan required by this part. Copies of the response plan shall be submitted to: Office of Pipeline Safety, Pipeline and Hazardous Materials Safety Administration, Department of Transportation, PHP 80, 1200 New Jersey Avenue, SE., Washington, DC 20590-0001. Note: Submission of plans in electronic format is preferred.</P>
+<P>(b) If PHMSA determines that a response plan requiring approval does not meet all the requirements of this part, PHMSA will notify the operator of any alleged deficiencies, and to provide the operator an opportunity to respond, including the opportunity for an informal conference, on any proposed plan revisions and an opportunity to correct any deficiencies.</P>
+<P>(c) An operator who disagrees with the PHMSA determination that a plan contains alleged deficiencies may petition PHMSA for reconsideration within 30 days from the date of receipt of PHMSA's notice. After considering all relevant material presented in writing or at an informal conference, PHMSA will notify the operator of its final decision. The operator must comply with the final decision within 30 days of issuance unless PHMSA allows additional time.</P>
+<P>(d) For response zones of pipelines described in &#xA7; 194.103(c) OPS will approve the response plan if OPS determines that the response plan meets all requirements of this part. OPS may consult with the U.S. Environmental Protection Agency (EPA) or the U.S. Coast Guard (USCG) if a Federal on-scene coordinator (FOSC) has concerns about the operator's ability to respond to a worst case discharge.</P>
+<P>(e) If OPS has not approved a response plan for a pipeline described in &#xA7; 194.103(c), the operator may submit a certification to OPS that the operator has obtained, through contract or other approved means, the necessary personnel and equipment to respond, to the maximum extent practicable, to a worst case discharge or a substantial threat of such a discharge. The certificate must be signed by the qualified individual or an appropriate corporate officer.</P>
+<P>(f) If OPS receives a request from a FOSC to review a response plan, OPS may require an operator to give a copy of the response plan to the FOSC. OPS may consider FOSC comments on response techniques, protecting fish, wildlife and sensitive environments, and on consistency with the ACP. OPS remains the approving authority for the response plan.</P>
+<CITA TYPE="N">[58 FR 253, Jan. 5, 1993, as amended by Amdt. 194-4, 70 FR 8748, Feb. 23, 2005; 70 FR 1140, Mar. 8, 2005; 73 FR 16570, Mar. 28, 2008; 74 FR 2894, Jan. 16, 2009]
+</CITA>
+</DIV8>
+
+<DIV8 N="194.121" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-194.121&quot;,&quot;citation&quot;:&quot;49 CFR 194.121&quot;}">
+<HEAD>&#xA7; 194.121 Response plan review and update procedures.</HEAD>
+<P>(a) Each operator shall update its response plan to address new or different operating conditions or information. In addition, each operator shall review its response plan in full at least every 5 years from the date of the last submission or the last approval as follows:</P>
+<P>(1) For substantial harm plans, an operator shall resubmit its response plan to OPS every 5 years from the last submission date.</P>
+<P>(2) For significant and substantial harm plans, an operator shall resubmit every 5 years from the last approval date.</P>
+<P>(b) If a new or different operating condition or information would substantially affect the implementation of a response plan, the operator must immediately modify its response plan to address such a change and, within 30 days of making such a change, submit the change to PHMSA. Examples of changes in operating conditions that would cause a significant change to an operator's response plan are:</P>
+<P>(1) An extension of the existing pipeline or construction of a new pipeline in a response zone not covered by the previously approved plan;</P>
+<P>(2) Relocation or replacement of the pipeline in a way that substantially affects the information included in the response plan, such as a change to the worst case discharge volume;</P>
+<P>(3) The type of oil transported, if the type affects the required response resources, such as a change from crude oil to gasoline;</P>
+<P>(4) The name of the oil spill removal organization;</P>
+<P>(5) Emergency response procedures;</P>
+<P>(6) The qualified individual;</P>
+<P>(7) A change in the NCP or an ACP that has significant impact on the equipment appropriate for response activities; and</P>
+<P>(8) Any other information relating to circumstances that may affect full implementation of the plan.</P>
+<P>(c) If PHMSA determines that a change to a response plan does not meet the requirements of this part, PHMSA will notify the operator of any alleged deficiencies, and provide the operator an opportunity to respond, including an opportunity for an informal conference, to any proposed plan revisions and an opportunity to correct any deficiencies.</P>
+<P>(d) An operator who disagrees with a determination that proposed revisions to a plan are deficient may petition PHMSA for reconsideration, within 30 days from the date of receipt of PHMSA's notice. After considering all relevant material presented in writing or at the conference, PHMSA will notify the operator of its final decision. The operator must comply with the final decision within 30 days of issuance unless PHMSA allows additional time.</P>
+<CITA TYPE="N">[58 FR 253, Jan. 5, 1993, as amended by Amdt. 194-1, 62 FR 67293, Dec. 24, 1997; Amdt. 194-4, 70 FR 8748, Feb. 23, 2005; 70 FR 11140, Mar. 8, 2005]
+</CITA>
+</DIV8>
+
+</DIV6>
+<DIV9 N="Appendix A to Part 194" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/part-194/appendix-Appendix A to Part 194&quot;,&quot;citation&quot;:&quot;Appendix A to Part 194, Title 49&quot;}">
+<HEAD>Appendix A to Part 194&#x2014;Guidelines for the Preparation of Response Plans
+</HEAD>
+<P>This appendix provides a recommended format for the preparation and submission of the response plans required by 49 CFR Part 194. Operators are referenced to the most current version of the guidance documents listed below. Although these documents contain guidance to assist in preparing response plans, their use is not mandatory:</P>
+<P>(1) The &#x201C;National Preparedness for Response Exercise Program (PREP) Guidelines&#x201D; (PREP), which can be found using the search function on the USCG's PREP Web page, <I>http://www.uscg.mil</I>;</P>
+<P>(2) The National Response Team's &#x201C;Integrated Contingency Plan Guidance,&#x201D; which can be found using the search function at the National Response Center's Web site, <I>http://www.nrt.org and</I>;</P>
+<P>(3) 33 CFR Part 154, Appendix C, &#x201C;Guidelines for Determining and Evaluating Required Response Resources for Facility Response Plans.&#x201D;</P>
+<HD2>Response Plan: Section 1. Information Summary
+</HD2>
+<P>Section 1 would include the following:</P>
+<P>(a) For the core plan:</P>
+<P>(1) The name and address of the operator; and</P>
+<P>(2) For each response zone which contains one or more line sections that meet the criteria for determining significant and substantial harm as described in &#xA7; 194.103, a listing and description of the response zones, including county(s) and state(s).</P>
+<P>(b) For each response zone appendix:</P>
+<P>(1) The information summary for the core plan;</P>
+<P>(2) The name and telephone number of the qualified individual, available on a 24-hour basis;</P>
+<P>(3) A description of the response zone, including county(s) and state(s) in which a worst case discharge could cause substantial harm to the environment;</P>
+<P>(4) A list of line sections contained in the response zone, identified by milepost or survey station number or other operator designation.</P>
+<P>(5) The basis for the operator's determination of significant and substantial harm; and</P>
+<P>(6) The type of oil and volume of the worst case discharge.</P>
+<P>(c) The certification that the operator has obtained, through contract or other approved means, the necessary private personnel and equipment to respond, to the maximum extent practicable, to a worst case discharge or a substantial threat of such a discharge.</P>
+<HD2>Response Plan: Section 2. Notification Procedures
+</HD2>
+<P>Section 2 would include the following:</P>
+<P>(a) Notification requirements that apply in each area of operation of pipelines covered by the plan, including applicable State or local requirements;</P>
+<P>(b) A checklist of notifications the operator or qualified individual is required to make under the response plan, listed in the order of priority;</P>
+<P>(c) Names of persons (individuals or organizations) to be notified of a discharge, indicating whether notification is to be performed by operating personnel or other personnel;</P>
+<P>(d) Procedures for notifying qualified individuals;</P>
+<P>(e) The primary and secondary communication methods by which notifications can be made; and</P>
+<P>(f) The information to be provided in the initial and each follow-up notification, including the following:</P>
+<P>(1) Name of pipeline;</P>
+<P>(2) Time of discharge;</P>
+<P>(3) Location of discharge;</P>
+<P>(4) Name of oil involved;</P>
+<P>(5) Reason for discharge (e.g., material failure, excavation damage, corrosion);</P>
+<P>(6) Estimated volume of oil discharged;</P>
+<P>(7) Weather conditions on scene; and</P>
+<P>(8) Actions taken or planned by persons on scene.</P>
+<HD2>Response Plan: Section 3. Spill Detection and On-Scene Spill Mitigation Procedures
+</HD2>
+<P>Section 3 would include the following:</P>
+<P>(a) Methods of initial discharge detection;</P>
+<P>(b) Procedures, listed in the order of priority, that personnel are required to follow in responding to a pipeline emergency to mitigate or prevent any discharge from the pipeline;</P>
+<P>(c) A list of equipment that may be needed in response activities on land and navigable waters, including&#x2014;</P>
+<P>(1) Transfer hoses and connection equipment;</P>
+<P>(2) Portable pumps and ancillary equipment; and</P>
+<P>(3) Facilities available to transport and receive oil from a leaking pipeline;</P>
+<P>(d) Identification of the availability, location, and contact telephone numbers to obtain equipment for response activities on a 24-hour basis; and</P>
+<P>(e) Identification of personnel and their location, telephone numbers, and responsibilities for use of equipment in response activities on a 24-hour basis.</P>
+<HD2>Response Plan: Section 4. Response Activities
+</HD2>
+<P>Section 4 would include the following:</P>
+<P>(a) Responsibilities of, and actions to be taken by, operating personnel to initiate and supervise response actions pending the arrival of the qualified individual or other response resources identified in the response plan;</P>
+<P>(b) The qualified individual's responsibilities and authority, including notification of the response resources identified in the plan;</P>
+<P>(c) Procedures for coordinating the actions of the operator or qualified individual with the action of the OSC responsible for monitoring or directing those actions;</P>
+<P>(d) Oil spill response organizations available, through contract or other approved means, to respond to a worst case discharge to the maximum extent practicable; and</P>
+<P>(e) For each organization identified under paragraph (d) of this section, a listing of:</P>
+<P>(1) Equipment and supplies available; and</P>
+<P>(2) Trained personnel necessary to continue operation of the equipment and staff the oil spill removal organization for the first 7 days of the response.</P>
+<HD2>Response Plan: Section 5. List of Contacts
+</HD2>
+<P>Section 5 would include the names and addresses of the following individuals or organizations, with telephone numbers at which they can be contacted on a 24-hour basis:</P>
+<P>(a) A list of persons the plan requires the operator to contact;</P>
+<P>(b) Qualified individuals for the operator's areas of operation;</P>
+<P>(c) Applicable insurance representatives or surveyors for the operator's areas of operation; and</P>
+<P>(d) Persons or organizations to notify for activation of response resources.</P>
+<HD2>Response plan: Section 6. Training Procedures
+</HD2>
+<P>Section 6 would include a description of the training procedures and programs of the operator.</P>
+<HD2>Response plan: Section 7. Drill Procedures
+</HD2>
+<P>Section 7 would include a description of the drill procedures and programs the operator uses to assess whether its response plan will function as planned. It would include:</P>
+<P>(a) Announced and unannounced drills;</P>
+<P>(b) The types of drills and their frequencies. For example, drills could be described as follows:</P>
+<P>(1) Manned pipeline emergency procedures and qualified individual notification drills conducted quarterly.</P>
+<P>(2) Drills involving emergency actions by assigned operating or maintenance personnel and notification of the qualified individual on pipeline facilities which are normally unmanned, conducted quarterly.</P>
+<P>(3) Shore-based spill management team tabletop drills conducted yearly.</P>
+<P>(4) Oil spill removal organization field equipment deployment drills conducted yearly.</P>
+<P>(5) A drill that exercises the entire response plan for each response zone, would be conducted at least once every 3 years.</P>
+<HD2>Response plan: Section 8. Response Plan Review and Update Procedures
+</HD2>
+<P>Section 8 would include the following:</P>
+<P>(a) Procedures to meet &#xA7; 194.121; and</P>
+<P>(b) Procedures to review the plan after a worst case discharge and to evaluate and record the plan's effectiveness.</P>
+<HD2>Response plan: Section 9. Response Zone Appendices.
+</HD2>
+<P>Each response zone appendix would provide the following information:</P>
+<P>(a) The name and telephone number of the qualified individual;</P>
+<P>(b) Notification procedures;</P>
+<P>(c) Spill detection and mitigation procedures;</P>
+<P>(d) Name, address, and telephone number of oil spill response organization;</P>
+<P>(e) Response activities and response resources including&#x2014;</P>
+<P>(1) Equipment and supplies necessary to meet &#xA7; 194.115, and</P>
+<P>(2) The trained personnel necessary to sustain operation of the equipment and to staff the oil spill removal organization and spill management team for the first 7 days of the response;</P>
+<P>(f) Names and telephone numbers of Federal, state and local agencies which the operator expects to assume pollution response responsibilities;</P>
+<P>(g) The worst case discharge volume;</P>
+<P>(h) The method used to determine the worst case discharge volume, with calculations;</P>
+<P>(i) A map that clearly shows&#x2014;</P>
+<P>(1) The location of the worst case discharge, and</P>
+<P>(2) The distance between each line section in the response zone and&#x2014;</P>
+<P>(i) Each potentially affected public drinking water intake, lake, river, and stream within a radius of 5 miles (8 kilometers) of the line section, and</P>
+<P>(ii) Each potentially affected environmentally sensitive area within a radius of 1 mile (1.6 kilometer) of the line section;</P>
+<P>(j) A piping diagram and plan-profile drawing of each line section, which may be kept separate from the response plan if the location is identified; and</P>
+<P>(k) For every oil transported by each pipeline in the response zone, emergency response data that&#x2014;</P>
+<P>(1) Include the name, description, physical and chemical characteristics, health and safety hazards, and initial spill-handling and firefighting methods; and</P>
+<P>(2) Meet 29 CFR 1910.1200 or 49 CFR 172.602.</P>
+<CITA TYPE="N">[58 FR 253, Jan. 5, 1993, as amended by Amdt. 194-3, 63 FR 37505, July 13, 1998; Amdt. 194-4, 70 FR 8748, Feb. 23, 2005]
+</CITA>
+</DIV9>
+
+<DIV9 N="Appendix B to Part 194" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/part-194/appendix-Appendix B to Part 194&quot;,&quot;citation&quot;:&quot;Appendix B to Part 194, Title 49&quot;}">
+<HEAD>Appendix B to Part 194&#x2014;High Volume Areas
+</HEAD>
+<P>As of January 5, 1993 the following areas are high volume areas:</P>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">Major rivers</TH>
+<TH class="center border-top-single border-bottom-single">Nearest town and state</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">Arkansas River</TD>
+<TD class="left">N. Little Rock, AR.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Arkansas River</TD>
+<TD class="left">Jenks, OK.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Arkansas River</TD>
+<TD class="left">Little Rock, AR.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Black Warrior River</TD>
+<TD class="left">Moundville, AL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Black Warrior River</TD>
+<TD class="left">Akron, AL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Brazos River</TD>
+<TD class="left">Glen Rose, TX.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Brazos River</TD>
+<TD class="left">Sealy, TX.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Catawba River</TD>
+<TD class="left">Mount Holly, NC.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Chattahoochee River</TD>
+<TD class="left">Sandy Springs, GA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Colorado River</TD>
+<TD class="left">Yuma, AZ.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Colorado River</TD>
+<TD class="left">LaPaz, AZ.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Connecticut River</TD>
+<TD class="left">Lancaster, NH.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Coosa River</TD>
+<TD class="left">Vincent, AL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Cumberland River</TD>
+<TD class="left">Clarksville, TN.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Delaware River</TD>
+<TD class="left">Frenchtown, NJ.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Delaware River</TD>
+<TD class="left">Lower Chichester, NJ.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Gila River</TD>
+<TD class="left">Gila Bend, AZ.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Grand River</TD>
+<TD class="left">Bosworth, MO.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Illinois River</TD>
+<TD class="left">Chillicothe, IL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Illinois River</TD>
+<TD class="left">Havanna, IL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">James River</TD>
+<TD class="left">Arvonia, VA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Kankakee River</TD>
+<TD class="left">Kankakee, IL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Kankakee River</TD>
+<TD class="left">South Bend, IN.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Kankakee River</TD>
+<TD class="left">Wilmington, IL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Kentucky River</TD>
+<TD class="left">Salvisa, KY.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Kentucky River</TD>
+<TD class="left">Worthville, KY.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Maumee River</TD>
+<TD class="left">Defiance, OH.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Maumee River</TD>
+<TD class="left">Toledo, OH.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">Myrtle Grove, LA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">Woodriver, IL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">Chester, IL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">Cape Girardeau, MO.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">Woodriver, IL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">St. James, LA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">New Roads, LA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">Ball Club, MN.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">Mayersville, MS.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">New Roads, LA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">Quincy, IL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Mississippi River</TD>
+<TD class="left">Ft. Madison, IA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Missouri River</TD>
+<TD class="left">Waverly, MO.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Missouri River</TD>
+<TD class="left">St. Joseph, MO.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Missouri River</TD>
+<TD class="left">Weldon Springs, MO.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Missouri River</TD>
+<TD class="left">New Frankfort, MO.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Naches River</TD>
+<TD class="left">Beaumont, TX.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Ohio River</TD>
+<TD class="left">Joppa, IL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Ohio River</TD>
+<TD class="left">Cincinnati, OH.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Ohio River</TD>
+<TD class="left">Owensboro, KY.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Pascagoula River</TD>
+<TD class="left">Lucedale, MS.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Pascagoula River</TD>
+<TD class="left">Wiggins, MS.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Pearl River</TD>
+<TD class="left">Columbia, MS.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Pearl River</TD>
+<TD class="left">Oria, TX.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Platte River</TD>
+<TD class="left">Ogaliala, NE.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Potomac River</TD>
+<TD class="left">Reston, VA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Rappahannock River</TD>
+<TD class="left">Midland, VA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Raritan River</TD>
+<TD class="left">South Bound Brook, NJ.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Raritan River</TD>
+<TD class="left">Highland Park, NJ.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Red River (of the South)</TD>
+<TD class="left">Hanna, LA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Red River (of the South)</TD>
+<TD class="left">Bonham, TX.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Red River (of the South)</TD>
+<TD class="left">Dekalb, TX.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Red River (of the South)</TD>
+<TD class="left">Sentell Plantation, LA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Red River (of the North)</TD>
+<TD class="left">Wahpeton, ND.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Rio Grande</TD>
+<TD class="left">Anthony, NM.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Sabine River</TD>
+<TD class="left">Edgewood, TX.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Sabine River</TD>
+<TD class="left">Leesville, LA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Sabine River</TD>
+<TD class="left">Orange, TX.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Sabine River</TD>
+<TD class="left">Echo, TX.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Savannah River</TD>
+<TD class="left">Hartwell, GA.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Smokey Hill River</TD>
+<TD class="left">Abilene, KS.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Susquehanna River</TD>
+<TD class="left">Darlington, MD.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Tenessee River</TD>
+<TD class="left">New Johnsonville, TN.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Wabash River</TD>
+<TD class="left">Harmony, IN.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Wabash River</TD>
+<TD class="left">Terre Haute, IN.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Wabash River</TD>
+<TD class="left">Mt. Carmel, IL.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">White River</TD>
+<TD class="left">Batesville, AR.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">White River</TD>
+<TD class="left">Grand Glaise, AR.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">Wisconsin River</TD>
+<TD class="left">Wisconsin Rapids, WI.</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">Yukon River</TD>
+<TD class="left border-bottom-single">Fairbanks, AK.</TD>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+<HD2>Other Navigable Waters
+</HD2>
+<FP-1>Arthur Kill Channel, NY
+</FP-1>
+<FP-1>Cook Inlet, AK
+</FP-1>
+<FP-1>Freeport, TX
+</FP-1>
+<FP-1>Los Angeles/Long Beach Harbor, CA
+</FP-1>
+<FP-1>Port Lavaca, TX
+</FP-1>
+<FP-1>San Fransico/San Pablo Bay, CA
+</FP-1>
+</DIV9>
+
+</DIV5>

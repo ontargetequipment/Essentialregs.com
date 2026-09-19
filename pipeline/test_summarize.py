@@ -481,7 +481,8 @@ def test_zzzz_hint_covers_required_points():
         assert marker in hint, f"missing {marker!r} from zzzz hint"
 
 
-@pytest.mark.parametrize("key", ["gp01", "jjjj", "iiii", "zzzz", "p191", "p192"])
+@pytest.mark.parametrize("key", ["gp01", "jjjj", "iiii", "zzzz",
+                                "p191", "p192", "p194", "p195", "p199"])
 def test_batch4_hints_reasonably_short(key):
     assert len(REG_PROMPT_HINTS[key].split()) <= 190
 
@@ -527,9 +528,63 @@ def test_p191_p192_hints_are_registered():
     assert "p192" in REG_PROMPT_HINTS
 
 
+def test_batch_b_p194_p195_p199_hints_are_registered():
+    for key in ("p194", "p195", "p199"):
+        assert key in REG_PROMPT_HINTS
+        assert len(REG_PROMPT_HINTS[key].split()) <= 185
+
+
+@pytest.mark.parametrize("provision_id", [
+    "sec-p194-194.107-(a)",
+    "sec-p195-195.2-operator",
+    "sec-p199-199.3-covered-employee",
+])
+def test_batch_b_49_cfr_prompts_say_phmsa_not_epa(provision_id):
+    system = system_prompt_for(provision_id)
+    assert "PHMSA" in system
+    assert "EPA Administrator" not in system
+    assert "EPA" not in system.replace("NEVER EPA", "")
+
+
+def test_all_five_pipeline_parts_are_registered_as_49_cfr_keys():
+    import summarize as _sm
+    assert _sm._REG_49_CFR_KEYS == frozenset({"p191", "p192", "p194", "p195", "p199"})
+    for key in _sm._REG_49_CFR_KEYS:
+        assert key in REG_PROMPT_HINTS
+
+
+def test_batch_b_hints_do_not_conflate_each_other():
+    # Part 195 is liquids, Part 199 is drug/alcohol testing, Part 194 is
+    # response plans -- none of their signature vocabulary may cross over.
+    assert "covered employee" not in REG_PROMPT_HINTS["p195"]
+    assert "worst case discharge" not in REG_PROMPT_HINTS["p195"].lower()
+    assert "Part 40" not in REG_PROMPT_HINTS["p195"]
+    assert "breakout tank" not in REG_PROMPT_HINTS["p199"]
+    assert "195.452" not in REG_PROMPT_HINTS["p199"]
+    assert "195.452" not in REG_PROMPT_HINTS["p194"]
+    assert "covered function" not in REG_PROMPT_HINTS["p194"]
+    # ... and none of them carries the gas-only Part 192 vocabulary.
+    for key in ("p194", "p195", "p199"):
+        assert "MAOP" not in REG_PROMPT_HINTS[key]
+        assert "SMYS" not in REG_PROMPT_HINTS[key]
+        assert "Class locations" not in REG_PROMPT_HINTS[key]
+
+
+def test_batch_b_hints_name_standards_without_describing_them():
+    assert "API 653" in REG_PROMPT_HINTS["p195"]
+    assert "named, never described" in REG_PROMPT_HINTS["p195"]
+    assert "NFPA 30" in REG_PROMPT_HINTS["p194"]
+    assert "named, never described" in REG_PROMPT_HINTS["p194"]
+    # Part 40 is named but explicitly never described
+    assert "never describe" in REG_PROMPT_HINTS["p199"]
+
+
 @pytest.mark.parametrize("provision_id, key", [
     ("sec-p191-191.3-incident", "p191"),
     ("sec-p192-192.605-(b)", "p192"),
+    ("sec-p194-194.5-response-zone", "p194"),
+    ("sec-p195-195.452-(h)-(1)-(i)", "p195"),
+    ("sec-p199-199.105-(b)", "p199"),
 ])
 def test_p19x_build_prompt_system_matches_row_reg(provision_id, key):
     result = build_prompt(_row(provision_id), meta={})
@@ -552,7 +607,7 @@ def test_system_prompt_for_p191_says_phmsa_not_epa():
 
 def test_reg7_prompt_has_no_p19x_specific_text():
     system = system_prompt_for("sec-7-B-I-C-1")
-    for key in ("p191", "p192"):
+    for key in ("p191", "p192", "p194", "p195", "p199"):
         assert REG_PROMPT_HINTS[key] not in system
     for p19x_only in ("PHMSA", "MAOP", "SMYS", "gathering", "UNGSF"):
         assert p19x_only not in system

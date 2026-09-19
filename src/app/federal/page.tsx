@@ -14,6 +14,9 @@ export const metadata = {
 const APPLIES_TO: Record<string, string> = {
   p191: "Reporting: incidents, annual reports, safety-related conditions",
   p192: "Gas pipelines: design, construction, operation, maintenance, integrity management, OQ",
+  p194: "Onshore oil pipelines: oil spill response plans, response zones, worst case discharge",
+  p195: "Hazardous liquid pipelines: design, construction, pressure testing, operation, corrosion control, integrity management",
+  p199: "Drug and alcohol testing programs for employees performing covered pipeline functions",
 };
 
 export default async function FederalIndexPage() {
@@ -36,8 +39,9 @@ export default async function FederalIndexPage() {
         <Link href="/regulations/6" className="font-medium text-zinc-900 underline underline-offset-2">
           Colorado Regulation Number 6 Part A
         </Link>
-        . Also included: 49 CFR Parts 191–192, PHMSA's federal pipeline
-        safety standards for gas pipelines, administered by the US DOT.
+        . Also included: 49 CFR Parts 191, 192, 194, 195 and 199, PHMSA's
+        federal pipeline safety standards for gas and hazardous liquid
+        pipelines, administered by the US DOT.
       </p>
 
       <RegulationList regs={regs} access={access} mode="federal" appliesTo={APPLIES_TO} />

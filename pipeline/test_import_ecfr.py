@@ -867,6 +867,9 @@ class OoooByteIdenticalBaselineTests(unittest.TestCase):
 
 P191_XML = os.path.join(SOURCES, "P191.xml")
 P192_XML = os.path.join(SOURCES, "P192.xml")
+P194_XML = os.path.join(SOURCES, "P194.xml")
+P195_XML = os.path.join(SOURCES, "P195.xml")
+P199_XML = os.path.join(SOURCES, "P199.xml")
 
 
 def _mini_part_xml(body: str, part: str = "192") -> str:
@@ -938,12 +941,30 @@ class CfrPartResolverTests(unittest.TestCase):
         self.assertEqual(ie._resolve_target_reg_49("192", "605"), "p192")
         self.assertEqual(ie._resolve_target_reg_49("192", "3"), "p192")
 
+    def test_194_195_199_resolve_by_part_prefix(self):
+        """Batch B: the pipeline corpus is five whole parts, not two."""
+        self.assertEqual(ie._resolve_target_reg_49("194", "5"), "p194")
+        self.assertEqual(ie._resolve_target_reg_49("195", "2"), "p195")
+        self.assertEqual(ie._resolve_target_reg_49("195", "452"), "p195")
+        self.assertEqual(ie._resolve_target_reg_49("199", "3"), "p199")
+
     def test_other_49_cfr_parts_do_not_resolve(self):
-        for part, num in (("190", "9"), ("193", "2007"), ("195", "1"), ("199", "3"), ("1", "97")):
+        # 190, 193, 196 and 198 are pipeline-safety parts that are NOT in the
+        # corpus; 1.97 is the DOT delegation section.
+        for part, num in (("190", "9"), ("193", "2007"), ("196", "1"), ("198", "37"), ("1", "97")):
             self.assertIsNone(ie._resolve_target_reg_49(part, num))
 
     def test_cfr_part_to_regkey_mapping(self):
-        self.assertEqual(ie.CFR_PART_TO_REGKEY, {"49-191": "p191", "49-192": "p192"})
+        self.assertEqual(
+            ie.CFR_PART_TO_REGKEY,
+            {
+                "49-191": "p191",
+                "49-192": "p192",
+                "49-194": "p194",
+                "49-195": "p195",
+                "49-199": "p199",
+            },
+        )
 
     def test_40_cfr_resolver_never_returns_a_part_document(self):
         # a stray "§ 192.605" inside a 40 CFR subpart must NOT link to p192
@@ -1266,10 +1287,31 @@ class PartCitationLinkingTests(unittest.TestCase):
         self.assertIn('href="/regulations/p192"', out)
 
     def test_out_of_corpus_cfr_parts_are_bucketed_not_linked(self):
-        for text in ("under § 190.9 of this chapter", "part 195 of this chapter", "49 CFR 1.97"):
+        # Batch B put 194/195/199 in the corpus; 190, 193, 196 and 198 stay
+        # out, and so does 49 CFR 1.97.
+        for text in (
+            "under § 190.9 of this chapter",
+            "part 193 of this chapter",
+            "part 196 of this chapter",
+            "§ 198.37 of this chapter",
+            "49 CFR 1.97",
+        ):
             out, unres = self._link(text)
             self.assertNotIn("xref", out)
             self.assertTrue(sum(unres[ie.BUCKET_CFR].values()) >= 1, text)
+
+    def test_in_corpus_49_cfr_parts_link(self):
+        """The other side of the same rule: the three parts Batch B added now
+        resolve from a p192 row instead of landing in the CFR bucket."""
+        for text, reg in (
+            ("part 194 of this chapter", "p194"),
+            ("part 195 of this chapter", "p195"),
+            ("part 199 of this chapter", "p199"),
+            ("§ 195.452 of this chapter", "p195"),
+        ):
+            out, unres = self._link(text)
+            self.assertIn(f'href="/regulations/{reg}"', out, text)
+            self.assertEqual(sum(unres[ie.BUCKET_CFR].values()), 0, text)
 
     def test_statutes_are_bucketed(self):
         out, unres = self._link("authorized by 49 U.S.C. 60101 et seq.")
@@ -1348,16 +1390,27 @@ class PartCliXmlPathTests(unittest.TestCase):
     def test_full_cli_parse_with_workflow_style_args_and_no_pdf_on_disk(self):
         import tempfile
 
+        import shutil
+
         if not os.path.exists(P192_XML):
             self.skipTest("P192.xml not present")
-        self.assertFalse(os.path.exists(os.path.join(SOURCES, "P192.pdf")))
+        # The point of this test is that the workflow passes --pdf/--txt for
+        # EVERY reg and a whole-part reg must parse with neither file on disk.
+        # A full checkout may or may not carry P192.pdf (Batch B's does), so
+        # the XML is copied into an empty temp dir and --pdf is pointed there:
+        # the .pdf/.txt siblings are then guaranteed absent whatever the repo
+        # holds, and the path-derivation is still what is under test.
         with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, "P192.xml")
+            shutil.copyfile(P192_XML, src)
+            self.assertFalse(os.path.exists(os.path.join(tmp, "P192.pdf")))
+            self.assertFalse(os.path.exists(os.path.join(tmp, "P192.txt")))
             out = os.path.join(tmp, "p192_parsed.json")
             ie.cmd_parse(
                 _WorkflowArgs(
                     reg="p192",
-                    pdf=os.path.join(SOURCES, "P192.pdf"),   # does not exist
-                    txt=os.path.join(SOURCES, "P192.txt"),   # does not exist
+                    pdf=os.path.join(tmp, "P192.pdf"),   # does not exist
+                    txt=os.path.join(tmp, "P192.txt"),   # does not exist
                     out=out,
                 )
             )
@@ -1492,6 +1545,364 @@ class P192FullParseTests(_PartRowInvariantsMixin, unittest.TestCase):
             "<p><i>General requirements for plastic pipe and components.</i></p>",
         )
         self.assertIn("Except as provided", byid["sec-p192-192.121-(b)-(1)"]["full_text"])
+
+
+# ---------------------------------------------------------------------------
+# Batch B: 49 CFR Parts 194, 195 and 199
+# ---------------------------------------------------------------------------
+
+
+class BatchBPartMetaTests(unittest.TestCase):
+    EXPECTED = {
+        "p194": (194, "49 CFR Part 194",
+                 "49 CFR Part 194 — Response Plans for Onshore Oil Pipelines",
+                 "https://www.ecfr.gov/current/title-49/part-194"),
+        "p195": (195, "49 CFR Part 195",
+                 "49 CFR Part 195 — Transportation of Hazardous Liquids by Pipeline",
+                 "https://www.ecfr.gov/current/title-49/part-195"),
+        "p199": (199, "49 CFR Part 199",
+                 "49 CFR Part 199 — Drug and Alcohol Testing",
+                 "https://www.ecfr.gov/current/title-49/part-199"),
+    }
+
+    def test_meta_shape(self):
+        for key, (part, cite, title, url) in self.EXPECTED.items():
+            meta = ie.SUBPART_META[key]
+            self.assertEqual(meta["title"], 49, key)
+            self.assertEqual(meta["part"], part, key)
+            self.assertEqual(meta["document"], "part", key)
+            self.assertEqual(meta["source"], "xml", key)
+            self.assertEqual(meta["table_algorithm"], "xml", key)
+            self.assertFalse(meta["enable_table_ref_links"], key)
+            self.assertEqual(meta["root_citation"], cite, key)
+            self.assertEqual(meta["root_title"], title, key)
+            self.assertEqual(meta["url"], url, key)
+            self.assertTrue(meta["has_subparts"], key)
+
+    def test_all_three_are_in_the_corpus(self):
+        for key in self.EXPECTED:
+            self.assertIn(key, ie.CORPUS_REGS)
+            self.assertEqual(ie.ECFR_URL[key], self.EXPECTED[key][3])
+
+    def test_root_titles_match_the_printed_div5_head(self):
+        import xml.etree.ElementTree as ET
+
+        for key, xmlp in (("p194", P194_XML), ("p195", P195_XML), ("p199", P199_XML)):
+            if not os.path.exists(xmlp):
+                self.skipTest(f"{xmlp} not present")
+            root = ET.parse(xmlp).getroot()
+            div5 = [d for d in root.iter("DIV5") if d.get("TYPE") == "PART"][0]
+            head = re.sub(r"\s+", " ", "".join(div5.find("HEAD").itertext())).strip()
+            # "PART 195—TRANSPORTATION OF HAZARDOUS LIQUIDS BY PIPELINE"
+            printed = head.split("—", 1)[1].lower()
+            stored = ie.SUBPART_META[key]["root_title"].split(" — ", 1)[1].lower()
+            self.assertEqual(stored, printed, key)
+
+    def test_flat_appendices_and_inline_definition_sections_are_declared(self):
+        self.assertEqual(ie.PART_FLAT_APPENDICES["p194"], {"A"})
+        self.assertEqual(ie.PART_FLAT_APPENDICES["p195"], {"C"})
+        self.assertEqual(ie.PART_FLAT_APPENDICES["p192"], {"D"})
+        self.assertEqual(ie.PART_INLINE_DEFINITION_SECTIONS["p195"], {"195.6"})
+        # no-op for every other whole-part reg
+        self.assertEqual(ie.PART_INLINE_DEFINITION_SECTIONS.get("p192", set()), set())
+
+
+class PartSubjectGroupTests(unittest.TestCase):
+    """<DIV7 TYPE="SUBJGRP"> is a printed centre-heading inside a subpart. Its
+    sections must reach the parse, flattened into the enclosing subpart."""
+
+    XML = """<DIV5 TYPE="PART" N="195"><HEAD>PART 195—X</HEAD>
+      <DIV6 TYPE="SUBPART" N="F"><HEAD>Subpart F—Operation</HEAD>
+        <DIV8 TYPE="SECTION" N="195.401"><HEAD>§ 195.401 General.</HEAD><P>(a) Text one.</P></DIV8>
+        <DIV7 TYPE="SUBJGRP" N="ECFR1"><HEAD>Pipeline Integrity Management</HEAD>
+          <DIV8 TYPE="SECTION" N="195.452"><HEAD>§ 195.452 IM.</HEAD><P>(a) Text two.</P></DIV8>
+        </DIV7>
+      </DIV6></DIV5>"""
+
+    def setUp(self):
+        import tempfile
+
+        self.tmp = tempfile.NamedTemporaryFile("w", suffix=".xml", delete=False, encoding="utf-8")
+        self.tmp.write(self.XML)
+        self.tmp.close()
+        self.rows, self.rep = ie.parse_ecfr_part("p195", self.tmp.name)
+
+    def tearDown(self):
+        os.unlink(self.tmp.name)
+
+    def test_the_nested_section_is_a_row_under_its_subpart(self):
+        byid = {r["id"]: r for r in self.rows}
+        self.assertIn("sec-p195-195.452", byid)
+        self.assertEqual(byid["sec-p195-195.452"]["parent_id"], "sec-p195-PART-F")
+        self.assertEqual(byid["sec-p195-195.452"]["kind"], "section")
+
+    def test_section_order_follows_the_document(self):
+        self.assertEqual(self.rep["sections_by_subpart"]["F"], ["195.401", "195.452"])
+
+    def test_the_group_heading_is_reported_not_rowed(self):
+        self.assertEqual(
+            self.rep["subject_groups"],
+            [{"subpart": "F", "heading": "Pipeline Integrity Management",
+              "sections": ["195.452"]}],
+        )
+        self.assertFalse([r for r in self.rows if "SUBJGRP" in r["id"]])
+
+    def test_no_subjgrp_in_the_other_four_parts(self):
+        import xml.etree.ElementTree as ET
+
+        for xmlp in (P191_XML, P192_XML, P194_XML, P199_XML):
+            if not os.path.exists(xmlp):
+                continue
+            self.assertEqual(ET.parse(xmlp).getroot().findall(".//DIV7"), [], xmlp)
+
+
+class PartInlineDefinitionBlockTests(unittest.TestCase):
+    """§ 195.6(c) prints a definition block inside a section whose own heading
+    says nothing about definitions."""
+
+    XML = """<DIV5 TYPE="PART" N="195"><HEAD>PART 195—X</HEAD>
+      <DIV6 TYPE="SUBPART" N="A"><HEAD>Subpart A—General</HEAD>
+        <DIV8 TYPE="SECTION" N="195.6"><HEAD>§ 195.6 Unusually Sensitive Areas (USAs).</HEAD>
+          <P>(a) An USA drinking water resource is:</P>
+          <P>(b) An USA ecological resource is a coastal beach.</P>
+          <P>(c) Definitions used in this part—</P>
+          <P><I>Class I Aquifer</I> means an aquifer that is shallow.</P>
+          <P>(1) Unconsolidated Aquifers (Class Ia) that consist of alluvium.</P>
+          <P><I>Coastal beach</I> means any land between the marks.</P>
+          <P><I>Terrestrial species with a limited range means</I> a non-aquatic animal.</P>
+        </DIV8>
+      </DIV6></DIV5>"""
+
+    def setUp(self):
+        import tempfile
+
+        self.tmp = tempfile.NamedTemporaryFile("w", suffix=".xml", delete=False, encoding="utf-8")
+        self.tmp.write(self.XML)
+        self.tmp.close()
+        self.rows, self.rep = ie.parse_ecfr_part("p195", self.tmp.name)
+        self.byid = {r["id"]: r for r in self.rows}
+
+    def tearDown(self):
+        os.unlink(self.tmp.name)
+
+    def test_one_row_per_term_hanging_off_the_chapeau(self):
+        for slug, term in (
+            ("class-i-aquifer", "Class I Aquifer"),
+            ("coastal-beach", "Coastal beach"),
+            ("terrestrial-species-with-a-limited-range",
+             "Terrestrial species with a limited range"),
+        ):
+            row = self.byid[f"sec-p195-195.6-{slug}"]
+            self.assertEqual(row["kind"], "definition")
+            self.assertEqual(row["citation"], f"§ 195.6 “{term}”")
+            self.assertEqual(row["parent_id"], "sec-p195-195.6-(c)")
+
+    def test_a_terms_numbered_subparagraph_folds_into_its_own_row(self):
+        row = self.byid["sec-p195-195.6-class-i-aquifer"]
+        self.assertIn("Unconsolidated Aquifers", row["full_text"])
+        self.assertNotIn("sec-p195-195.6-(c)-(1)", self.byid)
+
+    def test_labelled_paragraphs_before_the_block_are_untouched(self):
+        self.assertEqual(self.byid["sec-p195-195.6-(a)"]["kind"], "item")
+
+    def test_the_same_shape_is_inert_in_a_section_that_did_not_opt_in(self):
+        xml = self.XML.replace('N="195.6"', 'N="195.7"').replace("§ 195.6", "§ 195.7")
+        import tempfile
+
+        with tempfile.NamedTemporaryFile("w", suffix=".xml", delete=False, encoding="utf-8") as f:
+            f.write(xml)
+            name = f.name
+        try:
+            rows, _ = ie.parse_ecfr_part("p195", name)
+        finally:
+            os.unlink(name)
+        self.assertFalse([r for r in rows if r["kind"] == "definition"])
+
+
+class PartFootnoteTests(unittest.TestCase):
+    """<FTNT> under a section carries substantive rule text (§ 195.563) and is
+    kept, unlike <CITA>/<EDNOTE>."""
+
+    XML = """<DIV5 TYPE="PART" N="195"><HEAD>PART 195—X</HEAD>
+      <DIV6 TYPE="SUBPART" N="H"><HEAD>Subpart H—Corrosion</HEAD>
+        <DIV8 TYPE="SECTION" N="195.563"><HEAD>§ 195.563 Cathodic protection.</HEAD>
+          <P>(a) Each buried pipeline must have cathodic protection.</P>
+          <FTNT><P>1 A pipeline does not have an effective external coating material.</P></FTNT>
+          <CITA>[Amdt. 195-1, 1 FR 1]</CITA>
+        </DIV8>
+      </DIV6></DIV5>"""
+
+    def setUp(self):
+        import tempfile
+
+        self.tmp = tempfile.NamedTemporaryFile("w", suffix=".xml", delete=False, encoding="utf-8")
+        self.tmp.write(self.XML)
+        self.tmp.close()
+        self.rows, self.rep = ie.parse_ecfr_part("p195", self.tmp.name)
+
+    def tearDown(self):
+        os.unlink(self.tmp.name)
+
+    def test_footnote_text_survives_and_the_citation_does_not(self):
+        joined = " ".join(r["full_text"] for r in self.rows)
+        self.assertIn("effective external coating material", joined)
+        self.assertIn('class="footnote"', joined)
+        self.assertNotIn("Amdt. 195-1", joined)
+        self.assertEqual(self.rep["stripped"]["CITA"], 1)
+        self.assertEqual(len(self.rep["footnotes"]), 1)
+
+
+class _BatchBFullParseMixin(_PartRowInvariantsMixin):
+    def test_no_orphans_no_duplicates_no_anomalies_no_dead_targets(self):
+        ids = {r["id"] for r in self.rows}
+        self.assertEqual(len(ids), len(self.rows))
+        self.assertFalse([r for r in self.rows if r["parent_id"] and r["parent_id"] not in ids])
+        self.assertEqual(self.rep["label_anomalies"], [])
+        self.assertEqual(self.rep["duplicate_ids"], [])
+        self.assertEqual(self.rep["dead_targets"], [])
+
+    def test_every_subpart_section_list_equals_the_xml(self):
+        import xml.etree.ElementTree as ET
+
+        root = ET.parse(self.XMLP).getroot()
+        for div6 in root:
+            if div6.tag != "DIV6":
+                continue
+            expected = []
+            for x in div6:
+                if x.tag == "DIV8":
+                    expected.append(x.get("N"))
+                elif x.tag == "DIV7":
+                    expected.extend(y.get("N") for y in x if y.tag == "DIV8")
+            self.assertEqual(self.rep["sections_by_subpart"][div6.get("N")], expected)
+        self.assertEqual(self.rep["n_sections"], len(root.findall(".//DIV8")))
+
+    def test_root_row(self):
+        r = self.rows[0]
+        self.assertEqual(r["id"], f"sec-{self.REG}-top-REG-{self.REG}")
+        self.assertEqual(r["kind"], "root")
+        self.assertIsNone(r["parent_id"])
+        self.assertEqual(r["citation"], ie.SUBPART_META[self.REG]["root_citation"])
+
+    def test_definition_section_produced_definition_rows(self):
+        own = [r for r in self.rows
+               if r["kind"] == "definition" and r["id"].startswith(f"sec-{self.REG}-{self.DEF_SECTION}-")]
+        self.assertGreaterEqual(len(own), 10)
+        for r in own:
+            self.assertTrue(r["citation"].startswith(f"§ {self.DEF_SECTION} “"), r["id"])
+
+
+class P194FullParseTests(_BatchBFullParseMixin, unittest.TestCase):
+    REG, XMLP, DEF_SECTION = "p194", P194_XML, "194.5"
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(P194_XML):
+            raise unittest.SkipTest("P194.xml not present")
+        cls.rows, cls.rep = ie.parse_ecfr_part("p194", P194_XML)
+
+    def test_two_subparts_then_two_appendices(self):
+        top = [r for r in self.rows if r["parent_id"] == "sec-p194-top-REG-p194"]
+        self.assertEqual(
+            [r["citation"] for r in top],
+            ["Subpart A", "Subpart B",
+             "Appendix A to Part 194", "Appendix B to Part 194"],
+        )
+
+    def test_counts(self):
+        self.assertEqual(self.rep["n_sections"], 15)
+        self.assertEqual(self.rep["n_definitions"], 24)
+        self.assertEqual(len(self.rep["tables"]), 3)
+        self.assertEqual(self.rep["reserved"], [])
+
+    def test_appendix_a_is_deliberately_one_row(self):
+        self.assertIn("one row", self.rep["appendix_modes"]["A"])
+        self.assertIn("one row", self.rep["appendix_modes"]["B"])
+
+    def test_it_links_into_part_195(self):
+        joined = " ".join(r["full_text"] for r in self.rows)
+        self.assertIn('href="/regulations/p195"', joined)
+
+
+class P195FullParseTests(_BatchBFullParseMixin, unittest.TestCase):
+    REG, XMLP, DEF_SECTION = "p195", P195_XML, "195.2"
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(P195_XML):
+            raise unittest.SkipTest("P195.xml not present")
+        cls.rows, cls.rep = ie.parse_ecfr_part("p195", P195_XML)
+
+    def test_eight_subparts_then_three_appendices_in_order(self):
+        top = [r for r in self.rows if r["parent_id"] == "sec-p195-top-REG-p195"]
+        self.assertEqual(
+            [r["citation"] for r in top],
+            [f"Subpart {c}" for c in "ABCDEFGH"]
+            + [f"Appendix {c} to Part 195" for c in "ABC"],
+        )
+
+    def test_all_148_sections_including_the_three_inside_subject_groups(self):
+        self.assertEqual(self.rep["n_sections"], 148)
+        byid = {r["id"] for r in self.rows}
+        for n in ("195.450", "195.452", "195.454"):
+            self.assertIn(f"sec-p195-{n}", byid)
+        self.assertEqual(
+            [g["heading"] for g in self.rep["subject_groups"]],
+            ["High Consequence Areas", "Pipeline Integrity Management"],
+        )
+
+    def test_195_452_h_4_i_is_a_roman_subitem_not_a_top_level_paragraph(self):
+        """The section has BOTH an (h)(1)(i)/(ii) roman pair and a genuine
+        top-level (i); the label stack must not confuse them."""
+        byid = {r["id"] for r in self.rows}
+        self.assertIn("sec-p195-195.452-(h)-(1)-(i)", byid)
+        self.assertIn("sec-p195-195.452-(h)-(1)-(ii)", byid)
+        self.assertIn("sec-p195-195.452-(h)-(4)-(i)-(A)", byid)
+        self.assertIn("sec-p195-195.452-(i)", byid)
+        self.assertIn("sec-p195-195.452-(j)", byid)
+
+    def test_reserved_rows_and_tables(self):
+        self.assertEqual(self.rep["reserved"], ["§§ 195.236-195.244", "§ 195.415"])
+        byid = {r["id"]: r for r in self.rows}
+        self.assertEqual(byid["sec-p195-195.415"]["full_text"], "<p>[Reserved]</p>")
+        self.assertEqual(len(self.rep["tables"]), 19)
+        self.assertFalse([r for r in self.rows if "-TABLE-" in r["id"]])
+
+    def test_195_6_definition_block(self):
+        defs = [r for r in self.rows
+                if r["kind"] == "definition" and r["id"].startswith("sec-p195-195.6-")]
+        self.assertEqual(len(defs), 27)
+        self.assertNotIn("sec-p195-195.6-(c)-(4)", {r["id"] for r in self.rows})
+
+
+class P199FullParseTests(_BatchBFullParseMixin, unittest.TestCase):
+    REG, XMLP, DEF_SECTION = "p199", P199_XML, "199.3"
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(P199_XML):
+            raise unittest.SkipTest("P199.xml not present")
+        cls.rows, cls.rep = ie.parse_ecfr_part("p199", P199_XML)
+
+    def test_three_subparts_and_no_appendices(self):
+        top = [r for r in self.rows if r["parent_id"] == "sec-p199-top-REG-p199"]
+        self.assertEqual([r["citation"] for r in top], ["Subpart A", "Subpart B", "Subpart C"])
+        self.assertFalse([r for r in self.rows if r["kind"] == "appendix"])
+
+    def test_counts_and_reserved(self):
+        self.assertEqual(self.rep["n_sections"], 40)
+        self.assertEqual(self.rep["n_definitions"], 13)
+        self.assertEqual(len(self.rep["tables"]), 0)
+        self.assertEqual(
+            self.rep["reserved"],
+            ["§ 199.111", "§ 199.201", "§§ 199.203-199.205", "§ 199.213"],
+        )
+
+    def test_part_40_stays_out_of_corpus_but_part_192_links(self):
+        joined = " ".join(r["full_text"] for r in self.rows)
+        self.assertIn('href="/regulations/p192"', joined)
+        self.assertNotIn('href="/regulations/p40"', joined)
+        self.assertIn("part 40", dict(self.rep["unresolved"][ie.BUCKET_CFR]))
 
 
 # ---------------------------------------------------------------------------

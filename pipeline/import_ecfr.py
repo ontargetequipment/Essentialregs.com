@@ -142,13 +142,37 @@ PART_META: dict[str, dict] = {
             "Minimum Federal Safety Standards"
         ),
     ),
+    "p194": dict(
+        title=49, part=194, code="", suffix="", sections=(1, 199),
+        url="https://www.ecfr.gov/current/title-49/part-194",
+        enable_table_ref_links=False, table_algorithm="xml",
+        document="part", source="xml", has_subparts=True,
+        root_citation="49 CFR Part 194",
+        root_title="49 CFR Part 194 — Response Plans for Onshore Oil Pipelines",
+    ),
+    "p195": dict(
+        title=49, part=195, code="", suffix="", sections=(1, 999),
+        url="https://www.ecfr.gov/current/title-49/part-195",
+        enable_table_ref_links=False, table_algorithm="xml",
+        document="part", source="xml", has_subparts=True,
+        root_citation="49 CFR Part 195",
+        root_title="49 CFR Part 195 — Transportation of Hazardous Liquids by Pipeline",
+    ),
+    "p199": dict(
+        title=49, part=199, code="", suffix="", sections=(1, 299),
+        url="https://www.ecfr.gov/current/title-49/part-199",
+        enable_table_ref_links=False, table_algorithm="xml",
+        document="part", source="xml", has_subparts=True,
+        root_citation="49 CFR Part 199",
+        root_title="49 CFR Part 199 — Drug and Alcohol Testing",
+    ),
 }
 SUBPART_META.update(PART_META)
 
 # A 49 CFR section number resolves to a reg by its PART prefix (191.x ->
 # p191, 192.x -> p192) -- not by the 40 CFR section-number-range trick,
 # which exists only because three subparts share one numeric range.
-CFR_PART_TO_REGKEY: dict[str, str] = {"49-191": "p191", "49-192": "p192"}
+CFR_PART_TO_REGKEY: dict[str, str] = {"49-191": "p191", "49-192": "p192", "49-194": "p194", "49-195": "p195", "49-199": "p199"}
 
 # Derived, backward-compatible views used throughout the module (kept as
 # plain module-level dicts -- as before -- so nothing downstream needs to
@@ -2518,7 +2542,32 @@ _APX_FIRST = {"ROMAN": "I", "ALPHA": "A", "PAREN_ALPHA": "a", "PAREN_DIGIT": "1"
 # protection— A. Steel, cast iron, and ductile iron structures. (1) A
 # negative ..."), so its (1)-(5) items cannot be attached to the right
 # parent without guessing; it is kept whole rather than mis-nested.
-PART_FLAT_APPENDICES: dict[str, set[str]] = {"p192": {"D"}}
+PART_FLAT_APPENDICES: dict[str, set[str]] = {
+    "p192": {"D"},
+    # Appendix A to Part 194 restarts an unlabelled ladder under each of its
+    # nine <HD2> "Response Plan: Section N" headings ((a)/(1) inside Section 1,
+    # then (a)/(1) again inside Section 2 ...), and prints an introductory
+    # (1)-(3) list before the first heading, so no single contiguous ladder
+    # exists to attach children to. Appendix C to Part 195 fuses "I." / "A." /
+    # "(1)" levels the same way Appendix D to Part 192 does. Both are declared
+    # here so the one-row outcome is a recorded decision, not an accident of
+    # the probe (the probe reaches the same verdict on its own -- see the
+    # appendix_modes lines in each _report.json).
+    "p194": {"A"},
+    "p195": {"C"},
+}
+
+# Sections that are NOT titled "Definitions" but nevertheless print a block of
+# definition paragraphs inside one of their own lettered paragraphs. Opt-in per
+# section, because the shape (an unlabelled <P> opening with an <I> run) also
+# occurs harmlessly elsewhere.
+#   § 195.6(c) "Definitions used in this part—" -> 26 terms that would
+#   otherwise all fuse into § 195.6(c)(4), an 8.5 KB / 1,251-word row.
+# NOT enabled for p192 in this batch: §§ 192.15(a), 192.383(a) and 192.385(a)
+# print the same shape (7 terms in total) and would benefit from the same
+# treatment, but turning it on there would change the Part 192 parse that
+# Batch A shipped and signed off. Flagged in REPORT_batchB.md as a follow-up.
+PART_INLINE_DEFINITION_SECTIONS: dict[str, set[str]] = {"p195": {"195.6"}}
 
 
 def _xml_text(el) -> str:
@@ -2591,6 +2640,22 @@ def _advance_part_label_stack(
             next_of_family(fam, label),
             first_of_family(family_for_depth(len(stack) + 2)),
         }
+        # The LOCAL evidence wins over the distant one. If the very next
+        # label is one only the deeper reading could produce -- "(ii)", or
+        # the first label of the level below the pushed one -- then this
+        # "(i)" really is a roman sub-item, however far away the shallower
+        # successor may also appear. 49 CFR 195.452 is the case that proves
+        # it: it has BOTH an (h)(1)(i)/(ii) roman pair AND, later, a genuine
+        # top-level paragraph (i), so "(j) shows up later in the section"
+        # is true at the roman (i) as well and, on its own, mis-pops it (and
+        # with it the 24 labels underneath). The p192 sections this
+        # heuristic was written for -- 192.7(i), 192.321(i), 192.631(i) --
+        # are all decided by the same local test alone: each is followed by
+        # "(1)" or "(j)", neither of which a roman "(i)" could be followed
+        # by, so they still pop to the alpha level exactly as before.
+        deeper_ok = nxt is not None and nxt in allowed_after_push
+        if deeper_ok:
+            return "push"
         if succ in future or nxt is None or nxt not in allowed_after_push:
             return f"pop:{shallow}"
         return "push"
@@ -2713,10 +2778,14 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
     stripped_counts = Counter()
     images: list[dict] = []
     tables: list[dict] = []
+    footnotes: list[dict] = []
     reserved: list[str] = []
     definitions: list[dict] = []
     appendix_modes: dict[str, str] = {}
     section_index: dict[str, list[str]] = {}
+    # <DIV7 TYPE="SUBJGRP"> centre-headings met inside a subpart (Part 195
+    # Subpart F only, so far). Reported, not turned into rows -- see the walk.
+    subject_groups: list[dict] = []
 
     def add_row(row: dict):
         if row["id"] in by_id:
@@ -2763,6 +2832,9 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
         # "§ 192.3 Definitions." and "§ 192.903 What definitions apply to
         # this subpart?" are both definition sections.
         is_definitions = bool(re.search(r"\bdefinitions?\b", head_text, re.I))
+        inline_def_section = n in PART_INLINE_DEFINITION_SECTIONS.get(reg, set())
+        in_def_block = False
+        def_block_parent: str | None = None
         sec_row = add_row(
             {
                 "id": sec_id,
@@ -2860,6 +2932,58 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
                     # own row -- one row per term, as specified.
                     append_html(open_row, f"<p>{html}</p>")
                     continue
+                if inline_def_section:
+                    # An in-SECTION definition block: a chapeau ("(c)
+                    # Definitions used in this part—") followed by unlabelled
+                    # <P><I>Term</I> means ...</P> paragraphs, in a section
+                    # whose own heading says nothing about definitions. Same
+                    # row shape as a definitions section, but the terms hang
+                    # off the chapeau row instead of the section row.
+                    first = list(el)
+                    is_term = (
+                        (not (el.text or "").strip())
+                        and first
+                        and first[0].tag == "I"
+                        and not _PART_LEAD_LABEL_RE.match(html)
+                    )
+                    if is_term:
+                        term = _PART_DEF_TERM_STRIP_RE.sub("", _xml_text(first[0]))
+                        # "<i>Terrestrial species with a limited range means</i>
+                        # a non-aquatic ..." -- § 195.6(c) prints one term with
+                        # the verb inside the italics; the term is the phrase
+                        # before it, as for every other entry in the block.
+                        term = re.sub(r"\s+means$", "", term)
+                        slug = _definition_slug(term, used_slugs)
+                        did = f"{sec_id}-{slug}"
+                        if def_block_parent is None:
+                            def_block_parent = open_row["id"]
+                        open_row = add_row(
+                            {
+                                "id": did,
+                                "citation": f"{citation} “{term}”",
+                                "title": f"{citation} “{term}”",
+                                "parent_id": def_block_parent,
+                                "sort_order": next_sort(),
+                                "full_text": f"<p>{html}</p>",
+                                "kind": "definition",
+                                "_own_section_id": sec_id,
+                            }
+                        )
+                        definitions.append({"id": did, "term": term})
+                        in_def_block = True
+                        continue
+                    if in_def_block:
+                        # Everything after the first term, labelled or not, is
+                        # that term's own sub-paragraph (§ 195.6(c) "Class I
+                        # Aquifer" (1)-(4)) -- folded into its row, exactly as
+                        # the definitions-section path folds § 191.3
+                        # "Incident" (1)(i). The label cursor still advances so
+                        # the lookahead stays aligned for the rest of the
+                        # section.
+                        for chain, _t in _split_part_paragraph(html):
+                            label_cursor += len(chain)
+                        append_html(open_row, f"<p>{html}</p>")
+                        continue
                 for chain, text_html in _split_part_paragraph(html):
                     if not chain:
                         append_html(open_row, f"<p>{text_html}</p>")
@@ -2914,6 +3038,18 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
                     html = _part_inline_html(sub)
                     if html:
                         append_html(open_row, f"<p>{escape_html_text(lead)} {html}</p>")
+            elif tag == "FTNT":
+                # A footnote printed under a section's table (§ 195.303,
+                # § 195.563). Unlike <CITA>/<EDNOTE> this is substantive
+                # regulatory text -- "A pipeline does not have an effective
+                # external coating material if ..." -- so it is kept, attached
+                # to whatever row the table itself landed in. Parts 191/192
+                # print none of these at section level, so this branch never
+                # fires for them.
+                html = _part_inline_html(el)
+                if html:
+                    append_html(open_row, f'<p class="footnote">{html}</p>')
+                    footnotes.append({"row": open_row["id"], "section": n})
             elif tag == "img":
                 append_html(open_row, _part_image_placeholder(sec_url))
                 images.append({"row": open_row["id"], "src": el.get("src"), "url": sec_url})
@@ -3141,6 +3277,32 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
             for sub in child:
                 if sub.tag == "DIV8":
                     parse_section(sub, pid, letter)
+                elif sub.tag == "DIV7" and (sub.get("TYPE") or "").upper() == "SUBJGRP":
+                    # Part 195 Subpart F nests some of its sections one level
+                    # deeper, inside a <DIV7 TYPE="SUBJGRP"> ("High Consequence
+                    # Areas", "Pipeline Integrity Management") -- a printed
+                    # centre-heading that groups sections but is NOT a subpart
+                    # and carries no citation of its own. Without this branch
+                    # those sections (195.450, 195.452, 195.454 -- the whole
+                    # integrity-management regime) are silently dropped.
+                    # They are flattened into the enclosing subpart, in
+                    # document order, so their ids/citations/parents are the
+                    # ordinary section shape; the group heading is recorded in
+                    # the report (`subject_groups`) rather than becoming a row,
+                    # because the app derives structure from the id and has no
+                    # id form between `-PART-x` and a section.
+                    grp_head_el = sub.find("HEAD")
+                    grp_head = _xml_text(grp_head_el) if grp_head_el is not None else (sub.get("N") or "")
+                    grp_secs: list[str] = []
+                    for gsub in sub:
+                        if gsub.tag == "DIV8":
+                            grp_secs.append(gsub.get("N") or "")
+                            parse_section(gsub, pid, letter)
+                        elif gsub.tag in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH"):
+                            stripped_counts[gsub.tag] += 1
+                    subject_groups.append(
+                        {"subpart": letter, "heading": grp_head, "sections": grp_secs}
+                    )
                 elif sub.tag in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH"):
                     stripped_counts[sub.tag] += 1
         elif child.tag == "DIV8":
@@ -3184,6 +3346,7 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
         "kinds": dict(Counter(r["kind"] for r in rows)),
         "subparts": [r["citation"] for r in rows if r["kind"] == "part"],
         "sections_by_subpart": section_index,
+        "subject_groups": subject_groups,
         "n_sections": sum(len(v) for v in section_index.values()),
         "reserved": reserved,
         "appendix_modes": appendix_modes,
@@ -3192,6 +3355,7 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
         "tables": [{k: v for k, v in t.items() if k != "cells"} for t in tables],
         "table_cells": {str(i): t["cells"] for i, t in enumerate(tables)},
         "images": images,
+        "footnotes": footnotes,
         "stripped": dict(stripped_counts),
         "duplicate_ids": duplicate_ids,
         "label_anomalies": label_anomalies,
@@ -3258,6 +3422,9 @@ def cmd_parse_part(args):
     print(f"  subparts: {len(report['subparts'])}, sections: {report['n_sections']}, "
           f"definitions: {report['n_definitions']}, tables: {len(report['tables'])}, "
           f"images: {len(report['images'])}")
+    for grp in report.get("subject_groups", []):
+        print(f"  subject group (Subpart {grp['subpart']}): {grp['heading']!r} -> "
+              f"{len(grp['sections'])} section(s) flattened into the subpart: {grp['sections']}")
     print(f"  reserved: {len(report['reserved'])} -> {report['reserved']}")
     for letter, mode in sorted(report["appendix_modes"].items()):
         print(f"  appendix {letter}: {mode}")

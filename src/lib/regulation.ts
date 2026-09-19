@@ -371,10 +371,12 @@ const CFR_PART_HEADINGS: Record<string, string> = {
 };
 
 // PHMSA (49 CFR) rows share ONE heading regardless of which part they're
-// from -- unlike the 40 CFR EPA groups (one heading per part), 191 and 192
-// are the same issuing body, the same subject (pipeline safety) and small
-// enough in count that a separate "Part 191" / "Part 192" split would just
-// be two near-empty sections. See groupFederalRegulations below.
+// from -- unlike the 40 CFR EPA groups (one heading per part), Parts 191,
+// 192, 194, 195 and 199 are the same issuing body, the same subject
+// (pipeline safety) and small enough in count that a per-part split would
+// just be five near-empty sections. See groupFederalRegulations below.
+// The test for membership is the citation shape (/^49 CFR Part \d+/), not a
+// list of keys, so Batch B's three new parts needed no change here.
 const PHMSA_GROUP_KEY = "49";
 const PHMSA_HEADING = "PHMSA — 49 CFR Pipeline Safety";
 
@@ -388,7 +390,7 @@ const PHMSA_HEADING = "PHMSA — 49 CFR Pipeline Safety";
  * citation instead.
  *
  * 40 CFR parts each get their own group (one per part number, as before).
- * 49 CFR parts (PHMSA, p191/p192) are different: every "49 CFR Part N" row,
+ * 49 CFR parts (PHMSA, p191/p192/p194/p195/p199) are different: every "49 CFR Part N" row,
  * whichever N, collapses into a single PHMSA_GROUP_KEY group under one
  * "PHMSA — 49 CFR Pipeline Safety" heading -- one shared section, not one
  * per part -- and that group sorts after every 40 CFR (EPA) group. Anything

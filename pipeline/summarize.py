@@ -168,7 +168,7 @@ SYSTEM_PROMPT_TEMPLATE = (
 # Administrator" -- scoped to 40 CFR text ONLY in its own wording, but
 # system_prompt_for() strips it entirely (rather than relying on the reader
 # to honor the parenthetical) for regs from a different CFR title, i.e.
-# 49 CFR Parts 191/192 (PHMSA) -- see _REG_49_CFR_KEYS below. Every other
+# 49 CFR Parts 191/192/194/195/199 (PHMSA) -- see _REG_49_CFR_KEYS below. Every other
 # reg (Colorado and the existing 40 CFR subparts alike) keeps it, so
 # SYSTEM_PROMPT itself, and every hint/test built on it, is unchanged.
 _EPA_ADMINISTRATOR_SENTENCE = (
@@ -185,7 +185,7 @@ _EPA_ADMINISTRATOR_SENTENCE = (
 # row's summary is never told, even conditionally, that "the Administrator"
 # might be the EPA Administrator; their own REG_PROMPT_HINTS entry supplies
 # the correct (PHMSA) meaning instead.
-_REG_49_CFR_KEYS = frozenset({"p191", "p192"})
+_REG_49_CFR_KEYS = frozenset({"p191", "p192", "p194", "p195", "p199"})
 
 # The rendered prompt for the default (oil & gas) audience -- every existing
 # call site and test refers to this literal string, so it must stay
@@ -526,6 +526,66 @@ REG_PROMPT_HINTS["p192"] = (
     "not be conflated. Say nothing about Colorado, CDPHE, AQCC, or ECMC "
     "unless the text does. An effective date in the text is a real "
     "requirement."
+)
+
+
+REG_PROMPT_HINTS["p195"] = (
+    "This row is from 49 CFR Part 195 (PHMSA, US DOT) -- Transportation of "
+    "Hazardous Liquids by Pipeline. It covers hazardous liquid and carbon "
+    "dioxide pipelines, not gas. \"Administrator\" means the PHMSA "
+    "Administrator (or the Associate Administrator for Pipeline Safety) -- "
+    "NEVER EPA, never \"the Division\" or any Colorado agency. "
+    "\"Operator\" is the pipeline operator, not a well-site or equipment "
+    "operator. \"This part\" means Part 195. Highly volatile liquid (HVL), "
+    "rural gathering line, low-stress line and breakout tank are distinct "
+    "defined categories -- never generalize across them. Integrity "
+    "management lives in Sec. 195.452 and high consequence "
+    "area is defined by Sec. 195.450; cite them only where the text does, "
+    "and never conflate HCA with an unusually sensitive area. Expand HVL, "
+    "HCA, IM, MOP, ILI or EFRD only as this text defines them. Incorporated "
+    "standards (API 653, API 650, ASME, NACE/AMPP) are named, never "
+    "described. Describe a table by its purpose, not cell by cell. "
+    "\"[Reserved]\" summarizes as \"[Reserved] -- no requirements,\" "
+    "nothing more. A definition row is scoped to its own section. Say "
+    "nothing about Colorado, CDPHE, AQCC, or ECMC unless the text does."
+)
+
+REG_PROMPT_HINTS["p199"] = (
+    "This row is from 49 CFR Part 199 (PHMSA, US DOT) -- Drug and Alcohol "
+    "Testing for pipeline operators. \"Administrator\" means the PHMSA "
+    "Administrator -- NEVER EPA and never a Colorado agency. \"Operator\" "
+    "is the pipeline operator. \"This part\" means Part 199. The people "
+    "covered are \"covered employees\" performing a \"covered function\" "
+    "as this part defines those terms -- never widen it to all employees. "
+    "The testing procedures themselves are in 49 CFR Part 40, which is NOT "
+    "in this corpus: name Part 40 when the text does and never describe "
+    "what it requires. MRO (medical review officer), SAP (substance abuse "
+    "professional), DER and EBT mean only what this part or Part 40 is said "
+    "to define them as. State a random testing rate, a testing category "
+    "(pre-employment, post-accident, random, reasonable cause, return-to-"
+    "duty, follow-up), or a retention period ONLY as the text states it -- "
+    "never a remembered figure. \"[Reserved]\" summarizes as "
+    "\"[Reserved] -- no requirements,\" nothing more. Say nothing about "
+    "Colorado, CDPHE, AQCC, or ECMC unless the text does."
+)
+
+REG_PROMPT_HINTS["p194"] = (
+    "This row is from 49 CFR Part 194 (PHMSA, US DOT) -- Response Plans for "
+    "Onshore Oil Pipelines, PHMSA's rule under the Oil Pollution Act of "
+    "1990 (OPA 90). \"Administrator\" means the PHMSA Administrator (or "
+    "the Associate Administrator for Pipeline Safety) -- NEVER EPA and "
+    "never a Colorado agency. \"Operator\" is the pipeline operator. "
+    "\"This part\" means Part 194. \"Worst case discharge\", \"response "
+    "zone\", \"qualified individual\", \"line section\", \"high volume "
+    "area\" and \"significant and substantial harm\" are defined terms -- "
+    "use them only as Sec. 194.5 and the section in front of you define "
+    "them, and never swap one for another. A response plan and a response "
+    "zone appendix are different documents. Appendix A is a recommended "
+    "format and Appendix B lists high volume areas -- both are guidance, so "
+    "never state either as a requirement unless the text does. Response "
+    "resource standards named in the text (NFPA 30, API RP 2350, 33 CFR "
+    "154) are named, never described. Say nothing about Colorado, CDPHE, "
+    "AQCC, or ECMC unless the text does."
 )
 
 

@@ -1416,7 +1416,11 @@ CORPUS_REGS = {
     # 49 CFR Parts 191 and 192 (PHMSA gas pipeline safety) -- whole-PART
     # documents parsed from the eCFR versioner XML by import_ecfr.py's
     # parse_ecfr_part(); see PHMSA_BRIEF.md / IMPORTER_SPEC.md.
+    # Batch B adds 49 CFR Parts 194 (onshore oil response plans), 195
+    # (hazardous liquid pipelines) and 199 (drug and alcohol testing) --
+    # same whole-PART shape, same importer path.
     "p191": "p191", "p192": "p192",
+    "p194": "p194", "p195": "p195", "p199": "p199",
     "ecmc": "ecmc", "cp": "cp",
     **{k: k for k in GP_KEYS},
 }
@@ -1430,7 +1434,8 @@ CORPUS_REGS = {
 # "p191"/"p192" are eCFR-sourced too, but whole PARTS read from the eCFR
 # XML rather than subparts read from a PDF print -- import_ecfr.cmd_parse
 # dispatches on SUBPART_META[reg]["document"] == "part" and expects --xml.
-ECFR_REGS = {"ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz", "p191", "p192"}
+ECFR_REGS = {"ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz",
+             "p191", "p192", "p194", "p195", "p199"}
 
 # Regulation Number 27 and 40 CFR Part 60 Subpart OOOO (the un-suffixed,
 # pre-2022 version) are deliberately NOT in CORPUS_REGS: citations to them
@@ -1478,6 +1483,9 @@ CFR_SUBPART_TO_REGKEY = {
 CFR_TITLE_PART_TO_REGKEY: dict[tuple[str, str], str] = {
     ("49", "191"): "p191",
     ("49", "192"): "p192",
+    ("49", "194"): "p194",
+    ("49", "195"): "p195",
+    ("49", "199"): "p199",
 }
 # "49 CFR Part 192", "49 CFR part 191", "49 CFR 192.605", "49 CFR 191.5(b)"
 # -- plus the forms ECMC actually writes 49 CFR citations in (the only
@@ -1496,7 +1504,7 @@ CFR_TITLE_PART_RE = re.compile(
     r"\b(?P<title>49)\s+C\.?\s?F\.?\s?R\.?\s+"
     r"(?:"
     r"[Pp]art\s+(?P<part>\d{1,3})\b"
-    r"|(?:§§?\s*)?(?P<barepart>\d{1,3})\s+Subpart\s+[A-Za-z0-9]+\b"
+    r"|(?:§§?\s*)?(?P<barepart>\d{1,3})\s+Subpart\s+(?P<baresub>[A-Za-z0-9]+)\b"
     r"|(?:§§?\s*)?(?P<secpart>\d{1,3})\.(?P<secnum>\d{1,4})(?P<par>(?:\([a-zA-Z0-9]{1,7}\))*)"
     r"(?:\s+or\s+(?P<orsecpart>\d{1,3})\.(?P<orsecnum>\d{1,4}))?"
     r")"
@@ -1529,6 +1537,24 @@ REG_META: dict[str, dict] = {
         "source_url": "https://www.ecfr.gov/current/title-49/part-192",
         "root_citation": "49 CFR Part 192",
         "root_title": "49 CFR Part 192 \u2014 Transportation of Natural and Other Gas by Pipeline: Minimum Federal Safety Standards",
+    },
+    "p194": {
+        "jurisdiction_level": "federal", "issuing_body": "PHMSA",
+        "source_url": "https://www.ecfr.gov/current/title-49/part-194",
+        "root_citation": "49 CFR Part 194",
+        "root_title": "49 CFR Part 194 \u2014 Response Plans for Onshore Oil Pipelines",
+    },
+    "p195": {
+        "jurisdiction_level": "federal", "issuing_body": "PHMSA",
+        "source_url": "https://www.ecfr.gov/current/title-49/part-195",
+        "root_citation": "49 CFR Part 195",
+        "root_title": "49 CFR Part 195 \u2014 Transportation of Hazardous Liquids by Pipeline",
+    },
+    "p199": {
+        "jurisdiction_level": "federal", "issuing_body": "PHMSA",
+        "source_url": "https://www.ecfr.gov/current/title-49/part-199",
+        "root_citation": "49 CFR Part 199",
+        "root_title": "49 CFR Part 199 \u2014 Drug and Alcohol Testing",
     },
     # -- APCD General Permits GP01-GP12 (5 CCR-adjacent Division-issued
     # general construction permits, not AQCC-numbered regulations) --------
@@ -2389,6 +2415,16 @@ def _link_cfr49_citations(
             deep = ""
             if m.group("secnum"):
                 deep = f' data-provision-id="sec-{regkey}-{part_num}.{m.group("secnum")}"'
+            elif m.group("barepart") and m.group("baresub"):
+                # "49 C.F.R. § 195 Subpart A" -- a whole-part document's
+                # subpart rows are `sec-<reg>-PART-<LETTER>` (import_ecfr's
+                # parse_ecfr_part), so a part+subpart cite CAN deep-link,
+                # unlike a bare "49 CFR Part 195". Only a single printed
+                # letter is accepted; anything else (a numbered or multi-
+                # letter "subpart") just links to the reg page.
+                sub = m.group("baresub")
+                if len(sub) == 1 and sub.isalpha():
+                    deep = f' data-provision-id="sec-{regkey}-PART-{sub.upper()}"'
             pieces.append((m.start(), m.end(),
                            f'<a class="xref-external-reg" href="/regulations/{regkey}"{deep}>{m.group(0)}</a>'))
         else:
@@ -2936,6 +2972,19 @@ KNOWN_LABEL_FIXES: dict[str, list[dict]] = {
                 '"I.D.6.f.(i)(C)" in Part B Section I.D.6.f. (there is no Section II.D.6 '
                 "in Part B) — a source-text typo for \"I.D.6.f.(i)(B)\". Without the fix the "
                 "(B) paragraph was fused into the (A) row (found in the Sept 17 2026 review)."
+            ),
+        ),
+        dict(
+            old_label="IV.A.5.c.(ii)",
+            new_label="IV.A.5.c.(iii)",
+            match_prefix="IV.A.5.c.(ii) Installing and operating crown inspectors to monitor",
+            line_hint=3932,
+            note=(
+                'Printed "IV.A.5.c.(ii)" twice in a row (fill level detectors, then crown '
+                'inspectors) and then "IV.A.5.c.(iv)" — the second is a source-text typo for '
+                '"IV.A.5.c.(iii)". Before the Sep 19 2026 duplicate-marker fix the second '
+                "paragraph silently overwrote the first, so the DB row (ii) read only the "
+                "crown-inspector text."
             ),
         ),
     ],
@@ -4660,6 +4709,28 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
         if term is not None:
             kind = "definition"
 
+        if item_id in provisions:
+            # Duplicate marker (two printed items with the same citation —
+            # Reg 7 "VI.D.3.a.(iii)" twice — or a citation-shaped false
+            # positive): keep the FIRST occurrence's row (citation, parent,
+            # title, sort_order) and fold this occurrence's text in as
+            # trailing paragraphs. Before this guard the second marker's
+            # dict overwrote the first's here, so the first paragraph was
+            # lost and parse_ccr's de-dup pass appended the survivor to
+            # itself (the row read "X. X." — found Sep 19, 2026).
+            prev = pending.get(item_id)
+            new_paras = (split_into_paragraphs(([inline_text] if inline_text else []) + own_lines)
+                         if extra_nonblank else
+                         [f"{citation} {inline_text}".strip() if inline_text else citation])
+            if prev is None:
+                pending[item_id] = ("paras", new_paras, citation, table_html, part_letter, item_id)
+            elif prev[0] == "heading":
+                pending[item_id] = ("paras", [prev[1]] + new_paras, prev[2], prev[3] + table_html, prev[4], prev[5])
+            elif prev[0] in ("paras", "entry"):
+                prev[1].extend(new_paras)
+            order.append(item_id)  # parse_ccr counts the repeat as a duplicate id
+            continue
+
         if not extra_nonblank:
             # Heading-type: entire own text fit on the marker's own physical
             # line (or there is none) -> plain text, label included, no <p>.
@@ -5844,7 +5915,10 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
         row = provisions[pid]
         if pid in seen:
             duplicate_ids.append(pid)
-            seen[pid]["full_text"] += row["full_text"]
+            if row is not seen[pid]:
+                seen[pid]["full_text"] += row["full_text"]
+            # else: build_provisions already folded the repeat's text into
+            # the first occurrence (same dict object) — nothing to append.
             continue
         seen[pid] = row
         result.append(row)
@@ -5873,7 +5947,7 @@ def cmd_parse(args):
 
         return import_ecfr.cmd_parse(args)
     if not args.pdf:
-        raise SystemExit("--pdf is required for CCR regulations (only p191/p192 use --xml)")
+        raise SystemExit("--pdf is required for CCR regulations (only the whole-PART 49 CFR regs p191/p192/p194/p195/p199 use --xml)")
     (result, unresolved, table_hits, n_tables_found, duplicate_ids,
      label_fixes_applied, anomalies, marker_audit) = parse_reg(args.reg, args.txt, args.pdf)
     out_path = Path(args.out)
@@ -7331,9 +7405,9 @@ def main():
 
     p_parse = sub.add_parser("parse", help="Parse a regulation's pdftotext output into provisions JSON.")
     p_parse.add_argument("--reg", required=True)
-    p_parse.add_argument("--pdf", default=None, help="Path to the source .pdf (for pdfplumber table extraction). Not used by the whole-PART eCFR regs (p191/p192), which read --xml.")
+    p_parse.add_argument("--pdf", default=None, help="Path to the source .pdf (for pdfplumber table extraction). Not used by the whole-PART eCFR regs (p191/p192/p194/p195/p199), which read --xml.")
     p_parse.add_argument("--txt", default=None, help="Path to pdftotext -layout output (defaults to sources/REG_<reg>.txt).")
-    p_parse.add_argument("--xml", default=None, help="Path to the eCFR versioner XML; required for the whole-PART eCFR regs (p191/p192).")
+    p_parse.add_argument("--xml", default=None, help="Path to the eCFR versioner XML; required for the whole-PART eCFR regs (p191/p192/p194/p195/p199).")
     p_parse.add_argument("--out", required=True)
     p_parse.set_defaults(func=cmd_parse)
 
