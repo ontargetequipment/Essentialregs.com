@@ -3347,3 +3347,72 @@ class GeneralPermitNoOpProofTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# Markup-only `changed` rows keep their review state (added after batch 4:
+# re-importing an existing reg once new regs join the corpus only adds xref
+# markup, and that must not throw reviewed/corrected summaries back to
+# `pending`).
+# ---------------------------------------------------------------------------
+class MarkupOnlyChangedKeepsReviewStateTests(unittest.TestCase):
+    def _classify(self):
+        parsed = [
+            _prow(PART_A, ROOT, 10, "Part A"),
+            _prow(f"sec-{REG}-A-I", PART_A, 20,
+                  '<p>See <span class="xref" data-target="sec-7-B-I">Section I.</span> of Part B.</p>'),  # markup-only
+            _prow(f"sec-{REG}-A-II", PART_A, 30, "<p>NEW visible text</p>"),  # real change
+        ]
+        db = [
+            _prow(PART_A, ROOT, 10, "Part A"),
+            _prow(f"sec-{REG}-A-I", PART_A, 20, "<p>See Section I. of Part B.</p>"),
+            _prow(f"sec-{REG}-A-II", PART_A, 30, "<p>OLD text</p>"),
+        ]
+        return ic.classify_apply(parsed, db)
+
+    def test_classification_marks_markup_only(self):
+        c = self._classify()
+        self.assertEqual(c["changed"], [f"sec-{REG}-A-I", f"sec-{REG}-A-II"])
+        self.assertTrue(c["markup_only"][f"sec-{REG}-A-I"])
+        self.assertFalse(c["markup_only"][f"sec-{REG}-A-II"])
+
+    def test_execute_plan_markup_only_replaces_text_but_keeps_review_columns(self):
+        c = self._classify()
+        actions = ic._execute_write_plan(c, today="2026-09-19", now_iso=NOW_ISO)
+        by_id = {a["id"]: a for a in actions if a["op"] == "update"}
+        mo = by_id[f"sec-{REG}-A-I"]["payload"]
+        real = by_id[f"sec-{REG}-A-II"]["payload"]
+        self.assertIn("full_text", mo)
+        self.assertIn('data-target="sec-7-B-I"', mo["full_text"])
+        for col in ("summary_status", "reviewed_by", "reviewed_at", "summary_original", "ai_summary"):
+            self.assertNotIn(col, mo, f"markup-only update must not touch {col}")
+        self.assertEqual(real["summary_status"], "pending")
+        self.assertIsNone(real["reviewed_by"])
+        self.assertIsNone(real["summary_original"])
+        self.assertNotIn("ai_summary", real)
+
+    def test_execute_changed_fields_default_still_resets(self):
+        row = _prow(f"sec-{REG}-A-II", PART_A, 30, "<p>x</p>")
+        self.assertEqual(ic._execute_changed_fields(row, NOW_ISO)["summary_status"], "pending")
+        self.assertNotIn("summary_status", ic._execute_changed_fields(row, NOW_ISO, markup_only=True))
+
+    def test_sql_path_markup_chunk_has_its_own_set_clause(self):
+        c = self._classify()
+        rows = []
+        for pid in c["changed"]:
+            row = c["parsed_by_id"][pid]
+            rows.append(dict(
+                id=pid, sort_order=row["sort_order"],
+                touch_full_text="markup" if c["markup_only"][pid] else True,
+                values_sql=ic._row_values_sql(row, "state", "CDPHE-APCD", ic.SOURCE_URL_DEFAULT, "2026-09-19", False, "pending"),
+            ))
+        rows.sort(key=lambda r: (r["sort_order"], r["id"]))
+        chunks = ic.chunk_upsert_rows(rows, 150_000)
+        self.assertEqual([t for t, _ in chunks], ["markup", True])
+        markup_stmt = ic.build_upsert_statement(chunks[0][1])
+        full_stmt = ic.build_upsert_statement(chunks[1][1])
+        self.assertIn("full_text = EXCLUDED.full_text", markup_stmt)
+        self.assertNotIn("summary_status = 'pending'", markup_stmt)
+        self.assertNotIn("reviewed_by = NULL", markup_stmt)
+        self.assertIn("summary_status = 'pending'", full_stmt)
+        self.assertIn("reviewed_by = NULL", full_stmt)

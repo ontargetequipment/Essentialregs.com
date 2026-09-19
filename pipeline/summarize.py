@@ -63,7 +63,7 @@ META_PAGE_SIZE = 1000       # rows fetched per page when building the id->citati
 MIN_WORDS = 25              # tag-stripped word count below this = headings-only, skip
 MAX_PROMPT_WORDS = 6000     # cap on the provision's own text included in the prompt
 PARENT_TEXT_CHARS = 400     # chars of the immediate parent paragraph shown for scoping
-MAX_TOKENS = 400
+MAX_TOKENS = 700            # 400 cut four wide ZZZZ table summaries mid-sentence (batch 4)
 TEMPERATURE = 0
 DEFAULT_MODEL = "claude-sonnet-4-5"
 BATCH_MAX_REQUESTS = 1000   # Anthropic Message Batches API limit per batch
@@ -371,23 +371,24 @@ REG_PROMPT_HINTS: dict[str, str] = {
 # this is a no-op for every other reg.
 _GP_HINT = (
     "This row is from an APCD-issued Colorado general permit (GP01-GP12) for "
-    "oil & gas sources -- Division-issued permit terms, not regulation text. "
-    "Say \"the permit requires\" or \"permit condition\", never \"the "
-    "regulation requires\". \"Division\" means the Air Pollution Control "
-    "Division (APCD); \"Commission\" means the Air Quality Control "
-    "Commission (AQCC); \"the owner or operator\" is the registrant under "
-    "this permit. Quote emission limits in tpy, engine rates in g/hp-hr, "
-    "ppmvd concentrations, record-retention periods, and deadlines exactly "
-    "as written -- never round or convert them. \"Condition X\" (e.g. "
-    "\"Condition II.A.6\") cross-references another condition within this "
-    "same permit, not a different regulation. Use AOS (Alternative "
-    "Operating Scenario), NOS (Notice of Startup), RICE, PSD/NANSR, and "
-    "Disproportionately Impacted (DI) Communities only as this permit's own "
-    "text defines them. GP09 covers attainment areas and GP10 nonattainment "
-    "areas; both closed to new registrations July 15, 2026 but still bind "
-    "existing registrants, and GP12 replaces them -- state that only when "
-    "the text says so. For an emission-limit table row, point to the "
-    "applicable table and its numbers rather than restating every cell."
+    "oil & gas sources -- permit terms, not regulation text. Say \"the "
+    "permit requires\" or \"permit condition\", never \"the regulation "
+    "requires\". \"Division\" = Air Pollution Control Division (APCD); "
+    "\"Commission\" = Air Quality Control Commission (AQCC); \"the owner "
+    "or operator\" is the registrant. Quote emission limits (tpy, g/hp-hr, "
+    "ppmvd), record-retention periods and deadlines exactly as written; "
+    "never add a retention period, notice period or deadline this row's own "
+    "text does not state, even if another condition sets one. \"Condition "
+    "X\" cross-references this same permit; when the row only cites a "
+    "regulation or condition, say it cites it -- do not describe what the "
+    "cited provision requires. Use AOS (Alternative Operating Scenario), NOS "
+    "(Notice of Startup), RICE, PSD/NANSR and Disproportionately Impacted "
+    "(DI) Communities only as this permit defines them. GP09 covers "
+    "attainment areas, GP10 nonattainment areas; both closed to new "
+    "registrations July 15, 2026 and GP12 replaces them -- state that only "
+    "when the text says so. For an emission-limit table row, point to the "
+    "table and its numbers rather than restating every cell. Add no rationale "
+    "or examples."
 )
 for _gp_key in (
     "gp01", "gp02", "gp03", "gp05", "gp06", "gp07",

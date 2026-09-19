@@ -6573,7 +6573,11 @@ def build_upsert_statement(rows: list[dict]) -> str:
         "sort_order = EXCLUDED.sort_order",
         "updated_at = now()",
     ]
-    if touch_full_text:
+    if touch_full_text == "markup":
+        # visible text unchanged (only xref/table markup differs): replace
+        # the stored HTML but leave every summary/review column alone.
+        set_clause.append("full_text = EXCLUDED.full_text")
+    elif touch_full_text:
         set_clause += [
             "full_text = EXCLUDED.full_text",
             "summary_status = 'pending'",
@@ -6766,7 +6770,7 @@ def cmd_apply(args):
         f"- Shared ids (in both parsed and current DB): **{len(c['identical']) + len(c['changed'])}**",
         f"- `identical` (no text/summary change): **{len(c['identical'])}**",
         f"- `changed` (full_text replaced, ai_summary kept, summary_status→pending): **{len(c['changed'])}**",
-        f"  - of which markup-only (visible text unchanged — no regen needed): **{markup_only_count}**",
+        f"  - of which markup-only (visible text unchanged — full_text replaced, review state and summary_status left as they are): **{markup_only_count}**",
         f"  - of which visible text changed (regen needed): **{changed_needing_regen}**",
         f"- `new` (inserted): **{len(c['new'])}**",
         f"- `obsolete` (deleted): **{len(c['obsolete'])}**",
@@ -6822,8 +6826,9 @@ def cmd_apply(args):
         ))
     for pid in c["changed"] + c["new"]:
         row = parsed_by_id[pid]
+        touch = "markup" if c["markup_only"].get(pid) else True
         upsert_rows.append(dict(
-            id=pid, sort_order=row["sort_order"], touch_full_text=True,
+            id=pid, sort_order=row["sort_order"], touch_full_text=touch,
             values_sql=_row_values_sql(
                 row, jurisdiction_level, issuing_body, source_url, today, False, "pending",
             ),
@@ -6942,22 +6947,29 @@ def _execute_identical_fields(row: dict, now_iso: str) -> dict:
     }
 
 
-def _execute_changed_fields(row: dict, now_iso: str) -> dict:
+def _execute_changed_fields(row: dict, now_iso: str, markup_only: bool = False) -> dict:
     """Adds full_text + clears summary review state, matching
-    build_upsert_statement's `touch_full_text` branch. Still omits
+    build_upsert_statement's `touch_full_text` branch. With `markup_only`
+    (visible text identical to the DB row -- only xref spans / table HTML
+    differ, e.g. an existing reg re-parsed after new regs joined the corpus
+    and gained cross-links) only full_text is replaced: summary_status,
+    reviewed_by, reviewed_at and summary_original are left exactly as they
+    are, so a reviewed/corrected summary is not thrown back to `pending`
+    for a change the reader cannot see. Still omits
     jurisdiction_level/issuing_body/source_url/last_verified_date/is_public
     (an id classified `changed` is, by construction, already a row in the
     DB -- classify_apply's `changed` is the shared-id set with different
     text -- so those columns are never touched by the SQL path's SET clause
     for this class either) and never touches ai_summary."""
     fields = _execute_identical_fields(row, now_iso)
-    fields.update({
-        "full_text": row.get("full_text") or "",
-        "summary_status": "pending",
-        "reviewed_by": None,
-        "reviewed_at": None,
-        "summary_original": None,
-    })
+    fields["full_text"] = row.get("full_text") or ""
+    if not markup_only:
+        fields.update({
+            "summary_status": "pending",
+            "reviewed_by": None,
+            "reviewed_at": None,
+            "summary_original": None,
+        })
     return fields
 
 
@@ -7030,7 +7042,10 @@ def _execute_write_plan(c: dict, today: str, now_iso: str, chunk_size: int = EXE
                 flush_new()
         else:
             flush_new()
-            fields = _execute_identical_fields(row, now_iso) if shape == "identical" else _execute_changed_fields(row, now_iso)
+            if shape == "identical":
+                fields = _execute_identical_fields(row, now_iso)
+            else:
+                fields = _execute_changed_fields(row, now_iso, markup_only=bool(c.get("markup_only", {}).get(pid)))
             actions.append({"op": "update", "id": pid, "shape": shape, "payload": fields})
     flush_new()
     return actions
