@@ -2,13 +2,15 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { embedQueries, hrefForHit, regLabel, type SemanticHit } from "@/lib/semantic";
+import { expandAcronyms } from "@/lib/acronyms";
 import { EVAL_QUESTIONS } from "@/lib/semantic-eval";
 
 export const metadata = { title: "Ask acceptance test" };
 export const dynamic = "force-dynamic";
 
 const TOP_N = 5;
-const PASS_TARGET = 17;
+/** ≥ 85% of the list (17/20 in the original plan). */
+const PASS_TARGET = Math.ceil(EVAL_QUESTIONS.length * 0.85);
 
 type Row = {
   q: string;
@@ -33,14 +35,18 @@ export default async function SemanticEvalPage() {
   let rows: Row[] = [];
   let fatal: string | null = null;
   try {
-    const embeddings = await embedQueries(EVAL_QUESTIONS.map((e) => e.q));
+    const expanded = EVAL_QUESTIONS.map((e) => expandAcronyms(e.q));
+    const embeddings = await embedQueries(expanded);
     rows = await Promise.all(
       EVAL_QUESTIONS.map(async (e, i) => {
-        const { data, error } = await admin.rpc("match_provisions", {
+        // Same call the Ask tab makes (hybrid: full-text + vector, basis demoted).
+        const { data, error } = await admin.rpc("match_provisions_hybrid", {
+          query_text: expanded[i],
           query_embedding: embeddings[i],
           match_count: TOP_N,
           reg_filter: null,
           jurisdiction_filter: null,
+          include_basis: true,
         });
         if (error) throw new Error(`${e.q}: ${error.message}`);
         const hits = (data ?? []) as SemanticHit[];
@@ -109,7 +115,9 @@ export default async function SemanticEvalPage() {
                       {h.citation}
                     </Link>
                     <span className={expected ? "font-medium" : ""}>{h.title !== h.citation ? h.title : ""}</span>
-                    <span className="ml-auto text-xs tabular-nums text-zinc-400">{Math.round(h.score * 100)}%</span>
+                    {h.is_basis && <span className="rounded bg-zinc-100 px-1.5 text-[10px] uppercase text-zinc-500">basis</span>}
+                    {h.keyword_hit && <span className="rounded bg-amber-50 px-1.5 text-[10px] uppercase text-amber-700">kw</span>}
+                    <span className="ml-auto text-xs tabular-nums text-zinc-400">{h.score == null ? "—" : `${Math.round(h.score * 100)}%`}</span>
                   </li>
                 );
               })}

@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccessStatus } from "@/lib/access";
+import { expandAcronyms } from "@/lib/acronyms";
 
 /**
  * Semantic ("Ask") search — Phase 3 of the semantic-search plan.
@@ -31,14 +32,24 @@ export type SemanticHit = {
   reg_key: string | null;
   jurisdiction_level: "state" | "federal" | "county";
   summary: string | null;
-  /** cosine similarity, 0–1 (typically 0.6–0.9 for a good hit) */
-  score: number;
+  /** cosine similarity, 0–1 (typically 0.6–0.9 for a good hit); null when only the keyword side found it */
+  score: number | null;
+  /** statement of basis / rulemaking history rather than an operative rule */
+  is_basis?: boolean;
+  /** the full-text search also matched this provision (hybrid only) */
+  keyword_hit?: boolean;
+  /** reciprocal-rank-fusion score the hybrid results are ordered by */
+  fused?: number;
 };
 
 export type SemanticOptions = {
   regFilter?: string[] | null;
   jurisdiction?: Jurisdiction | null;
   count?: number;
+  /** false hides statements of basis entirely (default: shown, demoted) */
+  includeBasis?: boolean;
+  /** "hybrid" (default) fuses full-text + vector; "vector" is meaning only */
+  mode?: "hybrid" | "vector";
 };
 
 export class SemanticError extends Error {
@@ -137,16 +148,33 @@ export async function semanticSearch(
   }
 
   const started = Date.now();
-  const [embedding] = await embedQueries([q]);
+  // "ECD testing" → "ECD (enclosed combustion device) testing": the corpus
+  // spells acronyms out; the embedding model and the keyword index both do
+  // better with the phrase present.
+  const expanded = expandAcronyms(q);
+  const [embedding] = await embedQueries([expanded]);
 
-  // The user's own session client, so match_provisions' access check sees them.
+  // The user's own session client, so the RPC's access check sees them.
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("match_provisions", {
-    query_embedding: embedding,
-    match_count: count,
-    reg_filter: regFilter.length ? regFilter : null,
-    jurisdiction_filter: jurisdiction,
-  });
+  const mode = opts.mode ?? "hybrid";
+  const includeBasis = opts.includeBasis ?? true;
+  const { data, error } =
+    mode === "vector"
+      ? await supabase.rpc("match_provisions", {
+          query_embedding: embedding,
+          match_count: count,
+          reg_filter: regFilter.length ? regFilter : null,
+          jurisdiction_filter: jurisdiction,
+          include_basis: includeBasis,
+        })
+      : await supabase.rpc("match_provisions_hybrid", {
+          query_text: expanded,
+          query_embedding: embedding,
+          match_count: count,
+          reg_filter: regFilter.length ? regFilter : null,
+          jurisdiction_filter: jurisdiction,
+          include_basis: includeBasis,
+        });
   if (error) {
     if (error.code === "42501") throw new SemanticError("Ask is available to subscribers.", "forbidden");
     throw new SemanticError(error.message, "db");
@@ -157,7 +185,7 @@ export async function semanticSearch(
   const { error: logErr } = await admin.from("search_queries").insert({
     user_id: access.user.id,
     mode: "ask",
-    query: q,
+    query: q + (expanded !== q ? `  ⟶ ${expanded}` : ""),
     reg_filter: regFilter.length ? regFilter : null,
     jurisdiction,
     result_ids: hits.map((h) => h.id),

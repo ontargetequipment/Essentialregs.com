@@ -29,7 +29,7 @@ export default async function FederalIndexPage() {
         .
       </p>
 
-      <RegulationList regs={regs} access={access} />
+      <RegulationList regs={regs} access={access} mode="federal" />
     </div>
   );
 }

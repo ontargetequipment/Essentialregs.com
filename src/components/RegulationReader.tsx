@@ -31,6 +31,18 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
       return;
     }
 
+    // id -> containing sidebar <details> group id, built once from
+    // searchIndex's 4th column (see buildSearchIndex in regulation.ts).
+    // Used so a hash-load or a "go to" jump opens the sidebar group the
+    // target provision actually lives in, instead of leaving it collapsed.
+    const groupById = new Map(searchIndex.map((row) => [row[0], row[3]]));
+    function openGroupFor(slug: string) {
+      const groupId = groupById.get(slug);
+      if (!groupId) return;
+      const details = document.getElementById(`navgroup-${groupId}`);
+      if (details instanceof HTMLDetailsElement) details.open = true;
+    }
+
     function labelFor(el: Element): string {
       const idSpan = el.querySelector(".item-id");
       if (idSpan?.textContent) return idSpan.textContent.trim();
@@ -62,6 +74,7 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
     function goTo(slug: string) {
       const el = document.getElementById(slug);
       if (!el) return;
+      openGroupFor(slug);
       el.scrollIntoView({ block: "center", behavior: "smooth" });
       el.classList.remove("flash");
       void (el as HTMLElement).offsetWidth;
@@ -99,6 +112,17 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
     document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onKeydown);
 
+    // Plain sidebar links (<a href="#id">, both the per-group summary link
+    // and each li's link) navigate natively -- no click handler runs goTo()
+    // for those -- so the containing group is opened off the resulting
+    // 'hashchange' instead. goTo() itself (jump results, popup "go to")
+    // already calls openGroupFor directly, since it uses pushState, which
+    // doesn't fire 'hashchange'.
+    function onHashChange() {
+      if (window.location.hash) openGroupFor(window.location.hash.slice(1));
+    }
+    window.addEventListener("hashchange", onHashChange);
+
     function onToggleClick() {
       sidebar?.classList.toggle("open");
       sidebarScrim?.classList.toggle("show");
@@ -110,7 +134,30 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
       sidebarScrim?.classList.remove("show");
     }
     function onSidebarClick(e: MouseEvent) {
-      if ((e.target as HTMLElement).closest("a.nav-link")) {
+      const target = e.target as HTMLElement;
+      // The part link sits inside <summary> (see [reg]/page.tsx), so a
+      // click on it also bubbles to the <summary> and triggers the
+      // browser's default "toggle the parent <details>" action -- clicking
+      // "PART B" to jump there would also collapse/expand it as a side
+      // effect. preventDefault() on the click suppresses BOTH default
+      // actions tied to it (the anchor's navigation and the summary's
+      // toggle), so the navigation is redone by hand: setting
+      // location.hash does the same scroll-to-target + URL update a normal
+      // hash-link click would, and still fires 'hashchange' (which
+      // re-opens this same group anyway, so nothing is lost by
+      // suppressing the toggle here). Clicking anywhere else in the
+      // summary -- the sub-label text, the marker -- has no <a> under it,
+      // so it keeps toggling normally; the marker stays the affordance
+      // for that.
+      const partLink = target.closest("a.nav-part-link");
+      if (partLink && partLink.closest("details.nav-part > summary")) {
+        e.preventDefault();
+        const hash = partLink.getAttribute("href") ?? "";
+        if (hash.startsWith("#")) window.location.hash = hash.slice(1);
+        closeSidebar();
+        return;
+      }
+      if (target.closest("a.nav-link")) {
         closeSidebar();
       }
     }
@@ -176,12 +223,14 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
 
     if (window.location.hash) {
       const slug = window.location.hash.slice(1);
+      openGroupFor(slug);
       setTimeout(() => goTo(slug), 50);
     }
 
     return () => {
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onKeydown);
+      window.removeEventListener("hashchange", onHashChange);
       toggle?.removeEventListener("click", onToggleClick);
       sidebar.removeEventListener("click", onSidebarClick);
       sidebarScrim?.removeEventListener("click", closeSidebar);

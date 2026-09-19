@@ -34,6 +34,18 @@ function first(v: string | string[] | undefined): string {
   return (Array.isArray(v) ? v[0] : v) ?? "";
 }
 
+/**
+ * A good Ask hit scores ~0.6–0.9 cosine similarity. When the best result is
+ * below this and nothing matched the visitor's words, the corpus probably
+ * doesn't talk about the thing they asked about (e.g. a permit number).
+ */
+const WEAK_SCORE = 0.5;
+function isWeakMatch(hits: SemanticHit[]): boolean {
+  if (hits.some((h) => h.keyword_hit)) return false;
+  const best = Math.max(...hits.map((h) => h.score ?? 0));
+  return best < WEAK_SCORE;
+}
+
 function regKeyOfId(id: string): string {
   const m = /^sec-([^-]+)-/.exec(id);
   return m ? m[1].toLowerCase() : "";
@@ -298,6 +310,14 @@ export default async function SearchPage(props: PageProps<"/search">) {
         </>
       )}
 
+      {mode === "ask" && askHits.length > 0 && isWeakMatch(askHits) && (
+        <p className="mt-8 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Nothing in the regulations closely matches this. The rules may not use that term (permit numbers, program
+          names and vendor names usually aren&rsquo;t in the text) — try describing the equipment or activity instead, e.g.
+          &ldquo;general permit for engines&rdquo; rather than a permit number. The closest provisions are shown below.
+        </p>
+      )}
+
       {mode === "ask" && askHits.length > 0 && (
         <>
           <p className="mt-8 text-xs uppercase tracking-wide text-zinc-500">
@@ -326,8 +346,14 @@ export default async function SearchPage(props: PageProps<"/search">) {
                         {badge}
                       </span>
                       <span className="text-xs text-zinc-500">{regLabel(hit.reg_key)}</span>
-                      <span className="ml-auto text-xs tabular-nums text-zinc-400" title="How close this provision's meaning is to your question">
-                        {Math.round(hit.score * 100)}% match
+                      {hit.is_basis && (
+                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
+                          Statement of basis
+                        </span>
+                      )}
+                      <span className="ml-auto text-xs tabular-nums text-zinc-400" title={hit.keyword_hit ? "Matched your words and your meaning" : "How close this provision's meaning is to your question"}>
+                        {hit.score == null ? "keyword match" : `${Math.round(hit.score * 100)}% match`}
+                        {hit.keyword_hit && hit.score != null ? " · words" : ""}
                       </span>
                     </div>
                     <p className="mt-2 font-mono text-xs uppercase tracking-wide text-emerald-700">
@@ -347,7 +373,8 @@ export default async function SearchPage(props: PageProps<"/search">) {
             })}
           </ol>
           <p className="mt-6 text-xs text-zinc-400">
-            Results are the regulation&apos;s own provisions ranked by meaning. They are not legal advice; read the full
+            Results are the regulation&apos;s own provisions, ranked by meaning and by your words together;
+            statements of basis (rulemaking history) are shown but ranked below the rules. They are not legal advice; read the full
             text and check the official source before relying on them.
           </p>
         </>

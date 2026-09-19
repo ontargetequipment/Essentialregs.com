@@ -7,13 +7,12 @@ import {
   escapeHtml,
   fetchRegulationProvisions,
   kindOf,
+  promoteHeadingParagraph,
   stripHtml,
   summaryPanelHtml,
   withItemIdBadge,
 } from "@/lib/regulation";
 import { RegulationReader } from "@/components/RegulationReader";
-import { RelatedProvisionsLoader } from "@/components/RelatedProvisionsLoader";
-import { relatedPanelHtml } from "@/lib/related";
 import "../reader.css";
 
 // `reg` gets interpolated straight into a `like "sec-{reg}-%"` filter
@@ -58,7 +57,6 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
   return (
     <div className="reg-reader">
       <RegulationReader searchIndex={searchIndex} />
-      <RelatedProvisionsLoader currentReg={reg.toLowerCase()} />
 
       <nav id="sidebar">
         <div id="sidebar-header">
@@ -77,26 +75,51 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
         </div>
         <div className="nav-reg">
           <div className="nav-reg-title">{root.citation}</div>
-          {topLevel.map((node) => {
-            const kind = kindOf(node.id);
-            if (kind === "appendix") {
-              return (
-                <div className="nav-part" key={node.id}>
+          {(() => {
+            // "First group" (opened by default) is the first top-level node
+            // that actually renders as a <details> -- i.e. has a section
+            // list -- not just topLevel[0], since an appendix (or any node
+            // with no children) never gets one (see the zero-children branch
+            // below, unchanged from before this sidebar became collapsible).
+            const firstDetailsIndex = topLevel.findIndex(
+              (n) => kindOf(n.id) !== "appendix" && (childrenOf.get(n.id)?.length ?? 0) > 0
+            );
+            return topLevel.map((node, i) => {
+              const kind = kindOf(node.id);
+              if (kind === "appendix") {
+                return (
+                  <div className="nav-part" key={node.id}>
+                    <a href={`#${node.id}`} className="nav-link nav-part-link">
+                      {node.citation}
+                    </a>
+                    <div className="nav-part-sub">{stripHtml(node.title || node.full_text, 60)}</div>
+                  </div>
+                );
+              }
+              const sections = childrenOf.get(node.id) ?? [];
+              const summary = (
+                <>
                   <a href={`#${node.id}`} className="nav-link nav-part-link">
                     {node.citation}
                   </a>
-                  <div className="nav-part-sub">{stripHtml(node.title || node.full_text, 60)}</div>
-                </div>
+                  <div className="nav-part-sub">{stripHtml(node.full_text, 60)}</div>
+                </>
               );
-            }
-            const sections = childrenOf.get(node.id) ?? [];
-            return (
-              <div className="nav-part" key={node.id}>
-                <a href={`#${node.id}`} className="nav-link nav-part-link">
-                  {node.citation}
-                </a>
-                <div className="nav-part-sub">{stripHtml(node.full_text, 60)}</div>
-                {sections.length > 0 && (
+              if (sections.length === 0) {
+                return (
+                  <div className="nav-part" key={node.id}>
+                    {summary}
+                  </div>
+                );
+              }
+              return (
+                // Native <details> so the huge ECMC-style sidebars (14
+                // series x 20-60 rules) don't render every section list open
+                // at once. id="navgroup-<id>" is how RegulationReader's
+                // hash-on-load / "go to" handling finds and opens the
+                // right group -- see its buildGroupIndex-backed lookup.
+                <details className="nav-part" id={`navgroup-${node.id}`} key={node.id} open={i === firstDetailsIndex}>
+                  <summary>{summary}</summary>
                   <ul className="nav-items">
                     {sections.map((sec) => (
                       <li key={sec.id}>
@@ -106,10 +129,10 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                       </li>
                     ))}
                   </ul>
-                )}
-              </div>
-            );
-          })}
+                </details>
+              );
+            });
+          })()}
         </div>
       </nav>
 
@@ -146,7 +169,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                     __html: `<div class="part-tag">${escapeHtml(p.citation)}</div>${p.full_text}${summaryPanelHtml(
                       p,
                       root.source_url
-                    )}${relatedPanelHtml(p.id)}${containsBoxHtml(children)}`,
+                    )}${containsBoxHtml(children)}`,
                   }}
                 />
               );
@@ -158,7 +181,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                   id={p.id}
                   className="appendix-block"
                   dangerouslySetInnerHTML={{
-                    __html: `${p.full_text}${summaryPanelHtml(p, root.source_url)}${relatedPanelHtml(p.id)}${containsBoxHtml(children)}`,
+                    __html: `${p.full_text}${summaryPanelHtml(p, root.source_url)}${containsBoxHtml(children)}`,
                   }}
                 />
               );
@@ -178,7 +201,11 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                 id={p.id}
                 className={`item depth-${depth}${isFedRoot ? " fed-block" : ""}`}
                 dangerouslySetInnerHTML={{
-                  __html: `${withItemIdBadge(p.full_text, p.citation)}${summaryPanelHtml(p, root.source_url)}${relatedPanelHtml(p.id)}${containsBoxHtml(children)}`,
+                  // promoteHeadingParagraph runs first so a promoted first
+                  // <p> still gets its citation badge (withItemIdBadge always
+                  // targets the first <p>, class attribute or not) -- see
+                  // promoteHeadingParagraph's doc comment for the heuristic.
+                  __html: `${withItemIdBadge(promoteHeadingParagraph(p.full_text), p.citation)}${summaryPanelHtml(p, root.source_url)}${containsBoxHtml(children)}`,
                 }}
               />
             );

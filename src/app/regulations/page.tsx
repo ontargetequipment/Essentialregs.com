@@ -34,7 +34,7 @@ export default async function RegulationsIndexPage() {
         .
       </p>
 
-      <RegulationList regs={regs} access={access} />
+      <RegulationList regs={regs} access={access} mode="state" />
     </div>
   );
 }

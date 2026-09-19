@@ -194,6 +194,121 @@ export async function fetchRegulationProvisions(
   return all;
 }
 
+/** Pulls "3" out of "sec-3-top-REG-3", "cp" out of "sec-cp-top-REG-cp", etc. */
+export function regulationNumber(id: string): string | null {
+  return id.match(/^sec-(.+)-top-REG-/)?.[1] ?? null;
+}
+
+/** Display-only heading/ordering info for a regulation index card. Never
+ *  reads or writes stored data -- purely a presentation alias. */
+export type RegulationCardInfo = {
+  title: string;
+  /** Secondary line under the title (the CCR/CFR cite), or null when the citation line above already covers it. */
+  subtitle: string | null;
+};
+
+// The stored title carries the printed CCR series suffix ("... 5 CCR 1001-30")
+// which the card repeats on its own subline -- stripped here so the title
+// line doesn't say it twice.
+const CCR_TITLE_SUFFIX = /\s*5 CCR 1001-\d+\s*$/i;
+const CCR_CITE = /5 CCR 1001-\d+/i;
+
+/**
+ * Colorado AQCC regulations are stored under their bare printed title
+ * ("COMMON PROVISIONS REGULATION 5 CCR 1001-2", "PRACTICE AND PROCEDURE
+ * 2 CCR 404-1" for ECMC). The index card shows a friendlier alias instead --
+ * "Regulation Number N — <title>", "Common Provisions Regulation", "ECMC
+ * Rules (Practice and Procedure)" -- without changing what's actually
+ * stored. See groupColoradoRegulations for the section heading these sit
+ * under.
+ */
+export function regulationCardInfo(
+  reg: Pick<Provision, "id" | "title" | "issuing_body">
+): RegulationCardInfo {
+  const regNumber = regulationNumber(reg.id);
+  if (reg.issuing_body === "ECMC") {
+    return { title: "ECMC Rules (Practice and Procedure)", subtitle: "2 CCR 404-1" };
+  }
+  if (regNumber === "cp") {
+    return { title: "Common Provisions Regulation", subtitle: null };
+  }
+  if (regNumber && /^\d+$/.test(regNumber)) {
+    const cite = reg.title.match(CCR_CITE)?.[0] ?? null;
+    return {
+      title: `Regulation Number ${regNumber} — ${reg.title.replace(CCR_TITLE_SUFFIX, "").trim()}`,
+      subtitle: cite,
+    };
+  }
+  // Federal (or anything else not covered above): show the stored title as-is.
+  return { title: reg.title, subtitle: null };
+}
+
+export type RegulationGroup<T> = {
+  key: string;
+  heading: string;
+  regs: T[];
+};
+
+const AQCC_HEADING = "Air Quality Control Commission (5 CCR 1001)";
+const ECMC_HEADING = "Energy and Carbon Management Commission (2 CCR 404-1)";
+const OTHER_HEADING = "Other";
+
+/**
+ * Groups the Colorado (/regulations) index by issuing_body. Within the AQCC
+ * group, order is Common Provisions first, then numerically by regulation
+ * number (1, 2, 3, 6, 7, 8, 9, 22, 24, 26, 30, ...) -- the printed CCR
+ * series' own ordering, not id/insertion order (id order would put "22"
+ * before "3" as strings).
+ */
+export function groupColoradoRegulations<T extends Pick<Provision, "id" | "issuing_body">>(
+  regs: T[]
+): RegulationGroup<T>[] {
+  const aqcc: T[] = [];
+  const ecmc: T[] = [];
+  const other: T[] = [];
+  for (const r of regs) {
+    if (r.issuing_body === "CDPHE-APCD") aqcc.push(r);
+    else if (r.issuing_body === "ECMC") ecmc.push(r);
+    else other.push(r);
+  }
+  aqcc.sort((a, b) => {
+    const an = regulationNumber(a.id);
+    const bn = regulationNumber(b.id);
+    if (an === "cp") return bn === "cp" ? 0 : -1;
+    if (bn === "cp") return 1;
+    return (Number(an) || 0) - (Number(bn) || 0);
+  });
+
+  const groups: RegulationGroup<T>[] = [];
+  if (aqcc.length) groups.push({ key: "aqcc", heading: AQCC_HEADING, regs: aqcc });
+  if (ecmc.length) groups.push({ key: "ecmc", heading: ECMC_HEADING, regs: ecmc });
+  if (other.length) groups.push({ key: "other", heading: OTHER_HEADING, regs: other });
+  return groups;
+}
+
+/**
+ * Groups the federal (/federal) index by issuing_body. Only "EPA" gets a
+ * friendlier heading today (the whole index is EPA NSPS subparts); anything
+ * else falls back to its raw issuing_body so a future non-EPA federal source
+ * doesn't silently disappear into an unlabeled group.
+ */
+export function groupFederalRegulations<T extends Pick<Provision, "id" | "issuing_body">>(
+  regs: T[]
+): RegulationGroup<T>[] {
+  const byBody = new Map<string, T[]>();
+  for (const r of regs) {
+    const key = r.issuing_body || OTHER_HEADING;
+    const arr = byBody.get(key);
+    if (arr) arr.push(r);
+    else byBody.set(key, [r]);
+  }
+  return Array.from(byBody.entries()).map(([body, list]) => ({
+    key: body,
+    heading: body === "EPA" ? "EPA (40 CFR Part 60)" : body,
+    regs: list,
+  }));
+}
+
 /** Every top-level regulation currently in the corpus (for the /regulations index). */
 export async function fetchRegulationList(): Promise<Provision[]> {
   const supabase = await createClient();
@@ -349,11 +464,34 @@ export function depthOf(
   return depth;
 }
 
-/** [id, citation, snippet] tuples for the client-side jump/search box. */
-export type SearchRow = [string, string, string];
+/**
+ * [id, citation, snippet, topGroupId] tuples for the client-side jump/search
+ * box. The 4th element (added for the collapsible sidebar -- see
+ * RegulationReader.tsx) is the id of this provision's top-level ancestor
+ * (the Part/Appendix/series node whose sidebar entry is a <details> group),
+ * so a hash-jump or popup "go to" can find and open the right group without
+ * shipping a second lookup table alongside this one.
+ */
+export type SearchRow = [id: string, citation: string, snippet: string, topGroupId: string];
 
 export function buildSearchIndex(all: Provision[]): SearchRow[] {
-  return all.map((p) => [p.id, p.citation, stripHtml(p.full_text, 90)]);
+  const byId = new Map(all.map((p) => [p.id, p]));
+  const groupCache = new Map<string, string>();
+
+  // A provision's "top group" is itself once its parent is the regulation
+  // root (parent.parent_id === null) -- i.e. it's a direct child of root,
+  // same definition the reader's sidebar uses for "top-level node" -- or
+  // its own group is whatever ancestor.
+  function topGroupOf(p: Provision): string {
+    const cached = groupCache.get(p.id);
+    if (cached !== undefined) return cached;
+    const parent = p.parent_id ? byId.get(p.parent_id) : undefined;
+    const group = !parent || !parent.parent_id ? p.id : topGroupOf(parent);
+    groupCache.set(p.id, group);
+    return group;
+  }
+
+  return all.map((p) => [p.id, p.citation, stripHtml(p.full_text, 90), topGroupOf(p)]);
 }
 
 export function escapeHtml(s: string): string {
@@ -380,6 +518,65 @@ export function withItemIdBadge(html: string, citation: string): string {
   return badge + html;
 }
 
+
+/**
+ * Corpus convention: when a provision's printed heading sat on its own line
+ * in the source document, the importer split it into its own leading <p>
+ * (the row's `title` becomes the bare citation, e.g. "I.G.", and its
+ * `full_text` starts with e.g. "<p>Definitions</p>"). Rendered as an
+ * ordinary paragraph, that heading is visually indistinguishable from body
+ * text ("I.G. Definitions" reads as one run-on sentence). This promotes
+ * that first <p> to `<p class="item-heading">` when it looks like a heading
+ * rather than the start of a sentence; otherwise it returns `html` unchanged.
+ *
+ * Heuristic (tuned against fixtures/*.json rows -- see scratch/promote_stats.mjs
+ * for the promoted/not-promoted samples this was eyeballed against):
+ *   - there must be at least one more <p> or <table> after it. A heading is
+ *     never the *only* paragraph in a provision -- if it were, "promoting"
+ *     it would hide the provision's entire content behind a bold label;
+ *   - its tag-stripped text is <= 80 chars. Real headings in this corpus
+ *     ("Definitions", "Scope", "ABSOLUTE VAPOR PRESSURE") are short; a long
+ *     first paragraph is prose, not a heading;
+ *   - it doesn't end in "." or ";" -- a heading doesn't end a sentence. A
+ *     trailing ":" IS allowed: several headings are printed with the colon
+ *     baked into the heading line itself ("Definitions:"), and a colon-
+ *     terminated introductory clause long enough to read as a real sentence
+ *     ("...shall mean the following:") already fails the length check above,
+ *     so allowing trailing ":" doesn't pick up false positives in practice;
+ *   - it doesn't start with a lowercase letter -- a heading is a title, not
+ *     a sentence continuing from elsewhere.
+ *
+ * Idempotent: re-running it on already-promoted HTML is a no-op (checked via
+ * the existing "item-heading" class) rather than double-applying the class.
+ */
+export function promoteHeadingParagraph(html: string): string {
+  const match = html.match(/^\s*(<p\b[^>]*>)([\s\S]*?)<\/p>/i);
+  if (!match) return html;
+  const [whole, openTag, inner] = match;
+  if (/\bclass\s*=\s*"[^"]*\bitem-heading\b/i.test(openTag)) return html;
+
+  const rest = html.slice(whole.length);
+  if (!/<(p|table)\b/i.test(rest)) return html;
+
+  const text = inner
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text || text.length > 80) return html;
+  if (/[.;,]$/.test(text)) return html;
+  if (/^[a-z]/.test(text)) return html;
+  // "Definitions:" is a heading; "The following limits apply to each tank:"
+  // is a lead-in sentence for the table that follows it. A trailing colon
+  // only counts as a heading when the line is short enough to be a label.
+  if (/:$/.test(text) && text.split(" ").length > 4) return html;
+
+  const newOpenTag = /\bclass\s*=\s*"/i.test(openTag)
+    ? openTag.replace(/\bclass\s*=\s*"([^"]*)"/i, 'class="$1 item-heading"')
+    : openTag.replace(/^<p\b/i, '<p class="item-heading"');
+
+  return newOpenTag + inner + "</p>" + rest;
+}
 
 /** Splits plain-text summary into paragraphs on blank lines (drops empties). */
 export function summaryParagraphs(summary: string): string[] {

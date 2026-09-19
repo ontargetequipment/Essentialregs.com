@@ -58,8 +58,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   },
   {
     q: "Do I need a permit to burn slash piles on a lease?",
-    expect: ["sec-9-III", "sec-9-IV"],
-    note: "Reg 9 open burning permits",
+    expect: ["sec-9-III", "sec-9-IV", "sec-9-II", "sec-9-I"],
+    note: "Reg 9 open burning permits (Sept 18 miss: vocabulary — 'slash' vs 'open burning')",
   },
   {
     q: "Which oil and gas operators have to report annual greenhouse gas emissions to the state?",
@@ -93,8 +93,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   },
   {
     q: "What do I have to do with the flowback during well completion?",
-    expect: ["sec-7-B-VI-D", "sec-oooob-60.5375b"],
-    note: "Reg 7 Part B VI.D pre-production flowback; OOOOb well completions",
+    expect: ["sec-7-B-VI-D", "sec-oooob-60.5375b", "sec-ooooa-60.5375a"],
+    note: "Reg 7 Part B VI.D pre-production flowback; OOOOa/OOOOb well completions",
   },
   {
     q: "When does a source need a construction permit versus just an APEN?",
@@ -110,6 +110,21 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     q: "Am I subject to the federal OOOOb rules if I modified a well after December 2022?",
     expect: ["sec-oooob-60.5365b", "sec-oooob-60.5370b"],
     note: "OOOOb applicability and compliance dates",
+  },
+  {
+    q: "ECD testing requirements",
+    expect: ["sec-7-B-II-B-2-h", "sec-7-B-I-E"],
+    note: "Reg 7 Part B II.B.2.h enclosed combustion device requirements (acronym expansion + keyword side)",
+  },
+  {
+    q: "flare testing",
+    expect: ["sec-7-B-II-B-2-h", "sec-oooob-60.5412b", "sec-ooooa-60.5412a", "sec-oooob-60.5417b"],
+    note: "Reg 7 combustion devices / OOOO flare control-device requirements — a two-word keyword-style query",
+  },
+  {
+    q: "APEN exemptions for small sources",
+    expect: ["sec-3-A-II"],
+    note: "Reg 3 Part A II.D APEN exemptions",
   },
   {
     q: "What are the requirements for loading gasoline into a tank truck at a bulk plant?",
