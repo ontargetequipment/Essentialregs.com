@@ -70,10 +70,20 @@ export function regBadge(regKey: string | null, jurisdiction: string): string {
   return "Colorado";
 }
 
-/** Short display name for a reg key: "Reg 7", "OOOOb", "ECMC", "Common Provisions". */
+/** Federal reg keys: 40 CFR 60 Subparts OOOO, OOOOa/b/c, JJJJ, IIII and 40 CFR 63 Subpart ZZZZ. */
+const FEDERAL_KEY = /^(oooo[abc]?|jjjj|iiii|zzzz)$/;
+
+/** "state" | "federal" from the reg key alone (for rows that don't carry jurisdiction_level). */
+export function jurisdictionOfKey(regKey: string | null): "state" | "federal" {
+  return regKey && FEDERAL_KEY.test(regKey) ? "federal" : "state";
+}
+
+/** Short display name for a reg key: "Reg 7", "Subpart OOOOb", "ECMC rules", "Common Provisions", "GP02". */
 export function regLabel(regKey: string | null): string {
   if (!regKey) return "";
   if (regKey.startsWith("oooo")) return "Subpart " + regKey.replace("oooo", "OOOO");
+  if (FEDERAL_KEY.test(regKey)) return "Subpart " + regKey.toUpperCase();
+  if (/^gp\d\d$/.test(regKey)) return "General permit " + regKey.toUpperCase();
   if (regKey === "ecmc") return "ECMC rules";
   if (regKey === "cp") return "Common Provisions";
   return `Reg ${regKey}`;

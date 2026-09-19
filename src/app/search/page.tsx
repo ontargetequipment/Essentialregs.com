@@ -12,6 +12,7 @@ import {
   MAX_ASK_LENGTH,
   SemanticError,
   hrefForHit,
+  jurisdictionOfKey,
   regBadge,
   regLabel,
   semanticSearch,
@@ -297,7 +298,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                     {hit.reg_key && (
                       <>
                         <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-700">
-                          {regBadge(hit.reg_key, hit.reg_key.startsWith("oooo") ? "federal" : "state")}
+                          {regBadge(hit.reg_key, jurisdictionOfKey(hit.reg_key))}
                         </span>
                         <span className="font-medium text-zinc-500">{regLabel(hit.reg_key)}</span>
                         <span className="text-zinc-300">·</span>
