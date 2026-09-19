@@ -293,8 +293,17 @@ export default async function SearchPage(props: PageProps<"/search">) {
                   href={hrefFor(hit)}
                   className="block rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
                 >
-                  <p className="font-mono text-xs uppercase tracking-wide text-emerald-700">
-                    {hit.citation}
+                  <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                    {hit.reg_key && (
+                      <>
+                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-700">
+                          {regBadge(hit.reg_key, hit.reg_key.startsWith("oooo") ? "federal" : "state")}
+                        </span>
+                        <span className="font-medium text-zinc-500">{regLabel(hit.reg_key)}</span>
+                        <span className="text-zinc-300">·</span>
+                      </>
+                    )}
+                    <span className="font-mono uppercase tracking-wide text-emerald-700">{hit.citation}</span>
                   </p>
                   {hit.title && (
                     <p className="mt-1 font-semibold text-zinc-900">{hit.title}</p>
