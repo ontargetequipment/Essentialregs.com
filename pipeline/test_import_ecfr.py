@@ -1388,6 +1388,7 @@ class PartCliXmlPathTests(unittest.TestCase):
         self.assertIsNone(ie.part_xml_path(self._Args()))
 
     def test_full_cli_parse_with_workflow_style_args_and_no_pdf_on_disk(self):
+        import shutil
         import tempfile
 
         import shutil
