@@ -21,7 +21,8 @@ export default async function FederalIndexPage() {
     <div className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="text-2xl font-bold text-zinc-900">Federal regulations</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        40 CFR Part 60 subparts as printed in the eCFR, incorporated by
+        40 CFR Part 60 (New Source Performance Standards) and Part 63
+        (NESHAP) subparts as printed in the eCFR, incorporated by
         reference in{" "}
         <Link href="/regulations/6" className="font-medium text-zinc-900 underline underline-offset-2">
           Colorado Regulation Number 6 Part A

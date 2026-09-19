@@ -40,34 +40,103 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+try:
+    import pdfplumber  # only required when a SUBPART_META entry uses table_algorithm="pdfplumber"
+except ImportError:  # pragma: no cover
+    pdfplumber = None
+
 FF = "\x0c"  # form-feed: pdftotext -layout emits exactly one per PDF page
 
 # --------------------------------------------------------------------------
 # Regulation metadata
 # --------------------------------------------------------------------------
 
-# Canonical reg keys used by this module / the CLI --reg flag: oooob / ooooa / ooooc.
-SUBPART_LETTER = {"oooob": "b", "ooooa": "a", "ooooc": "c"}
-SUBPART_CODE = {"oooob": "OOOOb", "ooooa": "OOOOa", "ooooc": "OOOOc"}
-ECFR_URL = {
-    "oooob": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOb",
-    "ooooa": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOa",
-    "ooooc": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOc",
+# Canonical reg keys used by this module / the CLI --reg flag.
+#
+# SUBPART_META drives everything that used to be hard-wired per-OOOO-subpart:
+# which CFR part it lives in (60 or 63), its subpart code as printed
+# ("OOOOb", "JJJJ", "ZZZZ", ...), its letter suffix (non-empty only for the
+# OOOOa/b/c family -- JJJJ/IIII/ZZZZ sections carry no trailing letter), the
+# numeric section-number range that is "this subpart's own numbering" for the
+# cross-reference resolver, the eCFR URL, and whether "Table N to this
+# subpart" inline references get linked to the table row (see
+# `enable_table_ref_links` below -- OFF for OOOOa/b/c so their byte-identical
+# baselines are untouched by a capability added for the new subparts).
+SUBPART_META: dict[str, dict] = {
+    "ooooa": dict(
+        part=60, code="OOOOa", suffix="a", sections=(5300, 5499),
+        url="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOa",
+        enable_table_ref_links=False, table_algorithm="v1",
+    ),
+    "oooob": dict(
+        part=60, code="OOOOb", suffix="b", sections=(5300, 5499),
+        url="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOb",
+        enable_table_ref_links=False, table_algorithm="v1",
+    ),
+    "ooooc": dict(
+        part=60, code="OOOOc", suffix="c", sections=(5300, 5499),
+        url="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOc",
+        enable_table_ref_links=False, table_algorithm="v1",
+    ),
+    "jjjj": dict(
+        part=60, code="JJJJ", suffix="", sections=(4230, 4248),
+        url="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-JJJJ",
+        enable_table_ref_links=True, table_algorithm="xml",
+    ),
+    "iiii": dict(
+        part=60, code="IIII", suffix="", sections=(4200, 4219),
+        url="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-IIII",
+        enable_table_ref_links=True, table_algorithm="xml",
+    ),
+    "zzzz": dict(
+        part=63, code="ZZZZ", suffix="", sections=(6580, 6675),
+        url="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-63/subpart-ZZZZ",
+        enable_table_ref_links=True, table_algorithm="xml",
+    ),
 }
-# All three subparts are in the corpus (cross-linkable to one another).
-CORPUS_REGS = {"oooob", "ooooa", "ooooc"}
-LETTER_TO_REG = {v: k for k, v in SUBPART_LETTER.items()}
+
+# Derived, backward-compatible views used throughout the module (kept as
+# plain module-level dicts -- as before -- so nothing downstream needs to
+# know about SUBPART_META directly).
+SUBPART_LETTER = {k: v["suffix"] for k, v in SUBPART_META.items()}
+SUBPART_CODE = {k: v["code"] for k, v in SUBPART_META.items()}
+ECFR_URL = {k: v["url"] for k, v in SUBPART_META.items()}
+# All six subparts are in the corpus (cross-linkable to one another).
+CORPUS_REGS = set(SUBPART_META.keys())
+# Letter -> reg, for the OOOOa/b/c family only (the only one with a letter).
+LETTER_TO_REG = {v["suffix"]: k for k, v in SUBPART_META.items() if v["suffix"]}
 
 
 def _norm_reg(reg: str) -> str:
     r = reg.lower()
-    if r in ("oooob",):
-        return "oooob"
-    if r in ("ooooa",):
-        return "ooooa"
-    if r in ("ooooc",):
-        return "ooooc"
-    raise ValueError(f"unknown eCFR reg key: {reg!r} (expected oooob/ooooa/ooooc)")
+    if r in SUBPART_META:
+        return r
+    raise ValueError(f"unknown eCFR reg key: {reg!r} (expected one of {sorted(SUBPART_META)})")
+
+
+def _resolve_target_reg(part: str, num: str, suf: str) -> str | None:
+    """Given a parsed CFR cite's part number (string, e.g. "60"/"63"), its
+    section number (string digits) and lowercased optional letter suffix,
+    returns the reg key whose OWN numbering that citation falls inside, or
+    None if it isn't this corpus's own numbering at all.
+
+    OOOOa/b/c share one numeric range (5300-5499 of Part 60) and are told
+    apart only by their letter suffix -- the ORIGINAL, unchanged rule.
+    JJJJ/IIII/ZZZZ carry no letter suffix and are told apart by their own
+    section-number range within their CFR part instead.
+    """
+    if not num.isdigit():
+        return None
+    n = int(num)
+    if part == "60" and suf in ("a", "b", "c") and 5300 <= n <= 5499:
+        return LETTER_TO_REG[suf]
+    if suf == "":
+        for key, meta in SUBPART_META.items():
+            if meta["suffix"] == "" and str(meta["part"]) == part:
+                lo, hi = meta["sections"]
+                if lo <= n <= hi:
+                    return key
+    return None
 
 
 # --------------------------------------------------------------------------
@@ -129,18 +198,29 @@ def find_page_leaks(text: str) -> bool:
 # Body / TOC boundary
 # --------------------------------------------------------------------------
 
+# The OOOO-only default (kept exactly as before, both for backward
+# compatibility with callers that don't pass a `heading_re` and for the
+# existing tests, which exercise this regex with OOOOb-shaped sample text).
 BODY_HEADING_RE = re.compile(r"^Subpart OOOO[ABCabc]—")
 SOURCE_LINE_RE = re.compile(r"^\s*Source:\s")
-SECTION_LINE_RE = re.compile(r"^§\s*60\.(\d{3,5})([a-c])\b(.*)$")
+# Section numbers: Part 60/63, 3-5 digits, an OPTIONAL letter suffix (only
+# OOOOa/b/c's numbering ever has one -- JJJJ/IIII/ZZZZ sections are bare).
+# Group numbering (1=num, 2=suffix, 3=rest-of-line) is unchanged from the
+# original OOOO-only regex so every downstream `.group(N)` call still works.
+SECTION_LINE_RE = re.compile(r"^§\s*(?:60|63)\.(\d{3,5})([a-c]?)\b(.*)$")
 RANGE_RESERVED_RE = re.compile(
-    r"^§§\s*60\.(\d{3,5}[a-c])-60\.(\d{3,5}[a-c])\s*\[Reserved\]\s*$"
+    r"^§§\s*(?:60|63)\.(\d{3,5}[a-c]?)-(?:60|63)\.(\d{3,5}[a-c]?)\s*\[Reserved\]\s*$"
 )
+# Table numbers can be alphanumeric ("Table 1a" in ZZZZ); the caption and
+# code/part are subpart-specific, so this is built per-subpart at parse time
+# (see `parse_ecfr`) -- this module-level version is the OOOO-only default,
+# kept for anything that still imports the bare name.
 TABLE_CAPTION_RE = re.compile(
     r"^Table\s+(\d+)\s+to\s+Subpart\s+OOOO[ABCabc]\s+of\s+Part\s+60—(.*)$"
 )
 
 
-def find_body_start(lines: list[str]) -> tuple[int, int]:
+def find_body_start(lines: list[str], heading_re: re.Pattern | None = None) -> tuple[int, int]:
     """Returns (toc_prelude_end, body_start): the index of the real "Subpart
     OOOOx—..." heading (with em dash) that starts the operative text --
     everything before it (the intro block + table of contents) must not
@@ -152,9 +232,10 @@ def find_body_start(lines: list[str]) -> tuple[int, int]:
     recognizes group headings itself) is left to handle whatever comes
     first.
     """
+    heading_re = heading_re or BODY_HEADING_RE
     heading_idx = None
     for i, ln in enumerate(lines):
-        if BODY_HEADING_RE.match(ln):
+        if heading_re.match(ln):
             heading_idx = i  # keep looking; take the LAST match (real body, not any earlier mention)
     if heading_idx is None:
         raise ValueError("could not find the operative 'Subpart OOOOx—...' heading")
@@ -214,7 +295,7 @@ def extract_toc(lines: list[str], toc_end: int) -> tuple[dict[str, str], dict[st
                 j += 1
             full = " ".join(buf)
             full = re.sub(r"\s+", " ", full).strip()
-            secm = re.search(r"60\.\d{3,5}[a-c]", full)
+            secm = re.search(r"(?:60|63)\.\d{3,5}[a-c]?", full)
             if secm:
                 toc_sections[secm.group(0)] = full
             i = j
@@ -568,6 +649,591 @@ def rows_from_layout_block(raw_lines: list[str]) -> list[list[str]]:
     return out
 
 
+# Marks a physical line's first (leftmost) column as the start of a NEW
+# logical table row: a top-level enumerator ("1.", "a.", "(1)") or a "§"
+# citation -- the two row-key styles actually used across JJJJ/IIII/ZZZZ's
+# tables (numbered-item tables like "Table 6 ... Continuous Compliance", and
+# "§ 60.1 / § 63.1 ..." General Provisions applicability tables).
+_ROW_ANCHOR_RE = re.compile(r"^(?:\d{1,3}[.)]\s|[A-Za-z][.)]\s|§§?\s?\d)")
+
+
+def _dedupe_repeated_runs(lines: list[str], min_run: int = 3) -> list[str]:
+    """Drops the SECOND-and-later occurrence of any run of >= `min_run`
+    consecutive non-blank lines (compared by stripped text) that reappears
+    verbatim later in `lines` -- the eCFR print reprints a table's running
+    header, and sometimes its applicable footnotes too, at every page break
+    the table spans (see `rows_from_layout_block_v2`'s docstring). A run
+    this long recurring byte-for-byte is page furniture, never a coincidence
+    of real table data (which does legitimately repeat short single values
+    like "Yes"/"N/A" -- those are left alone since they're far shorter than
+    `min_run`)."""
+    n = len(lines)
+    stripped = [ln.strip() for ln in lines]
+    seen_at: dict[tuple[str, ...], int] = {}
+    drop = [False] * n
+    i = 0
+    while i <= n - min_run:
+        window = tuple(stripped[i : i + min_run])
+        if all(window):
+            if window in seen_at and not any(drop[i : i + min_run]):
+                start2 = seen_at[window]
+                length = min_run
+                while (
+                    i + length < n
+                    and start2 + length < n
+                    and stripped[i + length]
+                    and stripped[i + length] == stripped[start2 + length]
+                ):
+                    length += 1
+                for k in range(i, i + length):
+                    drop[k] = True
+                i += length
+                continue
+            seen_at.setdefault(window, i)
+        i += 1
+    return [ln for idx, ln in enumerate(lines) if not drop[idx]]
+
+
+def rows_from_layout_block_v2(raw_lines: list[str]) -> list[list[str]]:
+    """A second table-reconstruction strategy for tables where v1's "full
+    row = new row" rule breaks down: several of JJJJ/IIII/ZZZZ's tables wrap
+    EVERY column's text across many physical lines at once (a single long
+    numbered entry spanning 20-180 printed lines), so nearly every physical
+    line looks "full" under v1 and each becomes its own bogus row -- a table
+    reduced to word soup (see the Gate-H notes in REPORT.md). Here a new row
+    starts only when the FIRST column carries a new anchor (its own top-level
+    enumerator or "§" citation); every other line -- including a running
+    header block re-printed at each page break in the source PDF, dropped
+    here by exact match against the lines that formed the real header -- is
+    a continuation merged into the current row, regardless of how many
+    columns it happens to fill.
+
+    Not every table in this corpus has such a column: for a table whose
+    lead column is plain prose with no enumerator or citation (e.g. JJJJ's
+    Table 1, an emission-limits table with an ordinary heading row and
+    short, non-wrapping body rows), no anchor is ever found and this
+    function returns v1's result unchanged -- v1 already handles that shape
+    correctly, and the anchor rule would otherwise misfire.
+
+    A long table's applicable footnotes are sometimes ALSO reprinted at the
+    bottom of every page it spans (not just the header row) -- e.g. JJJJ's
+    Table 2. `_dedupe_repeated_runs` drops those repeats first.
+    """
+    # The canonical column grid is voted on from the UN-deduped lines: a
+    # reprinted header/footnote run is exactly the kind of full-width,
+    # every-column-present line that (correctly) dominates that vote, and
+    # de-duplicating first would instead leave the vote to whichever
+    # partial wrap-width happens to be most common among what's left.
+    tokenized_all = [_tokenize_columns(ln) for ln in raw_lines if ln.strip()]
+    tokenized_all = [t for t in tokenized_all if t]
+    if not tokenized_all:
+        return []
+    counts = Counter(len(t) for t in tokenized_all)
+    ncols = counts.most_common(1)[0][0]
+    if ncols < 2:
+        ncols = max(len(t) for t in tokenized_all)
+    canon = None
+    for t in tokenized_all:
+        if len(t) == ncols:
+            canon = [c for c, _ in t]
+            break
+    if canon is None:
+        canon = [c for c, _ in tokenized_all[0]]
+        ncols = len(canon)
+
+    deduped_lines = _dedupe_repeated_runs(raw_lines)
+    tokenized_lines = [(ln, _tokenize_columns(ln)) for ln in deduped_lines if ln.strip()]
+    tokenized_lines = [(ln, t) for ln, t in tokenized_lines if t]
+    if not tokenized_lines:
+        return []
+
+    def nearest_col(pos: int) -> int:
+        return min(range(len(canon)), key=lambda i: abs(canon[i] - pos))
+
+    header_raw_lines: set[str] = set()
+    header_rows: list[dict[int, list[str]]] = []
+    body_rows: list[dict[int, list[str]]] = []
+    started = False
+    for raw_ln, tokens in tokenized_lines:
+        stripped = raw_ln.strip()
+        if started and stripped in header_raw_lines:
+            continue  # the running header, re-printed at a page break
+        row: dict[int, list[str]] = {}
+        for pos, text in tokens:
+            ci = nearest_col(pos)
+            row.setdefault(ci, []).append(text)
+        col0 = " ".join(row.get(0, [])).strip()
+        anchored = bool(col0) and bool(_ROW_ANCHOR_RE.match(col0))
+        if not started:
+            if anchored:
+                started = True
+                body_rows.append(row)
+            else:
+                header_rows.append(row)
+                header_raw_lines.add(stripped)
+        elif anchored:
+            body_rows.append(row)
+        elif body_rows:
+            for ci, texts in row.items():
+                body_rows[-1].setdefault(ci, []).extend(texts)
+        else:
+            header_rows.append(row)
+
+    if not started:
+        # No row-anchor column in this table at all -- v1's rule fits better.
+        return rows_from_layout_block(raw_lines)
+
+    def merge(rows: list[dict[int, list[str]]]) -> list[str]:
+        merged: dict[int, list[str]] = defaultdict(list)
+        for row in rows:
+            for ci, texts in row.items():
+                merged[ci].extend(texts)
+        return [" ".join(merged.get(ci, [])).strip() for ci in range(ncols)]
+
+    header = merge(header_rows) if header_rows else []
+    out = [header] if header else []
+    for row in body_rows:
+        out.append([" ".join(row.get(ci, [])).strip() for ci in range(ncols)])
+    return out
+
+
+# --------------------------------------------------------------------------
+# Table reconstruction, algorithm 3: pdfplumber word coordinates.
+#
+# `page.extract_tables()` was tried first (both the default "lines" ruling-
+# based strategy and the "text" whitespace-based strategy) and both fail on
+# these tables: the eCFR "enhanced display" print draws no table grid at all
+# for these borderless tables (confirmed by inspecting `page.lines`/
+# `page.rects` on ZZZZ's Table 1a page -- the handful of line segments
+# present are text underlines, not a ruling), so the "lines" strategy
+# returns near-empty single-column junk; "text" strategy has no column
+# hints to anchor on and instead treats the WHOLE page (including running
+# header/prose text) as one table, shredding individual words into cells.
+#
+# What DOES help is that pdfplumber gives every word's exact (x0, top) in
+# PDF points, instead of `pdftotext -layout`'s column positions, which are
+# reconstructed from an assumed fixed character width and can drift by a
+# character or two between pages of the same PDF (different font subset
+# metrics, kerning) -- exactly the failure `v2` shows on a table that spans
+# a page break (e.g. ZZZZ Table 1a): a column boundary computed as "the
+# most common token count's positions" across BOTH pages' text ends up
+# slightly wrong for one of them, and `nearest_col` then assigns some of
+# that page's tokens to the wrong column, bleeding two columns' text
+# together in one cell.
+#
+# The fix: locate the table's own words directly from the PDF (real
+# coordinates, page-break-proof) and reconstruct rows/columns straight from
+# those coordinates rather than re-deriving a text grid. A first version of
+# this re-rendered the words as one synthetic `pdftotext -layout`-shaped
+# text block and handed it to the already-proven `rows_from_layout_block_v2`
+# -- that fixed the page-break column-drift problem but exposed a SECOND,
+# more fundamental one: these tables' first (label) column mixes two
+# hierarchy levels -- top-level numbered entries ("1. 4SRB stationary
+# RICE...", "2. ...") AND lettered/roman sub-items ("a. Reduce...",
+# "b. Limit...", "i. ...") that are themselves the CONTENT of that numbered
+# entry's neighboring columns, not separate table rows. `v2`'s row-anchor
+# regex (shared with ordinary CFR paragraph parsing, where "(a)" genuinely
+# does start a new nested provision) breaks a new row on EVERY digit- or
+# letter-numbered marker, so a numbered row's own lettered sub-options end
+# up smeared across whatever row happened to be open, corrupted by
+# whichever OTHER column's wrapped text a synthetic single-line-of-text
+# rendering happened to interleave them with -- the "word soup" the
+# coordinator flagged.
+#
+# The fix used here: derive this table's own column x-positions by
+# clustering its actual words' x0 coordinates (gap-based 1-D clustering,
+# specific to this table, not the whole page or a fixed character grid),
+# assign every word on every physical PDF line to its nearest column by
+# that table's own geometry, and start a NEW row only when column 0 (the
+# label column) begins with a TOP-LEVEL digit marker ("1.", "2.", ...) --
+# a letter/roman marker in that same column is treated as part of the
+# still-open row and its words are appended into the columns they actually
+# fall under. A repeated header row on a page-break continuation is then
+# dropped by exact-text comparison against the table's own header row.
+# --------------------------------------------------------------------------
+
+_HEADER_BAND_TOP = 45.0   # points from page top; the eCFR running header sits at ~19-31pt
+_FOOTER_BAND_TOP = 735.0  # the "(enhanced display) page N of M" footer sits at ~749pt on an 792pt-tall page
+
+
+def _pdf_body_words(pdf) -> list[dict]:
+    """Every word on every page of `pdf` (a pdfplumber.PDF), excluding the
+    running header/footer bands, tagged with its page index, in reading
+    order. Computed once per document and reused for every table."""
+    out: list[dict] = []
+    for pi, page in enumerate(pdf.pages):
+        for w in page.extract_words():
+            if w["top"] < _HEADER_BAND_TOP or w["top"] > _FOOTER_BAND_TOP:
+                continue
+            w = dict(w)
+            w["page"] = pi
+            out.append(w)
+    return out
+
+
+def _norm_alnum(s: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def _find_word_index(words: list[dict], key: str, start: int = 0) -> int | None:
+    """Finds the index of the word at which the normalized (lowercased,
+    alnum-only) concatenation of consecutive words' text -- scanning
+    forward from `start` -- first contains the (also normalized) `key`.
+    Returns the index of the FIRST word contributing to that match, or None
+    if `key` never appears. This is how a table's caption is located in the
+    word stream without depending on exact spacing/punctuation, which
+    pdfplumber's own text extraction renders inconsistently around small
+    inter-word gaps (e.g. "Table 1a to..." sometimes comes out "1ato")."""
+    key = _norm_alnum(key)
+    if not key:
+        return None
+    buf = ""
+    idxs: list[int] = []
+    keep = len(key) + 80
+    for i in range(start, len(words)):
+        t = _norm_alnum(words[i]["text"])
+        if not t:
+            continue
+        buf += t
+        idxs.extend([i] * len(t))
+        if len(buf) > keep:
+            drop = len(buf) - keep
+            buf = buf[drop:]
+            idxs = idxs[drop:]
+        pos = buf.find(key)
+        if pos != -1:
+            return idxs[pos]
+    return None
+
+
+def _caption_search_key(kind: str, num: str, code: str, part: int) -> str:
+    return f"{kind}{num}toSubpart{code}ofPart{part}"
+
+
+_ROW_TOP_LEVEL_RE = re.compile(r"^\d{1,3}[.)]\s")
+
+
+def _cluster_columns(sel_words: list[dict], gap: float = 8.0) -> list[float]:
+    """Gap-based 1-D clustering of this table's own words' x0 coordinates
+    into column centers: sorted distinct x0s, starting a new column
+    whenever the gap to the previous one exceeds `gap` points. Specific to
+    THIS table's word set (its own font size / column widths), not the
+    whole page or a fixed character grid."""
+    xs = sorted(set(round(w["x0"], 1) for w in sel_words if w["text"].strip()))
+    if not xs:
+        return []
+    bins: list[list[float]] = [[xs[0]]]
+    for x in xs[1:]:
+        if x - bins[-1][-1] > gap:
+            bins.append([x])
+        else:
+            bins[-1].append(x)
+    return [sum(b) / len(b) for b in bins]
+
+
+def rows_from_pdfplumber_table(
+    words: list[dict], start_idx: int, end_idx: int
+) -> list[list[str]] | None:
+    """Reconstructs table rows/columns from the pdfplumber word range
+    `words[start_idx:end_idx]` (already located and bounded by caption
+    search -- see `parse_ecfr`) using this table's own real word
+    coordinates: words are clustered into physical PDF lines (page +
+    rounded `top`) and assigned to columns by this table's own x0
+    clustering (`_cluster_columns`); a new row starts only when column 0
+    begins with a TOP-LEVEL digit marker ("1.", "2.", ...) -- a
+    letter/roman sub-marker in that column is folded into the still-open
+    row instead of starting a spurious new one. A header row repeated
+    verbatim on a page-break continuation is dropped. Returns None if
+    there are no words in range, or fewer than 2 columns/rows result (the
+    caller falls back to `v2` on the original text lines in that case).
+    """
+    sel = words[start_idx:end_idx]
+    if not sel:
+        return None
+    lines_map: dict[tuple[int, int], list[dict]] = defaultdict(list)
+    for w in sel:
+        lines_map[(w["page"], round(w["top"] / 3.0) * 3)].append(w)
+    phys_lines = [sorted(lines_map[k], key=lambda w: w["x0"]) for k in sorted(lines_map.keys())]
+    if not phys_lines:
+        return None
+    # Derive canonical column x-positions from the table's HEADER block --
+    # the physical lines before the first top-level-numbered data row --
+    # rather than from every wrapped body line. A multi-line body cell's
+    # later lines can drift toward a neighboring column's x-range (ragged
+    # wrap indentation), which fragments a whole-table clustering into
+    # spurious extra columns; the header's own lines are short, few, and
+    # consistently left-aligned per column, so they anchor the real column
+    # positions cleanly.
+    first_row_li = None
+    for li, lw in enumerate(phys_lines):
+        if lw and re.match(r"^\d{1,3}[.)]$", lw[0]["text"]):
+            first_row_li = li
+            break
+    header_words = [w for lw in phys_lines[:first_row_li] for w in lw] if first_row_li else []
+    col_centers = _cluster_columns(header_words, gap=15.0) if header_words else _cluster_columns(sel)
+    if not col_centers:
+        return None
+    ncols = len(col_centers)
+
+    # A table continued on the next PDF page repeats its header block
+    # verbatim (same physical lines, word-for-word) before the data
+    # resumes; none of those repeated header lines start with a top-level
+    # digit marker, so without this check they would silently fold into
+    # whatever data row was still open when the page turned. Recognize an
+    # exact repeat of one of the header block's own physical lines (by its
+    # word sequence) and drop it rather than appending it to the open row.
+    header_line_texts = {tuple(w["text"] for w in lw) for lw in phys_lines[:first_row_li]} if first_row_li else set()
+
+    def col_for(x0: float) -> int:
+        best_i, best_d = 0, None
+        for i, c in enumerate(col_centers):
+            d = abs(x0 - c)
+            if best_d is None or d < best_d:
+                best_d, best_i = d, i
+        return best_i
+
+    rows: list[list[str]] = []
+    cur: list[list[str]] | None = None
+    for li, line_words in enumerate(phys_lines):
+        if first_row_li and li >= first_row_li and tuple(w["text"] for w in line_words) in header_line_texts:
+            continue
+        by_col: dict[int, list[str]] = defaultdict(list)
+        for w in line_words:
+            by_col[col_for(w["x0"])].append(w["text"])
+        col0_text = " ".join(by_col.get(0, []))
+        if cur is None or _ROW_TOP_LEVEL_RE.match(col0_text):
+            if cur is not None:
+                rows.append([" ".join(c).strip() for c in cur])
+            cur = [[] for _ in range(ncols)]
+        for ci in range(ncols):
+            if ci in by_col:
+                cur[ci].extend(by_col[ci])
+    if cur is not None:
+        rows.append([" ".join(c).strip() for c in cur])
+    rows = [r for r in rows if any(c.strip() for c in r)]
+    if len(rows) > 1:
+        header_key = tuple(_norm_text(c) for c in rows[0])
+        deduped = [rows[0]]
+        for r in rows[1:]:
+            if tuple(_norm_text(c) for c in r) == header_key:
+                continue
+            deduped.append(r)
+        rows = deduped
+    if len(rows) < 2 or ncols < 2:
+        return None
+    return rows
+
+
+def _pdfplumber_rows_are_soup(rows: list[list[str]]) -> bool:
+    """A quality gate on `rows_from_pdfplumber_table`'s output: the header-
+    derived column clustering is reliable for tables whose columns stay put
+    across pages, but a table long enough to be re-paginated (e.g. printed
+    across a magazine-style two-column page break) throws off that single
+    set of canonical x-positions, producing far too many spurious columns
+    and/or cells that are really several unrelated cells concatenated
+    together -- the same "word soup" failure mode this algorithm exists to
+    avoid, just from a different cause. Flags that pattern so the caller
+    falls back to `v2` (a coarser reconstruction, but not a worse one) for
+    that table, rather than accepting oversplit/overmerged output."""
+    if not rows:
+        return True
+    ncols = max(len(r) for r in rows)
+    if ncols > 5:
+        return True
+    cells = [c for r in rows for c in r if c.strip()]
+    if not cells:
+        return True
+    long_cells = sum(1 for c in cells if len(c) > 300)
+    if (long_cells / len(cells)) > 0.25:
+        return True
+    # A clean reconstruction has exactly ONE top-level digit marker per data
+    # row's own label column (that IS the row boundary). If a row's own
+    # label cell contains a SECOND top-level marker later in its text, two
+    # (or more) numbered items were merged into one row -- the digit-anchor
+    # row split missed a page-break/reflow-shifted marker and the row is
+    # soup even though the column count and cell lengths look reasonable.
+    markers: list[int] = []
+    for row in rows[1:]:
+        label_cell = row[0] if row else ""
+        if len(re.findall(r"(?<![\d.])\d{1,3}[.)]\s", label_cell)) > 1:
+            return True
+        m0 = re.match(r"^(\d{1,3})[.)]\s", label_cell)
+        if m0:
+            markers.append(int(m0.group(1)))
+    # A clean table's rows carry the top-level item numbers in strictly
+    # increasing order (1, 2, 3, ...); a merge that silently swallowed one
+    # numbered item into the previous row, or duplicated/reordered one,
+    # breaks that -- a cheap, effective soup signal that a column/cell-
+    # length check alone does not catch (a merged row can still look
+    # "normal" width- and length-wise).
+    if markers and any(b <= a for a, b in zip(markers, markers[1:])):
+        return True
+    return False
+
+
+# --------------------------------------------------------------------------
+# Table reconstruction, algorithm 4: eCFR XML (the actual fix).
+#
+# The pdfplumber word-coordinate approach (algorithm 3, still in this file
+# but no longer used by any of the three regs after this) fixed the TOC-
+# mislocation bug and the digit-vs-letter row-anchor confusion, but could
+# not reliably recover column geometry across a table that reflows over
+# many PDF pages -- see Gate H in REPORT.md for the honest account. The
+# eCFR "full text" XML for the same as-of-date sidesteps the whole PDF
+# layout problem: every table is real `<TABLE class="gpo_table">` markup
+# with `<THEAD>`/`<TBODY>`/`<TFOOT>` rows and `<TD>`/`<TH>` cells, already
+# correctly segmented by the government's own typesetting -- there is
+# nothing to reconstruct. This algorithm is gated to jjjj/iiii/zzzz via
+# `SUBPART_META[...]["table_algorithm"] = "xml"`; OOOO stays on `"v1"` and
+# reads no XML at all.
+# --------------------------------------------------------------------------
+
+_XML_INLINE_TAGS = {"sup", "sub", "br"}
+
+
+def _xml_inline_html(el) -> str:
+    """Serializes an XML element's mixed content (its own text, children's
+    text, and tail text) to a safe inline HTML fragment: `<sup>`/`<sub>`/
+    `<br>` are kept (recursively, so nested markup inside them survives
+    too); an `<E T="...">` typographic-emphasis wrapper (or any other tag
+    this corpus doesn't otherwise use) is dropped but its text is kept, so
+    "Table 1<E T=\"01\">a</E>" becomes plain "Table 1a", not "Table 1"."""
+    out: list[str] = []
+    if el.text:
+        out.append(escape_html_text(el.text))
+    for child in el:
+        tag = child.tag.lower()
+        if tag in _XML_INLINE_TAGS:
+            if tag == "br":
+                out.append("<br/>")
+            else:
+                out.append(f"<{tag}>{_xml_inline_html(child)}</{tag}>")
+        else:
+            out.append(_xml_inline_html(child))
+        if child.tail:
+            out.append(escape_html_text(child.tail))
+    return "".join(out)
+
+
+def _xml_cell_text(el) -> str:
+    """Plain-text (no markup) rendering of a cell, for the proof output and
+    for the row/col shape a caller might want to sanity-check -- collapses
+    all whitespace, same normalization the rest of this module uses."""
+    return re.sub(r"\s+", " ", "".join(el.itertext())).strip()
+
+
+def load_xml_tables(xml_path: str) -> dict[str, dict]:
+    """Parses the eCFR full-text XML and returns, for every `<DIV9 N="Table
+    ... to Subpart ... of Part ...">` block, a dict keyed by the SAME
+    normalized-caption key `_caption_search_key`/`_norm_alnum` produce from
+    the PDF-derived caption text, so a table block found while parsing the
+    PDF/txt (ids, structure, everything else) can be matched to its real
+    XML markup by caption alone. Each entry carries the HEAD text, the
+    lead-in `<P>` (if the eCFR print has one, e.g. "As stated in §§
+    63.6600 and 63.6640, you must comply with the following ..."), and the
+    list of `<TABLE>` elements under that caption in document order (more
+    than one only if the eCFR print itself splits one caption's data across
+    multiple `<TABLE>`s, which the caller concatenates in order)."""
+    import xml.etree.ElementTree as ET
+
+    root = ET.parse(xml_path).getroot()
+    out: dict[str, dict] = {}
+    for div9 in root.iter("DIV9"):
+        n = div9.get("N", "")
+        if not n.lower().startswith("table"):
+            continue
+        head_el = div9.find("HEAD")
+        caption = _xml_cell_text(head_el) if head_el is not None else n
+        p_el = div9.find("P")
+        lead_in = _xml_cell_text(p_el) if p_el is not None else None
+        tables = div9.findall(".//TABLE")
+        out[_norm_alnum(n)] = {"caption": caption, "lead_in": lead_in, "tables": tables}
+    return out
+
+
+def _xml_extract_section_rows(table_el, section_tag: str, cell_tag: str) -> list[list[dict]]:
+    rows: list[list[dict]] = []
+    section = table_el.find(section_tag)
+    if section is None:
+        return rows
+    for tr in section.findall("TR"):
+        cells = []
+        for cell in tr:
+            if cell.tag != cell_tag:
+                continue
+            cells.append(
+                {
+                    "text": _xml_cell_text(cell),
+                    "html": _xml_inline_html(cell),
+                    "colspan": cell.get("colspan") or cell.get("COLSPAN"),
+                    "rowspan": cell.get("rowspan") or cell.get("ROWSPAN"),
+                }
+            )
+        rows.append(cells)
+    return rows
+
+
+def rows_from_xml_tables(table_elems: list) -> list[list[str]]:
+    """Plain-text rows (THEAD then TBODY, across all of `table_elems` in
+    order) in the same list-of-list-of-str shape the other three table
+    algorithms produce, for the proof output and for a uniform internal
+    `_table_rows` value. The actual rendered HTML (see
+    `render_xml_table_html`) is built straight from the XML elements
+    instead, so it keeps colspan/rowspan and sup/sub that plain text can't
+    carry."""
+    rows: list[list[str]] = []
+    for i, table_el in enumerate(table_elems):
+        thead = _xml_extract_section_rows(table_el, "THEAD", "TH")
+        tbody = _xml_extract_section_rows(table_el, "TBODY", "TD")
+        if i == 0:
+            for r in thead:
+                rows.append([c["text"] for c in r])
+        for r in tbody:
+            rows.append([c["text"] for c in r])
+    return rows
+
+
+def render_xml_table_html(caption: str, lead_in: str | None, table_elems: list) -> str:
+    cap = escape_html_text(caption)
+    lead_html = f'<p class="doc-table-lead-in">{escape_html_text(lead_in)}</p>' if lead_in else ""
+
+    def cell_attrs(cell: dict) -> str:
+        attrs = ""
+        if cell.get("colspan") and cell["colspan"] not in ("1", None):
+            attrs += f' colspan="{escape_html_text(cell["colspan"])}"'
+        if cell.get("rowspan") and cell["rowspan"] not in ("1", None):
+            attrs += f' rowspan="{escape_html_text(cell["rowspan"])}"'
+        return attrs
+
+    def row_html(cells: list[dict], tag: str) -> str:
+        return "<tr>" + "".join(f"<{tag}{cell_attrs(c)}>{c['html']}</{tag}>" for c in cells) + "</tr>"
+
+    thead_html = ""
+    tbody_html_parts: list[str] = []
+    footnote_parts: list[str] = []
+    for i, table_el in enumerate(table_elems):
+        thead = _xml_extract_section_rows(table_el, "THEAD", "TH")
+        tbody = _xml_extract_section_rows(table_el, "TBODY", "TD")
+        tfoot = _xml_extract_section_rows(table_el, "TFOOT", "TD")
+        if i == 0:
+            thead_html = "".join(row_html(r, "th") for r in thead)
+        tbody_html_parts.extend(row_html(r, "td") for r in tbody)
+        for r in tfoot:
+            for c in r:
+                if c["html"].strip():
+                    footnote_parts.append(f'<p class="table-footnote">{c["html"]}</p>')
+    if not thead_html and not tbody_html_parts:
+        return f'<div class="doc-table-wrap"><div class="doc-table-caption">{cap}</div></div>'
+    return (
+        '<div class="doc-table-wrap">'
+        f'<div class="doc-table-caption">{cap}</div>'
+        f"{lead_html}"
+        f'<table class="doc-table"><thead>{thead_html}</thead><tbody>{"".join(tbody_html_parts)}</tbody></table>'
+        f'{"".join(footnote_parts)}'
+        "</div>"
+    )
+
+
 def render_table_html(caption: str, rows: list[list[str]]) -> str:
     cap = escape_html_text(caption)
     if not rows:
@@ -611,7 +1277,17 @@ RELREF_RE = re.compile(
     + r")\s+of\s+this\s+(?P<relscope>section|paragraph)"
 )
 SUBPART_REF_RE = re.compile(r"\bsubpart\s+([A-Za-z0-9]+)\s+of\s+this\s+part\b")
-PART_REF_RE = re.compile(r"\bpart\s+(\d{1,3})\b(?:,?\s*subpart\s+([A-Za-z0-9]+))?", re.I)
+# part number widened 3->4 digits so bare "40 CFR part 1048"-style engine-
+# certification-part mentions (JJJJ/IIII) get counted in the CFR-not-in-
+# corpus bucket -- this only changes what gets COUNTED in the report, never
+# the emitted text (an unmatched CFR-bucket mention is re-emitted verbatim
+# either way), so it does not affect OOOO row-JSON byte-identity.
+PART_REF_RE = re.compile(r"\bpart\s+(\d{1,4})\b(?:,?\s*subpart\s+([A-Za-z0-9]+))?", re.I)
+# "Table 3 to this subpart" / "table 2c to this subpart" -- an inline
+# reference to one of THIS subpart's own tables. Only turned on for subparts
+# whose SUBPART_META sets enable_table_ref_links=True (see link_citations);
+# OFF for OOOOa/b/c so their baselines are untouched.
+TABLE_REF_RE = re.compile(r"[Tt]able\s+(?P<tblnum>[0-9]+[a-zA-Z]?)\s+to\s+this\s+subpart")
 
 CHAIN_TOKEN_RE = re.compile(r"(?:\([a-zA-Z0-9]{1,4}\))+")
 
@@ -653,9 +1329,14 @@ def link_citations(
     corpus_regs: set,
     unresolved: dict,
 ) -> str:
+    own_part = str(SUBPART_META[own_reg]["part"])
+    enable_table_refs = SUBPART_META[own_reg]["enable_table_ref_links"]
+    pattern = f"{NUMREF_RE.pattern}|{RELREF_RE.pattern}|{SUBPART_REF_RE.pattern}|{PART_REF_RE.pattern}"
+    if enable_table_refs:
+        pattern += f"|{TABLE_REF_RE.pattern}"
     out = []
     last = 0
-    for m in re.finditer(f"{NUMREF_RE.pattern}|{RELREF_RE.pattern}|{SUBPART_REF_RE.pattern}|{PART_REF_RE.pattern}", text):
+    for m in re.finditer(pattern, text):
         out.append(text[last : m.start()])
         last = m.end()
         gd = m.groupdict()
@@ -665,14 +1346,12 @@ def link_citations(
             suf = (gd.get("suf1") or gd.get("suf2") or gd.get("suf3") or "").lower()
             parens = gd.get("par1") or gd.get("par2") or gd.get("par3") or ""
             matched_text = m.group(0)
-            # Only the 53xx-54xx range is OOOOa/b/c's own numbering; other
-            # Part 60 subparts also use letter-suffixed sections (e.g.
-            # subpart Kb's "§ 60.112b") that happen to end in the same
-            # letters and must NOT be mistaken for our corpus.
-            in_range = num.isdigit() and 5300 <= int(num) <= 5499
-            if part == "60" and suf in ("a", "b", "c") and in_range:
-                target_reg = LETTER_TO_REG[suf]
-                sec_num = f"60.{num}{suf}"
+            # Resolves to a reg key iff this citation falls inside THAT reg's
+            # own numbering (letter-suffix based for OOOOa/b/c, number-range
+            # based for the suffix-less subparts) -- see _resolve_target_reg.
+            target_reg = _resolve_target_reg(part, num, suf)
+            if target_reg is not None:
+                sec_num = f"{part}.{num}{suf}"
                 if target_reg == own_reg:
                     base_id = f"sec-{own_reg}-{sec_num}"
                     chain = re.findall(r"\([a-zA-Z0-9]{1,4}\)", parens)
@@ -746,11 +1425,45 @@ def link_citations(
         pm = PART_REF_RE.match(m.group(0))
         if pm:
             partnum = pm.group(1)
-            if partnum == "60" and not pm.group(2):
+            subcode = pm.group(2)
+            if subcode:
+                # "part 63, subpart ZZZZ" (note the reversed order vs.
+                # SUBPART_REF_RE's "subpart X of this part") -- resolve the
+                # same way, but also require the part number to match that
+                # reg's own CFR part (a code could coincidentally match one
+                # from the wrong part).
+                candidate_reg = None
+                for reg_key, letter_code in SUBPART_CODE.items():
+                    if subcode.upper() == letter_code.upper() and str(SUBPART_META[reg_key]["part"]) == partnum:
+                        candidate_reg = reg_key
+                        break
+                if candidate_reg == own_reg:
+                    out.append(m.group(0))
+                elif candidate_reg and candidate_reg in corpus_regs:
+                    out.append(
+                        m.group(0).replace(
+                            f"subpart {subcode}",
+                            f'<a class="xref-external-reg" href="/regulations/{candidate_reg}">subpart {subcode}</a>',
+                        )
+                    )
+                else:
+                    out.append(m.group(0))
+                    unresolved[BUCKET_OTHER_SUBPART][m.group(0).strip()] += 1
+                continue
+            if partnum == own_part:
                 out.append(m.group(0))
             else:
                 out.append(m.group(0))
                 unresolved[BUCKET_CFR][m.group(0).strip()] += 1
+            continue
+        if enable_table_refs and gd.get("tblnum"):
+            tblnum = gd["tblnum"]
+            tid = f"sec-{own_reg}-TABLE-{tblnum}"
+            if tid in known_ids:
+                out.append(f'<span class="xref" data-target="{tid}">{m.group(0)}</span>')
+            else:
+                out.append(m.group(0))
+                unresolved[BUCKET_UNPARSEABLE][m.group(0).strip()] += 1
             continue
         out.append(m.group(0))
     out.append(text[last:])
@@ -842,11 +1555,21 @@ def _norm_text(html: str) -> str:
 
 def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict], dict]:
     reg = _norm_reg(reg)
-    suffix = SUBPART_LETTER[reg]
+    meta = SUBPART_META[reg]
+    suffix = meta["suffix"]
+    part = meta["part"]
+    code = meta["code"]
     raw = Path(txt_path).read_text(encoding="utf-8")
     lines = strip_page_furniture(raw)
     lines, label_fixes_applied = apply_known_label_fixes(reg, lines)
-    toc_end, body_start = find_body_start(lines)
+    heading_re = re.compile(rf"^Subpart {re.escape(code)}—")
+    table_caption_re = re.compile(
+        rf"^Table\s+(\w+)\s+to\s+Subpart\s+{re.escape(code)}\s+of\s+Part\s+{part}—(.*)$"
+    )
+    appendix_caption_re = re.compile(
+        rf"^Appendix\s+(\w+)\s+to\s+Subpart\s+{re.escape(code)}\s+of\s+Part\s+{part}—(.*)$"
+    )
+    toc_end, body_start = find_body_start(lines, heading_re)
     toc_sections, toc_groups = extract_toc(lines, toc_end)
 
     # Root title: the em-dash heading text, joined across wrapped lines, up
@@ -859,10 +1582,10 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
         i += 1
     heading_text = " ".join(heading_lines)
     heading_text = re.sub(r"\s+", " ", heading_text).strip()
-    heading_text = heading_text.replace(f"Subpart OOOO{suffix}—", f"Subpart OOOO{suffix} — ")
+    heading_text = heading_text.replace(f"Subpart {code}—", f"Subpart {code} — ")
     root_id = f"sec-{reg}-top-REG-{reg}"
-    root_citation = f"40 CFR Part 60 Subpart OOOO{suffix}"
-    root_title = f"40 CFR Part 60 {heading_text}"
+    root_citation = f"40 CFR Part {part} Subpart {code}"
+    root_title = f"40 CFR Part {part} {heading_text}"
 
     rows: list[dict] = []
     sort_order = 0
@@ -921,7 +1644,8 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
             if rest and not (rest == "[Reserved]" or rest[0:1].isupper()):
                 m_sec = None
         m_range = RANGE_RESERVED_RE.match(stripped) if at_col0 else None
-        m_table = TABLE_CAPTION_RE.match(stripped) if at_col0 else None
+        m_table = table_caption_re.match(stripped) if at_col0 else None
+        m_appendix = appendix_caption_re.match(stripped) if at_col0 else None
         if m_range:
             flush()
             cur = {
@@ -938,14 +1662,32 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
             flush()
             cap_lines = [stripped]
             idx += 1
-            while idx < len(body_lines) and body_lines[idx].strip() and not body_lines[idx].strip().startswith(("§", "Table")):
+            while idx < len(body_lines) and body_lines[idx].strip() and not body_lines[idx].strip().startswith(("§", "Table", "Appendix")):
                 # caption continues until blank line
                 nxt = body_lines[idx].strip()
                 cap_lines.append(nxt)
                 idx += 1
             cur = {
                 "type": "table",
-                "num": int(m_table.group(1)),
+                # Table numbers can be alphanumeric (ZZZZ's "Table 1a"), so
+                # this is kept as the printed string, not cast to int.
+                "num": m_table.group(1),
+                "caption": re.sub(r"\s+", " ", " ".join(cap_lines)).strip(),
+                "lines": [],
+                "parent": root_id,
+            }
+            continue
+        if m_appendix:
+            flush()
+            cap_lines = [stripped]
+            idx += 1
+            while idx < len(body_lines) and body_lines[idx].strip() and not body_lines[idx].strip().startswith(("§", "Table")):
+                nxt = body_lines[idx].strip()
+                cap_lines.append(nxt)
+                idx += 1
+            cur = {
+                "type": "appendix",
+                "num": m_appendix.group(1),
                 "caption": re.sub(r"\s+", " ", " ".join(cap_lines)).strip(),
                 "lines": [],
                 "parent": root_id,
@@ -953,7 +1695,7 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
             continue
         if m_sec:
             flush()
-            num = f"60.{m_sec.group(1)}{m_sec.group(2)}"
+            num = f"{part}.{m_sec.group(1)}{m_sec.group(2)}"
             first_rest = m_sec.group(3).strip()
             head_lines = [first_rest] if first_rest else []
             idx += 1
@@ -993,6 +1735,107 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
         idx += 1
     flush()
 
+    # -- pdfplumber table extraction pre-pass -----------------------------
+    # For a reg whose table_algorithm is "pdfplumber", locate every table's
+    # and appendix's caption in the actual PDF word stream UP FRONT (in
+    # document order, each search starting where the previous one left off)
+    # so each block's content can be bounded by [its own caption's end,
+    # the NEXT table/appendix caption's start) when the main loop below
+    # reaches it. table_algo_proof collects one entry per table/appendix
+    # for the CLI's proof-line output (table id, page range, rows x cols,
+    # first two data rows) and for a fallback-to-v2 note when the caption
+    # couldn't be found or nothing was extracted.
+    pdf_words: list[dict] | None = None
+    pdf_table_bounds: dict[int, tuple[int, int]] = {}  # blocks-index -> (start_idx, end_idx)
+    table_algo_proof: list[dict] = []
+    if meta["table_algorithm"] == "pdfplumber" and pdf_path:
+        if pdfplumber is None:
+            table_algo_proof.append({"error": "pdfplumber not installed; all tables fell back to v2"})
+        else:
+            with pdfplumber.open(pdf_path) as pdf:
+                pdf_words = _pdf_body_words(pdf)
+            table_block_idxs = [i for i, b in enumerate(blocks) if b["type"] in ("table", "appendix")]
+
+            def _locate_from(cursor: int) -> dict[int, int | None]:
+                """Sequential caption search for every table/appendix block,
+                each one starting where the previous one's match left off."""
+                found_map: dict[int, int | None] = {}
+                c = cursor
+                for bi in table_block_idxs:
+                    b = blocks[bi]
+                    kind = "Table" if b["type"] == "table" else "Appendix"
+                    key = _caption_search_key(kind, str(b["num"]), code, part)
+                    found = _find_word_index(pdf_words, key, start=c)
+                    found_map[bi] = found
+                    if found is not None:
+                        c = found + 1
+                return found_map
+
+            # The eCFR print's front matter includes a "List of Tables" table
+            # of contents that repeats every one of these same captions, in
+            # the same order, densely packed (tens of words apart) BEFORE the
+            # real body -- a naive single left-to-right sequential search
+            # (cursor 0) latches onto that TOC copy for every table, since
+            # each is the very first match found. Detect that by re-running
+            # the same sequential search starting just past the last match
+            # found; if the very first table's caption is found again further
+            # on, that second cluster is the real, body one (spaced hundreds
+            # of words apart, not tens) and is used instead.
+            starts = _locate_from(0)
+            found_positions = [v for v in starts.values() if v is not None]
+            if found_positions and table_block_idxs:
+                first_bi = table_block_idxs[0]
+                retry_cursor = max(found_positions) + 1
+                key0 = _caption_search_key(
+                    "Table" if blocks[first_bi]["type"] == "table" else "Appendix",
+                    str(blocks[first_bi]["num"]),
+                    code,
+                    part,
+                )
+                if _find_word_index(pdf_words, key0, start=retry_cursor) is not None:
+                    starts = _locate_from(retry_cursor)
+
+            for pos, bi in enumerate(table_block_idxs):
+                start = starts[bi]
+                if start is None:
+                    continue
+                # Skip past the caption's own words (roughly its word count)
+                # so the extracted range starts at the table's actual content.
+                cap_word_count = len(blocks[bi]["caption"].split())
+                content_start = min(start + cap_word_count, len(pdf_words))
+                end = len(pdf_words)
+                for later_bi in table_block_idxs[pos + 1 :]:
+                    if starts.get(later_bi) is not None:
+                        end = starts[later_bi]
+                        break
+                pdf_table_bounds[bi] = (content_start, end)
+
+    # -- eCFR XML table lookup (algorithm 4 -- see the big comment above
+    # `render_xml_table_html`) ---------------------------------------------
+    # The XML sibling is resolved from the PDF path (Path(pdf_path).with_
+    # suffix(".xml")), NOT from txt_path -- e.g. sources/ZZZZ.pdf ->
+    # sources/ZZZZ.xml. If it's missing (a CI checkout without the XML
+    # fixtures, a reg that has PDF/txt sources but no XML yet, a typo'd
+    # --pdf path), every table for this reg silently degrades to the `v2`
+    # reconstruction unless this is loud about it -- so it is: a WARNING is
+    # printed to stderr immediately (not just buried in the per-table proof
+    # list), in addition to the existing table_algo_proof "error" entry
+    # that the CLI's normal proof output also prints.
+    xml_tables: dict[str, dict] = {}
+    if meta["table_algorithm"] == "xml":
+        xml_path = str(Path(pdf_path).with_suffix(".xml")) if pdf_path else None
+        if not xml_path or not Path(xml_path).exists():
+            msg = f"WARNING: XML source not found ({xml_path}) -- ALL {reg} tables are falling back to v2 reconstruction, not the eCFR XML"
+            print(msg, file=sys.stderr)
+            table_algo_proof.append({"error": msg})
+        else:
+            try:
+                xml_tables = load_xml_tables(xml_path)
+            except Exception as exc:  # pragma: no cover -- defensive, not expected on well-formed eCFR XML
+                msg = f"WARNING: failed to parse {xml_path}: {exc} -- ALL {reg} tables are falling back to v2 reconstruction"
+                print(msg, file=sys.stderr)
+                table_algo_proof.append({"error": msg})
+
     toc_seen_nums = set(toc_sections.keys())
     body_seen_nums = set()
     unresolved: dict = {b: Counter() for b in ALL_BUCKETS}
@@ -1023,7 +1866,7 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
         by_id[row["id"]] = row
         rows.append(row)
 
-    for block in blocks:
+    for bi, block in enumerate(blocks):
         if block["type"] == "heading":
             add_row(
                 {
@@ -1037,33 +1880,139 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
                 }
             )
         elif block["type"] == "range_reserved":
-            body_seen_nums.add(f"60.{block['num1']}")
-            rid = f"sec-{reg}-60.{block['num1']}-60.{block['num2']}"
+            body_seen_nums.add(f"{part}.{block['num1']}")
+            rid = f"sec-{reg}-{part}.{block['num1']}-{part}.{block['num2']}"
             add_row(
                 {
                     "id": rid,
-                    "citation": f"§§ 60.{block['num1']}-60.{block['num2']}",
-                    "title": f"§§ 60.{block['num1']}-60.{block['num2']} [Reserved]",
+                    "citation": f"§§ {part}.{block['num1']}-{part}.{block['num2']}",
+                    "title": f"§§ {part}.{block['num1']}-{part}.{block['num2']} [Reserved]",
                     "parent_id": block["parent"],
                     "sort_order": next_sort(),
-                    "full_text": f"§§ 60.{block['num1']}-60.{block['num2']} [Reserved]",
+                    "full_text": f"§§ {part}.{block['num1']}-{part}.{block['num2']} [Reserved]",
                     "kind": "heading",
                 }
             )
         elif block["type"] == "table":
             rid = f"sec-{reg}-TABLE-{block['num']}"
-            table_rows = rows_from_layout_block(block["lines"])
-            html = render_table_html(block["caption"], table_rows)
+            table_rows = None
+            html = None
+            display_caption = None  # overrides block["caption"] for title/full_text when set below
+            if meta["table_algorithm"] == "xml":
+                key = _norm_alnum(f"Table {block['num']} to Subpart {code} of Part {part}")
+                entry = xml_tables.get(key)
+                proof = {"id": rid, "algorithm": "xml", "caption": block["caption"]}
+                if entry is not None and entry["tables"]:
+                    table_rows = rows_from_xml_tables(entry["tables"])
+                    # block["caption"] is PDF/txt-derived and swallows any
+                    # prose immediately following the table's title line up
+                    # to the next blank line -- which, for every one of
+                    # these tables, IS the same lead-in sentence the XML
+                    # carries separately as its own <P> ("As stated in
+                    # §§ ..., you must comply with the following ...").
+                    # Rendering block["caption"] as the caption AND
+                    # entry["lead_in"] as its own paragraph would print
+                    # that sentence twice back to back. When the XML has a
+                    # lead-in, use the XML's own (short, lead-in-free) HEAD
+                    # text as the caption instead, and let the lead-in
+                    # render exactly once, in its own <p>. When the XML has
+                    # no lead-in for this table, there's nothing to
+                    # duplicate, so keep the PDF-derived caption as before.
+                    display_caption = entry["caption"] if entry.get("lead_in") else block["caption"]
+                    html = render_xml_table_html(display_caption, entry["lead_in"], entry["tables"])
+                    proof["xml_match"] = "yes"
+                    proof["shape"] = f"{len(table_rows)} rows x {max((len(r) for r in table_rows), default=0)} cols"
+                    proof["sample"] = table_rows[:2]
+                    proof["lead_in_deduped"] = bool(entry.get("lead_in"))
+                else:
+                    proof["xml_match"] = "no"
+                    proof["fallback"] = "v2 (no matching <DIV9 N=\"Table ...\"> caption found in the XML)"
+                table_algo_proof.append(proof)
+            if meta["table_algorithm"] == "pdfplumber":
+                proof: dict = {"id": rid, "algorithm": "pdfplumber"}
+                bounds = pdf_table_bounds.get(bi)
+                if bounds is not None and pdf_words:
+                    start_idx, end_idx = bounds
+                    pdf_rows = rows_from_pdfplumber_table(pdf_words, start_idx, end_idx)
+                    if (
+                        pdf_rows
+                        and len(pdf_rows) >= 2
+                        and max((len(r) for r in pdf_rows), default=0) >= 2
+                        and not _pdfplumber_rows_are_soup(pdf_rows)
+                    ):
+                        table_rows = pdf_rows
+                        pages = sorted(
+                            {pdf_words[i]["page"] for i in range(start_idx, min(end_idx, len(pdf_words)))}
+                        )
+                        proof["pages"] = [pages[0] + 1, pages[-1] + 1] if pages else None
+                        proof["shape"] = f"{len(pdf_rows)} rows x {max(len(r) for r in pdf_rows)} cols"
+                        proof["sample"] = pdf_rows[:2]
+                    else:
+                        pages = sorted(
+                            {pdf_words[i]["page"] for i in range(start_idx, min(end_idx, len(pdf_words)))}
+                        )
+                        proof["pages"] = [pages[0] + 1, pages[-1] + 1] if pages else None
+                        proof["attempted_shape"] = (
+                            f"{len(pdf_rows)} rows x {max((len(r) for r in pdf_rows), default=0)} cols"
+                            if pdf_rows
+                            else "0 rows (nothing extracted)"
+                        )
+                        if pdf_rows and (len(pdf_rows) < 2 or max((len(r) for r in pdf_rows), default=0) < 2):
+                            proof["fallback"] = "v2 (pdfplumber extraction degenerate or empty for this table)"
+                        else:
+                            proof["fallback"] = (
+                                "v2 (pdfplumber column geometry did not hold across this table's page span "
+                                "-- oversplit columns / merged cells detected, discarded to avoid a worse "
+                                "word-soup result)"
+                            )
+                else:
+                    proof["fallback"] = "v2 (table caption not located in PDF word stream)"
+                table_algo_proof.append(proof)
+            if table_rows is None:
+                table_fn = (
+                    rows_from_layout_block_v2
+                    if meta["table_algorithm"] in ("v2", "pdfplumber", "xml")
+                    else rows_from_layout_block
+                )
+                table_rows = table_fn(block["lines"])
+                if meta["table_algorithm"] in ("pdfplumber", "xml"):
+                    proof["v2_fallback_shape"] = (
+                        f"{len(table_rows)} rows x {max((len(r) for r in table_rows), default=0)} cols"
+                        if table_rows
+                        else "0 rows"
+                    )
+                    proof["v2_fallback_sample"] = table_rows[:2] if table_rows else []
+            if html is None:
+                html = render_table_html(block["caption"], table_rows)
             add_row(
                 {
                     "id": rid,
-                    "citation": f"Table {block['num']} to Subpart OOOO{suffix} of Part 60",
-                    "title": block["caption"],
+                    "citation": f"Table {block['num']} to Subpart {code} of Part {part}",
+                    "title": display_caption if display_caption is not None else block["caption"],
                     "parent_id": block["parent"],
                     "sort_order": next_sort(),
                     "full_text": html,
                     "kind": "appendix",
                     "_table_rows": table_rows,
+                }
+            )
+        elif block["type"] == "appendix":
+            # ZZZZ's Appendix A: numbered N.0 / N.N / N.N.N paragraphs, NOT
+            # the CFR (a)(1)(i)(A) marker cycle -- per the importer brief,
+            # since these aren't CFR-style labels the whole appendix becomes
+            # ONE row (kind "appendix") rather than a parsed tree of children.
+            aid = f"sec-{reg}-APPENDIX-{block['num']}"
+            paras = split_paragraphs(block["lines"])
+            full_text = "".join(f"<p>{escape_html_text(p)}</p>" for p in paras) if paras else ""
+            add_row(
+                {
+                    "id": aid,
+                    "citation": f"Appendix {block['num']} to Subpart {code} of Part {part}",
+                    "title": block["caption"],
+                    "parent_id": block["parent"],
+                    "sort_order": next_sort(),
+                    "full_text": full_text or block["caption"],
+                    "kind": "appendix",
                 }
             )
         elif block["type"] == "section":
@@ -1183,6 +2132,7 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
         "unresolved": unresolved,
         "n_group_headings": group_counter,
         "n_tables": sum(1 for b in blocks if b["type"] == "table"),
+        "table_algo_proof": table_algo_proof,
     }
     return rows, report
 
@@ -1210,6 +2160,36 @@ def cmd_parse(args):
         print(f"  label fix {fx['old_label']} -> {fx['new_label']}: {fx['hits']} hit(s){flag}")
     if report["duplicate_ids"]:
         print(f"  WARNING: duplicate ids: {report['duplicate_ids']}")
+    for proof in report.get("table_algo_proof", []):
+        if "error" in proof:
+            print(f"  TABLE-ALGO: {proof['error']}")
+            continue
+        tid = proof.get("id", "?")
+        if proof.get("algorithm") == "xml":
+            cap = proof.get("caption", "")
+            if proof.get("xml_match") == "yes":
+                print(f"  TABLE-ALGO {tid}: caption {cap!r} -> XML match: yes, {proof.get('shape')}")
+                for row in proof.get("sample", []):
+                    print(f"    row: {row}")
+            else:
+                print(f"  TABLE-ALGO {tid}: caption {cap!r} -> XML match: no -> {proof['fallback']}")
+                if proof.get("v2_fallback_shape"):
+                    print(f"    v2 fallback shape: {proof['v2_fallback_shape']}")
+                    for row in proof.get("v2_fallback_sample", []):
+                        print(f"    v2 row: {row}")
+            continue
+        pages = proof.get("pages")
+        page_str = f"pages {pages[0]}-{pages[1]}" if pages else "pages ?"
+        if "fallback" in proof:
+            print(f"  TABLE-ALGO {tid}: {page_str}, pdfplumber attempted {proof.get('attempted_shape', '?')} -> {proof['fallback']}")
+            if proof.get("v2_fallback_shape"):
+                print(f"    v2 fallback shape: {proof['v2_fallback_shape']}")
+                for row in proof.get("v2_fallback_sample", []):
+                    print(f"    v2 row: {row}")
+            continue
+        print(f"  TABLE-ALGO {tid}: pdfplumber, {page_str}, {proof.get('shape')}")
+        for row in proof.get("sample", []):
+            print(f"    row: {row}")
     total_unresolved = sum(sum(c.values()) for c in report["unresolved"].values())
     print(f"  unresolved reference mentions: {total_unresolved}")
     for bucket in ALL_BUCKETS:

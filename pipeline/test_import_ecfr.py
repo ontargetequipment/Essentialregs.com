@@ -439,5 +439,426 @@ class FullFileSmokeTest(unittest.TestCase):
         self.assertEqual(report["missing_sections"], [])
 
 
+# ---------------------------------------------------------------------------
+# SUBPART_META / generalized reg resolution (JJJJ/IIII/ZZZZ additions)
+# ---------------------------------------------------------------------------
+
+
+class SubpartMetaTests(unittest.TestCase):
+    def test_all_six_regs_present_with_expected_shape(self):
+        for key in ("ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz"):
+            self.assertIn(key, ie.SUBPART_META)
+            meta = ie.SUBPART_META[key]
+            self.assertIn(meta["part"], (60, 63))
+            self.assertTrue(meta["code"])
+
+    def test_norm_reg_accepts_all_six_case_insensitively(self):
+        for key in ("OOOOa", "OoooB", "ooooC", "JJJJ", "Iiii", "ZZZZ"):
+            self.assertEqual(ie._norm_reg(key), key.lower())
+
+    def test_norm_reg_rejects_unknown(self):
+        with self.assertRaises(ValueError):
+            ie._norm_reg("kkkk")
+
+    def test_jjjj_iiii_have_no_letter_suffix(self):
+        self.assertEqual(ie.SUBPART_META["jjjj"]["suffix"], "")
+        self.assertEqual(ie.SUBPART_META["iiii"]["suffix"], "")
+        self.assertEqual(ie.SUBPART_META["zzzz"]["suffix"], "")
+
+    def test_zzzz_is_part_63(self):
+        self.assertEqual(ie.SUBPART_META["zzzz"]["part"], 63)
+        self.assertEqual(ie.SUBPART_META["jjjj"]["part"], 60)
+        self.assertEqual(ie.SUBPART_META["iiii"]["part"], 60)
+
+
+class SectionRangeResolverTests(unittest.TestCase):
+    """_resolve_target_reg: OOOOa/b/c are told apart by letter suffix
+    (unchanged rule); JJJJ/IIII/ZZZZ (no suffix) are told apart by their own
+    section-number range within their CFR part."""
+
+    def test_ooooa_b_c_still_resolve_by_letter(self):
+        self.assertEqual(ie._resolve_target_reg("60", "5397", "b"), "oooob")
+        self.assertEqual(ie._resolve_target_reg("60", "5397", "a"), "ooooa")
+        self.assertEqual(ie._resolve_target_reg("60", "5397", "c"), "ooooc")
+
+    def test_jjjj_resolves_by_number_range_part_60_no_suffix(self):
+        self.assertEqual(ie._resolve_target_reg("60", "4231", ""), "jjjj")
+        self.assertEqual(ie._resolve_target_reg("60", "4248", ""), "jjjj")
+
+    def test_iiii_resolves_by_number_range_part_60_no_suffix(self):
+        self.assertEqual(ie._resolve_target_reg("60", "4200", ""), "iiii")
+        self.assertEqual(ie._resolve_target_reg("60", "4219", ""), "iiii")
+
+    def test_zzzz_resolves_by_number_range_part_63_no_suffix(self):
+        self.assertEqual(ie._resolve_target_reg("63", "6603", ""), "zzzz")
+        self.assertEqual(ie._resolve_target_reg("63", "6675", ""), "zzzz")
+
+    def test_general_provisions_numbers_do_not_resolve(self):
+        # § 60.18 / § 63.1 (Part 60/63 General Provisions) are not inside
+        # ANY subpart's own numbering.
+        self.assertIsNone(ie._resolve_target_reg("60", "18", ""))
+        self.assertIsNone(ie._resolve_target_reg("63", "1", ""))
+
+    def test_jjjj_and_iiii_ranges_dont_collide(self):
+        # 4220-4229 is a gap between IIII's and JJJJ's own ranges.
+        self.assertIsNone(ie._resolve_target_reg("60", "4225", ""))
+
+    def test_cross_reg_link_jjjj_own_section(self):
+        from collections import Counter
+
+        known = {"sec-jjjj-60.4231", "sec-jjjj-60.4231-(a)"}
+        unresolved = {b: Counter() for b in ie.ALL_BUCKETS}
+        text = "as specified in § 60.4231(a) of this subpart."
+        out = ie.link_citations(text, "jjjj", "sec-jjjj-60.4230", "sec-jjjj-60.4230", known, {"jjjj"}, unresolved)
+        self.assertIn('data-target="sec-jjjj-60.4231-(a)"', out)
+
+    def test_cross_reg_link_zzzz_part_63_own_section(self):
+        from collections import Counter
+
+        known = {"sec-zzzz-63.6603"}
+        unresolved = {b: Counter() for b in ie.ALL_BUCKETS}
+        text = "under § 63.6603 of this subpart."
+        out = ie.link_citations(text, "zzzz", "sec-zzzz-63.6580", "sec-zzzz-63.6580", known, {"zzzz"}, unresolved)
+        self.assertIn('data-target="sec-zzzz-63.6603"', out)
+
+    def test_jjjj_reference_to_zzzz_subpart_links_cross_reg(self):
+        from collections import Counter
+
+        unresolved = {b: Counter() for b in ie.ALL_BUCKETS}
+        text = "meeting the requirements of 40 CFR part 63, subpart ZZZZ, Table 2a."
+        out = ie.link_citations(text, "jjjj", "sec-jjjj-60.4231", "sec-jjjj-60.4231", set(), {"jjjj", "zzzz"}, unresolved)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/zzzz">', out)
+
+    def test_engine_certification_part_is_cfr_not_in_corpus(self):
+        from collections import Counter
+
+        unresolved = {b: Counter() for b in ie.ALL_BUCKETS}
+        text = "certify their engines according to 40 CFR part 1048."
+        out = ie.link_citations(text, "jjjj", "sec-jjjj-60.4231", "sec-jjjj-60.4231", set(), {"jjjj"}, unresolved)
+        self.assertNotIn("xref", out)
+        self.assertEqual(sum(unresolved[ie.BUCKET_CFR].values()), 1)
+
+    def test_table_ref_to_this_subpart_resolves_for_new_subparts(self):
+        from collections import Counter
+
+        known = {"sec-jjjj-TABLE-1"}
+        unresolved = {b: Counter() for b in ie.ALL_BUCKETS}
+        text = "comply with the emission standards in Table 1 to this subpart."
+        out = ie.link_citations(text, "jjjj", "sec-jjjj-60.4231", "sec-jjjj-60.4231", known, {"jjjj"}, unresolved)
+        self.assertIn('data-target="sec-jjjj-TABLE-1"', out)
+
+    def test_table_ref_to_this_subpart_not_linked_for_oooo(self):
+        """OOOOa/b/c keep enable_table_ref_links=False so their baselines
+        are untouched -- the same text must NOT get wrapped for them."""
+        from collections import Counter
+
+        known = {"sec-oooob-TABLE-5"}
+        unresolved = {b: Counter() for b in ie.ALL_BUCKETS}
+        text = "Table 5 to this subpart shows which parts of the General Provisions apply to you."
+        out = ie.link_citations(text, "oooob", "sec-oooob-60.5360b", "sec-oooob-60.5360b", known, {"oooob"}, unresolved)
+        self.assertNotIn("xref", out)
+
+    def test_alphanumeric_table_ref_resolves_for_zzzz(self):
+        from collections import Counter
+
+        known = {"sec-zzzz-TABLE-2c"}
+        unresolved = {b: Counter() for b in ie.ALL_BUCKETS}
+        text = "requirements in table 2c of this subpart."
+        # "table 2c of this subpart" (not "to this subpart") doesn't match;
+        # use the actual printed form.
+        text = "requirements in Table 2c to this subpart apply."
+        out = ie.link_citations(text, "zzzz", "sec-zzzz-63.6600", "sec-zzzz-63.6600", known, {"zzzz"}, unresolved)
+        self.assertIn('data-target="sec-zzzz-TABLE-2c"', out)
+
+
+# ---------------------------------------------------------------------------
+# Table-number parsing (alphanumeric "Table 1a" for ZZZZ) and appendix ids
+# ---------------------------------------------------------------------------
+
+
+class TableAndAppendixIdTests(unittest.TestCase):
+    def test_row_anchor_regex_recognizes_numbered_and_section_anchors(self):
+        self.assertTrue(ie._ROW_ANCHOR_RE.match("1. Stationary SI internal combustion engine"))
+        self.assertTrue(ie._ROW_ANCHOR_RE.match("a. Reduce CO emissions"))
+        self.assertTrue(ie._ROW_ANCHOR_RE.match("§ 60.1 General applicability"))
+        self.assertTrue(ie._ROW_ANCHOR_RE.match("§§ 63.6(b)(1)-(4) Compliance dates"))
+
+    def test_row_anchor_regex_rejects_bare_section_number_fragment(self):
+        # "60.4244" is a wrapped cross-reference fragment, not a "60." list
+        # marker -- must NOT be mistaken for a new row (see rows_from_
+        # layout_block_v2's docstring / REPORT.md's JJJJ Table 2 note).
+        self.assertFalse(ie._ROW_ANCHOR_RE.match("60.4244 a Also, you may petition"))
+
+    def test_dedupe_repeated_runs_drops_second_occurrence(self):
+        lines = [
+            "Complying",
+            "with the",
+            "requirement",
+            "1. First item text.",
+            "Complying",
+            "with the",
+            "requirement",
+            "2. Second item text.",
+        ]
+        out = ie._dedupe_repeated_runs(lines)
+        self.assertEqual(
+            out,
+            ["Complying", "with the", "requirement", "1. First item text.", "2. Second item text."],
+        )
+
+    def test_dedupe_leaves_short_legitimate_repeats_alone(self):
+        # Real table data legitimately repeats short values like "Yes" many
+        # times, each time surrounded by DIFFERENT substantive text -- only a
+        # long (>= min_run) verbatim run is ever dropped.
+        lines = [
+            "§ 60.1", "General applicability", "Yes",
+            "§ 60.2", "Definitions", "Yes",
+            "§ 60.3", "Units and abbreviations", "Yes",
+        ]
+        self.assertEqual(ie._dedupe_repeated_runs(lines), lines)
+
+    def test_v2_falls_back_to_v1_when_no_anchor_column(self):
+        # A table with no "N." / "§" leading column (ordinary prose lead-in)
+        # must come out identical under v1 and v2.
+        lines = [
+            "Engine type          Power        Standard",
+            "Non-Emergency SI     100<=HP<500  2.0",
+        ]
+        self.assertEqual(ie.rows_from_layout_block_v2(lines), ie.rows_from_layout_block(lines))
+
+    def test_v2_splits_one_row_per_numbered_item(self):
+        lines = [
+            "For each          You must",
+            "1. Item one       a. Do X",
+            "2. Item two       b. Do Y",
+        ]
+        rows = ie.rows_from_layout_block_v2(lines)
+        # header + 2 body rows
+        self.assertEqual(len(rows), 3)
+        self.assertTrue(rows[1][0].startswith("1. Item one"))
+        self.assertTrue(rows[2][0].startswith("2. Item two"))
+
+
+# ---------------------------------------------------------------------------
+# Full-file smoke tests for JJJJ / IIII / ZZZZ
+# ---------------------------------------------------------------------------
+
+
+def _full_parse_smoke(reg, code):
+    @unittest.skipUnless(
+        os.path.exists(os.path.join(SOURCES, f"{code}.txt")) and os.path.exists(os.path.join(SOURCES, f"{code}.pdf")),
+        f"{code} source files not present",
+    )
+    class _Test(unittest.TestCase):
+        def test_row_count_and_parent_integrity(self):
+            rows, report = ie.parse_ecfr(reg, os.path.join(SOURCES, f"{code}.pdf"), os.path.join(SOURCES, f"{code}.txt"))
+            self.assertGreater(len(rows), 100)
+            ids = {r["id"] for r in rows}
+            for r in rows:
+                if r["parent_id"] is not None:
+                    self.assertIn(r["parent_id"], ids, f"missing parent for {r['id']}")
+            self.assertEqual(len(ids), len(rows))
+            leaked = [r["id"] for r in rows if ie.find_page_leaks(r["full_text"])]
+            self.assertEqual(leaked, [])
+            self.assertEqual(report["missing_sections"], [])
+            self.assertEqual(report["duplicate_ids"], [])
+
+        def test_root_row_shape(self):
+            rows, _ = ie.parse_ecfr(reg, os.path.join(SOURCES, f"{code}.pdf"), os.path.join(SOURCES, f"{code}.txt"))
+            root = rows[0]
+            self.assertEqual(root["id"], f"sec-{reg}-top-REG-{reg}")
+            self.assertIsNone(root["parent_id"])
+            self.assertEqual(root["kind"], "root")
+
+    _Test.__name__ = f"FullFileSmokeTest_{reg}"
+    return _Test
+
+
+FullFileSmokeTest_jjjj = _full_parse_smoke("jjjj", "JJJJ")
+FullFileSmokeTest_iiii = _full_parse_smoke("iiii", "IIII")
+FullFileSmokeTest_zzzz = _full_parse_smoke("zzzz", "ZZZZ")
+
+
+class ZzzzAppendixTests(unittest.TestCase):
+    @unittest.skipUnless(
+        os.path.exists(os.path.join(SOURCES, "ZZZZ.txt")) and os.path.exists(os.path.join(SOURCES, "ZZZZ.pdf")),
+        "ZZZZ source files not present",
+    )
+    def test_appendix_a_is_a_single_row(self):
+        rows, _ = ie.parse_ecfr("zzzz", os.path.join(SOURCES, "ZZZZ.pdf"), os.path.join(SOURCES, "ZZZZ.txt"))
+        appendix_rows = [r for r in rows if r["id"] == "sec-zzzz-APPENDIX-A"]
+        self.assertEqual(len(appendix_rows), 1)
+        row = appendix_rows[0]
+        self.assertEqual(row["kind"], "appendix")
+        self.assertIn("Electrochemical", row["title"])
+        self.assertGreater(len(row["full_text"]), 1000)
+
+
+class ZzzzTableIdTests(unittest.TestCase):
+    @unittest.skipUnless(
+        os.path.exists(os.path.join(SOURCES, "ZZZZ.txt")) and os.path.exists(os.path.join(SOURCES, "ZZZZ.pdf")),
+        "ZZZZ source files not present",
+    )
+    def test_alphanumeric_table_ids(self):
+        rows, _ = ie.parse_ecfr("zzzz", os.path.join(SOURCES, "ZZZZ.pdf"), os.path.join(SOURCES, "ZZZZ.txt"))
+        ids = {r["id"] for r in rows}
+        for expected in ("sec-zzzz-TABLE-1a", "sec-zzzz-TABLE-2c", "sec-zzzz-TABLE-8"):
+            self.assertIn(expected, ids)
+
+
+# ---------------------------------------------------------------------------
+# eCFR XML table reconstruction (algorithm 4 -- the fix for Gate H)
+# ---------------------------------------------------------------------------
+
+_XML_FIXTURE = """<?xml version="1.0"?>
+<DIV6 N="ZZZZ" TYPE="SUBPART">
+<DIV9 N="Table 1a to Subpart ZZZZ of Part 63" TYPE="APPENDIX">
+<HEAD>Table 1<E T="01">a</E> to Subpart ZZZZ of Part 63&#x2014;Some Caption
+</HEAD>
+<P>As stated in &#xA7;&#xA7; 63.6600 and 63.6640, you must comply with the following:</P>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<THEAD>
+<TR>
+<TH class="center">For each . . .</TH>
+<TH class="center">You must . . .</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left">1. 4SRB stationary RICE</TD>
+<TD class="left">a. Reduce formaldehyde emissions by 76 percent or more<br/>b. Limit the concentration of formaldehyde in the exhaust to 350 ppbvd or less at 15 percent O<sub>2</sub>
+</TD>
+</TR>
+<TR>
+<TD class="left" colspan="1">2. 4SRB stationary RICE, second kind</TD>
+<TD class="left">Comply with limits approved by the Administrator.<sup>1</sup></TD>
+</TR>
+</TBODY>
+<TFOOT><TR><TD colspan="2"><sup>1</sup> Sources can petition the Administrator.</TD></TR></TFOOT></TABLE>
+</DIV></DIV>
+</DIV9>
+</DIV6>
+"""
+
+
+class XmlTableFixtureTests(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+
+        fh = tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False, encoding="utf-8")
+        fh.write(_XML_FIXTURE)
+        fh.close()
+        self.addCleanup(os.remove, fh.name)
+        self.xml_path = fh.name
+
+    def test_load_xml_tables_finds_caption_and_lead_in(self):
+        tables = ie.load_xml_tables(self.xml_path)
+        key = ie._norm_alnum("Table 1a to Subpart ZZZZ of Part 63")
+        self.assertIn(key, tables)
+        entry = tables[key]
+        # The <E T="01">a</E> wrapper's text must survive so the caption
+        # reads "Table 1a", not "Table 1".
+        self.assertIn("Table 1a to Subpart ZZZZ of Part 63", entry["caption"])
+        self.assertTrue(entry["lead_in"].startswith("As stated in"))
+        self.assertEqual(len(entry["tables"]), 1)
+
+    def test_first_cell_is_the_label_alone_not_word_soup(self):
+        # This is the exact defect the coordinator flagged: TABLE-1a's first
+        # cell must be "1. 4SRB stationary RICE" ALONE, with none of column
+        # 2's text or the footnote fused into it.
+        tables = ie.load_xml_tables(self.xml_path)
+        key = ie._norm_alnum("Table 1a to Subpart ZZZZ of Part 63")
+        rows = ie.rows_from_xml_tables(tables[key]["tables"])
+        self.assertEqual(rows[1][0], "1. 4SRB stationary RICE")
+        self.assertEqual(rows[2][0], "2. 4SRB stationary RICE, second kind")
+        self.assertNotIn("Reduce formaldehyde", rows[1][0])
+        self.assertNotIn("petition", rows[1][0])
+
+    def test_rendered_html_keeps_sup_sub_br_colspan_and_footnote(self):
+        tables = ie.load_xml_tables(self.xml_path)
+        entry = tables[ie._norm_alnum("Table 1a to Subpart ZZZZ of Part 63")]
+        html = ie.render_xml_table_html(entry["caption"], entry["lead_in"], entry["tables"])
+        self.assertIn("<sub>2</sub>", html)
+        self.assertIn("<sup>1</sup>", html)
+        self.assertIn("<br/>", html)
+        self.assertIn('class="table-footnote"', html)
+        self.assertIn('class="doc-table-lead-in"', html)
+        self.assertIn("<td", html)
+        self.assertIn("<th", html)
+        # No raw "&" / unescaped angle brackets from the source leaking
+        # through as literal text outside the tags we intentionally kept.
+        self.assertNotIn("<E ", html)
+
+    @unittest.skipUnless(
+        os.path.exists(os.path.join(SOURCES, "ZZZZ.txt"))
+        and os.path.exists(os.path.join(SOURCES, "ZZZZ.pdf"))
+        and os.path.exists(os.path.join(SOURCES, "ZZZZ.xml")),
+        "ZZZZ source files not present",
+    )
+    def test_real_zzzz_table_1a_is_clean_end_to_end(self):
+        rows, report = ie.parse_ecfr("zzzz", os.path.join(SOURCES, "ZZZZ.pdf"), os.path.join(SOURCES, "ZZZZ.txt"))
+        row = next(r for r in rows if r["id"] == "sec-zzzz-TABLE-1a")
+        self.assertIn("<td>1. 4SRB stationary RICE</td>", row["full_text"])
+        proofs = {p.get("id"): p for p in report["table_algo_proof"]}
+        self.assertEqual(proofs["sec-zzzz-TABLE-1a"]["xml_match"], "yes")
+
+    @unittest.skipUnless(
+        os.path.exists(os.path.join(SOURCES, "JJJJ.txt"))
+        and os.path.exists(os.path.join(SOURCES, "JJJJ.pdf"))
+        and os.path.exists(os.path.join(SOURCES, "JJJJ.xml")),
+        "JJJJ source files not present",
+    )
+    def test_all_jjjj_tables_match_xml(self):
+        _, report = ie.parse_ecfr("jjjj", os.path.join(SOURCES, "JJJJ.pdf"), os.path.join(SOURCES, "JJJJ.txt"))
+        proofs = [p for p in report["table_algo_proof"] if p.get("algorithm") == "xml"]
+        self.assertTrue(proofs)
+        for p in proofs:
+            self.assertEqual(p.get("xml_match"), "yes", p.get("id"))
+
+    @unittest.skipUnless(
+        os.path.exists(os.path.join(SOURCES, "IIII.txt"))
+        and os.path.exists(os.path.join(SOURCES, "IIII.pdf"))
+        and os.path.exists(os.path.join(SOURCES, "IIII.xml")),
+        "IIII source files not present",
+    )
+    def test_all_iiii_tables_match_xml(self):
+        _, report = ie.parse_ecfr("iiii", os.path.join(SOURCES, "IIII.pdf"), os.path.join(SOURCES, "IIII.txt"))
+        proofs = [p for p in report["table_algo_proof"] if p.get("algorithm") == "xml"]
+        self.assertTrue(proofs)
+        for p in proofs:
+            self.assertEqual(p.get("xml_match"), "yes", p.get("id"))
+
+
+# ---------------------------------------------------------------------------
+# Byte-identical OOOO baselines (proves the generalization is a no-op for
+# the three original subparts)
+# ---------------------------------------------------------------------------
+
+
+class OoooByteIdenticalBaselineTests(unittest.TestCase):
+    def _check(self, reg, code):
+        pdf = os.path.join(SOURCES, f"{code}.pdf")
+        txt = os.path.join(SOURCES, f"{code}.txt")
+        baseline = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out", f"{reg}_baseline.json")
+        if not (os.path.exists(pdf) and os.path.exists(txt) and os.path.exists(baseline)):
+            self.skipTest(f"{code} source or baseline files not present")
+        import json
+
+        rows, _ = ie.parse_ecfr(reg, pdf, txt)
+        with open(baseline, encoding="utf-8") as f:
+            expected = json.load(f)
+        self.assertEqual(rows, expected, f"{reg} output diverged from its baseline")
+
+    def test_ooooa_byte_identical(self):
+        self._check("ooooa", "OOOOa")
+
+    def test_oooob_byte_identical(self):
+        self._check("oooob", "OOOOb")
+
+    def test_ooooc_byte_identical(self):
+        self._check("ooooc", "OOOOc")
+
+
 if __name__ == "__main__":
     unittest.main()

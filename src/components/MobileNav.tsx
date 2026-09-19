@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
-/** The two regulation indexes behind the "Regulations" header entry. */
+/** The three regulation indexes behind the "Regulations" header entry. */
 const REGULATION_LINKS = [
   { href: "/regulations", label: "Colorado (state)" },
+  { href: "/general-permits", label: "General permits" },
   { href: "/federal", label: "Federal" },
 ] as const;
 

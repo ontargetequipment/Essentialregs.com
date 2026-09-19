@@ -140,7 +140,11 @@ export function sanitizeHtml(html: string): string {
 export function kindOf(id: string): ProvisionKind {
   if (id.includes("-top-REG-")) return "reg";
   if (id.includes("-PART-")) return "part";
-  if (id.includes("-APPENDIX-")) return "appendix";
+  // "-ATTACHMENT-" is the GP02/GP12 general-permit importer's name for the
+  // same structural role "-APPENDIX-" plays elsewhere in the corpus (a
+  // top-level, appendix-like heading under the permit root) -- treated
+  // identically here rather than as its own ProvisionKind.
+  if (id.includes("-APPENDIX-") || id.includes("-ATTACHMENT-")) return "appendix";
   return "item";
 }
 
@@ -222,8 +226,37 @@ const CCR_CITE = /5 CCR 1001-\d+/i;
  * stored. See groupColoradoRegulations for the section heading these sit
  * under.
  */
+/** Matches an APCD general-permit key ("gp01".."gp12") as used in provision ids. */
+const GP_KEY = /^gp\d\d$/i;
+
+// The stored GP title is CDPHE's full permit-application boilerplate
+// ("GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — <subject> — GP02
+// Issuance 4, July 23, 2025"). These are the known leading-boilerplate
+// variants seen across gp01-gp12 (order matters -- the more specific "Oil
+// and Gas Industry"/"Oil and Gas" variants have to be tried before the bare
+// "GENERAL CONSTRUCTION PERMIT —" one, or they'd never match past it).
+const GP_LEADING_BOILERPLATE = [
+  /^GENERAL CONSTRUCTION PERMIT\s*[—-]\s*Oil and Gas Industry\s*[—-]\s*/i,
+  /^GENERAL CONSTRUCTION PERMIT\s*[—-]\s*Oil and Gas\s*[—-]\s*/i,
+  /^GENERAL CONSTRUCTION PERMIT\s*[—-]\s*/i,
+  /^GENERAL PERMIT 12 \(GP12\)\s*[—-]\s*/i,
+];
+
+// Trailing "— GP02 Issuance 4, July 23, 2025" (GP12's is printed without the
+// repeated "GP12" -- just "— Issuance 1, May 28, 2026"). Captures the
+// issuance number and date for the subtitle.
+const GP_TRAILING = /\s*[—-]\s*(?:GP\d{2}\s+)?Issuance\s+(\d+),\s+(.+)$/i;
+
+// Display-only addendum for permits CDPHE has closed to new registrations
+// (existing registrations stay active) -- see GP12, which replaces GP09/GP10
+// for new applicants. Never affects what's stored, only the card subtitle.
+const GP_CLOSURE_NOTE: Record<string, string> = {
+  gp09: " · closed to new registrations July 15, 2026",
+  gp10: " · closed to new registrations July 15, 2026",
+};
+
 export function regulationCardInfo(
-  reg: Pick<Provision, "id" | "title" | "issuing_body">
+  reg: Pick<Provision, "id" | "title" | "issuing_body" | "citation">
 ): RegulationCardInfo {
   const regNumber = regulationNumber(reg.id);
   if (reg.issuing_body === "ECMC") {
@@ -232,6 +265,23 @@ export function regulationCardInfo(
   if (regNumber === "cp") {
     return { title: "Common Provisions Regulation", subtitle: null };
   }
+  if (regNumber && GP_KEY.test(regNumber)) {
+    const gpLabel = regNumber.toUpperCase();
+    const trailingMatch = reg.title.match(GP_TRAILING);
+    let subject = reg.title;
+    if (trailingMatch) subject = subject.slice(0, trailingMatch.index);
+    for (const re of GP_LEADING_BOILERPLATE) {
+      const stripped = subject.replace(re, "");
+      if (stripped !== subject) {
+        subject = stripped;
+        break;
+      }
+    }
+    const subtitle = trailingMatch
+      ? `Issuance ${trailingMatch[1]} · ${trailingMatch[2]}${GP_CLOSURE_NOTE[regNumber.toLowerCase()] ?? ""}`
+      : null;
+    return { title: `${gpLabel} — ${subject.trim()}`, subtitle };
+  }
   if (regNumber && /^\d+$/.test(regNumber)) {
     const cite = reg.title.match(CCR_CITE)?.[0] ?? null;
     return {
@@ -239,8 +289,18 @@ export function regulationCardInfo(
       subtitle: cite,
     };
   }
-  // Federal (or anything else not covered above): show the stored title as-is.
-  return { title: reg.title, subtitle: null };
+  // Federal (or anything else not covered above): the stored title is the
+  // citation followed by the subpart's descriptive name ("40 CFR Part 60
+  // Subpart JJJJ — Standards of Performance for..."), which repeats the
+  // citation the card already prints on its own line above the title -- so
+  // that leading "<citation> — " is stripped here the same way the CCR
+  // suffix is stripped for AQCC regs, and the bare citation becomes the
+  // subtitle instead of null.
+  const citationPrefix = `${reg.citation} — `;
+  const title = reg.title.startsWith(citationPrefix)
+    ? reg.title.slice(citationPrefix.length)
+    : reg.title;
+  return { title, subtitle: reg.citation };
 }
 
 export type RegulationGroup<T> = {
@@ -250,6 +310,7 @@ export type RegulationGroup<T> = {
 };
 
 const AQCC_HEADING = "Air Quality Control Commission (5 CCR 1001)";
+const GP_HEADING = "APCD General Permits";
 const ECMC_HEADING = "Energy and Carbon Management Commission (2 CCR 404-1)";
 const OTHER_HEADING = "Other";
 
@@ -259,15 +320,24 @@ const OTHER_HEADING = "Other";
  * number (1, 2, 3, 6, 7, 8, 9, 22, 24, 26, 30, ...) -- the printed CCR
  * series' own ordering, not id/insertion order (id order would put "22"
  * before "3" as strings).
+ *
+ * The eleven APCD general permits (gp01..gp12) share issuing_body
+ * "CDPHE-APCD" with the numbered AQCC regulations but aren't AQCC
+ * regulations at all -- they're separately issued general permits -- so
+ * they're pulled into their own "APCD General Permits" group (ordered by
+ * permit number) between AQCC and ECMC instead of landing in the AQCC list.
  */
 export function groupColoradoRegulations<T extends Pick<Provision, "id" | "issuing_body">>(
   regs: T[]
 ): RegulationGroup<T>[] {
   const aqcc: T[] = [];
+  const gp: T[] = [];
   const ecmc: T[] = [];
   const other: T[] = [];
   for (const r of regs) {
-    if (r.issuing_body === "CDPHE-APCD") aqcc.push(r);
+    const num = regulationNumber(r.id);
+    if (r.issuing_body === "CDPHE-APCD" && num && GP_KEY.test(num)) gp.push(r);
+    else if (r.issuing_body === "CDPHE-APCD") aqcc.push(r);
     else if (r.issuing_body === "ECMC") ecmc.push(r);
     else other.push(r);
   }
@@ -278,35 +348,55 @@ export function groupColoradoRegulations<T extends Pick<Provision, "id" | "issui
     if (bn === "cp") return 1;
     return (Number(an) || 0) - (Number(bn) || 0);
   });
+  gp.sort((a, b) => {
+    const an = Number((regulationNumber(a.id) ?? "").replace(/\D/g, ""));
+    const bn = Number((regulationNumber(b.id) ?? "").replace(/\D/g, ""));
+    return an - bn;
+  });
 
   const groups: RegulationGroup<T>[] = [];
   if (aqcc.length) groups.push({ key: "aqcc", heading: AQCC_HEADING, regs: aqcc });
+  if (gp.length) groups.push({ key: "gp", heading: GP_HEADING, regs: gp });
   if (ecmc.length) groups.push({ key: "ecmc", heading: ECMC_HEADING, regs: ecmc });
   if (other.length) groups.push({ key: "other", heading: OTHER_HEADING, regs: other });
   return groups;
 }
 
+// Friendly headings for the CFR parts currently in the corpus. A part number
+// not listed here (a future addition) falls back to a generic "EPA — 40 CFR
+// Part N" heading rather than disappearing into an unlabeled group.
+const CFR_PART_HEADINGS: Record<string, string> = {
+  "60": "EPA — 40 CFR Part 60 (New Source Performance Standards)",
+  "63": "EPA — 40 CFR Part 63 (NESHAP)",
+};
+
 /**
- * Groups the federal (/federal) index by issuing_body. Only "EPA" gets a
- * friendlier heading today (the whole index is EPA NSPS subparts); anything
- * else falls back to its raw issuing_body so a future non-EPA federal source
- * doesn't silently disappear into an unlabeled group.
+ * Groups the federal (/federal) index by CFR part, parsed out of each row's
+ * citation ("40 CFR Part 60 Subpart JJJJ" -> part "60"). Was grouped by
+ * issuing_body alone back when every federal row was a Part 60 NSPS subpart
+ * and "EPA" and "Part 60" were the same group; Part 63 NESHAP subparts
+ * (zzzz) share issuing_body "EPA" but belong in their own section, so the
+ * grouping key has to come from the citation instead. Groups are ordered by
+ * part number; anything whose citation doesn't parse as "40 CFR Part N"
+ * falls back to its raw issuing_body, same fallback as before.
  */
-export function groupFederalRegulations<T extends Pick<Provision, "id" | "issuing_body">>(
+export function groupFederalRegulations<T extends Pick<Provision, "id" | "issuing_body" | "citation">>(
   regs: T[]
 ): RegulationGroup<T>[] {
-  const byBody = new Map<string, T[]>();
+  const byPart = new Map<string, T[]>();
   for (const r of regs) {
-    const key = r.issuing_body || OTHER_HEADING;
-    const arr = byBody.get(key);
+    const key = r.citation.match(/^40 CFR Part (\d+)/)?.[1] ?? r.issuing_body ?? OTHER_HEADING;
+    const arr = byPart.get(key);
     if (arr) arr.push(r);
-    else byBody.set(key, [r]);
+    else byPart.set(key, [r]);
   }
-  return Array.from(byBody.entries()).map(([body, list]) => ({
-    key: body,
-    heading: body === "EPA" ? "EPA (40 CFR Part 60)" : body,
-    regs: list,
-  }));
+  return Array.from(byPart.entries())
+    .sort(([a], [b]) => (Number(a) || 0) - (Number(b) || 0))
+    .map(([part, list]) => ({
+      key: part,
+      heading: CFR_PART_HEADINGS[part] ?? (/^\d+$/.test(part) ? `EPA — 40 CFR Part ${part}` : part),
+      regs: list,
+    }));
 }
 
 /** Every top-level regulation currently in the corpus (for the /regulations index). */

@@ -365,6 +365,99 @@ REG_PROMPT_HINTS: dict[str, str] = {
     ),
 }
 
+# APCD general permits GP01-GP12 all share one hint (Division-issued permit
+# terms, not regulation text). Registered under all eleven keys so
+# REG_PROMPT_HINTS[key] and system_prompt_for() work unchanged for each --
+# this is a no-op for every other reg.
+_GP_HINT = (
+    "This row is from an APCD-issued Colorado general permit (GP01-GP12) for "
+    "oil & gas sources -- Division-issued permit terms, not regulation text. "
+    "Say \"the permit requires\" or \"permit condition\", never \"the "
+    "regulation requires\". \"Division\" means the Air Pollution Control "
+    "Division (APCD); \"Commission\" means the Air Quality Control "
+    "Commission (AQCC); \"the owner or operator\" is the registrant under "
+    "this permit. Quote emission limits in tpy, engine rates in g/hp-hr, "
+    "ppmvd concentrations, record-retention periods, and deadlines exactly "
+    "as written -- never round or convert them. \"Condition X\" (e.g. "
+    "\"Condition II.A.6\") cross-references another condition within this "
+    "same permit, not a different regulation. Use AOS (Alternative "
+    "Operating Scenario), NOS (Notice of Startup), RICE, PSD/NANSR, and "
+    "Disproportionately Impacted (DI) Communities only as this permit's own "
+    "text defines them. GP09 covers attainment areas and GP10 nonattainment "
+    "areas; both closed to new registrations July 15, 2026 but still bind "
+    "existing registrants, and GP12 replaces them -- state that only when "
+    "the text says so. For an emission-limit table row, point to the "
+    "applicable table and its numbers rather than restating every cell."
+)
+for _gp_key in (
+    "gp01", "gp02", "gp03", "gp05", "gp06", "gp07",
+    "gp08", "gp09", "gp10", "gp11", "gp12",
+):
+    REG_PROMPT_HINTS[_gp_key] = _GP_HINT
+
+REG_PROMPT_HINTS["jjjj"] = (
+    "This row is from 40 CFR Part 60, Subpart JJJJ (spark ignition "
+    "stationary internal combustion engines). \"Administrator\" means the "
+    "EPA Administrator, not a state official; \"you\" means the owner or "
+    "operator, second person throughout. JJJJ covers spark-ignition (SI) "
+    "engines only -- never describe it as covering compression-ignition "
+    "engines (Subpart IIII) or conflate it with ZZZZ's NESHAP requirements. "
+    "Emergency and non-emergency engines are regulated separately, often in "
+    "adjacent similarly-titled sections -- do not merge their requirements. "
+    "Model-year, horsepower/kW, and displacement thresholds and the "
+    "g/hp-hr, ppmvd, and other numeric limits live in the Tables (1-4) -- "
+    "quote them verbatim and point to the table rather than restating every "
+    "cell. RICE, 2SLB/4SLB/4SRB, NSCR, and oxidation catalyst are defined "
+    "terms of art -- expand on first use, don't reword afterward. Engines "
+    "certify to named EPA certification parts (e.g. 40 CFR Part 1048, "
+    "1054, 1060, 1065, 1068) -- name the part, don't describe its "
+    "contents. \"This subpart\" means Subpart JJJJ itself, never Part 60's "
+    "General Provisions (Subpart A). Say nothing about Colorado or any "
+    "state agency unless the text itself mentions it."
+)
+
+REG_PROMPT_HINTS["iiii"] = (
+    "This row is from 40 CFR Part 60, Subpart IIII (compression ignition "
+    "stationary internal combustion engines). \"Administrator\" means the "
+    "EPA Administrator, not a state official; \"you\" means the owner or "
+    "operator, second person throughout. IIII covers compression-ignition "
+    "(CI) engines only -- never describe it as covering spark-ignition "
+    "engines (Subpart JJJJ) or conflate it with ZZZZ's NESHAP "
+    "requirements. Emergency and non-emergency engines are regulated "
+    "separately, often in adjacent similarly-titled sections (e.g. section "
+    "60.4201 non-emergency vs. 60.4202 emergency) -- do not merge their "
+    "requirements. Model-year, horsepower/kW, and displacement thresholds "
+    "and the g/hp-hr and other numeric limits live in the Tables (1-8) -- "
+    "quote them verbatim and point to the table rather than restating every "
+    "cell. RICE is a defined term of art -- expand on first use, don't "
+    "reword afterward. Engines certify to named EPA certification parts "
+    "(e.g. 40 CFR Part 1039, 1042, 1068) -- name the part, don't describe "
+    "its contents. \"This subpart\" means Subpart IIII itself, never Part "
+    "60's General Provisions (Subpart A). Say nothing about Colorado or "
+    "any state agency unless the text itself mentions it."
+)
+
+REG_PROMPT_HINTS["zzzz"] = (
+    "This row is from 40 CFR Part 63, Subpart ZZZZ (NESHAP, stationary "
+    "reciprocating internal combustion engines). \"Administrator\" means "
+    "the EPA Administrator, not a state official; \"you\" means the owner "
+    "or operator, second person throughout. ZZZZ covers both "
+    "spark-ignition (SI, Subpart JJJJ) and compression-ignition (CI, "
+    "Subpart IIII) engines -- never conflate ZZZZ with JJJJ's or IIII's "
+    "standards, and keep SI and CI distinct within ZZZZ. Emergency and "
+    "non-emergency engines are regulated separately. Area vs. major source "
+    "of HAP is load-bearing (Tables 2c vs. 2d) -- name the source type "
+    "only when the text specifies one. RICE, HAP, 2SLB/4SLB/4SRB, NSCR, "
+    "and oxidation catalyst are terms of art -- expand on first use only. "
+    "ZZZZ allows CO as a surrogate for formaldehyde in some tables -- say "
+    "so only when the text states it; otherwise treat them as independent. "
+    "Numeric limits live in Tables 1a-8 -- quote verbatim, point to the "
+    "table. Engines certify to named EPA parts (40 CFR Part 1039, 1042, "
+    "1048, 1054, 1060, 1065, 1068) -- name, don't describe. \"This "
+    "subpart\" means ZZZZ, never Part 63's General Provisions. Say nothing "
+    "about Colorado unless the text says so."
+)
+
 
 # --------------------------------------------------------------------------
 # Text helpers

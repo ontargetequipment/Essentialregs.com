@@ -22,19 +22,27 @@ export type RegulationListRow = Pick<Provision, "id" | "citation" | "title" | "i
  * as the Colorado regulations, so stored cross-reference hrefs keep working.
  *
  * `mode` controls grouping: "state" groups by issuing_body with the AQCC/
- * ECMC headings and AQCC ordering (see groupColoradoRegulations), "federal"
- * groups by issuing_body with an EPA heading (see groupFederalRegulations),
- * and the default "flat" renders one ungrouped list, same as before grouping
+ * GP/ECMC headings and AQCC ordering (see groupColoradoRegulations),
+ * "federal" groups by CFR part (see groupFederalRegulations), and the
+ * default "flat" renders one ungrouped list, same as before grouping
  * existed.
+ *
+ * `appliesTo` is an optional one-line "Applies to ..." description per
+ * regulation number (keyed the same way regulationNumber() derives it from
+ * the id, e.g. "gp02"), rendered under the card's subtitle. Used only by the
+ * /general-permits page -- display copy that isn't stored data, so it's
+ * passed in rather than taught to regulationCardInfo.
  */
 export function RegulationList({
   regs,
   access,
   mode = "flat",
+  appliesTo,
 }: {
   regs: RegulationListRow[];
   access: AccessStatus;
   mode?: "flat" | "state" | "federal";
+  appliesTo?: Record<string, string>;
 }) {
   const groups: RegulationGroup<RegulationListRow>[] =
     mode === "state"
@@ -79,7 +87,17 @@ export function RegulationList({
         <div className="mt-8" key={group.key}>
           {group.heading && (
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              {group.heading}
+              {/* The Colorado index's "APCD General Permits" group heading
+                  links out to the dedicated /general-permits page (its own
+                  intro copy + "Applies to" lines); every other heading here
+                  is a plain label. */}
+              {mode === "state" && group.key === "gp" ? (
+                <Link href="/general-permits" className="hover:text-zinc-700 hover:underline">
+                  {group.heading}
+                </Link>
+              ) : (
+                group.heading
+              )}
             </h2>
           )}
           <div className="flex flex-col gap-4">
@@ -98,6 +116,9 @@ export function RegulationList({
                   <p className="mt-1 font-semibold text-zinc-900">{info.title}</p>
                   {info.subtitle && (
                     <p className="mt-0.5 text-xs text-zinc-500">{info.subtitle}</p>
+                  )}
+                  {appliesTo?.[reg] && (
+                    <p className="mt-2 text-sm text-zinc-600">Applies to {appliesTo[reg]}.</p>
                   )}
                 </Link>
               );

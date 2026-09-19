@@ -1,0 +1,1245 @@
+<?xml version="1.0"?>
+<DIV6 N="IIII" TYPE="SUBPART" VOLUME="8" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subpart-IIII&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII&amp;quot;}">
+<HEAD>Subpart IIII&#x2014;Standards of Performance for Stationary Compression Ignition Internal Combustion Engines</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>71 FR 39172, July 11, 2006, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV7 N="ECFR562bcbb5beef8d3" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFR562bcbb5beef8d3&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - What This Subpart Covers&amp;quot;}">
+<HEAD>What This Subpart Covers</HEAD>
+<DIV8 N="60.4200" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4200&quot;,&quot;citation&quot;:&quot;40 CFR 60.4200&quot;}">
+<HEAD>&#xA7; 60.4200 Am I subject to this subpart?</HEAD>
+<P>(a) The provisions of this subpart are applicable to manufacturers, owners, and operators of stationary compression ignition (CI) internal combustion engines (ICE) and other persons as specified in paragraphs (a)(1) through (4) of this section. For the purposes of this subpart, the date that construction commences is the date the engine is ordered by the owner or operator.</P>
+<P>(1) Manufacturers of stationary CI ICE with a displacement of less than 30 liters per cylinder where the model year is:</P>
+<P>(i) 2007 or later, for engines that are not fire pump engines;</P>
+<P>(ii) The model year listed in Table 3 to this subpart or later model year, for fire pump engines.</P>
+<P>(2) Owners and operators of stationary CI ICE that commence construction after July 11, 2005, where the stationary CI ICE are:</P>
+<P>(i) Manufactured after April 1, 2006, and are not fire pump engines, or</P>
+<P>(ii) Manufactured as a certified National Fire Protection Association (NFPA) fire pump engine after July 1, 2006.</P>
+<P>(3) Owners and operators of any stationary CI ICE that are modified or reconstructed after July 11, 2005 and any person that modifies or reconstructs any stationary CI ICE after July 11, 2005.</P>
+<P>(4) The provisions of &#xA7; 60.4208 of this subpart are applicable to all owners and operators of stationary CI ICE that commence construction after July 11, 2005.</P>
+<P>(b) The provisions of this subpart are not applicable to stationary CI ICE being tested at a stationary CI ICE test cell/stand.</P>
+<P>(c) If you are an owner or operator of an area source subject to this subpart, you are exempt from the obligation to obtain a permit under 40 CFR part 70 or 40 CFR part 71, provided you are not required to obtain a permit under 40 CFR 70.3(a) or 40 CFR 71.3(a) for a reason other than your status as an area source under this subpart. Notwithstanding the previous sentence, you must continue to comply with the provisions of this subpart applicable to area sources.</P>
+<P>(d) Stationary CI ICE may be eligible for exemption from the requirements of this subpart as described in 40 CFR part 1068, subpart C, except that owners and operators, as well as manufacturers, may be eligible to request an exemption for national security.</P>
+<P>(e) Owners and operators of facilities with CI ICE that are acting as temporary replacement units and that are located at a stationary source for less than 1 year and that have been properly certified as meeting the standards that would be applicable to such engine under the appropriate nonroad engine provisions, are not required to meet any other provisions under this subpart with regard to such engines.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37967, June 28, 2011; 86 FR 34357, June 29, 2021]
+</CITA>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFRbc431ac3144e6eb" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFRbc431ac3144e6eb&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - Emission Standards for Manufacturers&amp;quot;}">
+<HEAD>Emission Standards for Manufacturers</HEAD>
+<DIV8 N="60.4201" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4201&quot;,&quot;citation&quot;:&quot;40 CFR 60.4201&quot;}">
+<HEAD>&#xA7; 60.4201 What emission standards must I meet for non-emergency engines if I am a stationary CI internal combustion engine manufacturer?</HEAD>
+<P>(a) Stationary CI internal combustion engine manufacturers must certify their 2007 model year and later non-emergency stationary CI ICE with a maximum engine power less than or equal to 2,237 kilowatt (KW) (3,000 horsepower (HP)) and a displacement of less than 10 liters per cylinder to the certification emission standards for new nonroad CI engines in 40 CFR 1039.101, 1039.102, 1039.104, 1039.105, 1039.107, and 1039.115 and 40 CFR part 1039, appendix I, as applicable, for all pollutants, for the same model year and maximum engine power.</P>
+<P>(b) Stationary CI internal combustion engine manufacturers must certify their 2007 through 2010 model year non-emergency stationary CI ICE with a maximum engine power greater than 2,237 KW (3,000 HP) and a displacement of less than 10 liters per cylinder to the emission standards in table 1 to this subpart, for all pollutants, for the same maximum engine power.</P>
+<P>(c) Stationary CI internal combustion engine manufacturers must certify their 2011 model year and later non-emergency stationary CI ICE with a maximum engine power greater than 2,237 KW (3,000 HP) and a displacement of less than 10 liters per cylinder to the certification emission standards for new nonroad CI engines in 40 CFR 1039.101, 40 CFR 1039.102, 40 CFR 1039.104, 40 CFR 1039.105, 40 CFR 1039.107, and 40 CFR 1039.115, as applicable, for all pollutants, for the same maximum engine power.</P>
+<P>(d) Stationary CI internal combustion engine manufacturers must certify the following non-emergency stationary CI ICE to the appropriate Tier 2 emission standards for new marine CI engines as described in 40 CFR part 1042, appendix I, for all pollutants, for the same displacement and rated power:</P>
+<P>(1) Their 2007 model year through 2012 non-emergency stationary CI ICE with a displacement of greater than or equal to 10 liters per cylinder and less than 30 liters per cylinder;</P>
+<P>(2) Their 2013 model year non-emergency stationary CI ICE with a maximum engine power greater than or equal to 3,700 KW (4,958 HP) and a displacement of greater than or equal to 10 liters per cylinder and less than 15 liters per cylinder; and</P>
+<P>(3) Their 2013 model year non-emergency stationary CI ICE with a displacement of greater than or equal to 15 liters per cylinder and less than 30 liters per cylinder.</P>
+<P>(e) Stationary CI internal combustion engine manufacturers must certify the following non-emergency stationary CI ICE to the certification emission standards and other requirements for new marine CI engines in 40 CFR 1042.101, 40 CFR 1042.107, 40 CFR 1042.110, 40 CFR 1042.115, 40 CFR 1042.120, and 40 CFR 1042.145, as applicable, for all pollutants, for the same displacement and maximum engine power:</P>
+<P>(1) Their 2013 model year non-emergency stationary CI ICE with a maximum engine power less than 3,700 KW (4,958 HP) and a displacement of greater than or equal to 10 liters per cylinder and less than 15 liters per cylinder; and</P>
+<P>(2) Their 2014 model year and later non-emergency stationary CI ICE with a displacement of greater than or equal to 10 liters per cylinder and less than 30 liters per cylinder.</P>
+<P>(f) Notwithstanding the requirements in paragraphs (a) through (c) of this section, stationary non-emergency CI ICE identified in paragraphs (a) and (c) of this section may be certified to the provisions of 40 CFR part 1042 for commercial engines that are applicable for the engine's model year, displacement, power density, and maximum engine power if the engines will be used solely in either or both of the following locations:</P>
+<P>(1) Remote areas of Alaska; and</P>
+<P>(2) Marine offshore installations.</P>
+<P>(g) Notwithstanding the requirements in paragraphs (a) through (f) of this section, stationary CI internal combustion engine manufacturers are not required to certify reconstructed engines; however manufacturers may elect to do so. The reconstructed engine must be certified to the emission standards specified in paragraphs (a) through (e) of this section that are applicable to the model year, maximum engine power, and displacement of the reconstructed stationary CI ICE.</P>
+<P>(h) Stationary CI ICE certified to the standards in 40 CFR part 1039 and equipped with auxiliary emission control devices (AECDs) as specified in 40 CFR 1039.665 must meet the Tier 1 certification emission standards for new nonroad CI engines in 40 CFR part 1039, appendix I, while the AECD is activated during a qualified emergency situation. A qualified emergency situation is defined in 40 CFR 1039.665. When the qualified emergency situation has ended and the AECD is deactivated, the engine must resume meeting the otherwise applicable emission standard specified in this section.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37967, June 28, 2011; 81 FR 44219, July 7, 2016; 86 FR 34357, June 29, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="60.4202" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4202&quot;,&quot;citation&quot;:&quot;40 CFR 60.4202&quot;}">
+<HEAD>&#xA7; 60.4202 What emission standards must I meet for emergency engines if I am a stationary CI internal combustion engine manufacturer?</HEAD>
+<P>(a) Stationary CI internal combustion engine manufacturers must certify their 2007 model year and later emergency stationary CI ICE with a maximum engine power less than or equal to 2,237 KW (3,000 HP) and a displacement of less than 10 liters per cylinder that are not fire pump engines to the emission standards specified in paragraphs (a)(1) through (2) of this section.</P>
+<P>(1) For engines with a maximum engine power less than 37 KW (50 HP):</P>
+<P>(i) The Tier 2 emission standards for new nonroad CI engines for the appropriate rated power as described in 40 CFR part 1039, appendix I, for all pollutants and the smoke standards as specified in 40 CFR 1039.105 for model year 2007 engines; and</P>
+<P>(ii) The certification emission standards for new nonroad CI engines in 40 CFR 1039.104, 40 CFR 1039.105, 40 CFR 1039.107, 40 CFR 1039.115, and table 2 to this subpart, for 2008 model year and later engines.</P>
+<P>(2) For engines with a rated power greater than or equal to 37 KW (50 HP), the Tier 2 or Tier 3 emission standards for new nonroad CI engines for the same rated power as described in 40 CFR part 1039, appendix I, for all pollutants and the smoke standards as specified in 40 CFR 1039.105 beginning in model year 2007.</P>
+<P>(b) Stationary CI internal combustion engine manufacturers must certify their 2007 model year and later emergency stationary CI ICE with a maximum engine power greater than 2,237 KW (3,000 HP) and a displacement of less than 10 liters per cylinder that are not fire pump engines to the emission standards specified in paragraphs (b)(1) through (2) of this section.</P>
+<P>(1) For 2007 through 2010 model years, the emission standards in table 1 to this subpart, for all pollutants, for the same maximum engine power.</P>
+<P>(2) For 2011 model year and later, the Tier 2 emission standards as described in 40 CFR part 1039, appendix I, for all pollutants and the smoke standards as specified in 40 CFR 1039.105.</P>
+<P>(c) [Reserved]</P>
+<P>(d) Beginning with the model years in table 3 to this subpart, stationary CI internal combustion engine manufacturers must certify their fire pump stationary CI ICE to the emission standards in table 4 to this subpart, for all pollutants, for the same model year and NFPA nameplate power.</P>
+<P>(e) Stationary CI internal combustion engine manufacturers must certify the following emergency stationary CI ICE that are not fire pump engines to the appropriate Tier 2 emission standards for new marine CI engines as described in 40 CFR part 1042, appendix I, for all pollutants, for the same displacement and rated power:</P>
+<P>(1) Their 2007 model year through 2012 emergency stationary CI ICE with a displacement of greater than or equal to 10 liters per cylinder and less than 30 liters per cylinder;</P>
+<P>(2) Their 2013 model year and later emergency stationary CI ICE with a maximum engine power greater than or equal to 3,700 KW (4,958 HP) and a displacement of greater than or equal to 10 liters per cylinder and less than 15 liters per cylinder;</P>
+<P>(3) Their 2013 model year emergency stationary CI ICE with a displacement of greater than or equal to 15 liters per cylinder and less than 30 liters per cylinder; and</P>
+<P>(4) Their 2014 model year and later emergency stationary CI ICE with a maximum engine power greater than or equal to 2,000 KW (2,682 HP) and a displacement of greater than or equal to 15 liters per cylinder and less than 30 liters per cylinder.</P>
+<P>(f) Stationary CI internal combustion engine manufacturers must certify the following emergency stationary CI ICE to the certification emission standards and other requirements applicable to Tier 3 new marine CI engines in 40 CFR 1042.101, 40 CFR 1042.107, 40 CFR 1042.115, 40 CFR 1042.120, and 40 CFR 1042.145, for all pollutants, for the same displacement and maximum engine power:</P>
+<P>(1) Their 2013 model year and later emergency stationary CI ICE with a maximum engine power less than 3,700 KW (4,958 HP) and a displacement of greater than or equal to 10 liters per cylinder and less than 15 liters per cylinder; and</P>
+<P>(2) Their 2014 model year and later emergency stationary CI ICE with a maximum engine power less than 2,000 KW (2,682 HP) and a displacement of greater than or equal to 15 liters per cylinder and less than 30 liters per cylinder.</P>
+<P>(g) Notwithstanding the requirements in paragraphs (a) through (d) of this section, stationary emergency CI ICE identified in paragraphs (a) and (c) of this section may be certified to the provisions of 40 CFR part 1042 for commercial engines that are applicable for the engine's model year, displacement, power density, and maximum engine power if the engines will be used solely in either or both of the locations identified in paragraphs (g)(1) and (2) of this section. Engines that would be subject to the Tier 4 standards in 40 CFR part 1042 that are used solely in either or both of the locations identified in paragraphs (g)(1) and (2) of this section may instead continue to be certified to the previous tier of standards in 40 CFR part 1042. The previous tier is Tier 3 in most cases; however, the previous tier is Tier 2 if there are no Tier 3 standards specified for engines of a certain size or power rating.</P>
+<P>(1) Remote areas of Alaska; and</P>
+<P>(2) Marine offshore installations.</P>
+<P>(h) Notwithstanding the requirements in paragraphs (a) through (f) of this section, stationary CI internal combustion engine manufacturers are not required to certify reconstructed engines; however manufacturers may elect to do so. The reconstructed engine must be certified to the emission standards specified in paragraphs (a) through (f) of this section that are applicable to the model year, maximum engine power and displacement of the reconstructed emergency stationary CI ICE.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37968, June 28, 2011; 81 FR 44219, July 7, 2016; 86 FR 34358, June 29, 2021; 88 FR 4471, Jan. 24, 2023]
+</CITA>
+</DIV8>
+
+<DIV8 N="60.4203" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4203&quot;,&quot;citation&quot;:&quot;40 CFR 60.4203&quot;}">
+<HEAD>&#xA7; 60.4203 How long must my engines meet the emission standards if I am a manufacturer of stationary CI internal combustion engines?</HEAD>
+<P>Engines manufactured by stationary CI internal combustion engine manufacturers must meet the emission standards as required in &#xA7;&#xA7; 60.4201 and 60.4202 during the certified emissions life of the engines.</P>
+<CITA TYPE="N">[76 FR 37968, June 28, 2011]
+</CITA>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFR88c698f75c6bffa" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFR88c698f75c6bffa&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - Emission Standards for Owners and Operators&amp;quot;}">
+<HEAD>Emission Standards for Owners and Operators</HEAD>
+<DIV8 N="60.4204" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4204&quot;,&quot;citation&quot;:&quot;40 CFR 60.4204&quot;}">
+<HEAD>&#xA7; 60.4204 What emission standards must I meet for non-emergency engines if I am an owner or operator of a stationary CI internal combustion engine?</HEAD>
+<P>(a) Owners and operators of pre-2007 model year non-emergency stationary CI ICE with a displacement of less than 10 liters per cylinder must comply with the emission standards in table 1 to this subpart. Owners and operators of pre-2007 model year non-emergency stationary CI ICE with a displacement of greater than or equal to 10 liters per cylinder and less than 30 liters per cylinder must comply with the Tier 1 emission standards in 40 CFR part 1042, appendix I.</P>
+<P>(b) Owners and operators of 2007 model year and later non-emergency stationary CI ICE with a displacement of less than 30 liters per cylinder must comply with the emission standards for new CI engines in &#xA7; 60.4201 for their 2007 model year and later stationary CI ICE, as applicable.</P>
+<P>(c) Owners and operators of non-emergency stationary CI engines with a displacement of greater than or equal to 30 liters per cylinder must meet the following requirements:</P>
+<P>(1) For engines installed prior to January 1, 2012, limit the emissions of NO<E T="52">X</E> in the stationary CI internal combustion engine exhaust to the following:</P>
+<P>(i) 17.0 grams per kilowatt-hour (g/KW-hr) (12.7 grams per horsepower-hr (g/HP-hr)) when maximum engine speed is less than 130 revolutions per minute (rpm);</P>
+<P>(ii) 45 &#xB7; n<E T="51">&#x2212;0.2</E> g/KW-hr (34 &#xB7; n<E T="51">&#x2212;0.2</E> g/HP-hr) when maximum engine speed is 130 or more but less than 2,000 rpm, where n is maximum engine speed; and</P>
+<P>(iii) 9.8 g/KW-hr (7.3 g/HP-hr) when maximum engine speed is 2,000 rpm or more.</P>
+<P>(2) For engines installed on or after January 1, 2012 and before January 1, 2016, limit the emissions of NO<E T="52">X</E> in the stationary CI internal combustion engine exhaust to the following:</P>
+<P>(i) 14.4 g/KW-hr (10.7 g/HP-hr) when maximum engine speed is less than 130 rpm;</P>
+<P>(ii) 44 &#xB7; n<E T="51">&#x2212;0.23</E> g/KW-hr (33 &#xB7; n<E T="51">&#x2212;0.23</E> g/HP-hr) when maximum engine speed is greater than or equal to 130 but less than 2,000 rpm and where n is maximum engine speed; and</P>
+<P>(iii) 7.7 g/KW-hr (5.7 g/HP-hr) when maximum engine speed is greater than or equal to 2,000 rpm.</P>
+<P>(3) For engines installed on or after January 1, 2016, limit the emissions of NO<E T="52">X</E> in the stationary CI internal combustion engine exhaust to the following:</P>
+<P>(i) 3.4 g/KW-hr (2.5 g/HP-hr) when maximum engine speed is less than 130 rpm;</P>
+<P>(ii) 9.0 &#xB7; n<E T="51">&#x2212;0.20</E> g/KW-hr (6.7 &#xB7; n<E T="51">&#x2212;0.20</E> g/HP-hr) where n (maximum engine speed) is 130 or more but less than 2,000 rpm; and</P>
+<P>(iii) 2.0 g/KW-hr (1.5 g/HP-hr) where maximum engine speed is greater than or equal to 2,000 rpm.</P>
+<P>(4) Reduce particulate matter (PM) emissions by 60 percent or more, or limit the emissions of PM in the stationary CI internal combustion engine exhaust to 0.15 g/KW-hr (0.11 g/HP-hr).</P>
+<P>(d) Owners and operators of non-emergency stationary CI ICE with a displacement of less than 30 liters per cylinder who conduct performance tests in-use must meet the not-to-exceed (NTE) standards as indicated in &#xA7; 60.4212.</P>
+<P>(e) Owners and operators of any modified or reconstructed non-emergency stationary CI ICE subject to this subpart must meet the emission standards applicable to the model year, maximum engine power, and displacement of the modified or reconstructed non-emergency stationary CI ICE that are specified in paragraphs (a) through (d) of this section.</P>
+<P>(f) Owners and operators of stationary CI ICE certified to the standards in 40 CFR part 1039 and equipped with AECDs as specified in 40 CFR 1039.665 must meet the Tier 1 certification emission standards for new nonroad CI engines in 40 CFR part 1039, appendix I, while the AECD is activated during a qualified emergency situation. A qualified emergency situation is defined in 40 CFR 1039.665. When the qualified emergency situation has ended and the AECD is deactivated, the engine must resume meeting the otherwise applicable emission standard specified in this section.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37968, June 28, 2011; 81 FR 44219, July 7, 2016; 86 FR 34358, June 29, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="60.4205" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4205&quot;,&quot;citation&quot;:&quot;40 CFR 60.4205&quot;}">
+<HEAD>&#xA7; 60.4205 What emission standards must I meet for emergency engines if I am an owner or operator of a stationary CI internal combustion engine?</HEAD>
+<P>(a) Owners and operators of pre-2007 model year emergency stationary CI ICE with a displacement of less than 10 liters per cylinder that are not fire pump engines must comply with the emission standards in Table 1 to this subpart. Owners and operators of pre-2007 model year emergency stationary CI ICE with a displacement of greater than or equal to 10 liters per cylinder and less than 30 liters per cylinder that are not fire pump engines must comply with the Tier 1 emission standards in 40 CFR part 1042, appendix I.</P>
+<P>(b) Owners and operators of 2007 model year and later emergency stationary CI ICE with a displacement of less than 30 liters per cylinder that are not fire pump engines must comply with the emission standards for new nonroad CI engines in &#xA7; 60.4202, for all pollutants, for the same model year and maximum engine power for their 2007 model year and later emergency stationary CI ICE.</P>
+<P>(c) Owners and operators of fire pump engines with a displacement of less than 30 liters per cylinder must comply with the emission standards in table 4 to this subpart, for all pollutants.</P>
+<P>(d) Owners and operators of emergency stationary CI engines with a displacement of greater than or equal to 30 liters per cylinder must meet the requirements in this section.</P>
+<P>(1) For engines installed prior to January 1, 2012, limit the emissions of NO<E T="52">X</E> in the stationary CI internal combustion engine exhaust to the following:</P>
+<P>(i) 17.0 g/KW-hr (12.7 g/HP-hr) when maximum engine speed is less than 130 rpm;</P>
+<P>(ii) 45 &#xB7; n<E T="51">&#x2212;0.2</E> g/KW-hr (34 &#xB7; n<E T="51">&#x2212;0.2</E> g/HP-hr) when maximum engine speed is 130 or more but less than 2,000 rpm, where n is maximum engine speed; and</P>
+<P>(iii) 9.8 g/kW-hr (7.3 g/HP-hr) when maximum engine speed is 2,000 rpm or more.</P>
+<P>(2) For engines installed on or after January 1, 2012, limit the emissions of NO<E T="52">X</E> in the stationary CI internal combustion engine exhaust to the following:</P>
+<P>(i) 14.4 g/KW-hr (10.7 g/HP-hr) when maximum engine speed is less than 130 rpm;</P>
+<P>(ii) 44 &#xB7; n<E T="51">&#x2212;0.23</E> g/KW-hr (33 &#xB7; n<E T="51">&#x2212;0.23</E> g/HP-hr) when maximum engine speed is greater than or equal to 130 but less than 2,000 rpm and where n is maximum engine speed; and</P>
+<P>(iii) 7.7 g/KW-hr (5.7 g/HP-hr) when maximum engine speed is greater than or equal to 2,000 rpm.</P>
+<P>(3) Limit the emissions of PM in the stationary CI internal combustion engine exhaust to 0.40 g/KW-hr (0.30 g/HP-hr).</P>
+<P>(e) Owners and operators of emergency stationary CI ICE with a displacement of less than 30 liters per cylinder who conduct performance tests in-use must meet the NTE standards as indicated in &#xA7; 60.4212.</P>
+<P>(f) Owners and operators of any modified or reconstructed emergency stationary CI ICE subject to this subpart must meet the emission standards applicable to the model year, maximum engine power, and displacement of the modified or reconstructed CI ICE that are specified in paragraphs (a) through (e) of this section.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37969, June 28, 2011; 86 FR 34358, June 29, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="60.4206" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4206&quot;,&quot;citation&quot;:&quot;40 CFR 60.4206&quot;}">
+<HEAD>&#xA7; 60.4206 How long must I meet the emission standards if I am an owner or operator of a stationary CI internal combustion engine?</HEAD>
+<P>Owners and operators of stationary CI ICE must operate and maintain stationary CI ICE that achieve the emission standards as required in &#xA7;&#xA7; 60.4204 and 60.4205 over the entire life of the engine.</P>
+<CITA TYPE="N">[76 FR 37969, June 28, 2011]
+</CITA>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFR8505232348bf60c" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFR8505232348bf60c&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - Fuel Requirements for Owners and Operators&amp;quot;}">
+<HEAD>Fuel Requirements for Owners and Operators</HEAD>
+<DIV8 N="60.4207" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4207&quot;,&quot;citation&quot;:&quot;40 CFR 60.4207&quot;}">
+<HEAD>&#xA7; 60.4207 What fuel requirements must I meet if I am an owner or operator of a stationary CI internal combustion engine subject to this subpart?</HEAD>
+<P>(a) [Reserved]</P>
+<P>(b) Beginning October 1, 2010, owners and operators of stationary CI ICE subject to this subpart with a displacement of less than 30 liters per cylinder that use diesel fuel must use diesel fuel that meets the requirements of 40 CFR 1090.305 for nonroad diesel fuel, except that any existing diesel fuel purchased (or otherwise obtained) prior to October 1, 2010, may be used until depleted.</P>
+<P>(c) [Reserved]</P>
+<P>(d) Beginning June 1, 2012, owners and operators of stationary CI ICE subject to this subpart with a displacement of greater than or equal to 30 liters per cylinder must use diesel fuel that meets a maximum per-gallon sulfur content of 1,000 parts per million (ppm).</P>
+<P>(e) Stationary CI ICE that have a national security exemption under &#xA7; 60.4200(d) are also exempt from the fuel requirements in this section.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37969, June 28, 2011; 78 FR 6695, Jan. 30, 2013; 85 FR 78463, Dec. 4, 2020]
+</CITA>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFR5533fdee060a9e4" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFR5533fdee060a9e4&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - Other Requirements for Owners and Operators&amp;quot;}">
+<HEAD>Other Requirements for Owners and Operators</HEAD>
+<DIV8 N="60.4208" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4208&quot;,&quot;citation&quot;:&quot;40 CFR 60.4208&quot;}">
+<HEAD>&#xA7; 60.4208 What is the deadline for importing or installing stationary CI ICE produced in previous model years?</HEAD>
+<P>(a) After December 31, 2008, owners and operators may not install stationary CI ICE (excluding fire pump engines) that do not meet the applicable requirements for 2007 model year engines.</P>
+<P>(b) After December 31, 2009, owners and operators may not install stationary CI ICE with a maximum engine power of less than 19 KW (25 HP) (excluding fire pump engines) that do not meet the applicable requirements for 2008 model year engines.</P>
+<P>(c) After December 31, 2014, owners and operators may not install non-emergency stationary CI ICE with a maximum engine power of greater than or equal to 19 KW (25 HP) and less than 56 KW (75 HP) that do not meet the applicable requirements for 2013 model year non-emergency engines.</P>
+<P>(d) After December 31, 2013, owners and operators may not install non-emergency stationary CI ICE with a maximum engine power of greater than or equal to 56 KW (75 HP) and less than 130 KW (175 HP) that do not meet the applicable requirements for 2012 model year non-emergency engines.</P>
+<P>(e) After December 31, 2012, owners and operators may not install non-emergency stationary CI ICE with a maximum engine power of greater than or equal to 130 KW (175 HP), including those above 560 KW (750 HP), that do not meet the applicable requirements for 2011 model year non-emergency engines.</P>
+<P>(f) After December 31, 2016, owners and operators may not install non-emergency stationary CI ICE with a maximum engine power of greater than or equal to 560 KW (750 HP) that do not meet the applicable requirements for 2015 model year non-emergency engines.</P>
+<P>(g) After December 31, 2018, owners and operators may not install non-emergency stationary CI ICE with a maximum engine power greater than or equal to 600 KW (804 HP) and less than 2,000 KW (2,680 HP) and a displacement of greater than or equal to 10 liters per cylinder and less than 30 liters per cylinder that do not meet the applicable requirements for 2017 model year non-emergency engines.</P>
+<P>(h) In addition to the requirements specified in &#xA7;&#xA7; 60.4201, 60.4202, 60.4204, and 60.4205, it is prohibited to import stationary CI ICE with a displacement of less than 30 liters per cylinder that do not meet the applicable requirements specified in paragraphs (a) through (g) of this section after the dates specified in paragraphs (a) through (g) of this section.</P>
+<P>(i) The requirements of this section do not apply to owners or operators of stationary CI ICE that have been modified, reconstructed, and do not apply to engines that were removed from one existing location and reinstalled at a new location.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37969, June 28, 2011]
+</CITA>
+</DIV8>
+
+<DIV8 N="60.4209" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4209&quot;,&quot;citation&quot;:&quot;40 CFR 60.4209&quot;}">
+<HEAD>&#xA7; 60.4209 What are the monitoring requirements if I am an owner or operator of a stationary CI internal combustion engine?</HEAD>
+<P>If you are an owner or operator, you must meet the monitoring requirements of this section. In addition, you must also meet the monitoring requirements specified in &#xA7; 60.4211.</P>
+<P>(a) If you are an owner or operator of an emergency stationary CI internal combustion engine that does not meet the standards applicable to non-emergency engines, you must install a non-resettable hour meter prior to startup of the engine.</P>
+<P>(b) If you are an owner or operator of a stationary CI internal combustion engine equipped with a diesel particulate filter to comply with the emission standards in &#xA7; 60.4204, the diesel particulate filter must be installed with a backpressure monitor that notifies the owner or operator when the high backpressure limit of the engine is approached.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37969, June 28, 2011]
+</CITA>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFR7cc160b57a360ac" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFR7cc160b57a360ac&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - Compliance Requirements&amp;quot;}">
+<HEAD>Compliance Requirements</HEAD>
+<DIV8 N="60.4210" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4210&quot;,&quot;citation&quot;:&quot;40 CFR 60.4210&quot;}">
+<HEAD>&#xA7; 60.4210 What are my compliance requirements if I am a stationary CI internal combustion engine manufacturer?</HEAD>
+<P>(a) Stationary CI internal combustion engine manufacturers must certify their stationary CI ICE with a displacement of less than 10 liters per cylinder to the emission standards specified in &#xA7;&#xA7; 60.4201(a) through (c) and 60.4202(a), (b), and (d) using the certification procedures required in 40 CFR part 1039, subpart C, and must test their engines as specified in 40 CFR part 1039. For the purposes of this subpart, engines certified to the standards in Table 1 to this subpart shall be subject to the same certification procedures required for engines certified to the Tier 1 standards in 40 CFR part 1039, appendix I. For the purposes of this subpart, engines certified to the standards in Table 4 to this subpart shall be subject to the same certification procedures required for engines certified to the Tier 1 standards in 40 CFR part 1039, appendix I, except that engines with NFPA nameplate power of less than 37 KW (50 HP) certified to model year 2011 or later standards shall be subject to the same requirements as engines certified to the standards in 40 CFR part 1039.</P>
+<P>(b) Stationary CI internal combustion engine manufacturers must certify their stationary CI ICE with a displacement of greater than or equal to 10 liters per cylinder and less than 30 liters per cylinder to the emission standards specified in &#xA7;&#xA7; 60.4201(d) and (e) and 60.4202(e) and (f) using the certification procedures required in 40 CFR part 1042, subpart C, and must test their engines as specified in 40 CFR part 1042.</P>
+<P>(c) Stationary CI internal combustion engine manufacturers must meet the requirements of 40 CFR 1039.120, 1039.125, 1039.130, and 1039.135 and 40 CFR part 1068 for engines that are certified to the emission standards in 40 CFR part 1039. Stationary CI internal combustion engine manufacturers must meet the corresponding provisions of 40 CFR part 1042 for engines that would be covered by that part if they were nonroad (including marine) engines. Labels on such engines must refer to stationary engines, rather than or in addition to nonroad or marine engines, as appropriate. Stationary CI internal combustion engine manufacturers must label their engines according to paragraphs (c)(1) through (3) of this section.</P>
+<P>(1) Stationary CI internal combustion engines manufactured from January 1, 2006 to March 31, 2006 (January 1, 2006 to June 30, 2006 for fire pump engines), other than those that are part of certified engine families under the nonroad CI engine regulations, must be labeled according to 40 CFR 1039.20.</P>
+<P>(2) Stationary CI internal combustion engines manufactured from April 1, 2006 to December 31, 2006 (or, for fire pump engines, July 1, 2006 to December 31 of the year preceding the year listed in table 3 to this subpart) must be labeled according to paragraphs (c)(2)(i) through (iii) of this section:</P>
+<P>(i) Stationary CI internal combustion engines that are part of certified engine families under the nonroad regulations must meet the labeling requirements for nonroad CI engines, but do not have to meet the labeling requirements in 40 CFR 1039.20.</P>
+<P>(ii) Stationary CI internal combustion engines that meet Tier 1 requirements (or requirements for fire pumps) under this subpart, but do not meet the requirements applicable to nonroad CI engines must be labeled according to 40 CFR 1039.20. The engine manufacturer may add language to the label clarifying that the engine meets Tier 1 requirements (or requirements for fire pumps) of this subpart.</P>
+<P>(iii) Stationary CI internal combustion engines manufactured after April 1, 2006 that do not meet Tier 1 requirements of this subpart, or fire pumps engines manufactured after July 1, 2006 that do not meet the requirements for fire pumps under this subpart, may not be used in the U.S. If any such engines are manufactured in the U.S. after April 1, 2006 (July 1, 2006 for fire pump engines), they must be exported or must be brought into compliance with the appropriate standards prior to initial operation. The export provisions of 40 CFR 1068.230 would apply to engines for export and the manufacturers must label such engines according to 40 CFR 1068.230.</P>
+<P>(3) Stationary CI internal combustion engines manufactured after January 1, 2007 (for fire pump engines, after January 1 of the year listed in table 3 to this subpart, as applicable) must be labeled according to paragraphs (c)(3)(i) through (iii) of this section.</P>
+<P>(i) Stationary CI internal combustion engines that meet the requirements of this subpart and the corresponding requirements for nonroad (including marine) engines of the same model year and HP must be labeled according to the provisions in 40 CFR part 1039 or 1042, as appropriate.</P>
+<P>(ii) Stationary CI internal combustion engines that meet the requirements of this subpart, but are not certified to the standards applicable to nonroad (including marine) engines of the same model year and HP must be labeled according to the provisions in 40 CFR part 1039 or 1042, as appropriate, but the words &#x201C;stationary&#x201D; must be included instead of &#x201C;nonroad&#x201D; or &#x201C;marine&#x201D; on the label. In addition, such engines must be labeled according to 40 CFR 1039.20.</P>
+<P>(iii) Stationary CI internal combustion engines that do not meet the requirements of this subpart must be labeled according to 40 CFR 1068.230 and must be exported under the provisions of 40 CFR 1068.230.</P>
+<P>(d) An engine manufacturer certifying an engine family or families to standards under this subpart that are identical to standards applicable under 40 CFR part 1039 or 1042 for that model year may certify any such family that contains both nonroad (including marine) and stationary engines as a single engine family and/or may include any such family containing stationary engines in the averaging, banking, and trading provisions applicable for such engines under those parts.</P>
+<P>(e) Manufacturers of engine families discussed in paragraph (d) of this section may meet the labeling requirements referred to in paragraph (c) of this section for stationary CI ICE by either adding a separate label containing the information required in paragraph (c) of this section or by adding the words &#x201C;and stationary&#x201D; after the word &#x201C;nonroad&#x201D; or &#x201C;marine,&#x201D; as appropriate, to the label.</P>
+<P>(f) Starting with the model years shown in table 5 to this subpart, stationary CI internal combustion engine manufacturers must add a permanent label stating that the engine is for stationary emergency use only to each new emergency stationary CI internal combustion engine greater than or equal to 19 KW (25 HP) that meets all the emission standards for emergency engines in &#xA7; 60.4202 but does not meet all the emission standards for non-emergency engines in &#xA7; 60.4201. The label must be added according to the labeling requirements specified in 40 CFR 1039.135(b). Engine manufacturers must specify in the owner's manual that operation of emergency engines is limited to emergency operations and required maintenance and testing.</P>
+<P>(g) Manufacturers of fire pump engines may use the test cycle in table 6 to this subpart for testing fire pump engines and may test at the NFPA certified nameplate HP, provided that the engine is labeled as &#x201C;Fire Pump Applications Only&#x201D;.</P>
+<P>(h) Engine manufacturers, including importers, may introduce into commerce uncertified engines or engines certified to earlier standards that were manufactured before the new or changed standards took effect until inventories are depleted, as long as such engines are part of normal inventory. For example, if the engine manufacturers' normal industry practice is to keep on hand a one-month supply of engines based on its projected sales, and a new tier of standards starts to apply for the 2009 model year, the engine manufacturer may manufacture engines based on the normal inventory requirements late in the 2008 model year, and sell those engines for installation. The engine manufacturer may not circumvent the provisions of &#xA7; 60.4201 or &#xA7; 60.4202 by stockpiling engines that are built before new or changed standards take effect. Stockpiling of such engines beyond normal industry practice is a violation of this subpart.</P>
+<P>(i) The replacement engine provisions of 40 CFR 1068.240 are applicable to stationary CI engines replacing existing equipment that is less than 15 years old.</P>
+<P>(j) Stationary CI ICE manufacturers may equip their stationary CI internal combustion engines certified to the emission standards in 40 CFR part 1039 with AECDs for qualified emergency situations according to the requirements of 40 CFR 1039.665. Manufacturers of stationary CI ICE equipped with AECDs as allowed by 40 CFR 1039.665 must meet all the requirements in 40 CFR 1039.665 that apply to manufacturers. Manufacturers must document that the engine complies with the Tier 1 standard in 40 CFR part 1039, appendix I, when the AECD is activated. Manufacturers must provide any relevant testing, engineering analysis, or other information in sufficient detail to support such statement when applying for certification (including amending an existing certificate) of an engine equipped with an AECD as allowed by 40 CFR 1039.665.</P>
+<P>(k) Manufacturers of any size may certify their emergency stationary CI internal combustion engines under this section using assigned deterioration factors established by EPA, consistent with 40 CFR 1039.240 and 1042.240.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37969, June 28, 2011; 81 FR 44219, July 7, 2016; 86 FR 34358, June 29, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="60.4211" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4211&quot;,&quot;citation&quot;:&quot;40 CFR 60.4211&quot;}">
+<HEAD>&#xA7; 60.4211 What are my compliance requirements if I am an owner or operator of a stationary CI internal combustion engine?</HEAD>
+<P>(a) If you are an owner or operator and must comply with the emission standards specified in this subpart, you must do all of the following, except as permitted under paragraph (g) of this section:</P>
+<P>(1) Operate and maintain the stationary CI internal combustion engine and control device according to the manufacturer's emission-related written instructions;</P>
+<P>(2) Change only those emission-related settings that are permitted by the manufacturer; and</P>
+<P>(3) Meet the requirements of 40 CFR part 1068, as they apply to you.</P>
+<P>(b) If you are an owner or operator of a pre-2007 model year stationary CI internal combustion engine and must comply with the emission standards specified in &#xA7; 60.4204(a) or &#xA7; 60.4205(a), or if you are an owner or operator of a CI fire pump engine that is manufactured prior to the model years in table 3 to this subpart and must comply with the emission standards specified in &#xA7; 60.4205(c), you must demonstrate compliance according to one of the methods specified in paragraphs (b)(1) through (5) of this section.</P>
+<P>(1) Purchasing an engine certified to emission standards for the same model year and maximum engine power as described in 40 CFR parts 1039 and 1042, as applicable. The engine must be installed and configured according to the manufacturer's specifications.</P>
+<P>(2) Keeping records of performance test results for each pollutant for a test conducted on a similar engine. The test must have been conducted using the same methods specified in this subpart and these methods must have been followed correctly.</P>
+<P>(3) Keeping records of engine manufacturer data indicating compliance with the standards.</P>
+<P>(4) Keeping records of control device vendor data indicating compliance with the standards.</P>
+<P>(5) Conducting an initial performance test to demonstrate compliance with the emission standards according to the requirements specified in &#xA7; 60.4212, as applicable.</P>
+<P>(c) If you are an owner or operator of a 2007 model year and later stationary CI internal combustion engine and must comply with the emission standards specified in &#xA7; 60.4204(b) or &#xA7; 60.4205(b), or if you are an owner or operator of a CI fire pump engine that is manufactured during or after the model year that applies to your fire pump engine power rating in table 3 to this subpart and must comply with the emission standards specified in &#xA7; 60.4205(c), you must comply by purchasing an engine certified to the emission standards in &#xA7; 60.4204(b), or &#xA7; 60.4205(b) or (c), as applicable, for the same model year and maximum (or in the case of fire pumps, NFPA nameplate) engine power. The engine must be installed and configured according to the manufacturer's emission-related specifications, except as permitted in paragraph (g) of this section.</P>
+<P>(d) If you are an owner or operator and must comply with the emission standards specified in &#xA7; 60.4204(c) or &#xA7; 60.4205(d), you must demonstrate compliance according to the requirements specified in paragraphs (d)(1) through (3) of this section.</P>
+<P>(1) Conducting an initial performance test to demonstrate initial compliance with the emission standards as specified in &#xA7; 60.4213.</P>
+<P>(2) Establishing operating parameters to be monitored continuously to ensure the stationary internal combustion engine continues to meet the emission standards. The owner or operator must petition the Administrator for approval of operating parameters to be monitored continuously. The petition must include the information described in paragraphs (d)(2)(i) through (v) of this section.</P>
+<P>(i) Identification of the specific parameters you propose to monitor continuously;</P>
+<P>(ii) A discussion of the relationship between these parameters and NO<E T="52">X</E> and PM emissions, identifying how the emissions of these pollutants change with changes in these parameters, and how limitations on these parameters will serve to limit NO<E T="52">X</E> and PM emissions;</P>
+<P>(iii) A discussion of how you will establish the upper and/or lower values for these parameters which will establish the limits on these parameters in the operating limitations;</P>
+<P>(iv) A discussion identifying the methods and the instruments you will use to monitor these parameters, as well as the relative accuracy and precision of these methods and instruments; and</P>
+<P>(v) A discussion identifying the frequency and methods for recalibrating the instruments you will use for monitoring these parameters.</P>
+<P>(3) For non-emergency engines with a displacement of greater than or equal to 30 liters per cylinder, conducting annual performance tests to demonstrate continuous compliance with the emission standards as specified in &#xA7; 60.4213.</P>
+<P>(e) If you are an owner or operator of a modified or reconstructed stationary CI internal combustion engine and must comply with the emission standards specified in &#xA7; 60.4204(e) or &#xA7; 60.4205(f), you must demonstrate compliance according to one of the methods specified in paragraphs (e)(1) or (2) of this section.</P>
+<P>(1) Purchasing, or otherwise owning or operating, an engine certified to the emission standards in &#xA7; 60.4204(e) or &#xA7; 60.4205(f), as applicable.</P>
+<P>(2) Conducting a performance test to demonstrate initial compliance with the emission standards according to the requirements specified in &#xA7; 60.4212 or &#xA7; 60.4213, as appropriate. The test must be conducted within 60 days after the engine commences operation after the modification or reconstruction.</P>
+<P>(f) If you own or operate an emergency stationary ICE, you must operate the emergency stationary ICE according to the requirements in paragraphs (f)(1) through (3) of this section. In order for the engine to be considered an emergency stationary ICE under this subpart, any operation other than emergency operation, maintenance and testing, and operation in non-emergency situations for 50 hours per year, as described in paragraphs (f)(1) through (3), is prohibited. If you do not operate the engine according to the requirements in paragraphs (f)(1) through (3), the engine will not be considered an emergency engine under this subpart and must meet all requirements for non-emergency engines.</P>
+<P>(1) There is no time limit on the use of emergency stationary ICE in emergency situations.</P>
+<P>(2) You may operate your emergency stationary ICE for the purpose specified in paragraph (f)(2)(i) of this section for a maximum of 100 hours per calendar year. Any operation for non-emergency situations as allowed by paragraph (f)(3) of this section counts as part of the 100 hours per calendar year allowed by this paragraph (f)(2).</P>
+<P>(i) Emergency stationary ICE may be operated for maintenance checks and readiness testing, provided that the tests are recommended by federal, state or local government, the manufacturer, the vendor, the regional transmission organization or equivalent balancing authority and transmission operator, or the insurance company associated with the engine. The owner or operator may petition the Administrator for approval of additional hours to be used for maintenance checks and readiness testing, but a petition is not required if the owner or operator maintains records indicating that federal, state, or local standards require maintenance and testing of emergency ICE beyond 100 hours per calendar year.</P>
+<P>(ii)-(iii) [Reserved]</P>
+<P>(3) Emergency stationary ICE may be operated for up to 50 hours per calendar year in non-emergency situations. The 50 hours of operation in non-emergency situations are counted as part of the 100 hours per calendar year for maintenance and testing provided in paragraph (f)(2) of this section. Except as provided in paragraph (f)(3)(i) of this section, the 50 hours per calendar year for non-emergency situations cannot be used for peak shaving or non-emergency demand response, or to generate income for a facility to an electric grid or otherwise supply power as part of a financial arrangement with another entity.</P>
+<P>(i) The 50 hours per year for non-emergency situations can be used to supply power as part of a financial arrangement with another entity if all of the following conditions are met:</P>
+<P>(A) The engine is dispatched by the local balancing authority or local transmission and distribution system operator;</P>
+<P>(B) The dispatch is intended to mitigate local transmission and/or distribution limitations so as to avert potential voltage collapse or line overloads that could lead to the interruption of power supply in a local area or region.</P>
+<P>(C) The dispatch follows reliability, emergency operation or similar protocols that follow specific NERC, regional, state, public utility commission or local standards or guidelines.</P>
+<P>(D) The power is provided only to the facility itself or to support the local transmission and distribution system.</P>
+<P>(E) The owner or operator identifies and records the entity that dispatches the engine and the specific NERC, regional, state, public utility commission or local standards or guidelines that are being followed for dispatching the engine. The local balancing authority or local transmission and distribution system operator may keep these records on behalf of the engine owner or operator.</P>
+<P>(ii) [Reserved]</P>
+<P>(g) If you do not install, configure, operate, and maintain your engine and control device according to the manufacturer's emission-related written instructions, or you change emission-related settings in a way that is not permitted by the manufacturer, you must demonstrate compliance as follows:</P>
+<P>(1) If you are an owner or operator of a stationary CI internal combustion engine with maximum engine power less than 100 HP, you must keep a maintenance plan and records of conducted maintenance to demonstrate compliance and must, to the extent practicable, maintain and operate the engine in a manner consistent with good air pollution control practice for minimizing emissions. In addition, if you do not install and configure the engine and control device according to the manufacturer's emission-related written instructions, or you change the emission-related settings in a way that is not permitted by the manufacturer, you must conduct an initial performance test to demonstrate compliance with the applicable emission standards within 1 year of such action.</P>
+<P>(2) If you are an owner or operator of a stationary CI internal combustion engine greater than or equal to 100 HP and less than or equal to 500 HP, you must keep a maintenance plan and records of conducted maintenance and must, to the extent practicable, maintain and operate the engine in a manner consistent with good air pollution control practice for minimizing emissions. In addition, you must conduct an initial performance test to demonstrate compliance with the applicable emission standards within 1 year of startup, or within 1 year after an engine and control device is no longer installed, configured, operated, and maintained in accordance with the manufacturer's emission-related written instructions, or within 1 year after you change emission-related settings in a way that is not permitted by the manufacturer.</P>
+<P>(3) If you are an owner or operator of a stationary CI internal combustion engine greater than 500 HP, you must keep a maintenance plan and records of conducted maintenance and must, to the extent practicable, maintain and operate the engine in a manner consistent with good air pollution control practice for minimizing emissions. In addition, you must conduct an initial performance test to demonstrate compliance with the applicable emission standards within 1 year of startup, or within 1 year after an engine and control device is no longer installed, configured, operated, and maintained in accordance with the manufacturer's emission-related written instructions, or within 1 year after you change emission-related settings in a way that is not permitted by the manufacturer. You must conduct subsequent performance testing every 8,760 hours of engine operation or 3 years, whichever comes first, thereafter to demonstrate compliance with the applicable emission standards.</P>
+<P>(h) The requirements for operators and prohibited acts specified in 40 CFR 1039.665 apply to owners or operators of stationary CI ICE equipped with AECDs for qualified emergency situations as allowed by 40 CFR 1039.665.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37970, June 28, 2011; 78 FR 6695, Jan. 30, 2013; 81 FR 44219, July 7, 2016; 86 FR 34359, June 29, 2021; 87 FR 48605, Aug. 10, 2022]
+</CITA>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFR7d70068b4e14940" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFR7d70068b4e14940&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - Testing Requirements for Owners and Operators&amp;quot;}">
+<HEAD>Testing Requirements for Owners and Operators</HEAD>
+<DIV8 N="60.4212" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4212&quot;,&quot;citation&quot;:&quot;40 CFR 60.4212&quot;}">
+<HEAD>&#xA7; 60.4212 What test methods and other procedures must I use if I am an owner or operator of a stationary CI internal combustion engine with a displacement of less than 30 liters per cylinder?</HEAD>
+<P>Owners and operators of stationary CI ICE with a displacement of less than 30 liters per cylinder who conduct performance tests pursuant to this subpart must do so according to paragraphs (a) through (e) of this section.</P>
+<P>(a) The performance test must be conducted according to the in-use testing procedures in 40 CFR part 1039, subpart F, for stationary CI ICE with a displacement of less than 10 liters per cylinder, and according to 40 CFR part 1042, subpart F, for stationary CI ICE with a displacement of greater than or equal to 10 liters per cylinder and less than 30 liters per cylinder. Alternatively, stationary CI ICE that are complying with Tier 2 or Tier 3 emission standards as described in 40 CFR part 1039, appendix I, or with Tier 2 emission standards as described in 40 CFR part 1042, appendix I, may follow the testing procedures specified in &#xA7; 60.4213, as appropriate.</P>
+<P>(b) Exhaust emissions from stationary CI ICE that are complying with the emission standards for new CI engines in 40 CFR part 1039 must not exceed the not-to-exceed (NTE) standards for the same model year and maximum engine power as required in 40 CFR 1039.101(e) and 40 CFR 1039.102(g)(1), except as specified in 40 CFR 1039.104(d). This requirement starts when NTE requirements take effect for nonroad diesel engines under 40 CFR part 1039.</P>
+<P>(c) Exhaust emissions from stationary CI ICE subject to Tier 2 or Tier 3 emission standards as described in 40 CFR part 1039, appendix I, or Tier 2 emission standards as described in 40 CFR part 1042, appendix I, must not exceed the NTE numerical requirements, rounded to the same number of decimal places as the applicable standard, determined from the following equation:</P>
+<img src="/graphics/er29jn21.275.gif"/>
+<EXTRACT>
+<FP>Where:
+</FP>
+<FP-2>STD = The standard specified for that pollutant in 40 CFR part 1039 or 1042, as applicable.</FP-2></EXTRACT>
+<P>(d) Exhaust emissions from stationary CI ICE that are complying with the emission standards for pre-2007 model year engines in &#xA7; 60.4204(a), &#xA7; 60.4205(a), or &#xA7; 60.4205(c) must not exceed the NTE numerical requirements, rounded to the same number of decimal places as the applicable standard in &#xA7; 60.4204(a), &#xA7; 60.4205(a), or &#xA7; 60.4205(c), determined from the equation in paragraph (c) of this section.</P>
+<EXTRACT>
+<FP>Where:
+</FP>
+<FP-2>STD = The standard specified for that pollutant in &#xA7; 60.4204(a), &#xA7; 60.4205(a), or &#xA7; 60.4205(c).</FP-2></EXTRACT>
+<P>Alternatively, stationary CI ICE that are complying with the emission standards for pre-2007 model year engines in &#xA7; 60.4204(a), &#xA7; 60.4205(a), or &#xA7; 60.4205(c) may follow the testing procedures specified in &#xA7; 60.4213, as appropriate.</P>
+<P>(e) Exhaust emissions from stationary CI ICE that are complying with the emission standards for new CI engines in 40 CFR part 1042 must not exceed the NTE standards for the same model year and maximum engine power as required in 40 CFR 1042.101(c).</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37971, June 28, 2011; 86 FR 34359, June 29, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="60.4213" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4213&quot;,&quot;citation&quot;:&quot;40 CFR 60.4213&quot;}">
+<HEAD>&#xA7; 60.4213 What test methods and other procedures must I use if I am an owner or operator of a stationary CI internal combustion engine with a displacement of greater than or equal to 30 liters per cylinder?</HEAD>
+<P>Owners and operators of stationary CI ICE with a displacement of greater than or equal to 30 liters per cylinder must conduct performance tests according to paragraphs (a) through (f) of this section.</P>
+<P>(a) Each performance test must be conducted according to the requirements in &#xA7; 60.8 and under the specific conditions that this subpart specifies in table 7. The test must be conducted within 10 percent of 100 percent peak (or the highest achievable) load.</P>
+<P>(b) You may not conduct performance tests during periods of startup, shutdown, or malfunction, as specified in &#xA7; 60.8(c).</P>
+<P>(c) You must conduct three separate test runs for each performance test required in this section, as specified in &#xA7; 60.8(f). Each test run must last at least 1 hour.</P>
+<P>(d) To determine compliance with the percent reduction requirement, you must follow the requirements as specified in paragraphs (d)(1) through (3) of this section.</P>
+<P>(1) You must use Equation 2 of this section to determine compliance with the percent reduction requirement:</P>
+<MATH BORDER="NODRAW" DEEP="43" HTYPE="CENTER" POSITION="NOFLOAT" ROTATION="P" SPAN="1" STRIP="YES">
+<img src="/graphics/er11jy06.001.gif"/></MATH>
+<EXTRACT>
+<FP>Where:
+</FP>
+<FP-2>C<E T="52">i</E> = concentration of NO<E T="52">X</E> or PM at the control device inlet,
+</FP-2>
+<FP-2>C<E T="52">o</E> = concentration of NO<E T="52">X</E> or PM at the control device outlet, and
+</FP-2>
+<FP-2>R = percent reduction of NO<E T="52">X</E> or PM emissions.</FP-2></EXTRACT>
+<P>(2) You must normalize the NO<E T="52">X</E> or PM concentrations at the inlet and outlet of the control device to a dry basis and to 15 percent oxygen (O<E T="52">2</E>) using Equation 3 of this section, or an equivalent percent carbon dioxide (CO<E T="52">2</E>) using the procedures described in paragraph (d)(3) of this section.</P>
+<MATH BORDER="NODRAW" DEEP="27" HTYPE="CENTER" POSITION="NOFLOAT" ROTATION="P" SPAN="1" STRIP="YES">
+<img src="/graphics/er11jy06.002.gif"/></MATH>
+<EXTRACT>
+<FP>Where:
+</FP>
+<FP-2>C<E T="52">adj</E> = Calculated NO<E T="52">X</E> or PM concentration adjusted to 15 percent O<E T="52">2</E>.
+</FP-2>
+<FP-2>C<E T="52">d</E> = Measured concentration of NO<E T="52">X</E> or PM, uncorrected.
+</FP-2>
+<FP-2>5.9 = 20.9 percent O<E T="52">2</E>&#x2212;15 percent O<E T="52">2</E>, the defined O<E T="52">2</E> correction value, percent.
+</FP-2>
+<FP-2>%O<E T="52">2</E> = Measured O<E T="52">2</E> concentration, dry basis, percent.</FP-2></EXTRACT>
+<P>(3) If pollutant concentrations are to be corrected to 15 percent O<E T="52">2</E> and CO<E T="52">2</E> concentration is measured in lieu of O<E T="52">2</E> concentration measurement, a CO<E T="52">2</E> correction factor is needed. Calculate the CO<E T="52">2</E> correction factor as described in paragraphs (d)(3)(i) through (iii) of this section.</P>
+<P>(i) Calculate the fuel-specific F<E T="52">o</E> value for the fuel burned during the test using values obtained from Method 19, Section 5.2, and the following equation:</P>
+<MATH BORDER="NODRAW" DEEP="27" HTYPE="CENTER" POSITION="NOFLOAT" ROTATION="P" SPAN="1" STRIP="YES">
+<img src="/graphics/er11jy06.003.gif"/></MATH>
+<EXTRACT>
+<FP>Where:
+</FP>
+<FP-2>F<E T="52">o</E> = Fuel factor based on the ratio of O<E T="52">2</E> volume to the ultimate CO<E T="52">2</E> volume produced by the fuel at zero percent excess air.
+</FP-2>
+<FP-2>0.209 = Fraction of air that is O<E T="52">2</E>, percent/100.
+</FP-2>
+<FP-2>F<E T="52">d</E> = Ratio of the volume of dry effluent gas to the gross calorific value of the fuel from Method 19, dsm
+<SU>3</SU>/J (dscf/10
+<SU>6</SU> Btu).
+</FP-2>
+<FP-2>F<E T="52">c</E> = Ratio of the volume of CO<E T="52">2</E> produced to the gross calorific value of the fuel from Method 19, dsm
+<SU>3</SU>/J (dscf/10
+<SU>6</SU> Btu).</FP-2></EXTRACT>
+<P>(ii) Calculate the CO<E T="52">2</E> correction factor for correcting measurement data to 15 percent O<E T="52">2</E>, as follows:</P>
+<MATH BORDER="NODRAW" DEEP="30" HTYPE="CENTER" POSITION="NOFLOAT" ROTATION="P" SPAN="1" STRIP="YES">
+<img src="/graphics/er11jy06.004.gif"/></MATH>
+<EXTRACT>
+<FP>Where:
+</FP>
+<FP-2>X<E T="52">CO2</E> = CO<E T="52">2</E> correction factor, percent.
+</FP-2>
+<FP-2>5.9 = 20.9 percent O<E T="52">2</E>&#x2212;15 percent O<E T="52">2</E>, the defined O<E T="52">2</E> correction value, percent.</FP-2></EXTRACT>
+<P>(iii) Calculate the NO<E T="52">X</E> and PM gas concentrations adjusted to 15 percent O<E T="52">2</E> using CO<E T="52">2</E> as follows:</P>
+<MATH BORDER="NODRAW" DEEP="31" HTYPE="CENTER" POSITION="NOFLOAT" ROTATION="P" SPAN="1" STRIP="YES">
+<img src="/graphics/er11jy06.005.gif"/></MATH>
+<EXTRACT>
+<FP>Where:
+</FP>
+<FP-2>C<E T="52">adj</E> = Calculated NO<E T="52">X</E> or PM concentration adjusted to 15 percent O<E T="52">2</E>.
+</FP-2>
+<FP-2>C<E T="52">d</E> = Measured concentration of NO<E T="52">X</E> or PM, uncorrected.
+</FP-2>
+<FP-2>%CO<E T="52">2</E> = Measured CO<E T="52">2</E> concentration, dry basis, percent.</FP-2></EXTRACT>
+<P>(e) To determine compliance with the NO<E T="52">X</E> mass per unit output emission limitation, convert the concentration of NO<E T="52">X</E> in the engine exhaust using Equation 7 of this section:</P>
+<MATH BORDER="NODRAW" DEEP="29" HTYPE="CENTER" POSITION="NOFLOAT" ROTATION="P" SPAN="2" STRIP="YES">
+<img src="/graphics/er11jy06.006.gif"/></MATH>
+<EXTRACT>
+<FP>Where:
+</FP>
+<FP-2>ER = Emission rate in grams per KW-hour.
+</FP-2>
+<FP-2>C<E T="52">d</E> = Measured NO<E T="52">X</E> concentration in ppm.
+</FP-2>
+<FP-2>1.912x10<E T="51">&#x2212;3</E> = Conversion constant for ppm NO<E T="52">X</E> to grams per standard cubic meter at 25 degrees Celsius.
+</FP-2>
+<FP-2>Q = Stack gas volumetric flow rate, in standard cubic meter per hour.
+</FP-2>
+<FP-2>T = Time of test run, in hours.
+</FP-2>
+<FP-2>KW-hour = Brake work of the engine, in KW-hour.</FP-2></EXTRACT>
+<P>(f) To determine compliance with the PM mass per unit output emission limitation, convert the concentration of PM in the engine exhaust using Equation 8 of this section:</P>
+<MATH BORDER="NODRAW" DEEP="29" HTYPE="CENTER" POSITION="NOFLOAT" ROTATION="P" SPAN="1" STRIP="YES">
+<img src="/graphics/er11jy06.007.gif"/></MATH>
+<EXTRACT>
+<FP>Where:
+</FP>
+<FP-2>ER = Emission rate in grams per KW-hour.
+</FP-2>
+<FP-2>C<E T="52">adj</E> = Calculated PM concentration in grams per standard cubic meter.
+</FP-2>
+<FP-2>Q = Stack gas volumetric flow rate, in standard cubic meter per hour.
+</FP-2>
+<FP-2>T = Time of test run, in hours.
+</FP-2>
+<FP-2>KW-hour = Energy output of the engine, in KW.</FP-2></EXTRACT>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37971, June 28, 2011]
+</CITA>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFR52c86ee6d0200fc" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFR52c86ee6d0200fc&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - Notification, Reports, and Records for Owners and Operators&amp;quot;}">
+<HEAD>Notification, Reports, and Records for Owners and Operators</HEAD>
+<DIV8 N="60.4214" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4214&quot;,&quot;citation&quot;:&quot;40 CFR 60.4214&quot;}">
+<HEAD>&#xA7; 60.4214 What are my notification, reporting, and recordkeeping requirements if I am an owner or operator of a stationary CI internal combustion engine?</HEAD>
+<P>(a) Owners and operators of non-emergency stationary CI ICE that are greater than 2,237 KW (3,000 HP), or have a displacement of greater than or equal to 10 liters per cylinder, or are pre-2007 model year engines that are greater than 130 KW (175 HP) and not certified, must meet the requirements of paragraphs (a)(1) and (2) of this section.</P>
+<P>(1) Submit an initial notification as required in &#xA7; 60.7(a)(1). The notification must include the information in paragraphs (a)(1)(i) through (v) of this section. Beginning on February 26, 2025, submit the notification electronically according to paragraph (g) of this section.</P>
+<P>(i) Name and address of the owner or operator;</P>
+<P>(ii) The address of the affected source;</P>
+<P>(iii) Engine information including make, model, engine family, serial number, model year, maximum engine power, and engine displacement;</P>
+<P>(iv) Emission control equipment; and</P>
+<P>(v) Fuel used.</P>
+<P>(2) Keep records of the information in paragraphs (a)(2)(i) through (iv) of this section.</P>
+<P>(i) All notifications submitted to comply with this subpart and all documentation supporting any notification.</P>
+<P>(ii) Maintenance conducted on the engine.</P>
+<P>(iii) If the stationary CI internal combustion is a certified engine, documentation from the manufacturer that the engine is certified to meet the emission standards.</P>
+<P>(iv) If the stationary CI internal combustion is not a certified engine, documentation that the engine meets the emission standards.</P>
+<P>(b) If the stationary CI internal combustion engine is an emergency stationary internal combustion engine, the owner or operator is not required to submit an initial notification. Starting with the model years in table 5 to this subpart, if the emergency engine does not meet the standards applicable to non-emergency engines in the applicable model year, the owner or operator must keep records of the operation of the engine in emergency and non-emergency service that are recorded through the non-resettable hour meter. The owner must record the time of operation of the engine and the reason the engine was in operation during that time.</P>
+<P>(c) If the stationary CI internal combustion engine is equipped with a diesel particulate filter, the owner or operator must keep records of any corrective action taken after the backpressure monitor has notified the owner or operator that the high backpressure limit of the engine is approached.</P>
+<P>(d) If you own or operate an emergency stationary CI ICE with a maximum engine power more than 100 HP that operates for the purpose specified in &#xA7; 60.4211(f)(3)(i), you must submit an annual report according to the requirements in paragraphs (d)(1) through (3) of this section.</P>
+<P>(1) The report must contain the following information:</P>
+<P>(i) Company name and address where the engine is located.</P>
+<P>(ii) Date of the report and beginning and ending dates of the reporting period.</P>
+<P>(iii) Engine site rating and model year.</P>
+<P>(iv) Latitude and longitude of the engine in decimal degrees reported to the fifth decimal place.</P>
+<P>(v)-(vi) [Reserved]</P>
+<P>(vii) Hours spent for operation for the purposes specified in &#xA7; 60.4211(f)(3)(i), including the date, start time, and end time for engine operation for the purposes specified in &#xA7; 60.4211(f)(3)(i). The report must also identify the entity that dispatched the engine and the situation that necessitated the dispatch of the engine.</P>
+<P>(2) The first annual report must cover the calendar year 2015 and must be submitted no later than March 31, 2016. Subsequent annual reports for each calendar year must be submitted no later than March 31 of the following calendar year.</P>
+<P>(3) The annual report must be submitted electronically using the subpart specific reporting form in the Compliance and Emissions Data Reporting Interface (CEDRI) that is accessed through EPA's Central Data Exchange (CDX) (<I>https://cdx.epa.gov/</I>). However, if the reporting form specific to this subpart is not available in CEDRI at the time that the report is due, the written report must be submitted to the Administrator at the appropriate address listed in &#xA7; 60.4. Beginning on February 26, 2025, submit annual report electronically according to paragraph (g) of this section.</P>
+<P>(e) Owners or operators of stationary CI ICE equipped with AECDs pursuant to the requirements of 40 CFR 1039.665 must report the use of AECDs as required by 40 CFR 1039.665(e).</P>
+<P>(f) Beginning on February 26, 2025, within 60 days after the date of completing each performance test required by this subpart, you must submit the results of the performance test required under this section following the procedures specified in paragraphs (f)(1) and (2) of this section.</P>
+<P>(1) <I>Data collected using test methods supported by the EPA's Electronic Reporting Tool (ERT) as listed on the EPA's ERT website (https://www.epa.gov/electronic-reporting-air-emissions/electronic-reporting-tool-ert) at the time of the test.</I> Submit the results of the performance test to the EPA via the Compliance and Emissions Data Reporting Interface (CEDRI), according to paragraph (g) of this section. The data must be submitted in a file format generated using the EPA's ERT. Alternatively, you may submit an electronic file consistent with the extensible markup language (XML) schema listed on the EPA's ERT website.</P>
+<P>(2) <I>Data collected using test methods that are not supported by the EPA's ERT as listed on the EPA's ERT website at the time of the test.</I> The results of the performance test must be included as an attachment in the ERT or an alternate electronic file consistent with the XML schema listed on the EPA's ERT website. Submit the ERT generated package or alternative file to the EPA via CEDRI according to paragraph (g) of this section.</P>
+<P>(g) If you are required to submit notifications or reports following the procedure specified in this paragraph (g), you must submit notifications or reports to the EPA via the Compliance and Emissions Data Reporting Interface (CEDRI), which can be accessed through the EPA's Central Data Exchange (CDX) (<I>https://cdx.epa.gov/</I>). The EPA will make all the information submitted through CEDRI available to the public without further notice to you. Do not use CEDRI to submit information you claim as CBI. Although we do not expect persons to assert a claim of CBI, if you wish to assert a CBI claim for some of the information in the report or notification, you must submit a complete file in the format specified in this subpart, including information claimed to be CBI, to the EPA following the procedures in paragraphs (g)(1) and (2) of this section. Clearly mark the part or all of the information that you claim to be CBI. Information not marked as CBI may be authorized for public release without prior notice. Information marked as CBI will not be disclosed except in accordance with procedures set forth in 40 CFR part 2. All CBI claims must be asserted at the time of submission. Anything submitted using CEDRI cannot later be claimed CBI. Furthermore, under CAA section 114(c), emissions data is not entitled to confidential treatment, and the EPA is required to make emissions data available to the public. Thus, emissions data will not be protected as CBI and will be made publicly available. You must submit the same file submitted to the CBI office with the CBI omitted to the EPA via the EPA's CDX as described earlier in this paragraph (g).</P>
+<P>(1) The preferred method to receive CBI is for it to be transmitted electronically using email attachments, File Transfer Protocol, or other online file sharing services. Electronic submissions must be transmitted directly to the OAQPS CBI Office at the email address <I>oaqpscbi@epa.gov,</I> and as described in paragraph (g) of this section, should include clear CBI markings. ERT files should be flagged to the attention of the Group Leader, Measurement Policy Group; all other files should be flagged to the attention of the Stationary Compression Ignition Internal Combustion Engine Sector Lead. If assistance is needed with submitting large electronic files that exceed the file size limit for email attachments, and if you do not have your own file sharing service, please email <I>oaqpscbi@epa.gov</I> to request a file transfer link.</P>
+<P>(2) If you cannot transmit the file electronically, you may send CBI information through the postal service to the following address: OAQPS Document Control Officer (C404-02), OAQPS, U.S. Environmental Protection Agency, 109 T.W. Alexander Drive, P.O. Box 12055, Research Triangle Park, North Carolina 27711. ERT files should be sent to the attention of the Group Leader, Measurement Policy Group, and all other files should be sent to the attention of the Stationary Compression Ignition Internal Combustion Engine Sector Lead. The mailed CBI material should be double wrapped and clearly marked. Any CBI markings should not show through the outer envelope.</P>
+<P>(h) If you are required to electronically submit a report through CEDRI in the EPA's CDX, you may assert a claim of EPA system outage for failure to timely comply with that reporting requirement. To assert a claim of EPA system outage, you must meet the requirements outlined in paragraphs (h)(1) through (7) of this section.</P>
+<P>(1) You must have been or will be precluded from accessing CEDRI and submitting a required report within the time prescribed due to an outage of either the EPA's CEDRI or CDX systems.</P>
+<P>(2) The outage must have occurred within the period of time beginning five business days prior to the date that the submission is due.</P>
+<P>(3) The outage may be planned or unplanned.</P>
+<P>(4) You must submit notification to the Administrator in writing as soon as possible following the date you first knew, or through due diligence should have known, that the event may cause or has caused a delay in reporting.</P>
+<P>(5) You must provide to the Administrator a written description identifying:</P>
+<P>(i) The date(s) and time(s) when CDX or CEDRI was accessed and the system was unavailable;</P>
+<P>(ii) A rationale for attributing the delay in reporting beyond the regulatory deadline to EPA system outage;</P>
+<P>(iii) A description of measures taken or to be taken to minimize the delay in reporting; and</P>
+<P>(iv) The date by which you propose to report, or if you have already met the reporting requirement at the time of the notification, the date you reported.</P>
+<P>(6) The decision to accept the claim of EPA system outage and allow an extension to the reporting deadline is solely within the discretion of the Administrator.</P>
+<P>(7) In any circumstance, the report must be submitted electronically as soon as possible after the outage is resolved.</P>
+<P>(i) If you are required to electronically submit a report through CEDRI in the EPA's CDX, you may assert a claim of force majeure for failure to timely comply with that reporting requirement. To assert a claim of force majeure, you must meet the requirements outlined in paragraphs (i)(1) through (5) of this section.</P>
+<P>(1) You may submit a claim if a force majeure event is about to occur, occurs, or has occurred or there are lingering effects from such an event within the period of time beginning five business days prior to the date the submission is due. For the purposes of this section, a force majeure event is defined as an event that will be or has been caused by circumstances beyond the control of the affected facility, its contractors, or any entity controlled by the affected facility that prevents you from complying with the requirement to submit a report electronically within the time period prescribed. Examples of such events are acts of nature (<I>e.g.,</I> hurricanes, earthquakes, or floods), acts of war or terrorism, or equipment failure or safety hazard beyond the control of the affected facility (<I>e.g.,</I> large scale power outage).</P>
+<P>(2) You must submit notification to the Administrator in writing as soon as possible following the date you first knew, or through due diligence should have known, that the event may cause or has caused a delay in reporting.</P>
+<P>(3) You must provide to the Administrator:</P>
+<P>(i) A written description of the force majeure event;</P>
+<P>(ii) A rationale for attributing the delay in reporting beyond the regulatory deadline to the force majeure event;</P>
+<P>(iii) A description of measures taken or to be taken to minimize the delay in reporting; and</P>
+<P>(iv) The date by which you propose to report, or if you have already met the reporting requirement at the time of the notification, the date you reported.</P>
+<P>(4) The decision to accept the claim of force majeure and allow an extension to the reporting deadline is solely within the discretion of the Administrator.</P>
+<P>(5) In any circumstance, the reporting must occur as soon as possible after the force majeure event occurs.</P>
+<P>(j) Any records required to be maintained by this subpart that are submitted electronically via the EPA's CEDRI may be maintained in electronic format. This ability to maintain electronic copies does not affect the requirement for facilities to make records, data, and reports available upon request to a delegated air agency or the EPA as part of an on-site compliance evaluation.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 78 FR 6696, Jan. 30, 2013; 81 FR 44219, July 7, 2016; 87 FR 48606, Aug. 10, 2022; 89 FR 70512, Aug. 30, 2024]
+</CITA>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFR7786adeca7f925e" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFR7786adeca7f925e&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - Special Requirements&amp;quot;}">
+<HEAD>Special Requirements</HEAD>
+<DIV8 N="60.4215" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4215&quot;,&quot;citation&quot;:&quot;40 CFR 60.4215&quot;}">
+<HEAD>&#xA7; 60.4215 What requirements must I meet for engines used in Guam, American Samoa, or the Commonwealth of the Northern Mariana Islands?</HEAD>
+<P>(a) Stationary CI ICE with a displacement of less than 30 liters per cylinder that are used in Guam, American Samoa, or the Commonwealth of the Northern Mariana Islands are required to meet the applicable emission standards in &#xA7;&#xA7; 60.4202 and 60.4205.</P>
+<P>(b) Stationary CI ICE that are used in Guam, American Samoa, or the Commonwealth of the Northern Mariana Islands are not required to meet the fuel requirements in &#xA7; 60.4207.</P>
+<P>(c) Stationary CI ICE with a displacement of greater than or equal to 30 liters per cylinder that are used in Guam, American Samoa, or the Commonwealth of the Northern Mariana Islands are required to meet the following emission standards:</P>
+<P>(1) For engines installed prior to January 1, 2012, limit the emissions of NO<E T="52">X</E> in the stationary CI internal combustion engine exhaust to the following:</P>
+<P>(i) 17.0 g/KW-hr (12.7 g/HP-hr) when maximum engine speed is less than 130 rpm;</P>
+<P>(ii) 45 &#xB7; n<E T="51">&#x2212;0.2</E> g/KW-hr (34 &#xB7; n<E T="51">&#x2212;0.2</E> g/HP-hr) when maximum engine speed is 130 or more but less than 2,000 rpm, where n is maximum engine speed; and</P>
+<P>(iii) 9.8 g/KW-hr (7.3 g/HP-hr) when maximum engine speed is 2,000 rpm or more.</P>
+<P>(2) For engines installed on or after January 1, 2012, limit the emissions of NO<E T="52">X</E> in the stationary CI internal combustion engine exhaust to the following:</P>
+<P>(i) 14.4 g/KW-hr (10.7 g/HP-hr) when maximum engine speed is less than 130 rpm;</P>
+<P>(ii) 44 &#xB7; n<E T="51">&#x2212;0.23</E> g/KW-hr (33 &#xB7; n<E T="51">&#x2212;0.23</E> g/HP-hr) when maximum engine speed is greater than or equal to 130 but less than 2,000 rpm and where n is maximum engine speed; and</P>
+<P>(iii) 7.7 g/KW-hr (5.7 g/HP-hr) when maximum engine speed is greater than or equal to 2,000 rpm.</P>
+<P>(3) Limit the emissions of PM in the stationary CI internal combustion engine exhaust to 0.40 g/KW-hr (0.30 g/HP-hr).</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37971, June 28, 2011]
+</CITA>
+</DIV8>
+
+<DIV8 N="60.4216" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4216&quot;,&quot;citation&quot;:&quot;40 CFR 60.4216&quot;}">
+<HEAD>&#xA7; 60.4216 What requirements must I meet for engines used in Alaska?</HEAD>
+<P>(a) Prior to December 1, 2010, owners and operators of stationary CI ICE with a displacement of less than 30 liters per cylinder located in areas of Alaska not accessible by the FAHS should refer to 40 CFR part 69 to determine the diesel fuel requirements applicable to such engines.</P>
+<P>(b) Except as indicated in paragraph (c) of this section, manufacturers, owners and operators of stationary CI ICE with a displacement of less than 10 liters per cylinder located in remote areas of Alaska may meet the requirements of this subpart by manufacturing and installing engines meeting the Tier 2 or Tier 3 emission standards described in 40 CFR part 1042 for the same model year, displacement, and maximum engine power, as appropriate, rather than the otherwise applicable requirements of 40 CFR part 1039, as indicated in &#xA7;&#xA7; 60.4201(f) and 60.4202(g).</P>
+<P>(c) Manufacturers, owners, and operators of stationary CI ICE that are located in remote areas of Alaska may choose to meet the applicable emission standards for emergency engines in &#xA7;&#xA7; 60.4202 and 60.4205, and not those for non-emergency engines in &#xA7;&#xA7; 60.4201 and 60.4204, except that for 2014 model year and later nonemergency CI ICE, the owner or operator of any such engine must have that engine certified as meeting at least the Tier 3 PM standards identified in appendix I of 40 CFR part 1039 or in 40 CFR 1042.101.</P>
+<P>(d) The provisions of &#xA7; 60.4207 do not apply to owners and operators of pre-2014 model year stationary CI ICE subject to this subpart that are located in remote areas of Alaska.</P>
+<P>(e) The provisions of &#xA7; 60.4208(a) do not apply to owners and operators of stationary CI ICE subject to this subpart that are located in areas of Alaska not accessible by the FAHS until after December 31, 2009.</P>
+<P>(f) The provisions of this section and &#xA7; 60.4207 do not prevent owners and operators of stationary CI ICE subject to this subpart that are located in remote areas of Alaska from using fuels mixed with used lubricating oil, in volumes of up to 1.75 percent of the total fuel. The sulfur content of the used lubricating oil must be less than 200 parts per million. The used lubricating oil must meet the on-specification levels and properties for used oil in 40 CFR 279.11.</P>
+<CITA TYPE="N">[76 FR 37971, June 28, 2011, as amended at 81 FR 44219, July 7, 2016; 86 FR 34359, June 29, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="60.4217" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4217&quot;,&quot;citation&quot;:&quot;40 CFR 60.4217&quot;}">
+<HEAD>&#xA7; 60.4217 What emission standards must I meet if I am an owner or operator of a stationary internal combustion engine using special fuels?</HEAD>
+<P>Owners and operators of stationary CI ICE that do not use diesel fuel may petition the Administrator for approval of alternative emission standards, if they can demonstrate that they use a fuel that is not the fuel on which the manufacturer of the engine certified the engine and that the engine cannot meet the applicable standards required in &#xA7; 60.4204 or &#xA7; 60.4205 using such fuels and that use of such fuel is appropriate and reasonably necessary, considering cost, energy, technical feasibility, human health and environmental, and other factors, for the operation of the engine.</P>
+<CITA TYPE="N">[76 FR 37972, June 28, 2011]
+</CITA>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFR81ec26fa3fc5a15" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFR81ec26fa3fc5a15&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - General Provisions&amp;quot;}">
+<HEAD>General Provisions</HEAD>
+<DIV8 N="60.4218" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4218&quot;,&quot;citation&quot;:&quot;40 CFR 60.4218&quot;}">
+<HEAD>&#xA7; 60.4218 What General Provisions and confidential information provisions apply to me?</HEAD>
+<P>(a) Table 8 to this subpart shows which parts of the General Provisions in &#xA7;&#xA7; 60.1 through 60.19 apply to you.</P>
+<P>(b) The provisions of 40 CFR 1068.10 and 1068.11 apply for engine manufacturers. For others, the general confidential business information (CBI) provisions apply as described in 40 CFR part 2.</P>
+<CITA TYPE="N">[88 FR 4471, Jan. 24, 2023]
+</CITA>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFRe8c6d820a6872bc" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/subject-group-ECFRe8c6d820a6872bc&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;40 CFR Part 60 Subpart IIII - Definitions&amp;quot;}">
+<HEAD>Definitions</HEAD>
+<DIV8 N="60.4219" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/section-60.4219&quot;,&quot;citation&quot;:&quot;40 CFR 60.4219&quot;}">
+<HEAD>&#xA7; 60.4219 What definitions apply to this subpart?</HEAD>
+<P>As used in this subpart, all terms not defined herein shall have the meaning given them in the CAA and in subpart A of this part.</P>
+<P><I>Alaska Railbelt Grid</I> means the service areas of the six regulated public utilities that extend from Fairbanks to Anchorage and the Kenai Peninsula. These utilities are Golden Valley Electric Association; Chugach Electric Association; Matanuska Electric Association; Homer Electric Association; Anchorage Municipal Light &amp; Power; and the City of Seward Electric System.</P>
+<P><I>Certified emissions life</I> means the period during which the engine is designed to properly function in terms of reliability and fuel consumption, without being remanufactured, specified as a number of hours of operation or calendar years, whichever comes first. The values for certified emissions life for stationary CI ICE with a displacement of less than 10 liters per cylinder are given in 40 CFR 1039.101(g). The values for certified emissions life for stationary CI ICE with a displacement of greater than or equal to 10 liters per cylinder and less than 30 liters per cylinder are given in 40 CFR 1042.101(e).</P>
+<P><I>Combustion turbine</I> means all equipment, including but not limited to the turbine, the fuel, air, lubrication and exhaust gas systems, control systems (except emissions control equipment), and any ancillary components and sub-components comprising any simple cycle combustion turbine, any regenerative/recuperative cycle combustion turbine, the combustion turbine portion of any cogeneration cycle combustion system, or the combustion turbine portion of any combined cycle steam/electric generating system.</P>
+<P><I>Compression ignition</I> means relating to a type of stationary internal combustion engine that is not a spark ignition engine.</P>
+<P><I>Date of manufacture</I> means one of the following things:</P>
+<P>(1) For freshly manufactured engines and modified engines, date of manufacture means the date the engine is originally produced.</P>
+<P>(2) For reconstructed engines, date of manufacture means the date the engine was originally produced, except as specified in paragraph (3) of this definition.</P>
+<P>(3) Reconstructed engines are assigned a new date of manufacture if the fixed capital cost of the new and refurbished components exceeds 75 percent of the fixed capital cost of a comparable entirely new facility. An engine that is produced from a previously used engine block does not retain the date of manufacture of the engine in which the engine block was previously used if the engine is produced using all new components except for the engine block. In these cases, the date of manufacture is the date of reconstruction or the date the new engine is produced.</P>
+<P><I>Diesel fuel</I> means any liquid obtained from the distillation of petroleum with a boiling point of approximately 150 to 360 degrees Celsius. One commonly used form is number 2 distillate oil.</P>
+<P><I>Diesel particulate filter</I> means an emission control technology that reduces PM emissions by trapping the particles in a flow filter substrate and periodically removes the collected particles by either physical action or by oxidizing (burning off) the particles in a process called regeneration.</P>
+<P><I>Emergency stationary internal combustion engine</I> means any stationary reciprocating internal combustion engine that meets all of the criteria in paragraphs (1) through (3) of this definition. All emergency stationary ICE must comply with the requirements specified in &#xA7; 60.4211(f) in order to be considered emergency stationary ICE. If the engine does not comply with the requirements specified in &#xA7; 60.4211(f), then it is not considered to be an emergency stationary ICE under this subpart.</P>
+<P>(1) The stationary ICE is operated to provide electrical power or mechanical work during an emergency situation. Examples include stationary ICE used to produce power for critical networks or equipment (including power supplied to portions of a facility) when electric power from the local utility (or the normal power source, if the facility runs on its own power production) is interrupted, or stationary ICE used to pump water in the case of fire or flood, etc.</P>
+<P>(2) The stationary ICE is operated under limited circumstances for situations not included in paragraph (1) of this definition, as specified in &#xA7; 60.4211(f).</P>
+<P>(3) The stationary ICE operates as part of a financial arrangement with another entity in situations not included in paragraph (1) of this definition only as allowed in &#xA7; 60.4211(f)(3)(i).</P>
+<P><I>Engine manufacturer</I> means the manufacturer of the engine. See the definition of &#x201C;manufacturer&#x201D; in this section.</P>
+<P><I>Fire pump engine</I> means an emergency stationary internal combustion engine certified to NFPA requirements that is used to provide power to pump water for fire suppression or protection.</P>
+<P><I>Freshly manufactured engine</I> means an engine that has not been placed into service. An engine becomes freshly manufactured when it is originally produced.</P>
+<P><I>Installed</I> means the engine is placed and secured at the location where it is intended to be operated.</P>
+<P><I>Manufacturer</I> has the meaning given in section 216(1) of the Act. In general, this term includes any person who manufactures a stationary engine for sale in the United States or otherwise introduces a new stationary engine into commerce in the United States. This includes importers who import stationary engines for sale or resale.</P>
+<P><I>Maximum engine power</I> means maximum engine power as defined in 40 CFR 1039.801.</P>
+<P><I>Model year</I> means the calendar year in which an engine is manufactured (see &#x201C;date of manufacture&#x201D;), except as follows:</P>
+<P>(1) Model year means the annual new model production period of the engine manufacturer in which an engine is manufactured (see &#x201C;date of manufacture&#x201D;), if the annual new model production period is different than the calendar year and includes January 1 of the calendar year for which the model year is named. It may not begin before January 2 of the previous calendar year and it must end by December 31 of the named calendar year.</P>
+<P>(2) For an engine that is converted to a stationary engine after being placed into service as a nonroad or other non-stationary engine, model year means the calendar year or new model production period in which the engine was manufactured (see &#x201C;date of manufacture&#x201D;).</P>
+<P><I>Other internal combustion engine</I> means any internal combustion engine, except combustion turbines, which is not a reciprocating internal combustion engine or rotary internal combustion engine.</P>
+<P><I>Reciprocating internal combustion engine</I> means any internal combustion engine which uses reciprocating motion to convert heat energy into mechanical work.</P>
+<P><I>Remote areas of Alaska</I> means areas of Alaska that meet either paragraph (1) or (2) of this definition.</P>
+<P>(1) Areas of Alaska that are not accessible by the Federal Aid Highway System (FAHS).</P>
+<P>(2) Areas of Alaska that meet all of the following criteria:</P>
+<P>(i) The only connection to the FAHS is through the Alaska Marine Highway System, or the stationary CI ICE operation is within an isolated grid in Alaska that is not connected to the statewide electrical grid referred to as the Alaska Railbelt Grid.</P>
+<P>(ii) At least 10 percent of the power generated by the stationary CI ICE on an annual basis is used for residential purposes.</P>
+<P>(iii) The generating capacity of the source is less than 12 megawatts, or the stationary CI ICE is used exclusively for backup power for renewable energy.</P>
+<P><I>Rotary internal combustion engine</I> means any internal combustion engine which uses rotary motion to convert heat energy into mechanical work.</P>
+<P><I>Spark ignition</I> means relating to a gasoline, natural gas, or liquefied petroleum gas fueled engine or any other type of engine with a spark plug (or other sparking device) and with operating characteristics significantly similar to the theoretical Otto combustion cycle. Spark ignition engines usually use a throttle to regulate intake air flow to control power during normal operation. Dual-fuel engines in which a liquid fuel (typically diesel fuel) is used for CI and gaseous fuel (typically natural gas) is used as the primary fuel at an annual average ratio of less than 2 parts diesel fuel to 100 parts total fuel on an energy equivalent basis are spark ignition engines.</P>
+<P><I>Stationary internal combustion engine</I> means any internal combustion engine, except combustion turbines, that converts heat energy into mechanical work and is not mobile. Stationary ICE differ from mobile ICE in that a stationary internal combustion engine is not a nonroad engine as defined at 40 CFR 1068.30 (excluding paragraph (2)(ii) of that definition), and is not used to propel a motor vehicle, aircraft, or a vehicle used solely for competition. Stationary ICE include reciprocating ICE, rotary ICE, and other ICE, except combustion turbines.</P>
+<P><I>Subpart</I> means 40 CFR part 60, subpart IIII.</P>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37972, June 28, 2011; 78 FR 6696, Jan. 30, 2013; 81 FR 44219, July 7, 2016; 86 FR 34360, June 29, 2021; 87 FR 48606, Aug. 10, 2022]
+</CITA>
+</DIV8>
+
+<DIV9 N="Table 1 to Subpart IIII of Part 60" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/appendix-Table 1 to Subpart IIII of Part 60&quot;,&quot;citation&quot;:&quot;Table 1 to Subpart IIII of Part 60, Title 40&quot;}">
+<HEAD>Table 1 to Subpart IIII of Part 60&#x2014;Emission Standards for Stationary Pre-2007 Model Year Engines With a Displacement of &lt;10 Liters per Cylinder and 2007-2010 Model Year Engines &gt;2,237 KW (3,000 HP) and With a Displacement of &lt;10 Liters per Cylinder
+</HEAD>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="headnote">[As stated in &#xA7;&#xA7; 60.4201(b), 60.4202(b), 60.4204(a), and 60.4205(a), you must comply with the following emission standards]</P></CAPTION>
+<THEAD>
+<TR>
+<TH rowspan="2" class="center border-top-single border-bottom-single border-right-single">Maximum engine power</TH>
+<TH colspan="5" class="center border-top-single border-bottom-single">Emission standards for stationary pre-2007 model year engines with a displacement of &lt;10 liters per cylinder and 2007-2010 model year engines &gt;2,237 KW (3,000 HP) and with a displacement of &lt;10 liters per cylinder in g/KW-hr (g/HP-hr)</TH>
+</TR>
+<TR>
+<TH class="center border-bottom-single border-right-single">NMHC + NO<sub>X</sub></TH>
+<TH class="center border-bottom-single border-right-single">HC</TH>
+<TH class="center border-bottom-single border-right-single">NO<sub>X</sub></TH>
+<TH class="center border-bottom-single border-right-single">CO</TH>
+<TH class="center border-bottom-single">PM</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">KW&lt;8 (HP&lt;11)</TD>
+<TD class="right border-right-single">10.5 (7.8)</TD>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single">8.0 (6.0)</TD>
+<TD class="right">1.0 (0.75)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">8&#x2264;KW&lt;19 (11&#x2264;HP&lt;25)</TD>
+<TD class="right border-right-single">9.5 (7.1)</TD>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single">6.6 (4.9)</TD>
+<TD class="right">0.80 (0.60)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">19&#x2264;KW&lt;37 (25&#x2264;HP&lt;50)</TD>
+<TD class="right border-right-single">9.5 (7.1)</TD>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single">5.5 (4.1)</TD>
+<TD class="right">0.80 (0.60)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">37&#x2264;KW&lt;56 (50&#x2264;HP&lt;75)</TD>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single">9.2 (6.9)</TD>
+<TD class="right border-right-single"/>
+<TD class="right"/>
+</TR>
+<TR>
+<TD class="left border-right-single">56&#x2264;KW&lt;75 (75&#x2264;HP&lt;100)</TD>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single">9.2 (6.9)</TD>
+<TD class="right border-right-single"/>
+<TD class="right"/>
+</TR>
+<TR>
+<TD class="left border-right-single">75&#x2264;KW&lt;130 (100&#x2264;HP&lt;175)</TD>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single">9.2 (6.9)</TD>
+<TD class="right border-right-single"/>
+<TD class="right"/>
+</TR>
+<TR>
+<TD class="left border-right-single">130&#x2264;KW&lt;225 (175&#x2264;HP&lt;300)</TD>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single">1.3 (1.0)</TD>
+<TD class="right border-right-single">9.2 (6.9)</TD>
+<TD class="right border-right-single">11.4 (8.5)</TD>
+<TD class="right">0.54 (0.40)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">225&#x2264;KW&lt;450 (300&#x2264;HP&lt;600)</TD>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single">1.3 (1.0)</TD>
+<TD class="right border-right-single">9.2 (6.9)</TD>
+<TD class="right border-right-single">11.4 (8.5)</TD>
+<TD class="right">0.54 (0.40)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">450&#x2264;KW&#x2264;560 (600&#x2264;HP&#x2264;750)</TD>
+<TD class="right border-right-single"/>
+<TD class="right border-right-single">1.3 (1.0)</TD>
+<TD class="right border-right-single">9.2 (6.9)</TD>
+<TD class="right border-right-single">11.4 (8.5)</TD>
+<TD class="right">0.54 (0.40)</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">KW&gt;560 (HP&gt;750)</TD>
+<TD class="right border-bottom-single border-right-single"/>
+<TD class="right border-bottom-single border-right-single">1.3 (1.0)</TD>
+<TD class="right border-bottom-single border-right-single">9.2 (6.9)</TD>
+<TD class="right border-bottom-single border-right-single">11.4 (8.5)</TD>
+<TD class="right border-bottom-single">0.54 (0.40)</TD>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+</DIV9>
+
+<DIV9 N="Table 2 to Subpart IIII of Part 60" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/appendix-Table 2 to Subpart IIII of Part 60&quot;,&quot;citation&quot;:&quot;Table 2 to Subpart IIII of Part 60, Title 40&quot;}">
+<HEAD>Table 2 to Subpart IIII of Part 60&#x2014;Emission Standards for 2008 Model Year and Later Emergency Stationary CI ICE &lt;37 KW (50 HP) With a Displacement of &lt;10 Liters per Cylinder
+</HEAD>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="headnote">[As stated in &#xA7; 60.4202(a)(1), you must comply with the following emission standards]</P></CAPTION>
+<THEAD>
+<TR>
+<TH rowspan="2" class="center border-top-single border-bottom-single border-right-single">Engine power</TH>
+<TH colspan="4" class="center border-top-single border-bottom-single">Emission standards for 2008 model year and later emergency stationary CI ICE &lt;37 KW (50 HP) with a displacement of &lt;10 liters per cylinder in g/KW-hr (g/HP-hr)</TH>
+</TR>
+<TR>
+<TH class="center border-bottom-single border-right-single">Model year(s)</TH>
+<TH class="center border-bottom-single border-right-single">NO<sub>X</sub> + NMHC</TH>
+<TH class="center border-bottom-single border-right-single">CO</TH>
+<TH class="center border-bottom-single">PM</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">KW&lt;8 (HP&lt;11)</TD>
+<TD class="right border-right-single">2008 + </TD>
+<TD class="right border-right-single">7.5 (5.6)</TD>
+<TD class="right border-right-single">8.0 (6.0)</TD>
+<TD class="right">0.40 (0.30)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">8&#x2264;KW&lt;19 (11&#x2264;HP&lt;25)</TD>
+<TD class="right border-right-single">2008 + </TD>
+<TD class="right border-right-single">7.5 (5.6)</TD>
+<TD class="right border-right-single">6.6 (4.9)</TD>
+<TD class="right">0.40 (0.30)</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">19&#x2264;KW&lt;37 (25&#x2264;HP&lt;50)</TD>
+<TD class="right border-bottom-single border-right-single">2008 + </TD>
+<TD class="right border-bottom-single border-right-single">7.5 (5.6)</TD>
+<TD class="right border-bottom-single border-right-single">5.5 (4.1)</TD>
+<TD class="right border-bottom-single">0.30 (0.22)</TD>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+</DIV9>
+
+<DIV9 N="Table 3 to Subpart IIII of Part 60" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/appendix-Table 3 to Subpart IIII of Part 60&quot;,&quot;citation&quot;:&quot;Table 3 to Subpart IIII of Part 60, Title 40&quot;}">
+<HEAD>Table 3 to Subpart IIII of Part 60&#x2014;Certification Requirements for Stationary Fire Pump Engines
+</HEAD>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="headnote">As stated in &#xA7; 60.4202(d), you must certify new stationary fire pump engines beginning with the following model years:</P></CAPTION>
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">Engine<br/>power</TH>
+<TH class="center border-top-single border-bottom-single">Starting model year engine manufacturers must certify<br/>new<br/>stationary<br/>fire pump<br/>engines<br/>according to<br/>&#xA7; 60.4202(d)<sup>1</sup></TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">KW&lt;75<br/>(HP&lt;100)</TD>
+<TD class="right">2011</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">75&#x2264;KW&lt;130<br/>(100&#x2264;HP&lt;175)</TD>
+<TD class="right">2010</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">130&#x2264;KW&#x2264;560<br/>(175&#x2264;HP&#x2264;750)</TD>
+<TD class="right">2009</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">KW&gt;560<br/>(HP&gt;750)</TD>
+<TD class="right border-bottom-single">2008
+</TD>
+</TR>
+</TBODY>
+<TFOOT><TR><TD colspan="2"><sup>1</sup> Manufacturers of fire pump stationary CI ICE with a maximum engine power greater than or equal to 37 kW (50 HP) and less than 450 KW (600 HP) and a rated speed of greater than 2,650 revolutions per minute (rpm) are not required to certify such engines until three model years following the model year indicated in this Table 3 for engines in the applicable engine power category.</TD></TR></TFOOT></TABLE>
+</DIV></DIV>
+<CITA TYPE="N">[71 FR 39172, July 11, 2006, as amended at 76 FR 37972, June 28, 2011]
+</CITA>
+</DIV9>
+
+<DIV9 N="Table 4 to Subpart IIII of Part 60" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/appendix-Table 4 to Subpart IIII of Part 60&quot;,&quot;citation&quot;:&quot;Table 4 to Subpart IIII of Part 60, Title 40&quot;}">
+<HEAD>Table 4 to Subpart IIII of Part 60&#x2014;Emission Standards for Stationary Fire Pump Engines
+</HEAD>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="headnote">[As stated in &#xA7;&#xA7; 60.4202(d) and 60.4205(c), you must comply with the following emission standards for stationary fire pump engines]</P></CAPTION>
+<THEAD>
+<TR>
+<TH rowspan="2" class="center border-top-single border-bottom-single border-right-single">Maximum engine power</TH>
+<TH rowspan="2" class="center border-top-single border-bottom-single border-right-single">Model year(s)</TH>
+<TH colspan="3" class="center border-top-single border-bottom-single">Emission standards for stationary fire pump engines in g/KW-hr<br/>(g/HP-hr)</TH>
+</TR>
+<TR>
+<TH class="center border-bottom-single border-right-single">NMHC + NO<sub>X</sub></TH>
+<TH class="center border-bottom-single border-right-single">CO</TH>
+<TH class="center border-bottom-single">PM</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">KW&lt;8 (HP&lt;11)</TD>
+<TD class="left border-right-single">2010 and earlier</TD>
+<TD class="right border-right-single">10.5 (7.8)</TD>
+<TD class="right border-right-single">8.0 (6.0)</TD>
+<TD class="right">1.0 (0.75)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">KW&lt;8 (HP&lt;11)</TD>
+<TD class="left border-right-single">2011 +</TD>
+<TD class="right border-right-single">7.5 (5.6)</TD>
+<TD class="right border-right-single">8.0 (6.0)</TD>
+<TD class="right">0.40 (0.30)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">8&#x2264;KW&lt;19 (11&#x2264;HP&lt;25)</TD>
+<TD class="left border-right-single">2010 and earlier</TD>
+<TD class="right border-right-single">9.5 (7.1)</TD>
+<TD class="right border-right-single">6.6 (4.9)</TD>
+<TD class="right">0.80 (0.60)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">8&#x2264;KW&lt;19 (11&#x2264;HP&lt;25)</TD>
+<TD class="left border-right-single">2011 +</TD>
+<TD class="right border-right-single">7.5 (5.6)</TD>
+<TD class="right border-right-single">6.6 (4.9)</TD>
+<TD class="right">0.40 (0.30)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">19&#x2264;KW&lt;37 (25&#x2264;HP&lt;50)</TD>
+<TD class="left border-right-single">2010 and earlier</TD>
+<TD class="right border-right-single">9.5 (7.1)</TD>
+<TD class="right border-right-single">5.5 (4.1)</TD>
+<TD class="right">0.80 (0.60)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">19&#x2264;KW&lt;37 (25&#x2264;HP&lt;50)</TD>
+<TD class="left border-right-single">2011 +</TD>
+<TD class="right border-right-single">7.5 (5.6)</TD>
+<TD class="right border-right-single">5.5 (4.1)</TD>
+<TD class="right">0.30 (0.22)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">37&#x2264;KW&lt;56 (50&#x2264;HP&lt;75)</TD>
+<TD class="left border-right-single">2010 and earlier</TD>
+<TD class="right border-right-single">10.5 (7.8)</TD>
+<TD class="right border-right-single">5.0 (3.7)</TD>
+<TD class="right">0.80 (0.60)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">37&#x2264;KW&lt;56 (50&#x2264;HP&lt;75)</TD>
+<TD class="left border-right-single">2011 + <sup>1</sup></TD>
+<TD class="right border-right-single">4.7 (3.5)</TD>
+<TD class="right border-right-single">5.0 (3.7)</TD>
+<TD class="right">0.40 (0.30)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">56&#x2264;KW&lt;75 (75&#x2264;HP&lt;100)</TD>
+<TD class="left border-right-single">2010 and earlier</TD>
+<TD class="right border-right-single">10.5 (7.8)</TD>
+<TD class="right border-right-single">5.0 (3.7)</TD>
+<TD class="right">0.80 (0.60)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">56&#x2264;KW&lt;75 (75&#x2264;HP&lt;100)</TD>
+<TD class="left border-right-single">2011 + <sup>1</sup></TD>
+<TD class="right border-right-single">4.7 (3.5)</TD>
+<TD class="right border-right-single">5.0 (3.7)</TD>
+<TD class="right">0.40 (0.30)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">75&#x2264;KW&lt;130 (100&#x2264;HP&lt;175)</TD>
+<TD class="left border-right-single">2009 and earlier</TD>
+<TD class="right border-right-single">10.5 (7.8)</TD>
+<TD class="right border-right-single">5.0 (3.7)</TD>
+<TD class="right">0.80 (0.60)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">75&#x2264;KW&lt;130 (100&#x2264;HP&lt;175)</TD>
+<TD class="left border-right-single">2010 + <sup>2</sup></TD>
+<TD class="right border-right-single">4.0 (3.0)</TD>
+<TD class="right border-right-single">5.0 (3.7)</TD>
+<TD class="right">0.30 (0.22)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">130&#x2264;KW&lt;225 (175&#x2264;HP&lt;300)</TD>
+<TD class="left border-right-single">2008 and earlier</TD>
+<TD class="right border-right-single">10.5 (7.8)</TD>
+<TD class="right border-right-single">3.5 (2.6)</TD>
+<TD class="right">0.54 (0.40)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">130&#x2264;KW&lt;225 (175&#x2264;HP&lt;300)</TD>
+<TD class="left border-right-single">2009 + <sup>3</sup></TD>
+<TD class="right border-right-single">4.0 (3.0)</TD>
+<TD class="right border-right-single">3.5 (2.6)</TD>
+<TD class="right">0.20 (0.15)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">225&#x2264;KW&lt;450 (300&#x2264;HP&lt;600)</TD>
+<TD class="left border-right-single">2008 and earlier</TD>
+<TD class="right border-right-single">10.5 (7.8)</TD>
+<TD class="right border-right-single">3.5 (2.6)</TD>
+<TD class="right">0.54 (0.40)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">225&#x2264;KW&lt;450 (300&#x2264;HP&lt;600)</TD>
+<TD class="left border-right-single">2009 + <sup>3</sup></TD>
+<TD class="right border-right-single">4.0 (3.0)</TD>
+<TD class="right border-right-single">3.5 (2.6)</TD>
+<TD class="right">0.20 (0.15)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">450&#x2264;KW&#x2264;560 (600&#x2264;HP&#x2264;750)</TD>
+<TD class="left border-right-single">2008 and earlier</TD>
+<TD class="right border-right-single">10.5 (7.8)</TD>
+<TD class="right border-right-single">3.5 (2.6)</TD>
+<TD class="right">0.54 (0.40)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">450&#x2264;KW&#x2264;560 (600&#x2264;HP&#x2264;750)</TD>
+<TD class="left border-right-single">2009 +</TD>
+<TD class="right border-right-single">4.0 (3.0)</TD>
+<TD class="right border-right-single">3.5 (2.6)</TD>
+<TD class="right">0.20 (0.15)</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">KW&gt;560 (HP&gt;750)</TD>
+<TD class="left border-right-single">2007 and earlier</TD>
+<TD class="right border-right-single">10.5 (7.8)</TD>
+<TD class="right border-right-single">3.5 (2.6)</TD>
+<TD class="right">0.54 (0.40)</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">KW&gt;560 (HP&gt;750)</TD>
+<TD class="left border-bottom-single border-right-single">2008 +</TD>
+<TD class="right border-bottom-single border-right-single">6.4 (4.8)</TD>
+<TD class="right border-bottom-single border-right-single">3.5 (2.6)</TD>
+<TD class="right border-bottom-single">0.20 (0.15)
+</TD>
+</TR>
+</TBODY>
+<TFOOT><TR><TD colspan="5"><sup>1</sup> For model years 2011-2013, manufacturers, owners and operators of fire pump stationary CI ICE in this engine power category with a rated speed of greater than 2,650 revolutions per minute (rpm) may comply with the emission limitations for 2010 model year engines.
+</TD></TR><TR><TD colspan="5"><sup>2</sup> For model years 2010-2012, manufacturers, owners and operators of fire pump stationary CI ICE in this engine power category with a rated speed of greater than 2,650 rpm may comply with the emission limitations for 2009 model year engines.
+</TD></TR><TR><TD colspan="5"><sup>3</sup> In model years 2009-2011, manufacturers of fire pump stationary CI ICE in this engine power category with a rated speed of greater than 2,650 rpm may comply with the emission limitations for 2008 model year engines.</TD></TR></TFOOT></TABLE>
+</DIV></DIV>
+<CITA TYPE="N">[89 FR 70513, Aug. 30, 2024]
+</CITA>
+</DIV9>
+
+<DIV9 N="Table 5 to Subpart IIII of Part 60" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/appendix-Table 5 to Subpart IIII of Part 60&quot;,&quot;citation&quot;:&quot;Table 5 to Subpart IIII of Part 60, Title 40&quot;}">
+<HEAD>Table 5 to Subpart IIII of Part 60&#x2014;Labeling and Recordkeeping Requirements for New Stationary Emergency Engines
+</HEAD>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="headnote">[You must comply with the labeling requirements in &#xA7; 60.4210(f) and the recordkeeping requirements in &#xA7; 60.4214(b) for new emergency stationary CI ICE beginning in the following model years:]</P></CAPTION>
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">Engine power</TH>
+<TH class="center border-top-single border-bottom-single">Starting model year</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">19&#x2264;KW&lt;56 (25&#x2264;HP&lt;75)</TD>
+<TD class="right">2013</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">56&#x2264;KW&lt;130 (75&#x2264;HP&lt;175)</TD>
+<TD class="right">2012</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">KW&#x2265;130 (HP&#x2265;175)</TD>
+<TD class="right border-bottom-single">2011</TD>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+</DIV9>
+
+<DIV9 N="Table 6 to Subpart IIII of Part 60" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/appendix-Table 6 to Subpart IIII of Part 60&quot;,&quot;citation&quot;:&quot;Table 6 to Subpart IIII of Part 60, Title 40&quot;}">
+<HEAD>Table 6 to Subpart IIII of Part 60&#x2014;Optional 3-Mode Test Cycle for Stationary Fire Pump Engines
+</HEAD>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="headnote">[As stated in &#xA7; 60.4210(g), manufacturers of fire pump engines may use the following test cycle for testing fire pump engines:]</P></CAPTION>
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">Mode No.</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Engine speed <sup>1</sup></TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Torque<br/>(percent) <sup>2</sup></TH>
+<TH class="center border-top-single border-bottom-single">Weighting<br/>factors</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-bottom-single border-right-single">1</TD>
+<TD class="left border-bottom-single border-right-single">Rated</TD>
+<TD class="right border-bottom-single border-right-single">100</TD>
+<TD class="right border-bottom-single">0.30</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">2</TD>
+<TD class="left border-bottom-single border-right-single">Rated</TD>
+<TD class="right border-bottom-single border-right-single">75</TD>
+<TD class="right border-bottom-single">0.50</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">3</TD>
+<TD class="left border-bottom-single border-right-single">Rated</TD>
+<TD class="right border-bottom-single border-right-single">50</TD>
+<TD class="right border-bottom-single">0.20
+</TD>
+</TR>
+</TBODY>
+<TFOOT><TR><TD colspan="4"><sup>1</sup> Engine speed: &#xB1;2 percent of point.
+</TD></TR><TR><TD colspan="4"><sup>2</sup> Torque: NFPA certified nameplate HP for 100 percent point. All points should be &#xB1;2 percent of engine percent load value.</TD></TR></TFOOT></TABLE>
+</DIV></DIV>
+</DIV9>
+
+<DIV9 N="Table 7 to Subpart IIII of Part 60" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/appendix-Table 7 to Subpart IIII of Part 60&quot;,&quot;citation&quot;:&quot;Table 7 to Subpart IIII of Part 60, Title 40&quot;}">
+<HEAD>Table 7 to Subpart IIII of Part 60&#x2014;Requirements for Performance Tests for Stationary CI ICE With a Displacement of &#x2265;30 Liters per Cylinder
+</HEAD>
+<P>As stated in &#xA7; 60.4213, you must comply with the following requirements for performance tests for stationary CI ICE with a displacement of &#x2265;30 liters per cylinder:</P>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">Each</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Complying with the requirement to</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">You must</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Using</TH>
+<TH class="center border-top-single border-bottom-single">According to the following requirements</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">1. Stationary CI internal combustion engine with a displacement of &#x2265; 30 liters per cylinder</TD>
+<TD class="left border-right-single">a. Reduce NO<sub>X</sub> emissions by 90 percent or more;</TD>
+<TD class="left border-right-single">i. Select the sampling port location and number/location of traverse points at the inlet and outlet of the control device;</TD>
+<TD class="left border-right-single"/>
+<TD class="left">(a) For NO<sub>X</sub>, O<sub>2</sub>, and moisture measurement, ducts &#x2264;6 inches in diameter may be sampled at a single point located at the duct centroid and ducts &gt;6 and &#x2264;12 inches in diameter may be sampled at 3 traverse points located at 16.7, 50.0, and 83.3% of the measurement line ('3-point long line'). If the duct is &gt;12 inches in diameter <E T="03">and</E> the sampling port location meets the two and half-diameter criterion of Section 11.1.1 of Method 1 of 40 CFR part 60, appendix A-1, the duct may be sampled at '3-point long line'; otherwise, conduct the stratification testing and select sampling points according to Section 8.1.2 of Method 7E of 40 CFR part 60, appendix A-4.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">ii. Measure O<sub>2</sub> at the inlet and outlet of the control device;</TD>
+<TD class="left border-right-single">(1) Method 3, 3A, or 3B of 40 CFR part 60, appendix A-2</TD>
+<TD class="left">(b) Measurements to determine O<sub>2</sub> concentration must be made at the same time as the measurements for NO<sub>X</sub> concentration.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">iii. If necessary, measure moisture content at the inlet and outlet of the control device; and</TD>
+<TD class="left border-right-single">(2) Method 4 of 40 CFR part 60, appendix A-3, Method 320 of 40 CFR part 63, appendix A, or ASTM D 6348-03 (incorporated by reference, see &#xA7; 60.17)</TD>
+<TD class="left">(c) Measurements to determine moisture content must be made at the same time as the measurements for NO<sub>X</sub> concentration.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">iv. Measure NO<sub>X</sub> at the inlet and outlet of the control device.</TD>
+<TD class="left border-right-single">(3) Method 7E of 40 CFR part 60, appendix A-4, Method 320 of 40 CFR part 63, appendix A, or ASTM D 6348-03 (incorporated by reference, see &#xA7; 60.17)</TD>
+<TD class="left">(d) NO<sub>X</sub> concentration must be at 15 percent O<sub>2</sub>, dry basis. Results of this test consist of the average of the three 1-hour or longer runs.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">b. Limit the concentration of NO<sub>X</sub> in the stationary CI internal combustion engine exhaust.</TD>
+<TD class="left border-right-single">i. Select the sampling port location and number/location of traverse points at the exhaust of the stationary internal combustion engine;</TD>
+<TD class="left border-right-single"/>
+<TD class="left">(a) For NO<sub>X</sub>, O<sub>2</sub>, and moisture measurement, ducts &#x2264;6 inches in diameter may be sampled at a single point located at the duct centroid and ducts &gt;6 and &#x2264;12 inches in diameter may be sampled at 3 traverse points located at 16.7, 50.0, and 83.3% of the measurement line ('3-point long line'). If the duct is &gt;12 inches in diameter <E T="03">and</E> the sampling port location meets the two and half-diameter criterion of Section 11.1.1 of Method 1 of 40 CFR part 60, appendix A-1, the duct may be sampled at '3-point long line'; otherwise, conduct the stratification testing and select sampling points according to Section 8.1.2 of Method 7E of 40 CFR part 60, appendix A-4.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">ii. Determine the O<sub>2</sub> concentration of the stationary internal combustion engine exhaust at the sampling port location;</TD>
+<TD class="left border-right-single">(1) Method 3, 3A, or 3B of 40 CFR part 60, appendix A-2</TD>
+<TD class="left">(b) Measurements to determine O<sub>2</sub> concentration must be made at the same time as the measurement for NO<sub>X</sub> concentration.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">iii. If necessary, measure moisture content of the stationary internal combustion engine exhaust at the sampling port location; and</TD>
+<TD class="left border-right-single">(2) Method 4 of 40 CFR part 60, appendix A-3, Method 320 of 40 CFR part 63, appendix A, or ASTM D 6348-03 (incorporated by reference, see &#xA7; 60.17)</TD>
+<TD class="left">(c) Measurements to determine moisture content must be made at the same time as the measurement for NO<sub>X</sub> concentration.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">iv. Measure NO<sub>X</sub> at the exhaust of the stationary internal combustion engine; if using a control device, the sampling site must be located at the outlet of the control device.</TD>
+<TD class="left border-right-single">(3) Method 7E of 40 CFR part 60, appendix A-4, Method 320 of 40 CFR part 63, appendix A, or ASTM D 6348-03 (incorporated by reference, see &#xA7; 60.17)</TD>
+<TD class="left">(d) NO<sub>X</sub> concentration must be at 15 percent O<sub>2</sub>, dry basis. Results of this test consist of the average of the three 1-hour or longer runs.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">c. Reduce PM emissions by 60 percent or more</TD>
+<TD class="left border-right-single">i. Select the sampling port location and the number of traverse points;</TD>
+<TD class="left border-right-single">(1) Method 1 or 1A of 40 CFR part 60, appendix A-1</TD>
+<TD class="left">(a) Sampling sites must be located at the inlet and outlet of the control device.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">ii. Measure O<sub>2</sub> at the inlet and outlet of the control device;</TD>
+<TD class="left border-right-single">(2) Method 3, 3A, or 3B of 40 CFR part 60, appendix A-2</TD>
+<TD class="left">(b) Measurements to determine O<sub>2</sub> concentration must be made at the same time as the measurements for PM concentration.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">iii. If necessary, measure moisture content at the inlet and outlet of the control device; and</TD>
+<TD class="left border-right-single">(3) Method 4 of 40 CFR part 60, appendix A-3</TD>
+<TD class="left">(c) Measurements to determine and moisture content must be made at the same time as the measurements for PM concentration.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">iv. Measure PM at the inlet and outlet of the control device.</TD>
+<TD class="left border-right-single">(4) Method 5 of 40 CFR part 60, appendix A-3</TD>
+<TD class="left">(d) PM concentration must be at 15 percent O<sub>2</sub>, dry basis. Results of this test consist of the average of the three 1-hour or longer runs.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single">d. Limit the concentration of PM in the stationary CI internal combustion engine exhaust</TD>
+<TD class="left border-right-single">i. Select the sampling port location and the number of traverse points;</TD>
+<TD class="left border-right-single">(1) Method 1 or 1A of 40 CFR part 60, appendix A-1</TD>
+<TD class="left">(a) If using a control device, the sampling site must be located at the outlet of the control device.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">ii. Determine the O<sub>2</sub> concentration of the stationary internal combustion engine exhaust at the sampling port location;</TD>
+<TD class="left border-right-single">(2) Method 3, 3A, or 3B of 40 CFR part 60, appendix A-2</TD>
+<TD class="left">(b) Measurements to determine O<sub>2</sub> concentration must be made at the same time as the measurements for PM concentration.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single"> </TD>
+<TD class="left border-right-single"/>
+<TD class="left border-right-single">iii. If necessary, measure moisture content of the stationary internal combustion engine exhaust at the sampling port location; and</TD>
+<TD class="left border-right-single">(3) Method 4 of 40 CFR part 60, appendix A-3</TD>
+<TD class="left">(c) Measurements to determine moisture content must be made at the same time as the measurements for PM concentration.</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single"> </TD>
+<TD class="left border-bottom-single border-right-single"/>
+<TD class="left border-bottom-single border-right-single">iv. Measure PM at the exhaust of the stationary internal combustion engine.</TD>
+<TD class="left border-bottom-single border-right-single">(4) Method 5 of 40 CFR part 60, appendix A-3</TD>
+<TD class="left border-bottom-single">(d) PM concentration must be at 15 percent O<sub>2</sub>, dry basis. Results of this test consist of the average of the three 1-hour or longer runs.</TD>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+<CITA TYPE="N">[79 FR 11251, Feb. 27, 2014]
+</CITA>
+</DIV9>
+
+<DIV9 N="Table 8 to Subpart IIII of Part 60" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-40/part-60/appendix-Table 8 to Subpart IIII of Part 60&quot;,&quot;citation&quot;:&quot;Table 8 to Subpart IIII of Part 60, Title 40&quot;}">
+<HEAD>Table 8 to Subpart IIII of Part 60&#x2014;Applicability of General Provisions to Subpart IIII
+</HEAD>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="headnote">[As stated in &#xA7; 60.4218, you must comply with the following applicable General Provisions:]</P></CAPTION>
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">General Provisions<br/>citation</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Subject of citation</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Applies<br/>to<br/>subpart</TH>
+<TH class="center border-top-single border-bottom-single">Explanation</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.1</TD>
+<TD class="left border-right-single">General applicability of the General Provisions</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.2</TD>
+<TD class="left border-right-single">Definitions</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left">Additional terms defined in &#xA7; 60.4219.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.3</TD>
+<TD class="left border-right-single">Units and abbreviations</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.4</TD>
+<TD class="left border-right-single">Address</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.5</TD>
+<TD class="left border-right-single">Determination of construction or modification</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.6</TD>
+<TD class="left border-right-single">Review of plans</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.7</TD>
+<TD class="left border-right-single">Notification and Recordkeeping</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left">Except that &#xA7; 60.7 only applies as specified in &#xA7; 60.4214(a).</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.8</TD>
+<TD class="left border-right-single">Performance tests</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left">Except that &#xA7; 60.8 only applies to stationary CI ICE with a displacement of (&#x2265;30 liters per cylinder and engines that are not certified.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.9</TD>
+<TD class="left border-right-single">Availability of information</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.10</TD>
+<TD class="left border-right-single">State Authority</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.11</TD>
+<TD class="left border-right-single">Compliance with standards and maintenance requirements</TD>
+<TD class="left border-right-single">No</TD>
+<TD class="left">Requirements are specified in subpart IIII.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.12</TD>
+<TD class="left border-right-single">Circumvention</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.13</TD>
+<TD class="left border-right-single">Monitoring requirements</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left">Except that &#xA7; 60.13 only applies to stationary CI ICE with a displacement of (&#x2265;30 liters per cylinder.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.14</TD>
+<TD class="left border-right-single">Modification</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.15</TD>
+<TD class="left border-right-single">Reconstruction</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.16</TD>
+<TD class="left border-right-single">Priority list</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.17</TD>
+<TD class="left border-right-single">Incorporations by reference</TD>
+<TD class="left border-right-single">Yes</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-right-single">&#xA7; 60.18</TD>
+<TD class="left border-right-single">General control device requirements</TD>
+<TD class="left border-right-single">No</TD>
+<TD class="left"/>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">&#xA7; 60.19</TD>
+<TD class="left border-bottom-single border-right-single">General notification and reporting requirements</TD>
+<TD class="left border-bottom-single border-right-single">Yes</TD>
+<TD class="left border-bottom-single"/>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+</DIV9>
+
+</DIV7>
+</DIV6>

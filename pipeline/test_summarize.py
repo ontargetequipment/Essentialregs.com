@@ -379,6 +379,146 @@ def test_reg7_prompt_has_no_batch3_specific_text():
 
 
 # --------------------------------------------------------------------------
+# Batch 4 hints: GP01-GP12 (shared) and jjjj/iiii/zzzz (added Sept 19 2026)
+# --------------------------------------------------------------------------
+
+_GP_KEYS = (
+    "gp01", "gp02", "gp03", "gp05", "gp06", "gp07",
+    "gp08", "gp09", "gp10", "gp11", "gp12",
+)
+
+
+@pytest.mark.parametrize("provision_id, expected", [
+    ("sec-gp02-II-A-2", "gp02"),
+    ("sec-zzzz-63.6603-(a)", "zzzz"),
+])
+def test_batch4_reg_key_of(provision_id, expected):
+    assert reg_key_of(provision_id) == expected
+
+
+@pytest.mark.parametrize("provision_id, key", [
+    ("sec-gp01-I-A", "gp01"),
+    ("sec-gp02-II-A-2", "gp02"),
+    ("sec-gp03-A-1", "gp03"),
+    ("sec-gp05-B-2", "gp05"),
+    ("sec-gp06-C-3", "gp06"),
+    ("sec-gp07-D-4", "gp07"),
+    ("sec-gp08-E-5", "gp08"),
+    ("sec-gp09-F-6", "gp09"),
+    ("sec-gp10-G-7", "gp10"),
+    ("sec-gp11-H-8", "gp11"),
+    ("sec-gp12-I-9", "gp12"),
+])
+def test_gp_hint_selected_by_id_prefix(provision_id, key):
+    system = system_prompt_for(provision_id)
+    assert system == f"{SYSTEM_PROMPT}\n\n{REG_PROMPT_HINTS[key]}"
+    assert "APCD" in system
+    assert "permit condition" in system
+
+
+def test_gp_hint_is_identical_across_all_eleven_keys():
+    hints = {REG_PROMPT_HINTS[k] for k in _GP_KEYS}
+    assert len(hints) == 1
+
+
+def test_gp_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["gp01"]
+    for marker in (
+        "permit requires", "permit condition", "APCD", "AQCC",
+        "owner or operator", "tpy", "g/hp-hr", "ppmvd",
+        "record-retention", "Condition X", "AOS", "NOS", "RICE",
+        "PSD/NANSR", "Disproportionately Impacted", "GP09", "GP10",
+        "July 15, 2026", "GP12",
+    ):
+        assert marker in hint, f"missing {marker!r} from gp hint"
+
+
+@pytest.mark.parametrize("provision_id, key, marker", [
+    ("sec-jjjj-60.4230", "jjjj", "Subpart JJJJ"),
+    ("sec-iiii-60.4200", "iiii", "Subpart IIII"),
+    ("sec-zzzz-63.6603-(a)", "zzzz", "Subpart ZZZZ"),
+])
+def test_engine_subpart_hint_selected_by_id_prefix(provision_id, key, marker):
+    system = system_prompt_for(provision_id)
+    assert system == f"{SYSTEM_PROMPT}\n\n{REG_PROMPT_HINTS[key]}"
+    assert marker in system
+
+
+def test_jjjj_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["jjjj"]
+    for marker in (
+        "EPA Administrator", "owner or operator", "spark-ignition (SI)",
+        "compression-ignition", "Subpart IIII", "ZZZZ", "Emergency",
+        "non-emergency", "Tables", "RICE", "2SLB/4SLB/4SRB", "NSCR",
+        "oxidation catalyst", "40 CFR Part 1048", "This subpart",
+        "General Provisions", "Colorado",
+    ):
+        assert marker in hint, f"missing {marker!r} from jjjj hint"
+
+
+def test_iiii_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["iiii"]
+    for marker in (
+        "EPA Administrator", "owner or operator", "compression-ignition (CI)",
+        "spark-ignition", "Subpart JJJJ", "ZZZZ", "Emergency",
+        "non-emergency", "Tables", "RICE", "40 CFR Part 1039",
+        "This subpart", "General Provisions", "Colorado",
+    ):
+        assert marker in hint, f"missing {marker!r} from iiii hint"
+
+
+def test_zzzz_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["zzzz"]
+    for marker in (
+        "EPA Administrator", "owner or operator", "spark-ignition (SI",
+        "compression-ignition (CI", "Subpart JJJJ", "Subpart IIII",
+        "Emergency", "non-emergency", "major source", "HAP",
+        "load-bearing", "Tables 2c vs. 2d", "RICE", "2SLB/4SLB/4SRB",
+        "NSCR", "oxidation catalyst", "CO as a surrogate", "formaldehyde",
+        "Tables 1a-8", "40 CFR Part 1039", "This subpart",
+        "General Provisions", "Colorado",
+    ):
+        assert marker in hint, f"missing {marker!r} from zzzz hint"
+
+
+@pytest.mark.parametrize("key", ["gp01", "jjjj", "iiii", "zzzz"])
+def test_batch4_hints_reasonably_short(key):
+    assert len(REG_PROMPT_HINTS[key].split()) <= 190
+
+
+def test_reg7_prompt_has_no_batch4_specific_text():
+    system = system_prompt_for("sec-7-B-I-C-1")
+    for key in ("gp01", "jjjj", "iiii", "zzzz"):
+        assert REG_PROMPT_HINTS[key] not in system
+    for batch4_only in (
+        "permit condition", "Subpart JJJJ", "Subpart IIII", "Subpart ZZZZ",
+        "2SLB/4SLB/4SRB",
+    ):
+        assert batch4_only not in system
+
+
+def test_jjjj_iiii_zzzz_hints_do_not_conflate_each_other():
+    # JJJJ's hint should not carry ZZZZ- or IIII-only vocabulary and vice
+    # versa (beyond the deliberate short cross-references to each other).
+    assert "compression-ignition (CI)" not in REG_PROMPT_HINTS["jjjj"]
+    assert "spark-ignition (SI)" not in REG_PROMPT_HINTS["iiii"]
+    assert "CO as a surrogate" not in REG_PROMPT_HINTS["jjjj"]
+    assert "CO as a surrogate" not in REG_PROMPT_HINTS["iiii"]
+
+
+@pytest.mark.parametrize("provision_id, key", [
+    ("sec-gp06-C-3", "gp06"),
+    ("sec-jjjj-60.4230", "jjjj"),
+    ("sec-iiii-60.4200", "iiii"),
+    ("sec-zzzz-63.6603-(a)", "zzzz"),
+])
+def test_batch4_build_prompt_system_matches_row_reg(provision_id, key):
+    result = build_prompt(_row(provision_id), meta={})
+    assert result.system == f"{SYSTEM_PROMPT}\n\n{REG_PROMPT_HINTS[key]}"
+    assert REG_PROMPT_HINTS[key] not in result.prompt
+
+
+# --------------------------------------------------------------------------
 # Audience hook (REG_AUDIENCE / DEFAULT_AUDIENCE / SYSTEM_PROMPT_TEMPLATE)
 # --------------------------------------------------------------------------
 

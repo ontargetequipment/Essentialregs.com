@@ -1,0 +1,2253 @@
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                     40 CFR Part 60 Subpart JJJJ (Sept. 17, 2026)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+This content is from the eCFR and is authoritative but unofficial.
+
+
+
+Title 40 —Protection of Environment
+Chapter I —Environmental Protection Agency
+Subchapter C —Air Programs
+Part 60 —Standards of Performance for New Stationary Sources
+      Authority: 42 U.S.C. 7401 et seq.
+      Source: 36 FR 24877, Dec. 23, 1971, unless otherwise noted.
+
+
+Subpart JJJJ Standards of Performance for Stationary Spark Ignition Internal
+             Combustion Engines
+  What This Subpart Covers
+    § 60.4230 Am I subject to this subpart?
+  Emission Standards for Manufacturers
+    § 60.4231 What emission standards must I meet if I am a manufacturer of stationary SI
+                internal combustion engines or equipment containing such engines?
+    § 60.4232 How long must my engines meet the emission standards if I am a manufacturer of
+                stationary SI internal combustion engines?
+  Emission Standards for Owners and Operators
+    § 60.4233 What emission standards must I meet if I am an owner or operator of a stationary SI
+                internal combustion engine?
+    § 60.4234 How long must I meet the emission standards if I am an owner or operator of a
+                stationary SI internal combustion engine?
+  Other Requirements for Owners and Operators
+    § 60.4235 What fuel requirements must I meet if I am an owner or operator of a stationary SI
+                gasoline fired internal combustion engine subject to this subpart?
+    § 60.4236 What is the deadline for importing or installing stationary SI ICE produced in
+                previous model years?
+    § 60.4237 What are the monitoring requirements if I am an owner or operator of an emergency
+                stationary SI internal combustion engine?
+  Compliance Requirements for Manufacturers
+    § 60.4238 What are my compliance requirements if I am a manufacturer of stationary SI
+                internal combustion engines ≤19 KW (25 HP) or a manufacturer of equipment
+                containing such engines?
+    § 60.4239 What are my compliance requirements if I am a manufacturer of stationary SI
+                internal combustion engines >19 KW (25 HP) that use gasoline or a manufacturer of
+                equipment containing such engines?
+    § 60.4240 What are my compliance requirements if I am a manufacturer of stationary SI
+                internal combustion engines >19 KW (25 HP) that are rich burn engines that use
+                LPG or a manufacturer of equipment containing such engines?
+40 CFR Part 60 Subpart JJJJ (Sept. 17, 2026) (enhanced display)                                     page 1 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                     40 CFR Part 60 Subpart JJJJ (Sept. 17, 2026)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+     § 60.4241 What are my compliance requirements if I am a manufacturer of stationary SI
+                  internal combustion engines participating in the voluntary certification program or a
+                  manufacturer of equipment containing such engines?
+     § 60.4242 What other requirements must I meet if I am a manufacturer of stationary SI internal
+                  combustion engines or equipment containing stationary SI internal combustion
+                  engines or a manufacturer of equipment containing such engines?
+   Compliance Requirements for Owners and Operators
+     § 60.4243 What are my compliance requirements if I am an owner or operator of a stationary
+                  SI internal combustion engine?
+   Testing Requirements for Owners and Operators
+     § 60.4244 What test methods and other procedures must I use if I am an owner or operator of
+                  a stationary SI internal combustion engine?
+   Notification, Reports, and Records for Owners and Operators
+     § 60.4245 What are my notification, reporting, and recordkeeping requirements if I am an
+                  owner or operator of a stationary SI internal combustion engine?
+   General Provisions
+     § 60.4246 What General Provisions and confidential information provisions apply to me?
+   Mobile Source Provisions
+     § 60.4247 What parts of the mobile source provisions apply to me if I am a manufacturer of
+                  stationary SI internal combustion engines or a manufacturer of equipment
+                  containing such engines?
+   Definitions
+     § 60.4248 What definitions apply to this subpart?
+       Table 1 to Subpart JJJJ of Part 60
+          NOX, CO, and VOC Emission Standards for Stationary Non-
+          Emergency SI Engines ≥100 HP (Except Gasoline and Rich Burn
+          LPG), Stationary SI Landfill/Digester Gas Engines, and
+          Stationary Emergency Engines >25 HP
+       Table 2 to Subpart JJJJ of Part 60
+          Requirements for Performance Tests
+       Table 3 to Subpart JJJJ of Part 60
+          Applicability of General Provisions to Subpart JJJJ
+       Table 4 to Subpart JJJJ of Part 60
+          Applicability of Mobile Source Provisions for Manufacturers
+          Participating in the Voluntary Certification Program and
+          Certifying Stationary SI ICE to Emission Standards in Table 1 of
+          Subpart JJJJ
+
+
+
+40 CFR Part 60 Subpart JJJJ (Sept. 17, 2026) (enhanced display)                                     page 2 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                      40 CFR 60.4230
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+Subpart JJJJ—Standards of Performance for Stationary Spark Ignition Internal Combustion
+Engines
+
+Source: 73 FR 3591, Jan. 18, 2008, unless otherwise noted.
+
+                                               WHAT THIS SUBPART COVERS
+
+§ 60.4230 Am I subject to this subpart?
+     (a) The provisions of this subpart are applicable to manufacturers, owners, and operators of stationary spark
+         ignition (SI) internal combustion engines (ICE) as specified in paragraphs (a)(1) through (6) of this
+         section. For the purposes of this subpart, the date that construction commences is the date the engine is
+         ordered by the owner or operator.
+
+           (1) Manufacturers of stationary SI ICE with a maximum engine power less than or equal to 19 kilowatt
+               (KW) (25 horsepower (HP)) that are manufactured on or after July 1, 2008.
+
+           (2) Manufacturers of stationary SI ICE with a maximum engine power greater than 19 KW (25 HP) that
+               are gasoline fueled or that are rich burn engines fueled by liquefied petroleum gas (LPG), where the
+               date of manufacture is:
+
+                (i)   On or after July 1, 2008; or
+
+                (ii) On or after January 1, 2009, for emergency engines.
+
+           (3) Manufacturers of stationary SI ICE with a maximum engine power greater than 19 KW (25 HP) that
+               are not gasoline fueled and are not rich burn engines fueled by LPG, where the manufacturer
+               participates in the voluntary manufacturer certification program described in this subpart and where
+               the date of manufacture is:
+
+                (i)   On or after July 1, 2007, for engines with a maximum engine power greater than or equal to 500
+                      HP (except lean burn engines with a maximum engine power greater than or equal to 500 HP
+                      and less than 1,350 HP);
+
+                (ii) On or after January 1, 2008, for lean burn engines with a maximum engine power greater than
+                     or equal to 500 HP and less than 1,350 HP;
+
+                (iii) On or after July 1, 2008, for engines with a maximum engine power less than 500 HP; or
+
+                (iv) On or after January 1, 2009, for emergency engines.
+
+           (4) Owners and operators of stationary SI ICE that commence construction after June 12, 2006, where
+               the stationary SI ICE are manufactured:
+
+                (i)   On or after July 1, 2007, for engines with a maximum engine power greater than or equal to 500
+                      HP (except lean burn engines with a maximum engine power greater than or equal to 500 HP
+                      and less than 1,350 HP);
+
+                (ii) on or after January 1, 2008, for lean burn engines with a maximum engine power greater than or
+                     equal to 500 HP and less than 1,350 HP;
+
+                (iii) on or after July 1, 2008, for engines with a maximum engine power less than 500 HP; or
+
+
+
+40 CFR 60.4230(a)(4)(iii) (enhanced display)                                                             page 3 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                    40 CFR 60.4230(a)(4)(iv)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+                (iv) on or after January 1, 2009, for emergency engines with a maximum engine power greater than
+                     19 KW (25 HP).
+
+           (5) Owners and operators of stationary SI ICE that are modified or reconstructed after June 12, 2006,
+               and any person that modifies or reconstructs any stationary SI ICE after June 12, 2006.
+
+           (6) The provisions of § 60.4236 of this subpart are applicable to all owners and operators of stationary
+               SI ICE that commence construction after June 12, 2006.
+
+     (b) The provisions of this subpart are not applicable to stationary SI ICE being tested at an engine test cell/
+         stand.
+
+     (c) If you are an owner or operator of an area source subject to this subpart, you are exempt from the
+         obligation to obtain a permit under 40 CFR part 70 or 40 CFR part 71, provided you are not required to
+         obtain a permit under 40 CFR 70.3(a) or 40 CFR 71.3(a) for a reason other than your status as an area
+         source under this subpart. Notwithstanding the previous sentence, you must continue to comply with the
+         provisions of this subpart as applicable.
+
+     (d) For the purposes of this subpart, stationary SI ICE using alcohol-based fuels are considered gasoline
+         engines.
+
+     (e) Stationary SI ICE may be eligible for exemption from the requirements of this subpart as described in 40
+         CFR part 1068, subpart C (or the exemptions described in 40 CFR parts 1048 and 1054, for engines that
+         would need to be certified to standards in those parts), except that owners and operators, as well as
+         manufacturers, may be eligible to request an exemption for national security.
+
+     (f) Owners and operators of facilities with internal combustion engines that are acting as temporary
+         replacement units and that are located at a stationary source for less than 1 year and that have been
+         properly certified as meeting the standards that would be applicable to such engine under the appropriate
+         nonroad engine provisions, are not required to meet any other provisions under this subpart with regard to
+         such engines.
+
+[73 FR 3591, Jan. 18, 2008, as amended at 76 FR 37972, June 28, 2011; 86 FR 34360, June 29, 2021]
+
+
+                                     EMISSION STANDARDS FOR MANUFACTURERS
+
+§ 60.4231 What emission standards must I meet if I am a manufacturer of stationary SI internal
+combustion engines or equipment containing such engines?
+     (a) Stationary SI internal combustion engine manufacturers must certify their stationary SI ICE with a
+         maximum engine power less than or equal to 19 KW (25 HP) manufactured on or after July 1, 2008 to the
+         certification emission standards and other requirements for new nonroad SI engines in 40 CFR part 1054,
+         as follows:
+
+
+
+                If engine         and             the engine must meet the following non-handheld emission
+              displacement    manufacturing           standards identified in 40 CFR part 1054 and related
+                  is . . .    dates are . . .                            requirements:
+             (1) Below 225 July 1, 2008 to      Phase 2.
+
+
+
+
+40 CFR 60.4231(a) (enhanced display)                                                                           page 4 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                      40 CFR 60.4231(b)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+               If engine         and             the engine must meet the following non-handheld emission
+             displacement    manufacturing           standards identified in 40 CFR part 1054 and related
+                 is . . .    dates are . . .                            requirements:
+             cc              December 31,
+                             2011
+             (2) Below 225 January 1, 2012     Phase 3.
+             cc            or later
+             (3) At or       July 1, 2008 to   Phase 2.
+             above 225 cc    December 31,
+                             2010
+             (4) At or       January 1, 2011   Phase 3.
+             above 225 cc    or later
+
+
+
+
+     (b) Stationary SI internal combustion engine manufacturers must certify their stationary SI ICE with a
+         maximum engine power greater than 19 KW (25 HP) (except emergency stationary ICE with a maximum
+         engine power greater than 25 HP and less than 130 HP) that use gasoline and that are manufactured on
+         or after the applicable date in § 60.4230(a)(2), or manufactured on or after the applicable date in §
+         60.4230(a)(4) for emergency stationary ICE with a maximum engine power greater than or equal to 130
+         HP, to the certification emission standards and other requirements for new nonroad SI engines in 40 CFR
+         part 1048. Stationary SI internal combustion engine manufacturers must certify their emergency
+         stationary SI ICE with a maximum engine power greater than 25 HP and less than 130 HP that use
+         gasoline and that are manufactured on or after the applicable date in § 60.4230(a)(4) to the Phase 1
+         emission standards in 40 CFR part 1054, appendix I, applicable to class II engines, and other requirements
+         for new nonroad SI engines in 40 CFR part 1054. Stationary SI internal combustion engine manufacturers
+         may certify their stationary SI ICE with a maximum engine power less than or equal to 30 KW (40 HP) with
+         a total displacement less than or equal to 1,000 cubic centimeters (cc) that use gasoline to the
+         certification emission standards and other requirements as appropriate for new nonroad SI engines in 40
+         CFR part 1054.
+
+     (c) Stationary SI internal combustion engine manufacturers must certify their stationary SI ICE with a
+         maximum engine power greater than 19 KW (25 HP) (except emergency stationary ICE with a maximum
+         engine power greater than 25 HP and less than 130 HP) that are rich burn engines that use LPG and that
+         are manufactured on or after the applicable date in § 60.4230(a)(2), or manufactured on or after the
+         applicable date in § 60.4230(a)(4) for emergency stationary ICE with a maximum engine power greater
+         than or equal to 130 HP, to the certification emission standards and other requirements for new nonroad
+         SI engines in 40 CFR part 1048. Stationary SI internal combustion engine manufacturers must certify their
+         emergency stationary SI ICE greater than 25 HP and less than 130 HP that are rich burn engines that use
+         LPG and that are manufactured on or after the applicable date in § 60.4230(a)(4) to the Phase 1 emission
+         standards in 40 CFR part 1054, appendix I, applicable to class II engines, and other requirements for new
+         nonroad SI engines in 40 CFR part 1054. Stationary SI internal combustion engine manufacturers may
+         certify their stationary SI ICE with a maximum engine power less than or equal to 30 KW (40 HP) with a
+         total displacement less than or equal to 1,000 cc that are rich burn engines that use LPG to the
+         certification emission standards and other requirements as appropriate for new nonroad SI engines in 40
+         CFR part 1054.
+
+
+40 CFR 60.4231(c) (enhanced display)                                                                        page 5 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                              40 CFR 60.4231(d)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+     (d) Stationary SI internal combustion engine manufacturers who choose to certify their stationary SI ICE with
+         a maximum engine power greater than 19 KW (25 HP) and less than 75 KW (100 HP) (except gasoline
+         and rich burn engines that use LPG and emergency stationary ICE with a maximum engine power greater
+         than 25 HP and less than 130 HP) under the voluntary manufacturer certification program described in
+         this subpart must certify those engines to the certification emission standards for new nonroad SI
+         engines in 40 CFR part 1048. Stationary SI internal combustion engine manufacturers who choose to
+         certify their emergency stationary SI ICE greater than 25 HP and less than 130 HP (except gasoline and
+         rich burn engines that use LPG), must certify those engines to the Phase 1 emission standards in 40 CFR
+         part 1054, appendix I, applicable to class II engines, for new nonroad SI engines in 40 CFR part 1054.
+         Stationary SI internal combustion engine manufacturers may certify their stationary SI ICE with a
+         maximum engine power less than or equal to 30 KW (40 HP) with a total displacement less than or equal
+         to 1,000 cc (except gasoline and rich burn engines that use LPG) to the certification emission standards
+         and other requirements as appropriate for new nonroad SI engines in 40 CFR part 1054. For stationary SI
+         ICE with a maximum engine power greater than 19 KW (25 HP) and less than 75 KW (100 HP) (except
+         gasoline and rich burn engines that use LPG and emergency stationary ICE with a maximum engine power
+         greater than 25 HP and less than 130 HP) manufactured prior to January 1, 2011, manufacturers may
+         choose to certify these engines to the standards in Table 1 to this subpart applicable to engines with a
+         maximum engine power greater than or equal to 100 HP and less than 500 HP.
+
+     (e) Stationary SI internal combustion engine manufacturers who choose to certify their stationary SI ICE with
+         a maximum engine power greater than or equal to 75 KW (100 HP) (except gasoline and rich burn engines
+         that use LPG) under the voluntary manufacturer certification program described in this subpart must
+         certify those engines to the emission standards in Table 1 to this subpart. Stationary SI internal
+         combustion engine manufacturers may certify their stationary SI ICE with a maximum engine power
+         greater than or equal to 75 KW (100 HP) that are lean burn engines that use LPG to the certification
+         emission standards for new nonroad SI engines in 40 CFR part 1048. For stationary SI ICE with a
+         maximum engine power greater than or equal to 100 HP (75 KW) and less than 500 HP (373 KW)
+         manufactured prior to January 1, 2011, and for stationary SI ICE with a maximum engine power greater
+         than or equal to 500 HP (373 KW) manufactured prior to July 1, 2010, manufacturers may choose to
+         certify these engines to the certification emission standards for new nonroad SI engines in 40 CFR part
+         1048 applicable to engines that are not severe duty engines.
+
+     (f) Manufacturers of equipment containing stationary SI internal combustion engines meeting the provisions
+         of 40 CFR part 1054 must meet the provisions of 40 CFR part 1060, to the extent they apply to equipment
+         manufacturers.
+
+     (g) Notwithstanding the requirements in paragraphs (a) through (c) of this section, stationary SI internal
+         combustion engine manufacturers are not required to certify reconstructed engines; however
+         manufacturers may elect to do so. The reconstructed engine must be certified to the emission standards
+         specified in paragraphs (a) through (e) of this section that are applicable to the model year, maximum
+         engine power and displacement of the reconstructed stationary SI ICE.
+
+[73 FR 3591, Jan. 18, 2008, as amended at 73 FR 59175, Oct. 8, 2008; 76 FR 37973, June 28, 2011; 78 FR 6697, Jan. 30, 2013; 86
+FR 34360, June 29, 2021]
+
+
+
+
+40 CFR 60.4231(g) (enhanced display)                                                                                page 6 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                       40 CFR 60.4232
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+§ 60.4232 How long must my engines meet the emission standards if I am a manufacturer of
+stationary SI internal combustion engines?
+Engines manufactured by stationary SI internal combustion engine manufacturers must meet the emission
+standards as required in § 60.4231 during the certified emissions life of the engines.
+
+                               EMISSION STANDARDS FOR OWNERS AND OPERATORS
+
+§ 60.4233 What emission standards must I meet if I am an owner or operator of a stationary SI
+internal combustion engine?
+     (a) Owners and operators of stationary SI ICE with a maximum engine power less than or equal to 19 KW (25
+         HP) manufactured on or after July 1, 2008, must comply with the emission standards in § 60.4231(a) for
+         their stationary SI ICE.
+
+     (b) Owners and operators of stationary SI ICE with a maximum engine power greater than 19 KW (25 HP)
+         manufactured on or after the applicable date in § 60.4230(a)(4) that use gasoline must comply with the
+         emission standards in § 60.4231(b) for their stationary SI ICE.
+
+     (c) Owners and operators of stationary SI ICE with a maximum engine power greater than 19 KW (25 HP)
+         manufactured on or after the applicable date in § 60.4230(a)(4) that are rich burn engines that use LPG
+         must comply with the emission standards in § 60.4231(c) for their stationary SI ICE.
+
+     (d) Owners and operators of stationary SI ICE with a maximum engine power greater than 19 KW (25 HP) and
+         less than 75 KW (100 HP) (except gasoline and rich burn engines that use LPG) must comply with the
+         emission standards for field testing in 40 CFR 1048.101(c) for their non-emergency stationary SI ICE and
+         with the emission standards in Table 1 to this subpart for their emergency stationary SI ICE. Owners and
+         operators of stationary SI ICE with a maximum engine power greater than 19 KW (25 HP) and less than 75
+         KW (100 HP) manufactured prior to January 1, 2011, that were certified to the standards in Table 1 to this
+         subpart applicable to engines with a maximum engine power greater than or equal to 100 HP and less
+         than 500 HP, may optionally choose to meet those standards.
+
+     (e) Owners and operators of stationary SI ICE with a maximum engine power greater than or equal to 75 KW
+         (100 HP) (except gasoline and rich burn engines that use LPG) must comply with the emission standards
+         in Table 1 to this subpart for their stationary SI ICE. For owners and operators of stationary SI ICE with a
+         maximum engine power greater than or equal to 100 HP (except gasoline and rich burn engines that use
+         LPG) manufactured prior to January 1, 2011 that were certified to the certification emission standards in
+         40 CFR part 1048 applicable to engines that are not severe duty engines, if such stationary SI ICE was
+         certified to a carbon monoxide (CO) standard above the standard in Table 1 to this subpart, then the
+         owners and operators may meet the CO certification (not field testing) standard for which the engine was
+         certified.
+
+     (f) Owners and operators of any modified or reconstructed stationary SI ICE subject to this subpart must
+         meet the requirements as specified in paragraphs (f)(1) through (5) of this section.
+
+          (1) Owners and operators of stationary SI ICE with a maximum engine power less than or equal to 19
+              KW (25 HP), that are modified or reconstructed after June 12, 2006, must comply with emission
+              standards in § 60.4231(a) for their stationary SI ICE. Engines with a date of manufacture prior to July
+              1, 2008 must comply with the emission standards specified in § 60.4231(a) applicable to engines
+              manufactured on July 1, 2008.
+
+
+40 CFR 60.4233(f)(1) (enhanced display)                                                                   page 7 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                40 CFR 60.4233(f)(2)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+          (2) Owners and operators of stationary SI ICE with a maximum engine power greater than 19 KW (25
+              HP) that are gasoline engines and are modified or reconstructed after June 12, 2006, must comply
+              with the emission standards in § 60.4231(b) for their stationary SI ICE. Engines with a date of
+              manufacture prior to July 1, 2008 (or January 1, 2009 for emergency engines) must comply with the
+              emission standards specified in § 60.4231(b) applicable to engines manufactured on July 1, 2008
+              (or January 1, 2009 for emergency engines).
+
+          (3) Owners and operators of stationary SI ICE with a maximum engine power greater than 19 KW (25
+              HP) that are rich burn engines that use LPG, that are modified or reconstructed after June 12, 2006,
+              must comply with the same emission standards as those specified in § 60.4231(c). Engines with a
+              date of manufacture prior to July 1, 2008 (or January 1, 2009 for emergency engines) must comply
+              with the emission standards specified in § 60.4231(c) applicable to engines manufactured on July 1,
+              2008 (or January 1, 2009 for emergency engines).
+
+          (4) Owners and operators of stationary SI natural gas and lean burn LPG engines with a maximum
+              engine power greater than 19 KW (25 HP), that are modified or reconstructed after June 12, 2006,
+              must comply with the same emission standards as those specified in paragraph (d) or (e) of this
+              section, except that such owners and operators of non-emergency engines and emergency engines
+              greater than or equal to 130 HP must meet a nitrogen oxides (NOX) emission standard of 3.0 grams
+              per HP-hour (g/HP-hr), a CO emission standard of 4.0 g/HP-hr (5.0 g/HP-hr for non-emergency
+              engines less than 100 HP), and a volatile organic compounds (VOC) emission standard of 1.0 g/HP-
+              hr, or a NOX emission standard of 250 ppmvd at 15 percent oxygen (O2), a CO emission standard 540
+              ppmvd at 15 percent O2 (675 ppmvd at 15 percent O2 for non-emergency engines less than 100 HP),
+              and a VOC emission standard of 86 ppmvd at 15 percent O2, where the date of manufacture of the
+              engine is:
+
+                (i)   Prior to July 1, 2007, for non-emergency engines with a maximum engine power greater than or
+                      equal to 500 HP (except lean burn natural gas engines and LPG engines with a maximum
+                      engine power greater than or equal to 500 HP and less than 1,350 HP);
+
+                (ii) Prior to July 1, 2008, for non-emergency engines with a maximum engine power less than 500
+                     HP;
+
+                (iii) Prior to January 1, 2009, for emergency engines;
+
+                (iv) Prior to January 1, 2008, for non-emergency lean burn natural gas engines and LPG engines
+                     with a maximum engine power greater than or equal to 500 HP and less than 1,350 HP.
+
+          (5) Owners and operators of stationary SI landfill/digester gas ICE engines with a maximum engine
+              power greater than 19 KW (25 HP), that are modified or reconstructed after June 12, 2006, must
+              comply with the same emission standards as those specified in paragraph (e) of this section for
+              stationary landfill/digester gas engines. Engines with maximum engine power less than 500 HP and
+              a date of manufacture prior to July 1, 2008 must comply with the emission standards specified in
+              paragraph (e) of this section for stationary landfill/digester gas ICE with a maximum engine power
+              less than 500 HP manufactured on July 1, 2008. Engines with a maximum engine power greater than
+              or equal to 500 HP (except lean burn engines greater than or equal to 500 HP and less than 1,350
+              HP) and a date of manufacture prior to July 1, 2007 must comply with the emission standards
+              specified in paragraph (e) of this section for stationary landfill/digester gas ICE with a maximum
+              engine power greater than or equal to 500 HP (except lean burn engines greater than or equal to 500
+              HP and less than 1,350 HP) manufactured on July 1, 2007. Lean burn engines greater than or equal
+              to 500 HP and less than 1,350 HP with a date of manufacture prior to January 1, 2008 must comply
+
+40 CFR 60.4233(f)(5) (enhanced display)                                                                 page 8 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                       40 CFR 60.4233(g)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+                with the emission standards specified in paragraph (e) of this section for stationary landfill/digester
+                gas ICE that are lean burn engines greater than or equal to 500 HP and less than 1,350 HP and
+                manufactured on January 1, 2008.
+
+     (g) Owners and operators of stationary SI wellhead gas ICE engines may petition the Administrator for
+         approval on a case-by-case basis to meet emission standards no less stringent than the emission
+         standards that apply to stationary emergency SI engines greater than 25 HP and less than 130 HP due to
+         the presence of high sulfur levels in the fuel, as specified in Table 1 to this subpart. The request must, at a
+         minimum, demonstrate that the fuel has high sulfur levels that prevent the use of aftertreatment controls
+         and also that the owner has reasonably made all attempts possible to obtain an engine that will meet the
+         standards without the use of aftertreatment controls. The petition must request the most stringent
+         standards reasonably applicable to the engine using the fuel.
+
+     (h) Owners and operators of stationary SI ICE that are required to meet standards that reference 40 CFR
+         1048.101 must, if testing their engines in use, meet the standards in that section applicable to field
+         testing, except as indicated in paragraph (e) of this section.
+
+[73 FR 3591, Jan. 18, 2008, as amended at 76 FR 37973, June 28, 2011]
+
+
+§ 60.4234 How long must I meet the emission standards if I am an owner or operator of a
+stationary SI internal combustion engine?
+Owners and operators of stationary SI ICE must operate and maintain stationary SI ICE that achieve the emission
+standards as required in § 60.4233 over the entire life of the engine.
+
+                                OTHER REQUIREMENTS FOR OWNERS AND OPERATORS
+
+§ 60.4235 What fuel requirements must I meet if I am an owner or operator of a stationary SI
+gasoline fired internal combustion engine subject to this subpart?
+Owners and operators of stationary SI ICE subject to this subpart that use gasoline must use gasoline that meets
+the per gallon sulfur limit in 40 CFR 1090.205.
+
+[73 FR 3591, Jan. 18, 2008, as amended at 85 FR 78463, Dec. 4, 2020]
+
+
+§ 60.4236 What is the deadline for importing or installing stationary SI ICE produced in
+previous model years?
+     (a) After July 1, 2010, owners and operators may not install stationary SI ICE with a maximum engine power
+         of less than 500 HP that do not meet the applicable requirements in § 60.4233.
+
+     (b) After July 1, 2009, owners and operators may not install stationary SI ICE with a maximum engine power
+         of greater than or equal to 500 HP that do not meet the applicable requirements in § 60.4233, except that
+         lean burn engines with a maximum engine power greater than or equal to 500 HP and less than 1,350 HP
+         that do not meet the applicable requirements in § 60.4233 may not be installed after January 1, 2010.
+
+     (c) For emergency stationary SI ICE with a maximum engine power of greater than 19 KW (25 HP), owners
+         and operators may not install engines that do not meet the applicable requirements in § 60.4233 after
+         January 1, 2011.
+
+
+40 CFR 60.4236(c) (enhanced display)                                                                        page 9 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                     40 CFR 60.4236(d)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+     (d) In addition to the requirements specified in §§ 60.4231 and 60.4233, it is prohibited to import stationary SI
+         ICE less than or equal to 19 KW (25 HP), stationary rich burn LPG SI ICE, and stationary gasoline SI ICE
+         that do not meet the applicable requirements specified in paragraphs (a), (b), and (c) of this section, after
+         the date specified in paragraph (a), (b), and (c) of this section.
+
+     (e) The requirements of this section do not apply to owners and operators of stationary SI ICE that have been
+         modified or reconstructed, and they do not apply to engines that were removed from one existing location
+         and reinstalled at a new location.
+
+§ 60.4237 What are the monitoring requirements if I am an owner or operator of an emergency
+stationary SI internal combustion engine?
+     (a) Starting on July 1, 2010, if the emergency stationary SI internal combustion engine that is greater than or
+         equal to 500 HP that was built on or after July 1, 2010, does not meet the standards applicable to non-
+         emergency engines, the owner or operator must install a non-resettable hour meter.
+
+     (b) Starting on January 1, 2011, if the emergency stationary SI internal combustion engine that is greater than
+         or equal to 130 HP and less than 500 HP that was built on or after January 1, 2011, does not meet the
+         standards applicable to non-emergency engines, the owner or operator must install a non-resettable hour
+         meter.
+
+     (c) If you are an owner or operator of an emergency stationary SI internal combustion engine that is less than
+         130 HP, was built on or after July 1, 2008, and does not meet the standards applicable to non-emergency
+         engines, you must install a non-resettable hour meter upon startup of your emergency engine.
+
+                                COMPLIANCE REQUIREMENTS FOR MANUFACTURERS
+
+§ 60.4238 What are my compliance requirements if I am a manufacturer of stationary SI
+internal combustion engines ≤19 KW (25 HP) or a manufacturer of equipment containing such
+engines?
+Stationary SI internal combustion engine manufacturers who are subject to the emission standards specified in §
+60.4231(a) must certify their stationary SI ICE using the certification and testing procedures required in 40 CFR part
+1054, subparts C and F. Manufacturers of equipment containing stationary SI internal combustion engines meeting
+the provisions of 40 CFR part 1054 must meet the provisions of 40 CFR part 1060, subpart C, to the extent they
+apply to equipment manufacturers.
+
+[86 FR 34361, June 29, 2021]
+
+
+§ 60.4239 What are my compliance requirements if I am a manufacturer of stationary SI
+internal combustion engines >19 KW (25 HP) that use gasoline or a manufacturer of equipment
+containing such engines?
+Stationary SI internal combustion engine manufacturers who are subject to the emission standards specified in §
+60.4231(b) must certify their stationary SI ICE using the certification procedures required in 40 CFR part 1048,
+subpart C, and must test their engines as specified in that part. Stationary SI internal combustion engine
+manufacturers who certify their stationary SI ICE with a maximum engine power less than or equal to 30 KW (40
+HP) with a total displacement less than or equal to 1,000 cc to the certification emission standards and other
+requirements for new nonroad SI engines in 40 CFR part 1054, and manufacturers of stationary SI emergency
+engines that are greater than 25 HP and less than 130 HP who meet the Phase 1 emission standards in 40 CFR part
+40 CFR 60.4239 (enhanced display)                                                                         page 10 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                           40 CFR 60.4240
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+1054, appendix I, applicable to class II engines, must certify their stationary SI ICE using the certification and testing
+procedures required in 40 CFR part 1054, subparts C and F. Manufacturers of equipment containing stationary SI
+internal combustion engines meeting the provisions of 40 CFR part 1054 must meet the provisions of 40 CFR part
+1060, subpart C, to the extent they apply to equipment manufacturers.
+
+[86 FR 34361, June 29, 2021]
+
+
+§ 60.4240 What are my compliance requirements if I am a manufacturer of stationary SI
+internal combustion engines >19 KW (25 HP) that are rich burn engines that use LPG or a
+manufacturer of equipment containing such engines?
+Stationary SI internal combustion engine manufacturers who are subject to the emission standards specified in §
+60.4231(c) must certify their stationary SI ICE using the certification procedures required in 40 CFR part 1048,
+subpart C, and must test their engines as specified in that part. Stationary SI internal combustion engine
+manufacturers who certify their stationary SI ICE with a maximum engine power less than or equal to 30 KW (40
+HP) with a total displacement less than or equal to 1,000 cc to the certification emission standards and other
+requirements for new nonroad SI engines in 40 CFR part 1054, and manufacturers of stationary SI emergency
+engines that are greater than 25 HP and less than 130 HP who meet the Phase 1 emission standards in 40 CFR part
+1054, appendix I, applicable to class II engines, must certify their stationary SI ICE using the certification and testing
+procedures required in 40 CFR part 1054, subparts C and F. Manufacturers of equipment containing stationary SI
+internal combustion engines meeting the provisions of 40 CFR part 1054 must meet the provisions of 40 CFR part
+1060, subpart C, to the extent they apply to equipment manufacturers.
+
+[86 FR 34361, June 29, 2021]
+
+
+§ 60.4241 What are my compliance requirements if I am a manufacturer of stationary SI
+internal combustion engines participating in the voluntary certification program or a
+manufacturer of equipment containing such engines?
+     (a) Manufacturers of stationary SI internal combustion engines with a maximum engine power greater than
+         19 KW (25 HP) that do not use gasoline and are not rich burn engines that use LPG can choose to certify
+         their engines to the emission standards in § 60.4231(d) or (e), as applicable, under the voluntary
+         certification program described in this subpart. Manufacturers who certify their engines under the
+         voluntary certification program must meet the requirements as specified in paragraphs (b) through (g) of
+         this section. In addition, manufacturers of stationary SI internal combustion engines who choose to
+         certify their engines under the voluntary certification program, must also meet the requirements as
+         specified in § 60.4247. Manufacturers of stationary SI internal combustion engines who choose not to
+         certify their engines under this section must notify the ultimate purchaser that testing requirements apply
+         as described in § 60.4243(b)(2); manufacturers must keep a copy of this notification for five years after
+         shipping each engine and make those documents available to EPA upon request.
+
+     (b) Manufacturers of engines other than those certified to standards in 40 CFR part 1054 must certify their
+         stationary SI ICE using the certification procedures required in 40 CFR part 1048, subpart C, and must
+         follow the same test procedures that apply to Large SI nonroad engines under 40 CFR part 1048, but must
+         use the D-1 cycle of International Organization for Standardization 8178-4: 1996(E) (incorporated by
+         reference, see § 60.17) or the test cycle requirements specified in Table 3 to 40 CFR 1048.505, except that
+         Table 3 of 40 CFR 1048.505 applies to high load engines only. Manufacturers of any size may certify their
+         stationary emergency engines at or above 130 hp using assigned deterioration factors established by
+
+40 CFR 60.4241(b) (enhanced display)                                                                         page 11 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                      40 CFR 60.4241(c)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+           EPA, consistent with 40 CFR 1048.240. Stationary SI internal combustion engine manufacturers who
+           certify their stationary SI ICE with a maximum engine power less than or equal to 30 KW (40 HP) with a
+           total displacement less than or equal to 1,000 cc to the certification emission standards and other
+           requirements for new nonroad SI engines in 40 CFR part 1054, and manufacturers of emergency engines
+           that are greater than 25 HP and less than 130 HP who meet the Phase 1 standards in 40 CFR part 1054,
+           appendix I, applicable to class II engines, must certify their stationary SI ICE using the certification and
+           testing procedures required in 40 CFR part 1054, subparts C and F. Manufacturers of equipment
+           containing stationary SI internal combustion engines meeting the provisions of 40 CFR part 1054 must
+           meet the provisions of 40 CFR part 1060, subpart C, to the extent they apply to equipment manufacturers.
+
+     (c) Certification of stationary SI ICE to the emission standards specified in § 60.4231(d) or (e), as applicable,
+         is voluntary, but manufacturers who decide to certify are subject to all of the requirements indicated in
+         this subpart with regard to the engines included in their certification. Manufacturers must clearly label
+         their stationary SI engines as certified or non-certified engines.
+
+     (d) Manufacturers of natural gas fired stationary SI ICE who conduct voluntary certification of stationary SI
+         ICE to the emission standards specified in § 60.4231(d) or (e), as applicable, must certify their engines for
+         operation using fuel that meets the definition of pipeline-quality natural gas. The fuel used for certifying
+         stationary SI natural gas engines must meet the definition of pipeline-quality natural gas as described in §
+         60.4248. In addition, the manufacturer must provide information to the owner and operator of the certified
+         stationary SI engine including the specifications of the pipeline-quality natural gas to which the engine is
+         certified and what adjustments the owner or operator must make to the engine when installed in the field
+         to ensure compliance with the emission standards.
+
+     (e) Manufacturers of stationary SI ICE that are lean burn engines fueled by LPG who conduct voluntary
+         certification of stationary SI ICE to the emission standards specified in § 60.4231(d) or (e), as applicable,
+         must certify their engines for operation using fuel that meets the specifications in 40 CFR 1065.720.
+
+     (f) Manufacturers may certify their engines for operation using gaseous fuels in addition to pipeline-quality
+         natural gas; however, the manufacturer must specify the properties of that fuel and provide testing
+         information showing that the engine will meet the emission standards specified in § 60.4231(d) or (e), as
+         applicable, when operating on that fuel. The manufacturer must also provide instructions for configuring
+         the stationary engine to meet the emission standards on fuels that do not meet the pipeline-quality
+         natural gas definition. The manufacturer must also provide information to the owner and operator of the
+         certified stationary SI engine regarding the configuration that is most conducive to reduced emissions
+         where the engine will be operated on gaseous fuels with different quality than the fuel that it was certified
+         to.
+
+     (g) A stationary SI engine manufacturer may certify an engine family solely to the standards applicable to
+         landfill/digester gas engines as specified in § 60.4231(d) or (e), as applicable, but must certify their
+         engines for operation using landfill/digester gas and must add a permanent label stating that the engine
+         is for use only in landfill/digester gas applications. The label must be added according to the labeling
+         requirements specified in 40 CFR 1048.135(b).
+
+     (h) For purposes of this subpart, when calculating emissions of volatile organic compounds, emissions of
+         formaldehyde should not be included.
+
+     (i)   For engines being certified to the voluntary certification standards in Table 1 of this subpart, the VOC
+           measurement shall be made by following the procedures in 40 CFR part 1065, subpart C, to determine the
+           total NMHC emissions. As an alternative, manufacturers may measure ethane, as well as methane, for
+           excluding such levels from the total VOC measurement.
+
+40 CFR 60.4241(i) (enhanced display)                                                                       page 12 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                               40 CFR 60.4242
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+[73 FR 3591, Jan. 18, 2008, as amended at 73 FR 59176, Oct. 8, 2008; 76 FR 37974, June 28, 2011; 86 FR 34361, June 29, 2021]
+
+
+§ 60.4242 What other requirements must I meet if I am a manufacturer of stationary SI internal
+combustion engines or equipment containing stationary SI internal combustion engines or a
+manufacturer of equipment containing such engines?
+     (a) Stationary SI internal combustion engine manufacturers must meet the provisions of 40 CFR parts 1048,
+         1054, and 1068, as applicable, except that engines certified pursuant to the voluntary certification
+         procedures in § 60.4241 are subject only to the provisions indicated in § 60.4247 and are permitted to
+         provide instructions to owners and operators allowing for deviations from certified configurations, if such
+         deviations are consistent with the provisions of § 60.4241(c) through (f). Manufacturers of equipment
+         containing stationary SI internal combustion engines meeting the provisions of 40 CFR part 1054 must
+         meet the provisions of 40 CFR part 1060, as applicable. Labels on engines certified to 40 CFR part 1048
+         must refer to stationary engines, rather than or in addition to nonroad engines, as appropriate.
+
+     (b) An engine manufacturer certifying an engine family or families to standards under this subpart that are
+         identical to standards identified in 40 CFR part 1048 or 1054 for that model year may certify any such
+         family that contains both nonroad and stationary engines as a single engine family and/or may include
+         any such family containing stationary engines in the averaging, banking and trading provisions applicable
+         for such engines under those parts. This paragraph (b) also applies to equipment or component
+         manufacturers certifying to standards under 40 CFR part 1060.
+
+     (c) Manufacturers of engine families certified to 40 CFR part 1048 may meet the labeling requirements
+         referred to in paragraph (a) of this section for stationary SI ICE by either adding a separate label
+         containing the information required in paragraph (a) of this section or by adding the words “and
+         stationary” after the word “nonroad” to the label.
+
+     (d) For all engines manufactured on or after January 1, 2011, and for all engines with a maximum engine
+         power greater than 25 HP and less than 130 HP manufactured on or after July 1, 2008, a stationary SI
+         engine manufacturer that certifies an engine family solely to the standards applicable to emergency
+         engines must add a permanent label stating that the engines in that family are for emergency use only.
+         The label must be added according to the labeling requirements specified in 40 CFR 1048.135(b).
+
+     (e) All stationary SI engines subject to mandatory certification that do not meet the requirements of this
+         subpart must be labeled and exported according to 40 CFR 1068.230. Manufacturers of stationary
+         engines with a maximum engine power greater than 25 HP that are not certified to standards and other
+         requirements under 40 CFR part 1048 are subject to the labeling provisions of 40 CFR 1048.20 pertaining
+         to excluded stationary engines.
+
+     (f) For manufacturers of gaseous-fueled stationary engines required to meet the warranty provisions in 40
+         CFR 1054.120, we may establish an hour-based warranty period equal to at least the certified emissions
+         life of the engines (in engine operating hours) if we determine that these engines are likely to operate for a
+         number of hours greater than the applicable useful life within 24 months. We will not approve an alternate
+         warranty under this paragraph (f) for nonroad engines. An alternate warranty period approved under this
+         paragraph (f) will be the specified number of engine operating hours or two years, whichever comes first.
+         The engine manufacturer shall request this alternate warranty period in its application for certification or
+         in an earlier submission. We may approve an alternate warranty period for an engine family subject to the
+         following conditions:
+
+           (1) The engines must be equipped with non-resettable hour meters.
+
+
+40 CFR 60.4242(f)(1) (enhanced display)                                                                           page 13 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                    40 CFR 60.4242(f)(2)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+           (2) The engines must be designed to operate for a number of hours substantially greater than the
+               applicable certified emissions life.
+
+           (3) The emission-related warranty for the engines may not be shorter than any published warranty
+               offered by the manufacturer without charge for the engines. Similarly, the emission-related warranty
+               for any component shall not be shorter than any published warranty offered by the manufacturer
+               without charge for that component.
+
+[86 FR 34362, June 29, 2021]
+
+
+                               COMPLIANCE REQUIREMENTS FOR OWNERS AND OPERATORS
+
+§ 60.4243 What are my compliance requirements if I am an owner or operator of a stationary SI
+internal combustion engine?
+     (a) If you are an owner or operator of a stationary SI internal combustion engine that is manufactured after
+         July 1, 2008, and must comply with the emission standards specified in § 60.4233(a) through (c), you
+         must comply by purchasing an engine certified to the emission standards in § 60.4231(a) through (c), as
+         applicable, for the same engine class and maximum engine power. In addition, you must meet one of the
+         requirements specified in (a)(1) and (2) of this section.
+
+           (1) If you operate and maintain the certified stationary SI internal combustion engine and control device
+               according to the manufacturer's emission-related written instructions, you must keep records of
+               conducted maintenance to demonstrate compliance, but no performance testing is required if you
+               are an owner or operator. You must also meet the requirements as specified in 40 CFR part 1068,
+               subparts A through D, as they apply to you. If you adjust engine settings according to and consistent
+               with the manufacturer's instructions, your stationary SI internal combustion engine will not be
+               considered out of compliance.
+
+           (2) If you do not operate and maintain the certified stationary SI internal combustion engine and control
+               device according to the manufacturer's emission-related written instructions, your engine will be
+               considered a non-certified engine, and you must demonstrate compliance according to (a)(2)(i)
+               through (iii) of this section, as appropriate.
+
+                 (i)   If you are an owner or operator of a stationary SI internal combustion engine less than 100 HP,
+                       you must keep a maintenance plan and records of conducted maintenance to demonstrate
+                       compliance and must, to the extent practicable, maintain and operate the engine in a manner
+                       consistent with good air pollution control practice for minimizing emissions, but no
+                       performance testing is required if you are an owner or operator.
+
+                (ii) If you are an owner or operator of a stationary SI internal combustion engine greater than or
+                     equal to 100 HP and less than or equal to 500 HP, you must keep a maintenance plan and
+                     records of conducted maintenance and must, to the extent practicable, maintain and operate
+                     the engine in a manner consistent with good air pollution control practice for minimizing
+                     emissions. In addition, you must conduct an initial performance test within 1 year of engine
+                     startup to demonstrate compliance.
+
+                (iii) If you are an owner or operator of a stationary SI internal combustion engine greater than 500
+                      HP, you must keep a maintenance plan and records of conducted maintenance and must, to the
+                      extent practicable, maintain and operate the engine in a manner consistent with good air
+
+
+40 CFR 60.4243(a)(2)(iii) (enhanced display)                                                               page 14 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                        40 CFR 60.4243(b)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+                      pollution control practice for minimizing emissions. In addition, you must conduct an initial
+                      performance test within 1 year of engine startup and conduct subsequent performance testing
+                      every 8,760 hours or 3 years, whichever comes first, thereafter to demonstrate compliance.
+
+     (b) If you are an owner or operator of a stationary SI internal combustion engine and must comply with the
+         emission standards specified in § 60.4233(d) or (e), you must demonstrate compliance according to one
+         of the methods specified in paragraphs (b)(1) and (2) of this section.
+
+          (1) Purchasing an engine certified according to procedures specified in this subpart, for the same model
+              year and demonstrating compliance according to one of the methods specified in paragraph (a) of
+              this section.
+
+          (2) Purchasing a non-certified engine and demonstrating compliance with the emission standards
+              specified in § 60.4233(d) or (e) and according to the requirements specified in § 60.4244, as
+              applicable, and according to paragraphs (b)(2)(i) and (ii) of this section.
+
+                (i)   If you are an owner or operator of a stationary SI internal combustion engine greater than 25 HP
+                      and less than or equal to 500 HP, you must keep a maintenance plan and records of conducted
+                      maintenance and must, to the extent practicable, maintain and operate the engine in a manner
+                      consistent with good air pollution control practice for minimizing emissions. In addition, you
+                      must conduct an initial performance test to demonstrate compliance.
+
+                (ii) If you are an owner or operator of a stationary SI internal combustion engine greater than 500
+                     HP, you must keep a maintenance plan and records of conducted maintenance and must, to the
+                     extent practicable, maintain and operate the engine in a manner consistent with good air
+                     pollution control practice for minimizing emissions. In addition, you must conduct an initial
+                     performance test and conduct subsequent performance testing every 8,760 hours or 3 years,
+                     whichever comes first, thereafter to demonstrate compliance.
+
+     (c) If you are an owner or operator of a stationary SI internal combustion engine that must comply with the
+         emission standards specified in § 60.4233(f), you must demonstrate compliance according paragraph
+         (b)(2)(i) or (ii) of this section, except that if you comply according to paragraph (b)(2)(i) of this section,
+         you demonstrate that your non-certified engine complies with the emission standards specified in §
+         60.4233(f).
+
+     (d) If you own or operate an emergency stationary ICE, you must operate the emergency stationary ICE
+         according to the requirements in paragraphs (d)(1) through (3) of this section. In order for the engine to
+         be considered an emergency stationary ICE under this subpart, any operation other than emergency
+         operation, maintenance and testing, and operation in non-emergency situations for 50 hours per year, as
+         described in paragraphs (d)(1) through (3), is prohibited. If you do not operate the engine according to the
+         requirements in paragraphs (d)(1) through (3), the engine will not be considered an emergency engine
+         under this subpart and must meet all requirements for non-emergency engines.
+
+          (1) There is no time limit on the use of emergency stationary ICE in emergency situations.
+
+          (2) You may operate your emergency stationary ICE for the purpose specified in paragraph (d)(2)(i) of
+              this section for a maximum of 100 hours per calendar year. Any operation for non-emergency
+              situations as allowed by paragraph (d)(3) of this section counts as part of the 100 hours per
+              calendar year allowed by this paragraph (d)(2).
+
+
+
+
+40 CFR 60.4243(d)(2) (enhanced display)                                                                      page 15 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                  40 CFR 60.4243(d)(2)(i)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+                (i)   Emergency stationary ICE may be operated for maintenance checks and readiness testing,
+                      provided that the tests are recommended by federal, state or local government, the
+                      manufacturer, the vendor, the regional transmission organization or equivalent balancing
+                      authority and transmission operator, or the insurance company associated with the engine. The
+                      owner or operator may petition the Administrator for approval of additional hours to be used for
+                      maintenance checks and readiness testing, but a petition is not required if the owner or
+                      operator maintains records indicating that federal, state, or local standards require
+                      maintenance and testing of emergency ICE beyond 100 hours per calendar year.
+
+              (ii)-(iii) [Reserved]
+
+          (3) Emergency stationary ICE may be operated for up to 50 hours per calendar year in non-emergency
+              situations. The 50 hours of operation in non-emergency situations are counted as part of the 100
+              hours per calendar year for maintenance and testing provided in paragraph (d)(2) of this section.
+              Except as provided in paragraph (d)(3)(i) of this section, the 50 hours per year for non-emergency
+              situations cannot be used for peak shaving or non-emergency demand response, or to generate
+              income for a facility to an electric grid or otherwise supply power as part of a financial arrangement
+              with another entity.
+
+                (i)   The 50 hours per year for non-emergency situations can be used to supply power as part of a
+                      financial arrangement with another entity if all of the following conditions are met:
+
+                      (A) The engine is dispatched by the local balancing authority or local transmission and
+                          distribution system operator;
+
+                      (B) The dispatch is intended to mitigate local transmission and/or distribution limitations so
+                          as to avert potential voltage collapse or line overloads that could lead to the interruption
+                          of power supply in a local area or region.
+
+                      (C) The dispatch follows reliability, emergency operation or similar protocols that follow
+                          specific NERC, regional, state, public utility commission or local standards or guidelines.
+
+                      (D) The power is provided only to the facility itself or to support the local transmission and
+                          distribution system.
+
+                      (E) The owner or operator identifies and records the entity that dispatches the engine and the
+                          specific NERC, regional, state, public utility commission or local standards or guidelines
+                          that are being followed for dispatching the engine. The local balancing authority or local
+                          transmission and distribution system operator may keep these records on behalf of the
+                          engine owner or operator.
+
+                (ii) [Reserved]
+
+     (e) Owners and operators of stationary SI natural gas fired engines may operate their engines using propane
+         for a maximum of 100 hours per year as an alternative fuel solely during emergency operations, but must
+         keep records of such use. If propane is used for more than 100 hours per year in an engine that is not
+         certified to the emission standards when using propane, the owners and operators are required to
+         conduct a performance test to demonstrate compliance with the emission standards of § 60.4233.
+
+     (f) If you are an owner or operator of a stationary SI internal combustion engine that is less than or equal to
+         500 HP and you purchase a non-certified engine or you do not operate and maintain your certified
+         stationary SI internal combustion engine and control device according to the manufacturer's written
+         emission-related instructions, you are required to perform initial performance testing as indicated in this
+
+40 CFR 60.4243(f) (enhanced display)                                                                        page 16 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                            40 CFR 60.4243(g)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+           section, but you are not required to conduct subsequent performance testing unless the stationary engine
+           undergoes rebuild, major repair or maintenance. Engine rebuilding means to overhaul an engine or to
+           otherwise perform extensive service on the engine (or on a portion of the engine or engine system). For
+           the purpose of this paragraph (f), perform extensive service means to disassemble the engine (or portion
+           of the engine or engine system), inspect and/or replace many of the parts, and reassemble the engine (or
+           portion of the engine or engine system) in such a manner that significantly increases the service life of
+           the resultant engine.
+
+     (g) It is expected that air-to-fuel ratio controllers will be used with the operation of three-way catalysts/non-
+         selective catalytic reduction. The AFR controller must be maintained and operated appropriately in order
+         to ensure proper operation of the engine and control device to minimize emissions at all times.
+
+     (h) If you are an owner/operator of an stationary SI internal combustion engine with maximum engine power
+         greater than or equal to 500 HP that is manufactured after July 1, 2007 and before July 1, 2008, and must
+         comply with the emission standards specified in sections 60.4233(b) or (c), you must comply by one of
+         the methods specified in paragraphs (h)(1) through (h)(4) of this section.
+
+           (1) Purchasing an engine certified according to 40 CFR part 1048. The engine must be installed and
+               configured according to the manufacturer's specifications.
+
+           (2) Keeping records of performance test results for each pollutant for a test conducted on a similar
+               engine. The test must have been conducted using the same methods specified in this subpart and
+               these methods must have been followed correctly.
+
+           (3) Keeping records of engine manufacturer data indicating compliance with the standards.
+
+           (4) Keeping records of control device vendor data indicating compliance with the standards.
+
+     (i)   If you are an owner or operator of a modified or reconstructed stationary SI internal combustion engine
+           and must comply with the emission standards specified in § 60.4233(f), you must demonstrate
+           compliance according to one of the methods specified in paragraphs (i)(1) or (2) of this section.
+
+           (1) Purchasing, or otherwise owning or operating, an engine certified to the emission standards in §
+               60.4233(f), as applicable.
+
+           (2) Conducting a performance test to demonstrate initial compliance with the emission standards
+               according to the requirements specified in § 60.4244. The test must be conducted within 60 days
+               after the engine commences operation after the modification or reconstruction.
+
+[73 FR 3591, Jan. 18, 2008, as amended at 76 FR 37974, June 28, 2011; 78 FR 6697, Jan. 30, 2013; 86 FR 34362, June 29, 2021; 87
+FR 48606, Aug. 10, 2022]
+
+
+                               TESTING REQUIREMENTS FOR OWNERS AND OPERATORS
+
+§ 60.4244 What test methods and other procedures must I use if I am an owner or operator of a
+stationary SI internal combustion engine?
+Owners and operators of stationary SI ICE who conduct performance tests must follow the procedures in
+paragraphs (a) through (f) of this section.
+
+
+
+
+40 CFR 60.4244 (enhanced display)                                                                                 page 17 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                    40 CFR 60.4244(a)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+     (a) Each performance test must be conducted within 10 percent of 100 percent peak (or the highest
+         achievable) load and according to the requirements in § 60.8 and under the specific conditions that are
+         specified by Table 2 to this subpart.
+
+     (b) You may not conduct performance tests during periods of startup, shutdown, or malfunction, as specified
+         in § 60.8(c). If your stationary SI internal combustion engine is non-operational, you do not need to startup
+         the engine solely to conduct a performance test; however, you must conduct the performance test
+         immediately upon startup of the engine.
+
+     (c) You must conduct three separate test runs for each performance test required in this section, as specified
+         in § 60.8(f). Each test run must be conducted within 10 percent of 100 percent peak (or the highest
+         achievable) load and last at least 1 hour.
+
+     (d) To determine compliance with the NOX mass per unit output emission limitation, convert the
+         concentration of NOX in the engine exhaust using Equation 1 of this section:
+
+
+
+
+     Where:
+
+     ER = Emission rate of NOX in g/HP-hr.
+
+     Cd = Measured NOX concentration in parts per million by volume (ppmv).
+
+     1.912 × 10−3 = Conversion constant for ppm NOX to grams per standard cubic meter at 20 degrees Celsius.
+
+     Q = Stack gas volumetric flow rate, in standard cubic meter per hour, dry basis.
+
+     T = Time of test run, in hours.
+
+     HP-hr = Brake work of the engine, horsepower-hour (HP-hr).
+
+     (e) To determine compliance with the CO mass per unit output emission limitation, convert the concentration
+         of CO in the engine exhaust using Equation 2 of this section:
+
+
+
+
+     Where:
+
+     ER = Emission rate of CO in g/HP-hr.
+
+     Cd = Measured CO concentration in ppmv.
+
+     1.164 × 10−3 = Conversion constant for ppm CO to grams per standard cubic meter at 20 degrees Celsius.
+
+     Q = Stack gas volumetric flow rate, in standard cubic meters per hour, dry basis.
+
+40 CFR 60.4244(e) (enhanced display)                                                                     page 18 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                 40 CFR 60.4244(f)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+     T = Time of test run, in hours.
+
+     HP-hr = Brake work of the engine, in HP-hr.
+
+     (f) For purposes of this subpart, when calculating emissions of VOC, emissions of formaldehyde should not
+         be included. To determine compliance with the VOC mass per unit output emission limitation, convert the
+         concentration of VOC in the engine exhaust using Equation 3 of this section:
+
+
+
+
+     Where:
+
+     ER = Emission rate of VOC in g/HP-hr.
+
+     Cd = VOC concentration measured as propane in ppmv.
+
+     1.833 × 10−3 = Conversion constant for ppm VOC measured as propane, to grams per standard cubic meter at
+     20 degrees Celsius.
+
+     Q = Stack gas volumetric flow rate, in standard cubic meters per hour, dry basis.
+
+     T = Time of test run, in hours.
+
+     HP-hr = Brake work of the engine, in HP-hr.
+
+     (g) If the owner/operator chooses to measure VOC emissions using either Method 18 of 40 CFR part 60,
+         appendix A, or Method 320 of 40 CFR part 63, appendix A, then it has the option of correcting the
+         measured VOC emissions to account for the potential differences in measured values between these
+         methods and Method 25A. The results from Method 18 and Method 320 can be corrected for response
+         factor differences using Equations 4 and 5 of this section. The corrected VOC concentration can then be
+         placed on a propane basis using Equation 6 of this section.
+
+
+
+
+     Where:
+
+     RFi = Response factor of compound i when measured with EPA Method 25A.
+
+     CMi = Measured concentration of compound i in ppmv as carbon.
+
+     CAi = True concentration of compound i in ppmv as carbon.
+
+
+
+
+40 CFR 60.4244(g) (enhanced display)                                                                  page 19 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                     40 CFR 60.4245
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+     Where:
+
+     Cicorr = Concentration of compound i corrected to the value that would have been measured by EPA Method
+     25A, ppmv as carbon.
+
+     Cimeas = Concentration of compound i measured by EPA Method 320, ppmv as carbon.
+
+
+
+
+     Where:
+
+     CPeq = Concentration of compound i in mg of propane equivalent per DSCM.
+
+                      NOTIFICATION, REPORTS, AND RECORDS FOR OWNERS AND OPERATORS
+
+§ 60.4245 What are my notification, reporting, and recordkeeping requirements if I am an
+owner or operator of a stationary SI internal combustion engine?
+Owners or operators of stationary SI ICE must meet the following notification, reporting and recordkeeping
+requirements.
+
+     (a) Owners and operators of all stationary SI ICE must keep records of the information in paragraphs (a)(1)
+         through (4) of this section.
+
+          (1) All notifications submitted to comply with this subpart and all documentation supporting any
+              notification.
+
+          (2) Maintenance conducted on the engine.
+
+          (3) If the stationary SI internal combustion engine is a certified engine, documentation from the
+              manufacturer that the engine is certified to meet the emission standards and information as
+              required in 40 CFR parts 1048, 1054, and 1060, as applicable.
+
+          (4) If the stationary SI internal combustion engine is not a certified engine or is a certified engine
+              operating in a non-certified manner and subject to § 60.4243(a)(2), documentation that the engine
+              meets the emission standards.
+
+     (b) For all stationary SI emergency ICE greater than or equal to 500 HP manufactured on or after July 1, 2010,
+         that do not meet the standards applicable to non-emergency engines, the owner or operator of must keep
+         records of the hours of operation of the engine that is recorded through the non-resettable hour meter. For
+         all stationary SI emergency ICE greater than or equal to 130 HP and less than 500 HP manufactured on or
+         after July 1, 2011 that do not meet the standards applicable to non-emergency engines, the owner or
+         operator of must keep records of the hours of operation of the engine that is recorded through the non-
+         resettable hour meter. For all stationary SI emergency ICE greater than 25 HP and less than 130 HP
+         manufactured on or after July 1, 2008, that do not meet the standards applicable to non-emergency
+         engines, the owner or operator of must keep records of the hours of operation of the engine that is
+         recorded through the non-resettable hour meter. The owner or operator must document how many hours
+         are spent for emergency operation, including what classified the operation as emergency and how many
+         hours are spent for non-emergency operation.
+
+
+40 CFR 60.4245(b) (enhanced display)                                                                   page 20 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                     40 CFR 60.4245(c)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+     (c) Owners and operators of stationary SI ICE greater than or equal to 500 HP that have not been certified by
+         an engine manufacturer to meet the emission standards in § 60.4231 must submit an initial notification
+         as required in § 60.7(a)(1). The notification must include the information in paragraphs (c)(1) through (5)
+         of this section. Beginning on February 26, 2025 submit the notification electronically according to
+         paragraph (g) of this section.
+
+          (1) Name and address of the owner or operator;
+
+          (2) The address of the affected source;
+
+          (3) Engine information including make, model, engine family, serial number, model year, maximum
+              engine power, and engine displacement;
+
+          (4) Emission control equipment; and
+
+          (5) Fuel used.
+
+     (d) Owners and operators of stationary SI ICE that are subject to performance testing must submit a copy of
+         each performance test as conducted in § 60.4244 within 60 days after the test has been completed.
+         Performance test reports using EPA Method 18, EPA Method 320, or ASTM D6348-03 (incorporated by
+         reference—see 40 CFR 60.17) to measure VOC require reporting of all QA/QC data. For Method 18, report
+         results from sections 8.4 and 11.1.1.4; for Method 320, report results from sections 8.6.2, 9.0, and 13.0;
+         and for ASTM D6348-03 report results of all QA/QC procedures in Annexes 1-7. Beginning on February 26,
+         2025, performance tests must be reported electronically according to paragraph (f) of this section.
+
+     (e) If you own or operate an emergency stationary SI ICE with a maximum engine power more than 100 HP
+         that operates for the purpose specified in § 60.4243(d)(3)(i), you must submit an annual report according
+         to the requirements in paragraphs (e)(1) through (3) of this section.
+
+          (1) The report must contain the following information:
+
+                (i)   Company name and address where the engine is located.
+
+                (ii) Date of the report and beginning and ending dates of the reporting period.
+
+                (iii) Engine site rating and model year.
+
+                (iv) Latitude and longitude of the engine in decimal degrees reported to the fifth decimal place.
+
+              (v)-(vi) [Reserved]
+
+               (vii) Hours spent for operation for the purposes specified in § 60.4243(d)(3)(i), including the date,
+                     start time, and end time for engine operation for the purposes specified in § 60.4243(d)(3)(i).
+                     The report must also identify the entity that dispatched the engine and the situation that
+                     necessitated the dispatch of the engine.
+
+          (2) The first annual report must cover the calendar year 2015 and must be submitted no later than
+              March 31, 2016. Subsequent annual reports for each calendar year must be submitted no later than
+              March 31 of the following calendar year.
+
+          (3) The annual report must be submitted electronically using the subpart specific reporting form in the
+              Compliance and Emissions Data Reporting Interface (CEDRI) that is accessed through EPA's Central
+              Data Exchange (CDX) (https://cdx.epa.gov/). However, if the reporting form specific to this subpart is
+
+
+
+
+40 CFR 60.4245(e)(3) (enhanced display)                                                                   page 21 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                       40 CFR 60.4245(f)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+                not available in CEDRI at the time that the report is due, the written report must be submitted to the
+                Administrator at the appropriate address listed in § 60.4. Beginning on February 26, 2025, submit
+                annual report electronically according to paragraph (g) of this section.
+
+     (f) Beginning on February 26, 2025, within 60 days after the date of completing each performance test, you
+         must submit the results following the procedures specified in paragraph (g) of this section. Data collected
+         using test methods that are supported by the EPA's Electronic Reporting Tool (ERT) as listed on the EPA's
+         ERT website (https://www.epa.gov/electronic-reporting-air-emissions/electronic-reporting-tool-ert) at the
+         time of the test must be submitted in a file format generated using the EPA's ERT. Alternatively, you may
+         submit an electronic file consistent with the extensible markup language (XML) schema listed on the
+         EPA's ERT website. Data collected using test methods that are not supported by the EPA's ERT as listed on
+         the EPA's ERT website at the time of the test must be included as an attachment in the ERT or an alternate
+         electronic file.
+
+     (g) If you are required to submit notifications or reports following the procedure specified in this paragraph
+         (g), you must submit notifications or reports to the EPA via the Compliance and Emissions Data Reporting
+         Interface (CEDRI), which can be accessed through the EPA's Central Data Exchange (CDX)
+         (https://cdx.epa.gov/). The EPA will make all the information submitted through CEDRI available to the
+         public without further notice to you. Do not use CEDRI to submit information you claim as CBI. Although
+         we do not expect persons to assert a claim of CBI, if you wish to assert a CBI claim for some of the
+         information in the report or notification, you must submit a complete file in the format specified in this
+         subpart, including information claimed to be CBI, to the EPA following the procedures in paragraphs (g)(1)
+         and (2) of this section. Clearly mark the part or all of the information that you claim to be CBI. Information
+         not marked as CBI may be authorized for public release without prior notice. Information marked as CBI
+         will not be disclosed except in accordance with procedures set forth in 40 CFR part 2. All CBI claims must
+         be asserted at the time of submission. Anything submitted using CEDRI cannot later be claimed CBI.
+         Furthermore, under CAA section 114(c), emissions data is not entitled to confidential treatment, and the
+         EPA is required to make emissions data available to the public. Thus, emissions data will not be protected
+         as CBI and will be made publicly available. You must submit the same file submitted to the CBI office with
+         the CBI omitted to the EPA via the EPA's CDX as described earlier in this paragraph (g).
+
+          (1) The preferred method to receive CBI is for it to be transmitted electronically using email
+              attachments, File Transfer Protocol, or other online file sharing services. Electronic submissions
+              must be transmitted directly to the OAQPS CBI Office at the email address oaqpscbi@epa.gov, and as
+              described in paragraph (g) of this section, should include clear CBI markings. ERT files should be
+              flagged to the attention of the Group Leader, Measurement Policy Group; all other files should be
+              flagged to the attention of the Stationary Spark Ignition Internal Combustion Engine Sector Lead. If
+              assistance is needed with submitting large electronic files that exceed the file size limit for email
+              attachments, and if you do not have your own file sharing service, please email oaqpscbi@epa.gov to
+              request a file transfer link.
+
+          (2) If you cannot transmit the file electronically, you may send CBI information through the postal service
+              to the following address: OAQPS Document Control Officer (C404-02), OAQPS, U.S. Environmental
+              Protection Agency, 109 T.W. Alexander Drive, P.O. Box 12055, Research Triangle Park, North Carolina
+              27711. ERT files should be sent to the attention of the Group Leader, Measurement Policy Group, and
+              all other files should be sent to the attention of the Stationary Spark Ignition Internal Combustion
+              Engine Sector Lead. The mailed CBI material should be double wrapped and clearly marked. Any CBI
+              markings should not show through the outer envelope.
+
+
+
+40 CFR 60.4245(g)(2) (enhanced display)                                                                    page 22 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                       40 CFR 60.4245(h)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+     (h) If you are required to electronically submit a report through CEDRI in the EPA's CDX, you may assert a
+         claim of EPA system outage for failure to timely comply with that reporting requirement. To assert a claim
+         of EPA system outage, you must meet the requirements outlined in paragraphs (h)(1) through (7) of this
+         section.
+
+           (1) You must have been or will be precluded from accessing CEDRI and submitting a required report
+               within the time prescribed due to an outage of either the EPA's CEDRI or CDX systems.
+
+           (2) The outage must have occurred within the period of time beginning five business days prior to the
+               date that the submission is due.
+
+           (3) The outage may be planned or unplanned.
+
+           (4) You must submit notification to the Administrator in writing as soon as possible following the date
+               you first knew, or through due diligence should have known, that the event may cause or has caused
+               a delay in reporting.
+
+           (5) You must provide to the Administrator a written description identifying:
+
+                (i)   The date(s) and time(s) when CDX or CEDRI was accessed and the system was unavailable;
+
+                (ii) A rationale for attributing the delay in reporting beyond the regulatory deadline to EPA system
+                     outage;
+
+                (iii) A description of measures taken or to be taken to minimize the delay in reporting; and
+
+                (iv) The date by which you propose to report, or if you have already met the reporting requirement at
+                     the time of the notification, the date you reported.
+
+           (6) The decision to accept the claim of EPA system outage and allow an extension to the reporting
+               deadline is solely within the discretion of the Administrator.
+
+           (7) In any circumstance, the report must be submitted electronically as soon as possible after the
+               outage is resolved.
+
+     (i)   If you are required to electronically submit a report through CEDRI in the EPA's CDX, you may assert a
+           claim of force majeure for failure to timely comply with that reporting requirement. To assert a claim of
+           force majeure, you must meet the requirements outlined in paragraphs (i)(1) through (5) of this section.
+
+           (1) You may submit a claim if a force majeure event is about to occur, occurs, or has occurred or there
+               are lingering effects from such an event within the period of time beginning five business days prior
+               to the date the submission is due. For the purposes of this section, a force majeure event is defined
+               as an event that will be or has been caused by circumstances beyond the control of the affected
+               facility, its contractors, or any entity controlled by the affected facility that prevents you from
+               complying with the requirement to submit a report electronically within the time period prescribed.
+               Examples of such events are acts of nature (e.g., hurricanes, earthquakes, or floods), acts of war or
+               terrorism, or equipment failure or safety hazard beyond the control of the affected facility (e.g., large
+               scale power outage).
+
+           (2) You must submit notification to the Administrator in writing as soon as possible following the date
+               you first knew, or through due diligence should have known, that the event may cause or has caused
+               a delay in reporting.
+
+           (3) You must provide to the Administrator:
+
+
+40 CFR 60.4245(i)(3) (enhanced display)                                                                     page 23 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                         40 CFR 60.4245(i)(3)(i)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+                 (i)   A written description of the force majeure event;
+
+                 (ii) A rationale for attributing the delay in reporting beyond the regulatory deadline to the force
+                      majeure event;
+
+                (iii) A description of measures taken or to be taken to minimize the delay in reporting; and
+
+                (iv) The date by which you propose to report, or if you have already met the reporting requirement at
+                     the time of the notification, the date you reported.
+
+           (4) The decision to accept the claim of force majeure and allow an extension to the reporting deadline is
+               solely within the discretion of the Administrator.
+
+           (5) In any circumstance, the reporting must occur as soon as possible after the force majeure event
+               occurs.
+
+     (j)   Any records required to be maintained by this subpart that are submitted electronically via the EPA's
+           CEDRI may be maintained in electronic format. This ability to maintain electronic copies does not affect
+           the requirement for facilities to make records, data, and reports available upon request to a delegated air
+           agency or the EPA as part of an on-site compliance evaluation.
+
+[73 FR 3591, Jan. 18, 2008, as amended at 73 FR 59177, Oct. 8, 2008; 78 FR 6697, Jan. 30, 2013; 81 FR 59809, Aug. 30, 2016; 86
+FR 34362, June 29, 2021; 87 FR 48606, Aug. 10, 2022; 89 FR 70514, Aug. 30, 2024]
+
+
+                                                   GENERAL PROVISIONS
+
+§ 60.4246 What General Provisions and confidential information provisions apply to me?
+     (a) Table 3 to this subpart shows which parts of the General Provisions in §§ 60.1 through 60.19 apply to you.
+
+     (b) The provisions of 40 CFR 1068.10 and 1068.11 apply for engine manufacturers. For others, the general
+         confidential business information (CBI) provisions apply as described in 40 CFR part 2.
+
+[88 FR 4471, Jan. 24, 2023]
+
+
+                                               MOBILE SOURCE PROVISIONS
+
+§ 60.4247 What parts of the mobile source provisions apply to me if I am a manufacturer of
+stationary SI internal combustion engines or a manufacturer of equipment containing such
+engines?
+     (a) Manufacturers certifying to emission standards in 40 CFR part 1054 must meet the provisions of 40 CFR
+         part 1054. Note that 40 CFR part 1054, appendix I, describes various provisions that do not apply for
+         engines meeting Phase 1 standards in 40 CFR part 1054. Manufacturers of equipment containing
+         stationary SI internal combustion engines meeting the provisions of 40 CFR part 1054 must meet the
+         provisions of 40 CFR part 1060 to the extent they apply to equipment manufacturers.
+
+     (b) Manufacturers required to certify to emission standards in 40 CFR part 1048 must meet the provisions of
+         40 CFR part 1048. Manufacturers certifying to emission standards in 40 CFR part 1048 pursuant to the
+         voluntary certification program must meet the requirements in Table 4 to this subpart as well as the
+         standards in 40 CFR 1048.101.
+
+
+40 CFR 60.4247(b) (enhanced display)                                                                               page 24 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                      40 CFR 60.4247(c)
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+     (c) For manufacturers of stationary SI internal combustion engines participating in the voluntary certification
+         program and certifying engines to Table 1 to this subpart, Table 4 to this subpart shows which parts of
+         the mobile source provisions in 40 CFR parts 1048, 1065, and 1068 apply to you. Compliance with the
+         deterioration factor provisions under 40 CFR 1048.205(n) and 1048.240 will be required for engines built
+         new on and after January 1, 2010. Prior to January 1, 2010, manufacturers of stationary internal
+         combustion engines participating in the voluntary certification program have the option to develop their
+         own deterioration factors based on an engineering analysis.
+
+[73 FR 3591, Jan. 18, 2008, as amended at 73 FR 59177, Oct. 8, 2008; 86 FR 34362, June 29, 2021]
+
+
+                                                        DEFINITIONS
+
+§ 60.4248 What definitions apply to this subpart?
+As used in this subpart, all terms not defined herein shall have the meaning given them in the CAA and in subpart A
+of this part.
+
+    Certified emissions life means the period during which the engine is designed to properly function in terms of
+           reliability and fuel consumption, without being remanufactured, specified as a number of hours of
+           operation or calendar years, whichever comes first. The values for certified emissions life for stationary SI
+           ICE with a maximum engine power less than or equal to 19 KW (25 HP) are given in 40 CFR 1054.107 and
+           1060.101, as appropriate. The values for certified emissions life for stationary SI ICE with a maximum
+           engine power greater than 19 KW (25 HP) certified to 40 CFR part 1048 are given in 40 CFR 1048.101(g).
+           The certified emissions life for stationary SI ICE with a maximum engine power greater than 75 KW (100
+           HP) certified under the voluntary manufacturer certification program of this subpart is 5,000 hours or 7
+           years, whichever comes first. You may request in your application for certification that we approve a
+           shorter certified emissions life for an engine family. We may approve a shorter certified emissions life, in
+           hours of engine operation but not in years, if we determine that these engines will rarely operate longer
+           than the shorter certified emissions life. If engines identical to those in the engine family have already
+           been produced and are in use, your demonstration must include documentation from such in-use engines.
+           In other cases, your demonstration must include an engineering analysis of information equivalent to
+           such in-use data, such as data from research engines or similar engine models that are already in
+           production. Your demonstration must also include any overhaul interval that you recommend, any
+           mechanical warranty that you offer for the engine or its components, and any relevant customer design
+           specifications. Your demonstration may include any other relevant information. The certified emissions
+           life value may not be shorter than any of the following:
+
+           (1) 1,000 hours of operation.
+
+           (2) Your recommended overhaul interval.
+
+           (3) Your mechanical warranty for the engine.
+
+    Certified stationary internal combustion engine means an engine that belongs to an engine family that has a
+           certificate of conformity that complies with the emission standards and requirements in this part, or of 40
+           CFR part 1048 or 1054, as appropriate.
+
+
+
+
+40 CFR 60.4248 “Certified stationary internal combustion engine” (enhanced display)                        page 25 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                 40 CFR 60.4248 “Combustion turbine”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+    Combustion turbine means all equipment, including but not limited to the turbine, the fuel, air, lubrication and
+        exhaust gas systems, control systems (except emissions control equipment), and any ancillary
+        components and sub-components comprising any simple cycle combustion turbine, any regenerative/
+        recuperative cycle combustion turbine, the combustion turbine portion of any cogeneration cycle
+        combustion system, or the combustion turbine portion of any combined cycle steam/electric generating
+        system.
+
+    Compression ignition means relating to a type of stationary internal combustion engine that is not a spark
+         ignition engine.
+
+    Date of manufacture means one of the following things:
+
+          (1) For freshly manufactured engines and modified engines, date of manufacture means the date the
+              engine is originally produced.
+
+          (2) For reconstructed engines, date of manufacture means the date the engine was originally produced,
+              except as specified in paragraph (3) of this definition.
+
+          (3) Reconstructed engines are assigned a new date of manufacture if the fixed capital cost of the new
+              and refurbished components exceeds 75 percent of the fixed capital cost of a comparable entirely
+              new facility. An engine that is produced from a previously used engine block does not retain the date
+              of manufacture of the engine in which the engine block was previously used if the engine is
+              produced using all new components except for the engine block. In these cases, the date of
+              manufacture is the date of reconstruction or the date the new engine is produced.
+
+    Diesel fuel means any liquid obtained from the distillation of petroleum with a boiling point of approximately 150
+           to 360 degrees Celsius. One commonly used form is number 2 distillate oil.
+
+    Digester gas means any gaseous by-product of wastewater treatment typically formed through the anaerobic
+          decomposition of organic waste materials and composed principally of methane and carbon dioxide
+          (CO2).
+
+    Emergency stationary internal combustion engine means any stationary reciprocating internal combustion engine
+         that meets all of the criteria in paragraphs (1) through (3) of this definition. All emergency stationary ICE
+         must comply with the requirements specified in § 60.4243(d) in order to be considered emergency
+         stationary ICE. If the engine does not comply with the requirements specified in § 60.4243(d), then it is
+         not considered to be an emergency stationary ICE under this subpart.
+
+          (1) The stationary ICE is operated to provide electrical power or mechanical work during an emergency
+              situation. Examples include stationary ICE used to produce power for critical networks or equipment
+              (including power supplied to portions of a facility) when electric power from the local utility (or the
+              normal power source, if the facility runs on its own power production) is interrupted, or stationary
+              ICE used to pump water in the case of fire or flood, etc.
+
+          (2) The stationary ICE is operated under limited circumstances for situations not included in paragraph
+              (1) of this definition, as specified in § 60.4243(d).
+
+          (3) The stationary ICE operates as part of a financial arrangement with another entity in situations not
+              included in paragraph (1) of this definition only as allowed in § 60.4243(d)(3)(i).
+
+    Engine manufacturer means the manufacturer of the engine. See the definition of “manufacturer” in this section.
+
+
+
+
+40 CFR 60.4248 “Engine manufacturer” (enhanced display)                                                  page 26 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                  40 CFR 60.4248 “Four-stroke engine”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+    Four-stroke engine means any type of engine which completes the power cycle in two crankshaft revolutions,
+          with intake and compression strokes in the first revolution and power and exhaust strokes in the second
+          revolution.
+
+    Freshly manufactured engine means an engine that has not been placed into service. An engine becomes freshly
+          manufactured when it is originally produced.
+
+    Gasoline means any fuel sold in any State for use in motor vehicles and motor vehicle engines, or nonroad or
+          stationary engines, and commonly or commercially known or sold as gasoline.
+
+    Installed means the engine is placed and secured at the location where it is intended to be operated.
+
+    Landfill gas means a gaseous by-product of the land application of municipal refuse typically formed through
+           the anaerobic decomposition of waste materials and composed principally of methane and CO2.
+
+    Lean burn engine means any two-stroke or four-stroke spark ignited engine that does not meet the definition of a
+          rich burn engine.
+
+    Liquefied petroleum gas means any liquefied hydrocarbon gas obtained as a by-product in petroleum refining or
+           natural gas production.
+
+    Manufacturer has the meaning given in section 216(1) of the Clean Air Act. In general, this term includes any
+         person who manufactures a stationary engine for sale in the United States or otherwise introduces a new
+         stationary engine into commerce in the United States. This includes importers who import stationary
+         engines for resale.
+
+    Maximum engine power means maximum engine power as defined in 40 CFR 1048.801.
+
+    Model year means the calendar year in which an engine is manufactured (see “date of manufacture”), except as
+         follows:
+
+          (1) Model year means the annual new model production period of the engine manufacturer in which an
+              engine is manufactured (see “date of manufacture”), if the annual new model production period is
+              different than the calendar year and includes January 1 of the calendar year for which the model
+              year is named. It may not begin before January 2 of the previous calendar year and it must end by
+              December 31 of the named calendar year.
+
+          (2) For an engine that is converted to a stationary engine after being placed into service as a nonroad or
+              other non-stationary engine, model year means the calendar year or new model production period in
+              which the engine was manufactured (see “date of manufacture”).
+
+    Natural gas means a naturally occurring mixture of hydrocarbon and non-hydrocarbon gases found in geologic
+          formations beneath the Earth's surface, of which the principal constituent is methane. Natural gas may be
+          field or pipeline quality.
+
+    Other internal combustion engine means any internal combustion engine, except combustion turbines, which is
+           not a reciprocating internal combustion engine or rotary internal combustion engine.
+
+    Pipeline-quality natural gas means a naturally occurring fluid mixture of hydrocarbons (e.g., methane, ethane, or
+           propane) produced in geological formations beneath the Earth's surface that maintains a gaseous state at
+           standard atmospheric temperature and pressure under ordinary conditions, and which is provided by a
+           supplier through a pipeline. Pipeline-quality natural gas must either be composed of at least 70 percent
+           methane by volume or have a gross calorific value between 950 and 1,100 British thermal units per
+           standard cubic foot.
+
+40 CFR 60.4248 “Pipeline-quality natural gas” (enhanced display)                                            page 27 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                            40 CFR 60.4248 “Rich burn engine”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+    Rich burn engine means any four-stroke spark ignited engine where the manufacturer's recommended operating
+          air/fuel ratio divided by the stoichiometric air/fuel ratio at full load conditions is less than or equal to 1.1.
+          Engines originally manufactured as rich burn engines, but modified prior to June 12, 2006, with passive
+          emission control technology for NOX (such as pre-combustion chambers) will be considered lean burn
+          engines. Also, existing engines where there are no manufacturer's recommendations regarding air/fuel
+          ratio will be considered a rich burn engine if the excess oxygen content of the exhaust at full load
+          conditions is less than or equal to 2 percent.
+
+    Rotary internal combustion engine means any internal combustion engine which uses rotary motion to convert
+          heat energy into mechanical work.
+
+    Spark ignition means relating to either: a gasoline-fueled engine; or any other type of engine with a spark plug (or
+          other sparking device) and with operating characteristics significantly similar to the theoretical Otto
+          combustion cycle. Spark ignition engines usually use a throttle to regulate intake air flow to control power
+          during normal operation. Dual-fuel engines in which a liquid fuel (typically diesel fuel) is used for
+          compression ignition and gaseous fuel (typically natural gas) is used as the primary fuel at an annual
+          average ratio of less than 2 parts diesel fuel to 100 parts total fuel on an energy equivalent basis are
+          spark ignition engines.
+
+    Stationary internal combustion engine means any internal combustion engine, except combustion turbines, that
+          converts heat energy into mechanical work and is not mobile. Stationary ICE differ from mobile ICE in that
+          a stationary internal combustion engine is not a nonroad engine as defined at 40 CFR 1068.30 (excluding
+          paragraph (2)(ii) of that definition), and is not used to propel a motor vehicle, aircraft, or a vehicle used
+          solely for competition. Stationary ICE include reciprocating ICE, rotary ICE, and other ICE, except
+          combustion turbines.
+
+    Stationary internal combustion engine test cell/stand means an engine test cell/stand, as defined in 40 CFR part
+          63, subpart PPPPP, that tests stationary ICE.
+
+    Stoichiometric means the theoretical air-to-fuel ratio required for complete combustion.
+
+    Subpart means 40 CFR part 60, subpart JJJJ.
+
+    Two-stroke engine means a type of engine which completes the power cycle in single crankshaft revolution by
+          combining the intake and compression operations into one stroke and the power and exhaust operations
+          into a second stroke. This system requires auxiliary scavenging and inherently runs lean of stoichiometric.
+
+    Volatile organic compounds means volatile organic compounds as defined in 40 CFR 51.100(s).
+
+    Voluntary certification program means an optional engine certification program that manufacturers of stationary
+          SI internal combustion engines with a maximum engine power greater than 19 KW (25 HP) that do not
+          use gasoline and are not rich burn engines that use LPG can choose to participate in to certify their
+          engines to the emission standards in § 60.4231(d) or (e), as applicable.
+
+[73 FR 3591, Jan. 18, 2008, as amended at 73 FR 59177, Oct. 8, 2008; 76 FR 37974, June 28, 2011; 78 FR 6698, Jan. 30, 2013; 86
+FR 34363, June 29, 2021; 87 FR 48606, Aug. 10, 2022]
+
+
+Table 1 to Subpart JJJJ of Part 60—NOX, CO, and VOC Emission Standards for Stationary Non-
+Emergency SI Engines ≥100 HP (Except Gasoline and Rich Burn LPG), Stationary SI Landfill/
+Digester Gas Engines, and Stationary Emergency Engines >25 HP
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                               page 28 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                                                                                       40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+                                                                                                                                                                    Emission standards a
+                                                         Engine type                                                      Maximum         Manufacture
+                                                                                                                                                                 g/HP-hr         ppmvd at 15% O2
+                                                          and fuel                                                       engine power        date
+                                                                                                                                                          NOX     CO    VOC d    NOX   CO    VOC d
+         Non-Emergency SI Natural Gas b and Non-Emergency SI Lean Burn LPG b                                            100≤HP<500            7/1/2008     2.0    4.0      1.0   160   540      86
+                                                                                                                                              1/1/2011     1.0    2.0      0.7    82   270      60
+         Non-Emergency SI Lean Burn Natural Gas and LPG                                                                 500≤HP<1,350          1/1/2008     2.0    4.0      1.0   160   540      86
+                                                                                                                                              7/1/2010     1.0    2.0      0.7    82   270      60
+         Non-Emergency SI Natural Gas and Non-Emergency SI Lean Burn LPG (except lean burn 500≤HP<1,350)                HP≥500                7/1/2007     2.0    4.0      1.0   160   540      86
+                                                                                                                        HP≥500                7/1/2010     1.0    2.0      0.7    82   270      60
+         Landfill/Digester Gas (except lean burn 500≤HP<1,350)                                                          HP<500                7/1/2008     3.0    5.0      1.0   220   610      80
+                                                                                                                                              1/1/2011     2.0    5.0      1.0   150   610      80
+                                                                                                                        HP≥500                7/1/2007     3.0    5.0      1.0   220   610      80
+                                                                                                                                              7/1/2010     2.0    5.0      1.0   150   610      80
+         Landfill/Digester Gas Lean Burn                                                                                500≤HP<1,350          1/1/2008     3.0    5.0      1.0   220   610      80
+                                                                                                                                              7/1/2010     2.0    5.0      1.0   150   610      80
+                                                                                                                                                          c
+         Emergency                                                                                                      25<HP<130             1/1/2009        10 387       N/A   N/A N/A       N/A
+                                                                                                                        HP≥130                             2.0    4.0      1.0   160   540      86
+         a Owners and operators of stationary non-certified SI engines may choose to comply with the emission standards in units of either g/HP-hr or ppmvd at 15 percent O .
+                                                                                                                                                                           2
+         b
+          Owners and operators of new or reconstructed non-emergency lean burn SI stationary engines with a site rating of greater than or equal to 250 brake HP located at a major source that are
+         meeting the requirements of 40 CFR part 63, subpart ZZZZ, Table 2a do not have to comply with the CO emission standards of Table 1 of this subpart.
+         c
+           The emission standards applicable to emergency engines between 25 HP and 130 HP are in terms of NOX + HC.
+         d For purposes of this subpart, when calculating emissions of volatile organic compounds, emissions of formaldehyde should not be included.
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                                                                                                page 29 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                            40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+[76 FR 37975, June 28, 2011]
+
+
+Table 2 to Subpart JJJJ of Part 60—Requirements for Performance Tests
+As stated in § 60.4244, you must comply with the following requirements for performance tests within 10 percent
+of 100 percent peak (or the highest achievable) load].
+
+
+
+                                Complying
+                                 with the                                           According to the following
+                For each                         You must          Using
+                               requirement                                               requirements
+                                    to
+             1. Stationary     a. Limit the    i. Select the    (1) Method 1    (a) Alternatively, for NOX, O2, and
+             SI internal       concentration   sampling         or 1A of 40     moisture measurement, ducts ≤6
+             combustion        of NOX in the   port location    CFR part 60,    inches in diameter may be sampled
+             engine            stationary SI   and the          appendix A-1,   at a single point located at the duct
+             demonstrating     internal        number/          if measuring    centroid and ducts >6 and ≤12
+             compliance        combustion      location of      flow rate       inches in diameter may be sampled
+             according to §    engine          traverse                         at 3 traverse points located at 16.7,
+             60.4244           exhaust         points at the                    50.0, and 83.3% of the
+                                               exhaust of                       measurement line (`3-point long
+                                               the stationary                   line'). If the duct is >12 inches in
+                                               internal                         diameter and the sampling port
+                                               combustion                       location meets the two and half-
+                                               engine;                          diameter criterion of Section 11.1.1
+                                                                                of Method 1 of 40 CFR part 60,
+                                                                                Appendix A, the duct may be
+                                                                                sampled at `3-point long line';
+                                                                                otherwise, conduct the
+                                                                                stratification testing and select
+                                                                                sampling points according to
+                                                                                Section 8.1.2 of Method 7E of 40
+                                                                                CFR part 60, Appendix A.
+                                               ii. Determine    (2) Method 3, (b) Measurements to determine O2
+                                               the O2           3A, or 3B b of concentration must be made at the
+             a Also, you may petition the Administrator for approval to use alternative methods for portable
+
+             analyzer.
+             b You may use ASME PTC 19.10-1981, Flue and Exhaust Gas Analyses, for measuring the O
+                                                                                                   2 content
+             of the exhaust gas as an alternative to EPA Method 3B. AMSE PTC 19.10-1981 incorporated by
+             reference, see 40 CFR 60.17
+             c You may use EPA Method 18 of 40 CFR part 60, appendix A-6, provided that you conduct an adequate
+
+             pre-survey test prior to the emissions test, such as the one described in OTM 11 on EPA's website
+             (http://www.epa.gov/ttn/emc/prelim/otm11.pdf).
+             d Incorporated by reference; see 40 CFR 60.17.
+
+             e You must meet the requirements in § 60.4245(d).
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                                 page 30 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                              40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+                                Complying
+                                 with the                                           According to the following
+                 For each                        You must          Using
+                               requirement                                               requirements
+                                    to
+                                              concentration    40 CFR part      same time as the measurements
+                                              of the           60, appendix     for NOX concentration.
+                                              stationary       A-2 or ASTM
+                                              internal         Method
+                                              combustion       D6522-00
+                                              engine           (Reapproved
+                                              exhaust at       2005) a d
+                                              the sampling
+                                              port location;
+                                              iii. If          (3) Method 2     (c) Measurements to determine the
+                                              necessary,       or 2C of 40      exhaust flowrate must be made (1)
+                                              determine        CFR part 60,     at the same time as the
+                                              the exhaust      appendix A-1     measurement for NOX
+                                              flowrate of      or Method 19     concentration or, alternatively (2)
+                                              the stationary   of 40 CFR        according to the option in Section
+                                              internal         part 60,         11.1.2 of Method 1A of 40 CFR part
+                                              combustion       appendix A-7     60, Appendix A-1, if applicable.
+                                              engine
+                                              exhaust;
+                                              iv. If           (4) Method 4     (d) Measurements to determine
+                                              necessary,       of 40 CFR        moisture must be made at the
+                                              measure          part 60,         same time as the measurement for
+                                              moisture         appendix A-3,    NOX concentration.
+                                              content of       Method 320
+                                              the stationary   of 40 CFR
+                                              internal         part 63,
+                                              combustion       appendix A,e
+                                              engine           or ASTM
+                                              exhaust at       Method
+                                              the sampling     D6348-03 d e
+                                              port location;
+             a Also, you may petition the Administrator for approval to use alternative methods for portable
+
+             analyzer.
+             b
+               You may use ASME PTC 19.10-1981, Flue and Exhaust Gas Analyses, for measuring the O2 content
+             of the exhaust gas as an alternative to EPA Method 3B. AMSE PTC 19.10-1981 incorporated by
+             reference, see 40 CFR 60.17
+             c You may use EPA Method 18 of 40 CFR part 60, appendix A-6, provided that you conduct an adequate
+
+             pre-survey test prior to the emissions test, such as the one described in OTM 11 on EPA's website
+             (http://www.epa.gov/ttn/emc/prelim/otm11.pdf).
+             d Incorporated by reference; see 40 CFR 60.17.
+
+             e You must meet the requirements in § 60.4245(d).
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                                   page 31 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                            40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+                                Complying
+                                 with the                                           According to the following
+                 For each                        You must          Using
+                               requirement                                               requirements
+                                    to
+                                              and
+                                              v. Measure       (5) Method    (e) Results of this test consist of
+                                              NOX at the       7E of 40 CFR the average of the three 1-hour or
+                                              exhaust of       part 60,      longer runs.
+                                              the stationary   appendix A-4,
+                                              internal         ASTM
+                                              combustion       Method
+                                              engine; if       D6522-00
+                                              using a          (Reapproved
+                                              control          2005),a d
+                                              device, the      Method 320
+                                              sampling site    of 40 CFR
+                                              must be          part 63,
+                                              located at the   appendix A,e
+                                              outlet of the    or ASTM
+                                              control          Method
+                                              device           D6348-03 d e
+                              b. Limit the    i. Select the    (1) Method 1    (a) Alternatively, for CO, O2, and
+                              concentration   sampling         or 1A of 40     moisture measurement, ducts ≤6
+                              of CO in the    port location    CFR part 60,    inches in diameter may be sampled
+                              stationary SI   and the          appendix A-1,   at a single point located at the duct
+                              internal        number/          if measuring    centroid and ducts >6 and ≤12
+                              combustion      location of      flow rate       inches in diameter may be sampled
+                              engine          traverse                         at 3 traverse points located at 16.7,
+                              exhaust         points at the                    50.0, and 83.3% of the
+                                              exhaust of                       measurement line (`3-point long
+                                              the stationary                   line'). If the duct is >12 inches in
+                                              internal                         diameter and the sampling port
+                                              combustion                       location meets the two and half-
+                                              engine;                          diameter criterion of Section 11.1.1
+                                                                               of Method 1 of 40 CFR part 60,
+             a Also, you may petition the Administrator for approval to use alternative methods for portable
+
+             analyzer.
+             b
+               You may use ASME PTC 19.10-1981, Flue and Exhaust Gas Analyses, for measuring the O2 content
+             of the exhaust gas as an alternative to EPA Method 3B. AMSE PTC 19.10-1981 incorporated by
+             reference, see 40 CFR 60.17
+             c You may use EPA Method 18 of 40 CFR part 60, appendix A-6, provided that you conduct an adequate
+
+             pre-survey test prior to the emissions test, such as the one described in OTM 11 on EPA's website
+             (http://www.epa.gov/ttn/emc/prelim/otm11.pdf).
+             d Incorporated by reference; see 40 CFR 60.17.
+
+             e You must meet the requirements in § 60.4245(d).
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                                    page 32 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                              40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+                                Complying
+                                 with the                                           According to the following
+                For each                         You must          Using
+                               requirement                                               requirements
+                                    to
+                                                                                Appendix A, the duct may be
+                                                                                sampled at `3-point long line';
+                                                                                otherwise, conduct the
+                                                                                stratification testing and select
+                                                                                sampling points according to
+                                                                                Section 8.1.2 of Method 7E of 40
+                                                                                CFR part 60, Appendix A.
+                                              ii. Determine    (2) Method 3,    (b) Measurements to determine O2
+                                              the O2           3A, or 3B b of   concentration must be made at the
+                                              concentration    40 CFR part      same time as the measurements
+                                              of the           60, appendix     for CO concentration.
+                                              stationary       A-2 or ASTM
+                                              internal         Method
+                                              combustion       D6522-00
+                                              engine           (Reapproved
+                                              exhaust at       2005) a d
+                                              the sampling
+                                              port location;
+                                              iii. If          (3) Method 2     (c) Measurements to determine the
+                                              necessary,       or 2C of 40      exhaust flowrate must be made (1)
+                                              determine        CFR 60,          at the same time as the
+                                              the exhaust      appendix A-1     measurement for CO concentration
+                                              flowrate of      or Method 19     or, alternatively (2) according to the
+                                              the stationary   of 40 CFR        option in Section 11.1.2 of Method
+                                              internal         part 60,         1A of 40 CFR part 60, Appendix A-1,
+                                              combustion       appendix A-7     if applicable.
+                                              engine
+                                              exhaust;
+                                              iv. If           (4) Method 4     (d) Measurements to determine
+                                              necessary,       of 40 CFR        moisture must be made at the
+                                              measure          part 60,         same time as the measurement for
+             a Also, you may petition the Administrator for approval to use alternative methods for portable
+
+             analyzer.
+             b You may use ASME PTC 19.10-1981, Flue and Exhaust Gas Analyses, for measuring the O
+                                                                                                   2 content
+             of the exhaust gas as an alternative to EPA Method 3B. AMSE PTC 19.10-1981 incorporated by
+             reference, see 40 CFR 60.17
+             c You may use EPA Method 18 of 40 CFR part 60, appendix A-6, provided that you conduct an adequate
+
+             pre-survey test prior to the emissions test, such as the one described in OTM 11 on EPA's website
+             (http://www.epa.gov/ttn/emc/prelim/otm11.pdf).
+             d Incorporated by reference; see 40 CFR 60.17.
+
+             e You must meet the requirements in § 60.4245(d).
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                                  page 33 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                              40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+                                Complying
+                                 with the                                           According to the following
+                 For each                        You must          Using
+                               requirement                                               requirements
+                                    to
+                                              moisture         appendix A-3, CO concentration.
+                                              content of       Method 320
+                                              the stationary   of 40 CFR
+                                              internal         part 63,
+                                              combustion       appendix A,e
+                                              engine           or ASTM
+                                              exhaust at       Method
+                                              the sampling     D6348-03 d e
+                                              port location;
+                                              and
+                                              v. Measure       (5) Method       (e) Results of this test consist of
+                                              CO at the        10 of 40 CFR     the average of the three 1-hour or
+                                              exhaust of       part 60,         longer runs.
+                                              the stationary   appendix A4,
+                                              internal         ASTM
+                                              combustion       Method
+                                              engine; if       D6522-00
+                                              using a          (Reapproved
+                                              control          2005),a d e
+                                              device, the      Method 320
+                                              sampling site    of 40 CFR
+                                              must be          part 63,
+                                              located at the   appendix A,e
+                                              outlet of the    or ASTM
+                                              control          Method
+                                              device           D6348-03 d e
+                              c. Limit the    i. Select the    (1) Method 1     (a) Alternatively, for VOC, O2, and
+                              concentration   sampling         or 1A of 40      moisture measurement, ducts ≤6
+                              of VOC in the   port location    CFR part 60,     inches in diameter may be sampled
+                              stationary SI   and the          appendix A-1,    at a single point located at the duct
+                              internal        number/          if measuring     centroid and ducts >6 and ≤12
+             a Also, you may petition the Administrator for approval to use alternative methods for portable
+
+             analyzer.
+             b
+               You may use ASME PTC 19.10-1981, Flue and Exhaust Gas Analyses, for measuring the O2 content
+             of the exhaust gas as an alternative to EPA Method 3B. AMSE PTC 19.10-1981 incorporated by
+             reference, see 40 CFR 60.17
+             c You may use EPA Method 18 of 40 CFR part 60, appendix A-6, provided that you conduct an adequate
+
+             pre-survey test prior to the emissions test, such as the one described in OTM 11 on EPA's website
+             (http://www.epa.gov/ttn/emc/prelim/otm11.pdf).
+             d Incorporated by reference; see 40 CFR 60.17.
+
+             e You must meet the requirements in § 60.4245(d).
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                                   page 34 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                            40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+                                Complying
+                                 with the                                           According to the following
+                 For each                        You must          Using
+                               requirement                                               requirements
+                                    to
+                              combustion      location of    flow rate          inches in diameter may be sampled
+                              engine          traverse                          at 3 traverse points located at 16.7,
+                              exhaust         points at the                     50.0, and 83.3% of the
+                                              exhaust of                        measurement line (`3-point long
+                                              the stationary                    line'). If the duct is >12 inches in
+                                              internal                          diameter and the sampling port
+                                              combustion                        location meets the two and half-
+                                              engine;                           diameter criterion of Section 11.1.1
+                                                                                of Method 1 of 40 CFR part 60,
+                                                                                Appendix A, the duct may be
+                                                                                sampled at `3-point long line';
+                                                                                otherwise, conduct the
+                                                                                stratification testing and select
+                                                                                sampling points according to
+                                                                                Section 8.1.2 of Method 7E of 40
+                                                                                CFR part 60, Appendix A.
+                                              ii. Determine    (2) Method 3,    (b) Measurements to determine O2
+                                              the O2           3A, or 3B b of   concentration must be made at the
+                                              concentration    40 CFR part      same time as the measurements
+                                              of the           60, appendix     for VOC concentration.
+                                              stationary       A-2 or ASTM
+                                              internal         Method
+                                              combustion       D6522-00
+                                              engine           (Reapproved
+                                              exhaust at       2005) a d
+                                              the sampling
+                                              port location;
+                                              iii. If          (3) Method 2     (c) Measurements to determine the
+                                              necessary,       or 2C of 40      exhaust flowrate must be made (1)
+                                              determine        CFR 60,          at the same time as the
+                                              the exhaust      appendix A-1     measurement for VOC
+             a Also, you may petition the Administrator for approval to use alternative methods for portable
+
+             analyzer.
+             b
+               You may use ASME PTC 19.10-1981, Flue and Exhaust Gas Analyses, for measuring the O2 content
+             of the exhaust gas as an alternative to EPA Method 3B. AMSE PTC 19.10-1981 incorporated by
+             reference, see 40 CFR 60.17
+             c You may use EPA Method 18 of 40 CFR part 60, appendix A-6, provided that you conduct an adequate
+
+             pre-survey test prior to the emissions test, such as the one described in OTM 11 on EPA's website
+             (http://www.epa.gov/ttn/emc/prelim/otm11.pdf).
+             d Incorporated by reference; see 40 CFR 60.17.
+
+             e You must meet the requirements in § 60.4245(d).
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                                     page 35 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                              40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+                                Complying
+                                 with the                                           According to the following
+                For each                         You must          Using
+                               requirement                                               requirements
+                                    to
+                                              flowrate of      or Method 19     concentration or, alternatively (2)
+                                              the stationary   of 40 CFR        according to the option in Section
+                                              internal         part 60,         11.1.2 of Method 1A of 40 CFR part
+                                              combustion       appendix A-7     60, Appendix A-1, if applicable.
+                                              engine
+                                              exhaust;
+                                              iv. If           (4) Method 4     (d) Measurements to determine
+                                              necessary,       of 40 CFR        moisture must be made at the
+                                              measure          part 60,         same time as the measurement for
+                                              moisture         appendix A-3,    VOC concentration.
+                                              content of       Method 320
+                                              the stationary   of 40 CFR
+                                              internal         part 63,
+                                              combustion       appendix A,e
+                                              engine           or ASTM
+                                              exhaust at       Method
+                                              the sampling     D6348-03 d e
+                                              port location;
+                                              and
+                                              v. Measure       (5) Methods      (e) Results of this test consist of
+                                              VOC at the       25A and 18       the average of the three 1-hour or
+                                              exhaust of       of 40 CFR        longer runs.
+                                              the stationary   part 60,
+                                              internal         appendices
+                                              combustion       A-6 and A-7,
+                                              engine; if       Method 25A
+                                              using a          with the use
+                                              control          of a
+                                              device, the      hydrocarbon
+                                              sampling site    cutter as
+                                              must be          described in
+             a Also, you may petition the Administrator for approval to use alternative methods for portable
+
+             analyzer.
+             b You may use ASME PTC 19.10-1981, Flue and Exhaust Gas Analyses, for measuring the O
+                                                                                                         2 content
+             of the exhaust gas as an alternative to EPA Method 3B. AMSE PTC 19.10-1981 incorporated by
+             reference, see 40 CFR 60.17
+             c You may use EPA Method 18 of 40 CFR part 60, appendix A-6, provided that you conduct an adequate
+
+             pre-survey test prior to the emissions test, such as the one described in OTM 11 on EPA's website
+             (http://www.epa.gov/ttn/emc/prelim/otm11.pdf).
+             d Incorporated by reference; see 40 CFR 60.17.
+
+             e You must meet the requirements in § 60.4245(d).
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                                   page 36 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                               40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+                                   Complying
+                                    with the                                         According to the following
+                 For each                           You must           Using
+                                  requirement                                             requirements
+                                       to
+                                                  located at the    40 CFR
+                                                  outlet of the     1065.265,
+                                                  control           Method 18 of
+                                                  device            40 CFR part
+                                                                    60, appendix
+                                                                    A-6,c e
+                                                                    Method 320
+                                                                    of 40 CFR
+                                                                    part 63,
+                                                                    appendix A,e
+                                                                    or ASTM
+                                                                    Method
+                                                                    D6348-03 d e
+              a Also, you may petition the Administrator for approval to use alternative methods for portable
+
+              analyzer.
+              b You may use ASME PTC 19.10-1981, Flue and Exhaust Gas Analyses, for measuring the O
+                                                                                                    2 content
+              of the exhaust gas as an alternative to EPA Method 3B. AMSE PTC 19.10-1981 incorporated by
+              reference, see 40 CFR 60.17
+              c You may use EPA Method 18 of 40 CFR part 60, appendix A-6, provided that you conduct an adequate
+
+              pre-survey test prior to the emissions test, such as the one described in OTM 11 on EPA's website
+              (http://www.epa.gov/ttn/emc/prelim/otm11.pdf).
+              d Incorporated by reference; see 40 CFR 60.17.
+
+              e You must meet the requirements in § 60.4245(d).
+
+
+
+
+[85 FR 63408, Oct. 7, 2020]
+
+
+Table 3 to Subpart JJJJ of Part 60—Applicability of General Provisions to Subpart JJJJ
+
+
+             [AS STATED IN § 60.4246, YOU MUST COMPLY WITH THE FOLLOWING APPLICABLE
+                                       GENERAL PROVISIONS]
+
+               General                                    Applies
+              provisions         Subject of citation        to                        Explanation
+               citation                                   subpart
+              § 60.1          General applicability of    Yes
+                              the General Provisions
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                               page 37 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                          40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+              General                                Applies
+             provisions       Subject of citation      to                         Explanation
+              citation                               subpart
+             § 60.2       Definitions                Yes       Additional terms defined in § 60.4248.
+             § 60.3       Units and abbreviations    Yes
+             § 60.4       Address                    Yes
+             § 60.5       Determination of           Yes
+                          construction or
+                          modification
+             § 60.6       Review of plans            Yes
+             § 60.7       Notification and           Yes       Except that § 60.7 only applies as specified in §
+                          Recordkeeping                        60.4245.
+             § 60.8       Performance tests          Yes       Except that § 60.8 only applies to owners and
+                                                               operators who are subject to performance
+                                                               testing in subpart JJJJ.
+             § 60.9       Availability of            Yes
+                          information
+             § 60.10      State Authority            Yes
+             § 60.11      Compliance with            Yes       Requirements are specified in subpart JJJJ.
+                          standards and
+                          maintenance
+                          requirements
+             § 60.12      Circumvention              Yes
+             § 60.13      Monitoring requirements    No
+             § 60.14      Modification               Yes
+             § 60.15      Reconstruction             Yes
+             § 60.16      Priority list              Yes
+             § 60.17      Incorporations by          Yes
+                          reference
+             § 60.18      General control device     No
+                          requirements
+             § 60.19      General notification and   Yes
+                          reporting requirements
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                                page 38 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                          40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+Table 4 to Subpart JJJJ of Part 60—Applicability of Mobile Source Provisions for Manufacturers
+Participating in the Voluntary Certification Program and Certifying Stationary SI ICE to
+Emission Standards in Table 1 of Subpart JJJJ
+
+
+             [AS STATED IN § 60.4247, YOU MUST COMPLY WITH THE FOLLOWING APPLICABLE
+             MOBILE SOURCE PROVISIONS IF YOU ARE A MANUFACTURER PARTICIPATING IN THE
+               VOLUNTARY CERTIFICATION PROGRAM AND CERTIFYING STATIONARY SI ICE TO
+                               EMISSION STANDARDS IN TABLE 1 OF SUBPART JJJJ]
+
+
+               Mobile source                                                     Applies
+                provisions                     Subject of citation                 to          Explanation
+                 citation                                                        subpart
+             1048 subpart A      Overview and Applicability                     Yes
+             1048 subpart B      Emission Standards and Related                 Yes        Except for the
+                                 Requirements                                              specific sections
+                                                                                           below.
+             1048.101            Exhaust Emission Standards                     No
+             1048.105            Evaporative Emission Standards                 No
+             1048.110            Diagnosing Malfunctions                        No
+             1048.140            Certifying Blue Sky Series Engines             No
+             1048.145            Interim Provisions                             No
+             1048 subpart C      Certifying Engine Families                     Yes        Except for the
+                                                                                           specific sections
+                                                                                           below.
+             1048.205(b)         AECD reporting                                 Yes
+             1048.205(c)         OBD Requirements                               No
+             1048.205(n)         Deterioration Factors                          Yes        Except as indicated
+                                                                                           in 60.4247(c).
+             1048.205(p)(1)      Deterioration Factor Discussion                Yes
+             1048.205(p)(2)      Liquid Fuels as they require                   No
+             1048.240(b)(c)(d) Deterioration Factors                            Yes
+             1048 subpart D      Testing Production-Line Engines                Yes
+             1048 subpart E      Testing In-Use Engines                         No
+             1048 subpart F      Test Procedures                                Yes
+             1065.5(a)(4)        Raw sampling (refers reader back to the        Yes
+                                 specific emissions regulation for guidance)
+             1048 subpart G      Compliance Provisions                          Yes
+             1048 subpart H      Reserved
+             1048 subpart I      Definitions and Other Reference Information    Yes
+             1048 appendix I     Yes
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                              page 39 of 40
+40 CFR Part 60 Subpart JJJJ (up to date as of 9/17/2026)
+                                                                           40 CFR 60.4248 “Voluntary certification program”
+Standards of Performance for Stationary Spark Ignition Internal...
+
+
+
+               Mobile source                                                      Applies
+                provisions                    Subject of citation                   to          Explanation
+                 citation                                                         subpart
+             and II
+             1065 (all          Engine Testing Procedures                        Yes        Except for the
+             subparts)                                                                      specific section
+                                                                                            below.
+             1065.715           Test Fuel Specifications for Natural Gas         No
+             1068 (all          General Compliance Provisions for Nonroad        Yes        Except for the
+             subparts)          Programs                                                    specific sections
+                                                                                            below.
+             1068.245           Hardship Provisions for Unusual                  No
+                                Circumstances
+             1068.250           Hardship Provisions for Small-Volume             No
+                                Manufacturers
+             1068.255           Hardship Provisions for Equipment                No
+                                Manufacturers and Secondary Engine
+                                Manufacturers
+
+
+
+
+40 CFR 60.4248 “Voluntary certification program” (enhanced display)                                             page 40 of 40
+

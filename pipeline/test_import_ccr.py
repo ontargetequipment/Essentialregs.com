@@ -898,6 +898,30 @@ class UncaptionedTableInPlaceTests(unittest.TestCase):
         self.assertNotIn("doc-table", provisions["sec-26-B-III-G-1-c"]["full_text"])
 
 
+class ProgramSubpartAliasTests(unittest.TestCase):
+    """link_citations step 1.2: "NSPS Subpart IIII" / "NESHAP Subpart ZZZZ"
+    (no "40 CFR Part NN" prefix) link to the federal engine subparts once
+    they are corpus regulations; other program+subpart mentions are only
+    counted, and a fully-cited form is not double-wrapped."""
+
+    TEXT = ("Engines must meet NSPS Subpart IIII and NESHAP Subpart ZZZZ; NSPS Subpart Dc boilers are "
+            "excluded; see also 40 CFR Part 60, Subpart JJJJ.")
+
+    def test_links_and_buckets(self):
+        html, buckets = ic.link_citations(self.TEXT, "gp06", {"sec-gp06-top-REG-gp06"}, set(ic.CORPUS_REGS), "")
+        self.assertIn('href="/regulations/iiii">NSPS Subpart IIII</a>', html)
+        self.assertIn('href="/regulations/zzzz">NESHAP Subpart ZZZZ</a>', html)
+        self.assertIn('href="/regulations/jjjj">40 CFR Part 60, Subpart JJJJ</a>', html)
+        self.assertEqual(html.count("<a "), 3)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"NSPS Subpart Dc": 1})
+
+    def test_not_in_corpus_only_counts(self):
+        corpus = set(ic.CORPUS_REGS) - {"iiii"}
+        html, buckets = ic.link_citations("see NSPS Subpart IIII.", "gp06", {"sec-gp06-top-REG-gp06"}, corpus, "")
+        self.assertNotIn("<a ", html)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"NSPS Subpart IIII": 1})
+
+
 class DottedCfrCitationTests(unittest.TestCase):
     TEXT = "see 40 C.F.R. Part 63, Subpart M and 40 C. F. R. Part 63, Subparts F and 40 CFR Part 60, Subpart OOOOb."
 
@@ -2192,7 +2216,11 @@ class CrossRefNoOpProofTests(unittest.TestCase):
     since those baseline files are build artifacts, not checked-in fixtures
     every clone of this repo carries."""
 
-    NEW_REGS = ("cp", "9", "24", "30")
+    # Every reg added AFTER the reg1/2/26 baselines were captured (batch 3
+    # plus the general permits and the federal engine subparts) -- their
+    # only permitted effect on Reg 1/2/26 output is new links to themselves.
+    NEW_REGS = ("cp", "9", "24", "30", "jjjj", "iiii", "zzzz",
+                "gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12")
 
     BASELINE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
     SOURCES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources")
@@ -2223,14 +2251,14 @@ class CrossRefNoOpProofTests(unittest.TestCase):
             out = _json.dumps(result[0], ensure_ascii=False, indent=1)
             with open(baseline, encoding="utf-8") as fh:
                 base = fh.read()
-            self.assertEqual(out, base, f"reg {reg} not byte-identical with cp/9/24/30 absent from CORPUS_REGS")
+            self.assertEqual(out, base, f"reg {reg} not byte-identical with the post-baseline regs absent from CORPUS_REGS")
 
     def test_reg1_reg2_reg26_diffs_are_only_new_links_to_the_four_new_regs(self):
         import json as _json
         import re as _re
         tag_re = _re.compile(
             r'<a class="xref-external-reg"(?: data-provision-id="sec-cp-[^"]*")?'
-            r' href="/regulations/(?:cp|9|24|30)">(.*?)</a>'
+            r' href="/regulations/(?:cp|9|24|30|jjjj|iiii|zzzz|gp\d\d)">(.*?)</a>'
         )
         new_link_counts = {reg: 0 for reg in ("1", "2", "26")}
         for reg in ("1", "2", "26"):
@@ -2993,6 +3021,328 @@ class Reg30FullParseTests(unittest.TestCase):
             self.assertIn("doc-table-wrap", text)
         self.assertIn("Benzene", a_text)
         self.assertIn("0.13", b_text)  # Benzene's cancer chronic health-protective benchmark
+
+
+# ---------------------------------------------------------------------------
+# GP01-GP12 — the eleven APCD General Construction Permits. Same shape as
+# Reg 1/cp (`no_parts`, full compound-path labels), plus three gated
+# additions: GP12's missing-trailing-dot labels (also needed sporadically by
+# GP01/02/06/07/08/11 — see FAMILY_REGEX_NO_TRAILING_DOT), GP12/GP02's
+# Attachment A/B all-digit-ladder items, and the corpus-wide "GPnn mention"
+# resolver plus the "Condition(s)" xref keyword (gp-only).
+# ---------------------------------------------------------------------------
+
+GP_SOURCES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources")
+
+
+def _gp_paths(key):
+    base = key.upper()
+    return (
+        os.path.join(GP_SOURCES_DIR, f"{base}.txt"),
+        os.path.join(GP_SOURCES_DIR, f"{base}.pdf"),
+    )
+
+
+class GeneralPermitMetaTests(unittest.TestCase):
+    def test_all_eleven_keys_in_corpus_and_meta(self):
+        self.assertEqual(set(ic.GP_KEYS), {
+            "gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08",
+            "gp09", "gp10", "gp11", "gp12",
+        })
+        self.assertNotIn("gp04", ic.GP_KEYS)
+        for k in ic.GP_KEYS:
+            self.assertEqual(ic.CORPUS_REGS.get(k), k)
+            meta = ic.REG_META.get(k)
+            self.assertIsNotNone(meta, k)
+            self.assertTrue(meta.get("no_parts"), k)
+            self.assertTrue(meta.get("page_of_total_footer"), k)
+            self.assertTrue(meta.get("toc_has_page_leaders"), k)
+            self.assertTrue(meta.get("labels_without_trailing_dot"), k)
+            self.assertEqual(meta["jurisdiction_level"], "state")
+            self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
+            self.assertEqual(meta["root_citation"], f"APCD General Permit {k.upper()}")
+            self.assertIn(k.upper(), meta["root_title"])
+
+    def test_gp12_attachments_config(self):
+        self.assertEqual(ic.REG_META["gp12"]["attachments"], ("A", "B"))
+
+    def test_gp02_attachments_config(self):
+        self.assertEqual(ic.REG_META["gp02"]["attachments"], ("A",))
+
+    def test_attachments_is_a_noop_for_non_gp_regs(self):
+        for reg in ("1", "2", "3", "7", "22", "26", "cp", "9"):
+            self.assertFalse(ic.REG_META.get(reg, {}).get("attachments"), reg)
+            self.assertFalse(ic.REG_META.get(reg, {}).get("labels_without_trailing_dot"), reg)
+
+
+class Gp12LabelsWithoutTrailingDotTests(unittest.TestCase):
+    """Unit coverage for FAMILY_REGEX_NO_TRAILING_DOT / family_regex_for,
+    independent of the real GP12 source file."""
+
+    def test_missing_trailing_dot_tokenizes_fully(self):
+        cycle = ic.cycle_ab_for("gp12")
+        fam = ic.family_regex_for("gp12")
+        tokens, consumed = ic.tokenize_by_cycle("I.A.3.a   Some condition text", cycle, fam)
+        self.assertEqual(tokens, [("roman", "I"), ("upper", "A"), ("digit", "3"), ("lower", "a")])
+        self.assertEqual("I.A.3.a"[0:consumed], "I.A.3.a")
+
+    def test_deep_compact_paren_without_trailing_dot(self):
+        cycle = ic.cycle_ab_for("gp12")
+        fam = ic.family_regex_for("gp12")
+        tokens, consumed = ic.tokenize_by_cycle("I.A.8.a.(i)   Releasing emissions", cycle, fam)
+        self.assertEqual(
+            tokens,
+            [("roman", "I"), ("upper", "A"), ("digit", "8"), ("lower", "a"), ("paren_roman", "i")],
+        )
+
+    def test_dotted_label_still_parses_identically(self):
+        # A fully-dotted label (the top-level section shape GP12 itself
+        # still uses, and every ordinary regulation's shape) is unaffected:
+        # the literal dot is always preferred over the lookahead.
+        fam = ic.family_regex_for("gp12")
+        tokens, consumed = ic.tokenize_by_cycle("II.A.6.  Some text", ic.cycle_ab_for("gp12"), fam)
+        self.assertEqual(tokens, [("roman", "II"), ("upper", "A"), ("digit", "6")])
+
+    def test_family_regex_for_is_a_noop_for_other_regs(self):
+        self.assertIs(ic.family_regex_for("7"), ic.FAMILY_REGEX)
+        self.assertIs(ic.family_regex_for("cp"), ic.FAMILY_REGEX)
+        self.assertIs(ic.family_regex_for(None), ic.FAMILY_REGEX)
+        self.assertIs(ic.family_regex_for("gp12"), ic.FAMILY_REGEX_NO_TRAILING_DOT)
+
+
+class ConditionKeywordTests(unittest.TestCase):
+    def test_condition_keyword_only_gated_for_gp(self):
+        self.assertIs(ic._bare_section_re("gp01"), ic.SECTION_OR_CONDITION_RE)
+        self.assertIs(ic._bare_section_re("7"), ic.SECTION_RE)
+        self.assertIs(ic._bare_section_re(None), ic.SECTION_RE)
+
+    def test_condition_citation_links_for_a_gp_reg(self):
+        known_ids = {"sec-gp01-top-REG-gp01", "sec-gp01-II-A-6"}
+        html, buckets = ic.link_citations(
+            "Failure to comply with Condition II.A.6. is a violation.",
+            "gp01", known_ids, ic.CORPUS_REGS, own_part=ic.NO_PART,
+        )
+        self.assertIn('<span class="xref" data-target="sec-gp01-II-A-6">Condition II.A.6.</span>', html)
+
+    def test_condition_keyword_does_not_link_for_a_non_gp_reg(self):
+        # "Condition" is plain English prose for every non-GP regulation —
+        # confirming the keyword really is gated, not just usually unused.
+        known_ids = {"sec-7-top-REG-7", "sec-7-B-II-A-6"}
+        html, buckets = ic.link_citations(
+            "Condition II.A.6. of the permit does not apply here.",
+            "7", known_ids, ic.CORPUS_REGS, own_part="B",
+        )
+        self.assertNotIn("xref", html)
+
+    def test_condition_dangling_words_gated(self):
+        self.assertEqual(ic._condition_dangling_words("gp01"), ("Condition",))
+        self.assertEqual(ic._condition_dangling_words("7"), ())
+
+
+class GpMentionResolverTests(unittest.TestCase):
+    def test_self_mention_links_to_own_root(self):
+        known_ids = {"sec-gp01-top-REG-gp01"}
+        html, buckets = ic.link_citations(
+            "This general permit is not registered to GP01 prior to the effective date.",
+            "gp01", known_ids, set(ic.CORPUS_REGS),
+        )
+        self.assertIn('<span class="xref" data-target="sec-gp01-top-REG-gp01">GP01</span>', html)
+
+    def test_cross_mention_links_when_target_in_corpus(self):
+        html, buckets = ic.link_citations(
+            "This engine is registered under GP02 and subject to that permit.",
+            "gp01", set(), set(ic.CORPUS_REGS),
+        )
+        self.assertIn('<a class="xref-external-reg" href="/regulations/gp02">GP02</a>', html)
+
+    def test_hyphenated_and_general_permit_phrase_forms(self):
+        html, buckets = ic.link_citations(
+            "See General Permit GP02 and GP-07 for details.",
+            "gp01", set(), set(ic.CORPUS_REGS),
+        )
+        self.assertIn('href="/regulations/gp02">GP02</a>', html)
+        self.assertIn('href="/regulations/gp07">GP-07</a>', html)
+
+    def test_mention_of_reg_not_yet_in_corpus_is_bucketed_not_linked(self):
+        html, buckets = ic.link_citations(
+            "See GP03 for land development projects.",
+            "gp01", set(), set(),  # empty corpus_regs: nothing is "in the corpus" yet
+        )
+        self.assertNotIn("xref", html)
+        self.assertEqual(buckets[ic.BUCKET_OTHER_REG]["GP03"], 1)
+
+    def test_gp_mention_regex_is_a_noop_for_a_reg_with_no_gp_text(self):
+        # Reg 1/26/cp never mention "GPnn" at all (see REPORT.md's no-op
+        # proof) — this just documents the regex itself finds nothing to
+        # claim in ordinary prose that merely contains "GP" as letters.
+        self.assertIsNone(ic.GP_MENTION_RE.search("The GP is not a citation marker by itself."))
+        self.assertIsNone(ic.GP_MENTION_RE.search("GP13 is out of range."))
+        self.assertIsNone(ic.GP_MENTION_RE.search("GP00 is out of range."))
+
+
+class AttachmentDigitLadderTests(unittest.TestCase):
+    """Unit coverage for the GP12/GP02 Attachment A/B all-digit ladder,
+    independent of the real source files."""
+
+    def test_attachment_digit_cycle_nests_arbitrarily_deep(self):
+        tokens, consumed = ic.tokenize_by_cycle("7.7.2.1.   Some sentence", ic.ATTACHMENT_DIGIT_CYCLE)
+        self.assertEqual(tokens, [("digit", "7"), ("digit", "7"), ("digit", "2"), ("digit", "1")])
+
+    def test_attachment_heading_regex(self):
+        m = ic.re.match(r"^\s*Attachment\s+([A-Z])\s*:\s*(\S.*)$", "   Attachment A: Alternative Operating Scenarios")
+        self.assertIsNotNone(m)
+        self.assertEqual(m.group(1), "A")
+
+
+class GeneralPermitFullParseTests(unittest.TestCase):
+    """One full parse per permit against the real source files (skipped
+    when a source isn't present in this checkout) — Gate A (structure vs
+    the printed Table of Contents), Gate E (0 duplicate ids, 0 orphans,
+    every label sequence contiguous)."""
+
+    EXPECTED_TOP_SECTIONS = {
+        "gp01": 9, "gp02": 11, "gp03": 4, "gp05": 9, "gp06": 10,
+        "gp07": 8, "gp08": 9, "gp09": 9, "gp10": 9, "gp11": 8, "gp12": 12,
+    }
+    EXPECTED_ROW_COUNT = {
+        "gp01": 103, "gp02": 210, "gp03": 59, "gp05": 111, "gp06": 174,
+        "gp07": 124, "gp08": 119, "gp09": 251, "gp10": 254, "gp11": 129, "gp12": 540,
+    }
+
+    _CACHE: dict = {}
+
+    def _parse(self, key):
+        # Cached across test methods in this class (and pdf=None — no
+        # pdfplumber table extraction) since several methods each re-check
+        # every one of the eleven permits; the table-recovery path itself
+        # is covered separately by the CLI runs in out/gpNN_parsed.json.
+        if key not in self._CACHE:
+            txt, _pdf = _gp_paths(key)
+            if not os.path.exists(txt):
+                self.skipTest(f"sources/{key.upper()}.txt not present in this checkout")
+            GeneralPermitFullParseTests._CACHE[key] = ic.parse_reg(key, txt, None)
+        return self._CACHE[key]
+
+    def test_every_permit_structure_and_row_count(self):
+        for key, n_sections in self.EXPECTED_TOP_SECTIONS.items():
+            with self.subTest(key=key):
+                rows, unresolved, table_hits, n_tables, dupes, fixes, anomalies, audit = self._parse(key)
+                self.assertEqual(dupes, [], key)
+                self.assertEqual(len(rows), self.EXPECTED_ROW_COUNT[key], key)
+                ids = [r["id"] for r in rows]
+                self.assertEqual(len(ids), len(set(ids)), key)
+                id_set = set(ids)
+                for r in rows:
+                    if r["parent_id"] is not None:
+                        self.assertIn(r["parent_id"], id_set, (key, r["id"]))
+                top_sections = [
+                    r for r in rows
+                    if r["kind"] == "section" and "ATTACHMENT" not in r["id"]
+                ]
+                self.assertEqual(len(top_sections), n_sections, key)
+                expected_citations = [f"{ic.int_to_roman(i)}." for i in range(1, n_sections + 1)]
+                self.assertEqual([r["citation"] for r in top_sections], expected_citations, key)
+                root = next(r for r in rows if r["kind"] == "root")
+                self.assertEqual(root["id"], f"sec-{key}-top-REG-{key}")
+                self.assertEqual(root["citation"], f"APCD General Permit {key.upper()}")
+
+    def test_no_page_furniture_leaks(self):
+        for key in self.EXPECTED_TOP_SECTIONS:
+            with self.subTest(key=key):
+                rows, *_ = self._parse(key)
+                for r in rows:
+                    self.assertNotRegex(r["full_text"], r"Page \d+ of \d+", (key, r["id"]))
+
+    def test_no_repeated_paragraph_prefix_within_a_row(self):
+        import re as _re
+        from collections import Counter as _Counter
+        for key in self.EXPECTED_TOP_SECTIONS:
+            with self.subTest(key=key):
+                rows, *_ = self._parse(key)
+                for r in rows:
+                    paras = _re.findall(r"<p>(.*?)</p>", r["full_text"], _re.S)
+                    counts = _Counter(p[:50] for p in paras)
+                    for prefix, n in counts.items():
+                        self.assertLess(n, 3, f"{key}/{r['id']!r} repeats {prefix!r} {n}x")
+
+    def test_no_giant_fused_rows(self):
+        for key in self.EXPECTED_TOP_SECTIONS:
+            with self.subTest(key=key):
+                rows, *_ = self._parse(key)
+                longest = max(len(r["full_text"]) for r in rows)
+                self.assertLess(longest, 15000, key)
+
+    def test_gp12_attachments_present_as_children(self):
+        rows, *_ = self._parse("gp12")
+        by_id = {r["id"]: r for r in rows}
+        self.assertEqual(by_id["sec-gp12-ATTACHMENT-A"]["kind"], "appendix")
+        self.assertEqual(by_id["sec-gp12-ATTACHMENT-A"]["parent_id"], "sec-gp12-top-REG-gp12")
+        self.assertEqual(by_id["sec-gp12-ATTACHMENT-A-1"]["parent_id"], "sec-gp12-ATTACHMENT-A")
+        self.assertEqual(by_id["sec-gp12-ATTACHMENT-A-3-1"]["parent_id"], "sec-gp12-ATTACHMENT-A-3")
+        self.assertIn("sec-gp12-ATTACHMENT-B", by_id)
+
+    def test_gp02_attachment_present_as_children(self):
+        rows, *_ = self._parse("gp02")
+        by_id = {r["id"]: r for r in rows}
+        self.assertEqual(by_id["sec-gp02-ATTACHMENT-A"]["kind"], "appendix")
+        self.assertIn("sec-gp02-ATTACHMENT-A-1", by_id)
+
+    def test_gp12_no_trailing_dot_labels_parse_to_ordinary_ids(self):
+        rows, *_ = self._parse("gp12")
+        by_id = {r["id"]: r for r in rows}
+        for suffix in ("I-A", "I-A-3", "I-A-3-a", "I-A-8-a", "I-A-8-a-(i)"):
+            self.assertIn(f"sec-gp12-{suffix}", by_id, suffix)
+
+    def test_gp_mention_self_links_appear_in_real_text(self):
+        rows, *_ = self._parse("gp01")
+        by_id = {r["id"]: r for r in rows}
+        any_link = any('data-target="sec-gp01-top-REG-gp01"' in r["full_text"] for r in rows)
+        self.assertTrue(any_link)
+
+
+class GeneralPermitNoOpProofTests(unittest.TestCase):
+    """The no-op proof GP_BRIEF.md requires: Reg 1/26/cp parse
+    byte-identically to the PRE-batch-gp baselines (produced by the
+    ORIGINAL importer), both with the eleven gp keys present in
+    CORPUS_REGS and absent from it — trivially satisfied here since none
+    of REG_1.txt/REG_26.txt/REG_CP.txt ever mentions "GPnn" (confirmed by
+    grep), so the corpus-wide GP-mention resolver never produces a new
+    link for them and every other GP addition is reg-gated to the eleven
+    gp keys. Skips (rather than fails) when the baseline fixtures aren't
+    present in this checkout."""
+
+    OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
+
+    def _check(self, reg, baseline_name, txt_name, pdf_name):
+        import json as _json
+        txt = os.path.join(GP_SOURCES_DIR, txt_name)
+        pdf = os.path.join(GP_SOURCES_DIR, pdf_name)
+        baseline = os.path.join(self.OUT_DIR, baseline_name)
+        if not (os.path.exists(txt) and os.path.exists(baseline)):
+            self.skipTest(f"{txt_name} or {baseline_name} not present in this checkout")
+        with open(baseline, encoding="utf-8") as fh:
+            base = fh.read()
+
+        saved_corpus = dict(ic.CORPUS_REGS)
+        try:
+            result = ic.parse_reg(reg, txt, pdf if os.path.exists(pdf) else None)
+            out_present = __import__("json").dumps(result[0], ensure_ascii=False, indent=1)
+            ic.CORPUS_REGS = {k: v for k, v in saved_corpus.items() if k not in ic.GP_KEYS}
+            result_absent = ic.parse_reg(reg, txt, pdf if os.path.exists(pdf) else None)
+            out_absent = _json.dumps(result_absent[0], ensure_ascii=False, indent=1)
+        finally:
+            ic.CORPUS_REGS = saved_corpus
+        self.assertEqual(out_present, base, f"{reg}: not byte-identical with gp keys PRESENT")
+        self.assertEqual(out_absent, base, f"{reg}: not byte-identical with gp keys ABSENT")
+
+    def test_reg1_noop(self):
+        self._check("1", "reg1_prebatch_gp.json", "REG_1.txt", "REG_1.pdf")
+
+    def test_reg26_noop(self):
+        self._check("26", "reg26_prebatch_gp.json", "REG_26.txt", "REG_26.pdf")
+
+    def test_cp_noop(self):
+        self._check("cp", "regcp_prebatch_gp.json", "REG_CP.txt", "REG_CP.pdf")
 
 
 if __name__ == "__main__":

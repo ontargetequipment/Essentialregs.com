@@ -110,6 +110,60 @@ FAMILY_REGEX = {
     "paren_digit": re.compile(r"^\((\d{1,3})\)"),
 }
 
+# GP12 (see REG_META["gp12"]["labels_without_trailing_dot"]) prints its
+# condition labels' dot-separators between tokens exactly like every other
+# CYCLE_AB regulation ("I.A.8.a.(i)") but OMITS the trailing dot after the
+# LAST plain (non-paren) token of the compound label — "I.A", "I.A.1",
+# "I.A.3.a", "I.A.8.a.(i)" (confirmed: every top-level section heading
+# ("I.", "II.", ... "XII.") DOES keep its own dot; only sub-labels below
+# section level ever omit theirs — grep of GP12.txt found zero exceptions).
+# Each plain-family regex here accepts EITHER the literal dot (tried first,
+# so a dotted label parses exactly as it always has) OR a zero-width
+# lookahead for whitespace/end-of-string in its place — i.e. this can only
+# ever accept a MISSING dot right where the compound label ends, never
+# swallow an internal separator, so a normal fully-dotted label like every
+# other regulation's is parsed identically either way. Selected only via
+# `family_regex_for` for a reg with the flag set — every other regulation
+# keeps using plain FAMILY_REGEX unchanged (Reg 1/2/26/cp byte-identical).
+#
+# The SAME missing-trailing-dot print quirk turned out NOT to be unique to
+# GP12 — it also appears, sporadically (not on every label, unlike GP12),
+# in GP01/02/06/07/08/11 (confirmed real, silently-dropped child rows before
+# this flag was widened: GP01/GP08's "II.B.1.a"/"II.B.1.b"/"II.B.1.c" sibling
+# emission-limit list and GP08's "II.C.1.a"/"V.B.5.a"/"V.B.5.b" — each
+# printed with two-plus trailing spaces and NO period before the label's own
+# text starts, e.g. "II.B.1.a   Facilities located..."). Every GP key sets
+# this flag for that reason; it is still a no-op for every non-GP
+# regulation (Reg 1/2/26/cp), and, within a GP permit, the ordinary
+# marker-acceptance guards (`_label_position_plausible`, column signals,
+# requiring the immediate parent already emitted for depth > 1) are
+# unaffected by which family-regex table did the tokenizing, so a
+# genuinely mid-sentence citation ("...pursuant to Section V.B.4 and
+# documentation...", "VI.E.4.a or VI.E.4.b, corrective action...") is
+# still rejected exactly as before — confirmed against every GP permit's
+# parse: the only NEW markers this widening ever produces are the
+# documented missing-sibling rows above.
+FAMILY_REGEX_NO_TRAILING_DOT = {
+    "roman": re.compile(r"^([IVXLCDM]+)(?:\.|(?=\s)|$)"),
+    "upper": re.compile(r"^([A-Z]{1,2})(?:\.|(?=\s)|$)"),
+    "digit": re.compile(r"^(\d{1,3})(?:\.|(?=\s)|$)"),
+    "lower": re.compile(r"^([a-z]{1,4})(?:\.|(?=\s)|$)"),
+    "paren_roman": FAMILY_REGEX["paren_roman"],
+    "paren_upper": FAMILY_REGEX["paren_upper"],
+    "paren_digit": FAMILY_REGEX["paren_digit"],
+}
+
+
+def family_regex_for(reg: str | None) -> dict:
+    """Which FAMILY_REGEX table `tokenize_by_cycle` should use for `reg` —
+    the no-trailing-dot variant only for a reg with REG_META
+    `labels_without_trailing_dot` set (GP12), plain FAMILY_REGEX for every
+    other regulation (a no-op — see FAMILY_REGEX_NO_TRAILING_DOT)."""
+    if REG_META.get(reg or "", {}).get("labels_without_trailing_dot"):
+        return FAMILY_REGEX_NO_TRAILING_DOT
+    return FAMILY_REGEX
+
+
 # Part A / Part B nesting cycle (see IMPORTER_SPEC.md "Existing id scheme").
 CYCLE_AB = ["roman", "upper", "digit", "lower", "paren_roman", "paren_upper", "paren_digit"]
 # Under a Part C dated statement-of-basis entry, sub-items are printed as
@@ -117,6 +171,16 @@ CYCLE_AB = ["roman", "upper", "digit", "lower", "paren_roman", "paren_upper", "p
 # paths — see the diff report for why Part C's *existing* DB ids look the
 # way they do.
 CYCLE_C_INNER = ["digit", "lower", "paren_roman", "paren_upper", "paren_digit"]
+
+# GP12's Attachment A/B items (see REG_META["gp12"]["attachments"]) are a
+# bare, purely-numeric outline that keeps subdividing with more digits
+# rather than switching families at each depth — "1.", "3.1.", "3.2.",
+# "7.7.2.1." (confirmed: the deepest printed label is 4 digits, "7.7.2.1.";
+# no letter or paren token appears anywhere in either attachment) — so
+# unlike every other ladder in this parser it is the SAME family repeated
+# at every depth. 8 repetitions is comfortably past the confirmed max depth
+# of 4.
+ATTACHMENT_DIGIT_CYCLE = ["digit"] * 8
 
 # Per-regulation override of the ordinary-part nesting cycle. Reg 2 (Odor
 # Emission) prints its fifth level as PAREN-DIGIT directly under the lower-
@@ -138,14 +202,18 @@ def cycle_ab_for(reg: str | None) -> list[str]:
     return REG_CYCLE_AB.get(reg or "", CYCLE_AB)
 
 
-def tokenize_by_cycle(text: str, cycle: list[str]) -> tuple[list[tuple[str, str]], int]:
+def tokenize_by_cycle(text: str, cycle: list[str], family_regex: dict | None = None) -> tuple[list[tuple[str, str]], int]:
     """Greedily consume tokens at the START of `text` following `cycle`,
     depth by depth. Returns (tokens, chars_consumed). tokens is a list of
-    (family, raw) pairs; raw excludes surrounding parens/dot."""
+    (family, raw) pairs; raw excludes surrounding parens/dot. `family_regex`
+    defaults to plain FAMILY_REGEX; pass `family_regex_for(reg)` to also
+    accept a GP12-style missing trailing dot (see FAMILY_REGEX_NO_TRAILING_DOT) —
+    every other caller is unaffected."""
     tokens: list[tuple[str, str]] = []
     pos = 0
+    fam_table = family_regex or FAMILY_REGEX
     for fam in cycle:
-        rx = FAMILY_REGEX[fam]
+        rx = fam_table[fam]
         m = rx.match(text[pos:])
         if not m:
             break
@@ -838,9 +906,16 @@ _DIVIDER_RE = re.compile(r"^_{5,}$")
 # can never strip a sentence that merely mentions the Code; no other source
 # in pipeline/sources/ prints this line (Reg 3/7/22/26 output is unchanged).
 _FOOTER_CCR_PAGE_RE = re.compile(r"^Code of Colorado Regulations\s+\d{1,4}$")
+# The APCD general permits (GP01-GP12) are not CCR-print regulations at all —
+# no "CODE OF COLORADO REGULATIONS" running header, just a centered "Page N
+# of M" footer on every page (confirmed: every GPxx.txt in sources/; no
+# REG_<N>.txt prints this exact whole-line shape). Gated to GP_KEYS (empty
+# for every reg without a footer_page_of_total flag) so it can never strip a
+# genuine sentence from Reg 1/2/26/cp.
+_PAGE_OF_TOTAL_RE = re.compile(r"^Page\s+\d{1,4}\s+of\s+\d{1,4}$")
 
 
-def clean_pages(raw_text: str) -> tuple[list[str], set[int]]:
+def clean_pages(raw_text: str, reg: str | None = None) -> tuple[list[str], set[int]]:
     """Split on form-feed (one per PDF page) and strip the running header/
     footer + bare page-number furniture from the top/bottom of each page,
     then splice pages back together with NO inserted blank line at the seam
@@ -859,6 +934,7 @@ def clean_pages(raw_text: str) -> tuple[list[str], set[int]]:
     because it's actually a wrapped continuation (see the continuation-line
     guard in `scan_markers` / `_marker_column_signals`, and the "page-seam"
     entries in the diff report's marker audit for confirmed examples)."""
+    page_of_total_ok = bool(REG_META.get(reg or "", {}).get("page_of_total_footer"))
     pages = raw_text.split(FF)
     out: list[str] = []
     seam_starts: set[int] = set()
@@ -875,7 +951,10 @@ def clean_pages(raw_text: str) -> tuple[list[str], set[int]]:
         j = len(lines)
         while j > 0:
             s = lines[j - 1].strip()
-            if s == "" or _PAGENUM_RE.match(s) or _DIVIDER_RE.match(s) or _FOOTER_CCR_PAGE_RE.match(s):
+            if (
+                s == "" or _PAGENUM_RE.match(s) or _DIVIDER_RE.match(s) or _FOOTER_CCR_PAGE_RE.match(s)
+                or (page_of_total_ok and _PAGE_OF_TOTAL_RE.match(s))
+            ):
                 j -= 1
                 continue
             break
@@ -1320,13 +1399,31 @@ def render_table_html(table: dict) -> str:
 # reference linking" section of the diff report for the full rationale.
 # --------------------------------------------------------------------------
 
+# The eleven APCD general construction permits (5 CCR-adjacent, but issued
+# directly by the Division rather than adopted by the AQCC as a numbered
+# regulation — see REG_META). There is no GP04.
+GP_KEYS: tuple[str, ...] = ("gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12")
+
 CORPUS_REGS = {
     "1": "1",
     "2": "2", "3": "3", "6": "6", "7": "7", "8": "8", "9": "9", "22": "22", "24": "24", "26": "26",
     "30": "30",
     "oooob": "oooob", "ooooa": "ooooa", "ooooc": "ooooc",
+    # 40 CFR Part 60 Subparts JJJJ/IIII and 40 CFR Part 63 Subpart ZZZZ
+    # (stationary engine rules) -- parsed by import_ecfr.py alongside
+    # OOOOa/b/c; see ECFR_REGS below and IMPORTER_SPEC.md.
+    "jjjj": "jjjj", "iiii": "iiii", "zzzz": "zzzz",
     "ecmc": "ecmc", "cp": "cp",
+    **{k: k for k in GP_KEYS},
 }
+
+# The full set of eCFR-sourced regs (parsed by import_ecfr.py, not the CCR
+# parser below). cmd_parse dispatches on membership in this set rather than
+# the old `reg.lower().startswith("ooo")` string check, which never matched
+# "jjjj"/"iiii"/"zzzz". Kept as a plain set literal (not imported from
+# import_ecfr.SUBPART_META) so this module has no import-time dependency on
+# import_ecfr beyond the existing lazy `import import_ecfr` inside cmd_parse.
+ECFR_REGS = {"ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz"}
 
 # Regulation Number 27 and 40 CFR Part 60 Subpart OOOO (the un-suffixed,
 # pre-2022 version) are deliberately NOT in CORPUS_REGS: citations to them
@@ -1334,13 +1431,29 @@ CORPUS_REGS = {
 # imported too — see IMPORTER_SPEC.md and the diff report's "Other regulation
 # not in corpus" / "CFR part/subpart not in corpus" sections.
 
-# 40 CFR Part 60 Subpart lettering -> the id key it links to when that
+# 40 CFR Part 60/63 Subpart code -> the id key it links to when that
 # subpart is in CORPUS_REGS. "OOOOB" -> "oooob" (matches the existing
 # `sec-oooob-top-REG-oooob` root); "OOOOA"/"OOOOC" mirror that same
 # four-O-plus-suffix id shape ("ooooa"/"ooooc" — see REG_META). Bare "OOOO"
 # (no letter suffix) has no entry here, so it always falls through to
 # BUCKET_CFR regardless of corpus membership.
-CFR_SUBPART_TO_REGKEY = {"OOOOA": "ooooa", "OOOOB": "oooob", "OOOOC": "ooooc"}
+#
+# "JJJJ"/"IIII" (Part 60) and "ZZZZ" (Part 63) are added the same way. This
+# dict is keyed on the subpart CODE alone, not (part, code) -- CFR_RE's
+# captured part number (m.group(1), e.g. "60" vs "63") is NOT checked
+# against it here, only used elsewhere for the unrelated FLAT_ENTRY_PART_
+# CONFIG "Part 60, Subpart Xx" adopted-by-reference case. That is safe only
+# because every code in this dict is unique across both parts -- if a future
+# import ever added, say, a Part 63 "Subpart OOOOa" (it won't: OOOOa/b/c are
+# Part 60 by definition and JJJJ/IIII/ZZZZ's codes don't recur elsewhere),
+# this dict would need to become {(part, code): regkey} to disambiguate. A
+# citation is still text like "40 CFR Part 63, Subpart ZZZZ" either way; a
+# bare "40 CFR Part 63" (no subpart, or a different one) still falls through
+# to BUCKET_CFR as before.
+CFR_SUBPART_TO_REGKEY = {
+    "OOOOA": "ooooa", "OOOOB": "oooob", "OOOOC": "ooooc",
+    "JJJJ": "jjjj", "IIII": "iiii", "ZZZZ": "zzzz",
+}
 
 # --------------------------------------------------------------------------
 # Per-regulation metadata for the root row + apply-time provisions columns
@@ -1353,6 +1466,163 @@ CFR_SUBPART_TO_REGKEY = {"OOOOA": "ooooa", "OOOOB": "oooob", "OOOOC": "ooooc"}
 # --------------------------------------------------------------------------
 
 REG_META: dict[str, dict] = {
+    # -- APCD General Permits GP01-GP12 (5 CCR-adjacent Division-issued
+    # general construction permits, not AQCC-numbered regulations) --------
+    # All eleven share the Common Provisions/Reg 1 shape: `no_parts: True`,
+    # roman top-level sections I-XI/XII, condition labels printed as full
+    # dotted compound paths ("II.A.2.a.") — `tokenize_by_cycle`/CYCLE_AB
+    # already parse that unchanged. Every permit also carries the two page-
+    # furniture flags: `page_of_total_footer` (clean_pages strips "Page N of
+    # M", the ONLY footer these PDFs print — no "CODE OF COLORADO
+    # REGULATIONS" header at all) and `toc_has_page_leaders`
+    # (find_body_start_no_parts strips the Table of Contents' dot-leader/
+    # page-number tail before comparing outline title to body title — every
+    # GPxx prints one; GP03 has no TOC at all and is unaffected since the
+    # flag only matters when a SECOND matching "I. <title>" line exists).
+    # `source_url` points at the Division's general-permits index page (the
+    # individual PDFs don't have stable per-permit URLs there); `root_citation`
+    # follows the brief's "APCD General Permit GPnn" convention (these are
+    # not "Code of Colorado Regulations" citations — no CCR number is
+    # printed on any of them). `root_title` is "<printed title page text>
+    # GPnn Issuance <n>, <date issued>", each read directly off that
+    # permit's own title page (line 1 of sources/GPnn.txt).
+    "gp01": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP01",
+        "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Condensate Storage Tank Batteries — GP01 Issuance 6, July 23, 2025",
+    },
+    # GP02 is the one non-GP12 permit that ALSO ends with its own attachment
+    # (a single "Attachment A: 2/14/2024" — the natural-gas-RICE Alternative
+    # Operating Scenario, folded whole into GP12's own Attachment A once
+    # GP12 superseded it) — confirmed printed right after the "Permit
+    # History" table (line 1212 of GP02.txt), with the identical bare
+    # all-digit ladder shape as GP12's attachments ("1. Prohibitions",
+    # "1.1.", "1.2." ... "5.7.", max depth 2, always WITH its trailing dot —
+    # `labels_without_trailing_dot` is unrelated to this and doesn't affect
+    # it). Without `attachments` here this entire section — 26,700+
+    # characters — was silently fused onto the last real condition row,
+    # "XI.E.5." (Gate D's first giant/fused-row hit in this batch).
+    "gp02": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "attachments": ("A",),
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP02",
+        "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Natural Gas Fired Reciprocating Internal Combustion Engines (RICE) — GP02 Issuance 4, July 23, 2025",
+    },
+    # GP03 (5 pages, Issuance 2, 2020) is the smallest and oldest permit and
+    # prints a different title-page/header layout than the rest (a
+    # "PERMIT NO: GP03 ... FINAL APPROVAL / Issuance 2 / <date>" block
+    # instead of the "Permit Number GPnn Issuance n ... Final Approval"
+    # single line the others use) and has NO Table of Contents at all — its
+    # first "I.  General Permit Applicability" line IS the real body start,
+    # so `find_body_start_no_parts` correctly falls back to 0 (see its
+    # docstring); `toc_has_page_leaders` is still set for consistency but is
+    # a no-op here (there's no second matching title line to compare).
+    "gp03": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP03",
+        "root_title": "GENERAL CONSTRUCTION PERMIT — Land Development Projects — GP03 Issuance 2, January 24, 2020",
+    },
+    "gp05": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP05",
+        "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Produced Water Storage Tank Batteries — GP05 Issuance 5, July 23, 2025",
+    },
+    "gp06": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP06",
+        # Title page prints an en-dash: "Diesel Fuel – Fired Reciprocating
+        # Internal Combustion Engines (RICE)" — kept verbatim.
+        "root_title": "GENERAL CONSTRUCTION PERMIT — Diesel Fuel – Fired Reciprocating Internal Combustion Engines (RICE) — GP06 Issuance 4, July 23, 2025",
+    },
+    "gp07": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP07",
+        "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Hydrocarbon Liquid Loadout — GP07 Issuance 4, July 23, 2025",
+    },
+    "gp08": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP08",
+        "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Storage Tanks — GP08 Issuance 4, July 23, 2025",
+    },
+    # GP09/GP10 print the IDENTICAL title-page text ("Oil and Gas / Well
+    # Production Facilities") even though GP09 is the attainment-area permit
+    # and GP10 is nonattainment (confirmed in each body's own General
+    # Permit Applicability section, not on the title page) — see the
+    # summarizer-warnings section of REPORT.md; root_title only carries what
+    # is actually printed on the title page per the brief's instruction.
+    "gp09": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP09",
+        # The two Well Production Facilities permits print identical title pages; the
+        # attainment/nonattainment split (which the body states) is added here so
+        # the index and reader can tell them apart. Both closed to new
+        # registrations on July 15, 2026 (replaced by GP12) but still bind
+        # existing registrants.
+        "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas — Well Production Facilities (attainment areas) — GP09 Issuance 3, July 23, 2025",
+    },
+    "gp10": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP10",
+        "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas — Well Production Facilities (nonattainment areas) — GP10 Issuance 4, July 23, 2025",
+    },
+    "gp11": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP11",
+        "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Routine or Predictable Gas Venting Emissions — GP11 Issuance 3, July 23, 2025",
+    },
+    # GP12 (107 pages, Issuance 1, May 2026) is the newest and largest
+    # permit and the one whose condition labels print WITHOUT a trailing
+    # period below section level SYSTEMATICALLY, on every single label
+    # ("I.A", "I.A.3.a", "I.A.8.a.(i)" — only the top-level roman sections
+    # themselves keep theirs, "I.", "II." ... "XII." — see
+    # FAMILY_REGEX_NO_TRAILING_DOT; every other GP permit has the same flag
+    # set too, but only hits it sporadically). It also ends with two
+    # attachments (Attachment A/B, Alternative Operating Scenarios) whose
+    # own items are a bare all-digit ladder ("1.", "3.1.", "7.7.2.1.")
+    # rather than compound roman/letter labels — see ATTACHMENT_DIGIT_CYCLE
+    # and the "attachment" marker handling in scan_markers/build_provisions.
+    # `attachments` lists the letters this permit's Attachment heading regex
+    # is even tried for; both keys are a no-op for every reg that doesn't
+    # set them (GP02 also sets `attachments` — see its own entry above).
+    "gp12": {
+        "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
+        "labels_without_trailing_dot": True,
+        "attachments": ("A", "B"),
+        "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
+        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "root_citation": "APCD General Permit GP12",
+        "root_title": "GENERAL PERMIT 12 (GP12) — Well Production Facilities — GP12 Issuance 1, May 28, 2026",
+    },
     "2": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
         "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
@@ -1515,6 +1785,33 @@ REG_META: dict[str, dict] = {
             "Existing Crude Oil and Natural Gas Facilities"
         ),
     },
+    "jjjj": {
+        "jurisdiction_level": "federal", "issuing_body": "EPA",
+        "source_url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-JJJJ",
+        "root_citation": "40 CFR Part 60 Subpart JJJJ",
+        "root_title": (
+            "40 CFR Part 60 Subpart JJJJ — Standards of Performance for Stationary Spark Ignition "
+            "Internal Combustion Engines"
+        ),
+    },
+    "iiii": {
+        "jurisdiction_level": "federal", "issuing_body": "EPA",
+        "source_url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-IIII",
+        "root_citation": "40 CFR Part 60 Subpart IIII",
+        "root_title": (
+            "40 CFR Part 60 Subpart IIII — Standards of Performance for Stationary Compression "
+            "Ignition Internal Combustion Engines"
+        ),
+    },
+    "zzzz": {
+        "jurisdiction_level": "federal", "issuing_body": "EPA",
+        "source_url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-63/subpart-ZZZZ",
+        "root_citation": "40 CFR Part 63 Subpart ZZZZ",
+        "root_title": (
+            "40 CFR Part 63 Subpart ZZZZ — National Emission Standards for Hazardous Air Pollutants "
+            "for Stationary Reciprocating Internal Combustion Engines"
+        ),
+    },
     # ECMC rules (2 CCR 404-1) — a completely different document shape from
     # every AQCC regulation above: no "PART X" headings at all, no roman-
     # numeral top sections. Instead the body is organized as "N00 SERIES
@@ -1588,6 +1885,23 @@ _CITATION_LIST = r"(?:" + _CITATION_TOKEN + r"(?:" + _LIST_SEP + _CITATION_TOKEN
 
 # Bare "Section(s) <list>" (no leading "Part"/"Regulation Number").
 SECTION_RE = re.compile(r"\b(Sections?)\s+(" + _CITATION_LIST + r")")
+# The GPxx general permits cite their own condition labels as "Condition
+# II.A.6." / "Conditions II.A.4. and II.A.5." — never "Section" — alongside
+# ordinary "Section(s)"/"Sections IV.C. and IV.D." references to OTHER
+# regulations (Reg 3, 26, the Common Provisions Regulation). Gated to
+# CONDITION_KEYWORD_REGS (every GP key) via `_bare_section_re`, so every
+# other regulation keeps matching bare "Section(s)" only — a no-op (no
+# source .txt in this batch outside GPxx uses the word "Condition" this way).
+CONDITION_KEYWORD_REGS: frozenset[str] = frozenset(GP_KEYS)
+SECTION_OR_CONDITION_RE = re.compile(r"\b(Sections?|Conditions?)\s+(" + _CITATION_LIST + r")")
+
+
+def _bare_section_re(reg: str | None) -> re.Pattern:
+    return SECTION_OR_CONDITION_RE if reg in CONDITION_KEYWORD_REGS else SECTION_RE
+
+
+def _condition_dangling_words(reg: str | None) -> tuple[str, ...]:
+    return ("Condition",) if reg in CONDITION_KEYWORD_REGS else ()
 # "Part X[, Section(s) <list>]" — the part may be this regulation's own, or a
 # former part (D, E, F, ...) that no longer exists.
 PART_RE = re.compile(r"\bPart\s+([A-Z])\b(?:,\s*(Sections?)\s+(" + _CITATION_LIST + r"))?")
@@ -1624,7 +1938,32 @@ COMMON_PROVISIONS_RE = re.compile(
     r"\bCommon Provisions(?:\s+[Rr]egulation)?\b"
     r"(?:,?\s*(Sections?)\s+(" + _CITATION_LIST + r"))?"
 )
+# A mention of one of the eleven GP01-GP12 general permits, anywhere in any
+# regulation's text: bare "GP01" (confirmed the overwhelmingly common form —
+# every GPxx permit repeatedly names itself this way, e.g. GP01.txt "not
+# registered to GP01 prior to..."), the hyphenated "GP-07", and "General
+# Permit GP02" (the phrase "General Permit" is not itself captured — the
+# bare "GPnn" token inside it is what's matched and linked, exactly like
+# COMMON_PROVISIONS_RE only ever captures "Common Provisions [Regulation]").
+# No "Sections/Conditions <list>" clause is captured here (unlike
+# COMMON_PROVISIONS_RE) — no source .txt in this batch ever follows a GPnn
+# mention with one (every GP mentions ANOTHER regulation's sections via its
+# own number: "Regulation Number 3, Part A, Section IV.A", never "GP03,
+# Section ..."). See `_gp_key_for` / link_citations step 1.6.
+GP_MENTION_RE = re.compile(r"\bGP-?(0[1-9]|1[0-2])\b")
+
+
+def _gp_key_for(num_str: str) -> str:
+    return f"gp{int(num_str):02d}"
+
+
 CFR_RE = re.compile(r"\b40\s+CFR\s+Part\s+(\d+)(?:,\s*Subpart\s+([A-Za-z0-9]+))?")
+# "NSPS Subpart JJJJ", "NESHAP Subpart ZZZZ", "MACT Subpart ZZZZ" — program
+# abbreviation + subpart, no part number (see link_citations step 1.2). The
+# subpart is 2-5 capitals with an optional OOOO-style lowercase suffix, or a
+# single capital WITH a suffix ("Dc", "Kb"); a bare single letter ("NSPS
+# Subpart A general provisions") is deliberately not matched.
+PROGRAM_SUBPART_RE = re.compile(r"\b(NSPS|NESHAP|MACT)\s+Subpart\s+((?:[A-Z]{2,5}[a-c]?|[A-Z][a-c]))\b")
 # Reg 8 writes almost every CFR citation with the abbreviation dotted — "40
 # C.F.R. Part 61", "40 C. F. R. Part 63, Subparts F (July 1, 2025)" (391
 # dotted occurrences vs 8 undotted in the December 2025 print) — so the
@@ -1984,6 +2323,24 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         else:
             buckets[BUCKET_CFR][m.group(0)] += 1
 
+    # 1.2) "NSPS Subpart IIII" / "NESHAP Subpart ZZZZ" / "MACT Subpart ZZZZ" —
+    # the general permits and Reg 26/30 name the federal engine rules by
+    # program abbreviation without the "40 CFR Part NN" prefix, so step 1
+    # never sees them. Only subparts that are corpus regulations link; any
+    # other program+subpart mention is counted in the cfr bucket. Runs after
+    # step 1 so a fully-cited "40 CFR Part 60, Subpart IIII" is already
+    # claimed and is not double-wrapped.
+    for m in PROGRAM_SUBPART_RE.finditer(html_text):
+        if is_claimed(m.start(), m.end()):
+            continue
+        regkey = CFR_SUBPART_TO_REGKEY.get(m.group(2).upper())
+        if regkey and regkey in corpus_regs:
+            claim(m.start(), m.end())
+            pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
+        else:
+            claim(m.start(), m.end())
+            buckets[BUCKET_CFR][m.group(0)] += 1
+
     # 1.5) "Common Provisions [Regulation][, Section(s) list]" — see
     # COMMON_PROVISIONS_RE. Run before steps 2-4 so the trailing "Section(s)
     # list" (if any) is claimed as part of THIS phrase, not later picked up
@@ -2021,6 +2378,36 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
                                     [NO_PART], pieces, buckets, reg, cp_ids)
             else:
                 _emit_cp_section_list(seclist, m.start(2), m.start(1), keyword, pieces, buckets, cp_ids)
+
+    # 1.6) "GP01".."GP12" / "GP-07" / "General Permit GP02" mentions -> that
+    # permit's own root row (see GP_MENTION_RE). Run before step 2 for the
+    # same reason as step 1.5: nothing in REG_NUM_RE/PART_RE/SECTION_RE's
+    # patterns overlaps "GPnn" syntactically, but claiming it here keeps
+    # every GP-mention decision in one place. A SELF-mention (this permit
+    # naming itself, the overwhelmingly common case — "not registered to
+    # GP01 prior to...") links to this reg's OWN root, exactly like a bare
+    # "Regulation Number 7" self-mention already does (step 2) — chosen for
+    # consistency with that existing convention rather than left plain.
+    # A no-op for every regulation whose text never contains "GPnn" at all
+    # (confirmed: none of Reg 1/26/cp's source text does — see REPORT.md's
+    # no-op proof) and, before this batch's permits exist in `corpus_regs`,
+    # for the permits' OWN cross-mentions of each other too (counted into
+    # BUCKET_OTHER_REG like any other not-yet-imported regulation).
+    for m in GP_MENTION_RE.finditer(html_text):
+        if is_claimed(m.start(), m.end()):
+            continue
+        claim(m.start(), m.end())
+        gp_key = _gp_key_for(m.group(1))
+        if gp_key == reg:
+            target = f"sec-{reg}-top-REG-{reg}"
+            if target in known_ids:
+                pieces.append((m.start(), m.end(), f'<span class="xref" data-target="{target}">{m.group(0)}</span>'))
+            else:
+                buckets[BUCKET_UNPARSEABLE][m.group(0)] += 1
+        elif gp_key in corpus_regs:
+            pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{gp_key}">{m.group(0)}</a>'))
+        else:
+            buckets[BUCKET_OTHER_REG][m.group(0)] += 1
 
     # 2) "Regulation Number N[, Part X[, Section(s) list]]" / "..., Section(s) list".
     for m in REG_NUM_RE.finditer(html_text):
@@ -2077,9 +2464,11 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
                            seclist, m.start(3) if seclist else None,
                            pieces, buckets, reg, known_ids)
 
-    # 4) bare "Section(s) list" not already claimed above — resolved against
-    #    the citing provision's own part (see `_default_parts_order`).
-    for m in SECTION_RE.finditer(html_text):
+    # 4) bare "Section(s)"/"Condition(s) list" not already claimed above —
+    #    resolved against the citing provision's own part (see
+    #    `_default_parts_order`); "Condition(s)" only tried for a GP reg
+    #    (see `_bare_section_re`/CONDITION_KEYWORD_REGS).
+    for m in _bare_section_re(reg).finditer(html_text):
         if is_claimed(m.start(), m.end()):
             continue
         claim(m.start(), m.end())
@@ -2864,6 +3253,49 @@ KNOWN_CONTINUATION_LINES: dict[str, list[dict]] = {
             ),
         ),
     ],
+    "gp09": [
+        dict(
+            match_prefix="IV.G.1.e. through IV.G.1.h., IV.G.1.e. and IV.G.1.f., the owner or operator",
+            line_hint=986,
+            note=(
+                'Condition IV.G.2. reads "...provisions in\\nIV.G.1.e. through IV.G.1.h., IV.G.1.e. '
+                'and IV.G.1.f., the owner or operator may inspect..." — the wrapped line starts with '
+                'the citation "IV.G.1.e." (previous line dangles on "in", not a cue word the generic '
+                'guard knows) and was accepted as a second "IV.G.1.e." marker, truncating IV.G.2. at '
+                '"provisions in" and appending its text to the real IV.G.1.e. row.'
+            ),
+        ),
+    ],
+    "gp10": [
+        # Same shape as gp09's fix above — GP10 (nonattainment) shares most
+        # of GP09's Section IV text verbatim, including this exact wrapped
+        # citation-list continuation.
+        dict(
+            match_prefix="IV.G.1.e. through IV.G.1.h., IV.G.4.e. and IV.G.4.f., the owner or operator",
+            line_hint=1059,
+            note=(
+                'Condition IV.G.2. reads "...provisions in\\nIV.G.1.e. through IV.G.1.h., IV.G.4.e. '
+                'and IV.G.4.f., the owner or operator may inspect..." — same dangling-"in" wrapped '
+                'citation-list shape as GP09\'s IV.G.2., truncating it and duplicating IV.G.1.e.'
+            ),
+        ),
+    ],
+    "gp06": [
+        dict(
+            match_prefix="III.D.3 above have been determined to be RACT for the",
+            line_hint=529,
+            note=(
+                'Condition III.E.4.a. reads "The requirements of condition numbers III.D.1, '
+                'III.D.2 and\\nIII.D.3 above have been determined to be RACT..." — the wrapped '
+                'line starts with the bare number "3" of a citation list ("numbers ... and", '
+                'lowercase, not the "Condition(s)"/"Section(s)" keyword the generic guard '
+                'checks for) with no dot before the following space, which only became a '
+                'complete-looking "III.D.3" label once REG_META `labels_without_trailing_dot` '
+                'was enabled for gp06 (see FAMILY_REGEX_NO_TRAILING_DOT) — there is no real '
+                '"III.D.3." condition printed anywhere in GP06.txt.'
+            ),
+        ),
+    ],
 }
 
 
@@ -3001,7 +3433,8 @@ def split_into_paragraphs(lines: list[str]) -> list[str]:
 
 
 def _label_position_plausible(lines: list[str], idx: int, last_marker_line: int | None,
-                               seam_starts: set[int] | None = None) -> bool:
+                               seam_starts: set[int] | None = None,
+                               extra_dangling_words: tuple[str, ...] = ()) -> bool:
     """A genuine label line is preceded by a paragraph boundary: either a
     blank line, a line ending in terminal punctuation, or another label line
     (heading chained directly into its first child, e.g. "I.  Applicability"
@@ -3044,12 +3477,20 @@ def _label_position_plausible(lines: list[str], idx: int, last_marker_line: int 
     is_seam = seam_starts is not None and idx in seam_starts
     words = prev.split()
     last_word = words[-1].strip(".,;:") if words else ""
-    if last_word.rstrip("s") in ("Section", "Part", "Regulation"):
+    # `extra_dangling_words` (GP-only: "Condition") — the GPxx permits cite
+    # their own conditions as "...subject to Condition\nII.A.6. ..." /
+    # "...subject to Conditions II.C.1.a. or\nII.C.1.b. and..." the exact
+    # same dangling shape "Section"/"Sections" already catches; empty (a
+    # no-op) for every regulation without the Condition keyword gated on.
+    if last_word.rstrip("s") in ("Section", "Part", "Regulation") + extra_dangling_words:
         return False
     if last_word == "or":
         if not is_seam:
             return False
-    if last_word in ("and", "through") and ("Section" in prev or "Sections" in prev):
+    if last_word in ("and", "through") and (
+        "Section" in prev or "Sections" in prev
+        or any(w in prev for w in extra_dangling_words + tuple(w + "s" for w in extra_dangling_words))
+    ):
         if is_seam:
             return True
         # "...pursuant to Sections X.Y. and" / "...Sections X.Y.(i) through"
@@ -3329,6 +3770,14 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
     bare_part_ok = bool(flat_cfg and flat_cfg.get("bare_part_headings"))
     flat_active = False
     skip_until = -1  # lines consumed as a bare PART heading's title (bare_part_headings only)
+    # GP12 "Attachment A"/"Attachment B" (see REG_META["gp12"]["attachments"]
+    # and ATTACHMENT_HEADING_RE): the set of pseudo-part tokens
+    # ("ATTACHMENT-A", "ATTACHMENT-B") this reg's attachments use as their
+    # `current_part` value, so the item-scan branch below can select the
+    # all-digit ladder cycle for them instead of cycle_ab. Empty (a no-op)
+    # for every reg without an `attachments` config entry.
+    attachment_letters = REG_META.get(reg or "", {}).get("attachments") or ()
+    attachment_parts = frozenset(f"ATTACHMENT-{l}" for l in attachment_letters)
 
     markers: list[dict] = []
     current_part = NO_PART if no_parts else None
@@ -3490,6 +3939,39 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                 last_marker_line = idx
             continue
 
+        # GP12 "Attachment A: <title>" / "Attachment B: <title>" (see
+        # REG_META["gp12"]["attachments"]) — printed like an Appendix
+        # heading but keyed by the word "Attachment", and, unlike every
+        # existing Appendix in the corpus (which swallows its whole body as
+        # one undivided blob — see the `appendix_active` branch below),
+        # GP12's attachments are their own scannable numeric ladder: setting
+        # `current_part` to a pseudo-part token lets the ordinary item-scan
+        # branch pick up its "1."/"3.1."/"7.7.2.1." markers as real child
+        # rows (ATTACHMENT_DIGIT_CYCLE), the same way a real "PART X"
+        # heading hands off to CYCLE_AB. A no-op for every reg without an
+        # `attachments` config entry (the regex is only tried when one
+        # exists at all).
+        m_att = (
+            re.match(r"^\s*Attachment\s+([A-Z])\s*:\s*(\S.*)$", raw_line)
+            if attachment_letters else None
+        )
+        # Printed with a small left indent (3 spaces, a page-layout quirk —
+        # confirmed against both GP12.txt occurrences of each heading) unlike
+        # every ordinary top-level section heading (indent 0), so — unlike
+        # the Appendix check just below — this doesn't require indent == 0.
+        if m_att and _heading_marker_plausible(lines, idx, last_marker_line, seam_starts):
+            letter, heading = m_att.group(1), m_att.group(2).strip()
+            extra = _consume_heading_continuation(lines, idx)
+            if extra:
+                heading = f"{heading} {extra}"
+            current_part = f"ATTACHMENT-{letter}"
+            appendix_active = None
+            emitted[("part", current_part)] = set()
+            ab_stack.pop(current_part, None)
+            markers.append({"line": idx, "type": "attachment", "letter": letter, "heading": heading})
+            last_marker_line = idx
+            continue
+
         # Case-insensitive on the word itself ("Appendix" — Reg 7/22/26 — or
         # "APPENDIX" — Reg 3), and the title text may be entirely absent from
         # the marker's own line (Reg 3's "APPENDIX C" sits alone on its line,
@@ -3595,7 +4077,7 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                 last_marker_line = idx
                 continue
             inner_items_ok = (sob_cfg or {}).get("inner_items", True)
-            if inner_items_ok and partc_next_idx > 0 and _label_position_plausible(lines, idx, last_marker_line, seam_starts):
+            if inner_items_ok and partc_next_idx > 0 and _label_position_plausible(lines, idx, last_marker_line, seam_starts, _condition_dangling_words(reg)):
                 cur_top = _sob_top_label(sob_family, partc_next_idx - 1)
                 tokens, consumed = tokenize_by_cycle(stripped, CYCLE_C_INNER)
                 if tokens:
@@ -3631,8 +4113,16 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                 # depth must come from the currently open chain, not from
                 # matching the full cycle from scratch.
                 tokens, consumed = _bare_ladder_tokens(stripped, ab_stack.get(current_part, []))
+            elif current_part in attachment_parts:
+                # GP12 Attachment A/B (see REG_META["gp12"]["attachments"]):
+                # their items are a bare, purely-numeric ladder ("1.",
+                # "3.1.", "7.7.2.1.") — never a letter or roman token at any
+                # depth (confirmed: zero letter/paren markers found anywhere
+                # in either attachment) — so every depth in the cycle is
+                # "digit", not CYCLE_AB's roman/upper/digit/lower/paren mix.
+                tokens, consumed = tokenize_by_cycle(stripped, ATTACHMENT_DIGIT_CYCLE)
             else:
-                tokens, consumed = tokenize_by_cycle(stripped, cycle_ab)
+                tokens, consumed = tokenize_by_cycle(stripped, cycle_ab, family_regex_for(reg))
             if tokens:
                 rest = stripped[consumed:]
                 # Statement-of-basis SECTION guard (see SOB_SECTION_CONFIG):
@@ -3647,7 +4137,7 @@ def scan_markers(lines: list[str], seam_starts: set[int] | None = None, reg: str
                     continue
                 if rest == "" or rest[0] == " ":
                     depth = len(tokens)
-                    dangling_ok = _label_position_plausible(lines, idx, last_marker_line, seam_starts)
+                    dangling_ok = _label_position_plausible(lines, idx, last_marker_line, seam_starts, _condition_dangling_words(reg))
                     colsig = _marker_column_signals(
                         lines, idx, indent, tokens, rest, current_part, last_marker_line, col_stats,
                         seam_starts, ab_stack.get(current_part),
@@ -3845,6 +4335,29 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
                 intro_paras = split_into_paragraphs(own_lines[first_blank:]) if first_blank is not None else []
                 if intro_paras:
                     pending[pid] = ("appendix", intro_paras, title, "", letter, pid)
+            continue
+
+        if mk["type"] == "attachment":
+            # GP12 Attachment A/B (see REG_META["gp12"]["attachments"] and
+            # the "attachment" marker in scan_markers): a heading-only row
+            # hanging directly off the root, id `sec-{reg}-ATTACHMENT-{letter}`
+            # (kind "appendix" per the brief — these read like an appendix to
+            # the reader even though they're scanned like a part). Registered
+            # into `part_root_id` under the SAME pseudo-part token
+            # ("ATTACHMENT-A") scan_markers used as `current_part`, so the
+            # ordinary `type == "item"` handling below resolves this
+            # attachment's own child rows' parent/ids with no further
+            # special-casing.
+            letter, heading = mk["letter"], mk["heading"]
+            pid = f"sec-{reg}-ATTACHMENT-{letter}"
+            citation = f"Attachment {letter}"
+            title = f"{citation}: {heading}" if heading else citation
+            provisions[pid] = dict(
+                id=pid, citation=citation, title=title, parent_id=root_id,
+                sort_order=next_sort(), full_text=escape_html_text(title), kind="appendix",
+            )
+            order.append(pid)
+            part_root_id[f"ATTACHMENT-{letter}"] = pid
             continue
 
         if mk["type"] == "appendix":
@@ -5034,9 +5547,27 @@ def find_body_start(lines: list[str], reg: str | None = None) -> int:
 
 
 _TOP_SECTION_HEADING_RE = re.compile(r"^\s*I\.\s+(\S.*)$")
+# The GPxx general permits' front-matter Table of Contents prints each
+# section title followed by a dot-leader or a run of plain spaces and the
+# page number ("General Permit Applicability ................. 4" or
+# "General Permit Applicability                    4" — GP09/10/11 use plain
+# spaces, no dots; confirmed in every GPxx.txt), which the real body heading
+# never carries — so the outline-copy/body-repeat title strings never
+# compare equal for these regs, and `find_body_start_no_parts` fell back to
+# 0 (scanning the title page / "Permit History" / cover TOC itself as body
+# text). Stripping this trailing leader before comparing is gated to
+# REG_META `toc_has_page_leaders` (every GP key) so Reg 1/cp — whose outline
+# titles already match their body headings verbatim, with no leader at all —
+# compare exactly as before.
+_TOC_PAGE_LEADER_RE = re.compile(r"\s*(?:\.{2,}\s*)?\d{1,4}\s*$")
 
 
-def find_body_start_no_parts(lines: list[str]) -> int:
+def _normalize_toc_title(title: str, strip_leader: bool) -> str:
+    t = re.sub(r"\s+", " ", title).strip()
+    return _TOC_PAGE_LEADER_RE.sub("", t).strip() if strip_leader else t
+
+
+def find_body_start_no_parts(lines: list[str], reg: str | None = None) -> int:
     """`find_body_start` for a part-less regulation (REG_META `no_parts`):
     there is no "PART A" heading to anchor on, but the front-matter "Outline
     of Regulation" still lists every top-level section ("I. Applicability
@@ -5046,13 +5577,15 @@ def find_body_start_no_parts(lines: list[str]) -> int:
     the SAME title as the body start (Reg 1: outline at line 32, body at
     line 63). Falls back to 0 (scan everything) if that repeat is never
     found, so a source with no outline at all still parses — and in that
-    case the outline-less body's own "I." line is the first match anyway."""
+    case the outline-less body's own "I." line is the first match anyway
+    (confirmed for GP03, which prints no Table of Contents at all)."""
+    strip_leader = bool(REG_META.get(reg or "", {}).get("toc_has_page_leaders"))
     first_title = None
     for i, l in enumerate(lines):
         m = _TOP_SECTION_HEADING_RE.match(l)
         if not m:
             continue
-        title = re.sub(r"\s+", " ", m.group(1)).strip()
+        title = _normalize_toc_title(m.group(1), strip_leader)
         if first_title is None:
             first_title = title
             continue
@@ -5096,7 +5629,7 @@ def _load_reg26_fedjjjj_supplement(after_sort_order: int) -> list[dict]:
 
 def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
     raw = Path(txt_path).read_text(encoding="utf-8")
-    lines, seam_starts = clean_pages(raw)
+    lines, seam_starts = clean_pages(raw, reg)
     lines, label_fixes_applied = apply_known_label_fixes(reg, lines)
     lines, text_fixes_applied = apply_known_text_fixes(reg, lines)
     label_fixes_applied = label_fixes_applied + text_fixes_applied
@@ -5104,7 +5637,7 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
     if is_rule_series:
         start = find_body_start_ecmc(lines)
     elif reg_has_no_parts(reg):
-        start = find_body_start_no_parts(lines)
+        start = find_body_start_no_parts(lines, reg)
     else:
         start = find_body_start(lines, reg)
     lines = lines[start:]
@@ -5163,10 +5696,12 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
 
 
 def cmd_parse(args):
-    if args.reg.lower().startswith("ooo"):
-        # eCFR subparts (oooob/ooooa/ooooc) use a different source layout
-        # (eCFR "enhanced display" PDF prints, not a CCR PDF) and are parsed
-        # by pipeline/import_ecfr.py instead -- see IMPORTER_SPEC.md.
+    if args.reg.lower() in ECFR_REGS:
+        # eCFR subparts (ooooa/oooob/ooooc, jjjj, iiii, zzzz) use a
+        # different source layout (eCFR "enhanced display" PDF prints, not
+        # a CCR PDF) and are parsed by pipeline/import_ecfr.py instead --
+        # see IMPORTER_SPEC.md. (Was `args.reg.lower().startswith("ooo")`,
+        # which never matched "jjjj"/"iiii"/"zzzz".)
         import import_ecfr
 
         return import_ecfr.cmd_parse(args)

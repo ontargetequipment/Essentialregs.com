@@ -7,7 +7,7 @@ import { approveSummary, rejectSummary, saveEditAndApprove } from "./actions";
 
 export const metadata = { title: "Review queue" };
 
-const REG_KEYS = ["cp", "1", "2", "3", "6", "7", "8", "9", "22", "24", "26", "30", "ecmc", "ooooa", "oooob", "ooooc"] as const;
+const REG_KEYS = ["cp", "1", "2", "3", "6", "7", "8", "9", "22", "24", "26", "30", "gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12", "ecmc", "ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz"] as const;
 const REG_LABELS: Record<string, string> = {
   cp: "Common Provisions",
   "1": "Reg 1",
@@ -21,10 +21,24 @@ const REG_LABELS: Record<string, string> = {
   "24": "Reg 24",
   "26": "Reg 26",
   "30": "Reg 30",
+  gp01: "GP01",
+  gp02: "GP02",
+  gp03: "GP03",
+  gp05: "GP05",
+  gp06: "GP06",
+  gp07: "GP07",
+  gp08: "GP08",
+  gp09: "GP09",
+  gp10: "GP10",
+  gp11: "GP11",
+  gp12: "GP12",
   ecmc: "ECMC rules",
   ooooa: "40 CFR 60 Subpart OOOOa",
   oooob: "OOOOb",
   ooooc: "40 CFR 60 Subpart OOOOc",
+  jjjj: "JJJJ (40 CFR 60)",
+  iiii: "IIII (40 CFR 60)",
+  zzzz: "ZZZZ (40 CFR 63)",
 };
 
 const STATUSES = ["pending", "approved", "edited", "rejected"] as const;
