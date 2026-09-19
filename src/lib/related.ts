@@ -26,6 +26,8 @@ export type RelatedItem = {
   title: string;
   reg_key: string | null;
   jurisdiction_level: string;
+  /** Ancestor headings below the regulation ("PART B — … › II. …"); null when directly under it. */
+  path: string | null;
   /** First paragraph of the summary, or null when there is none / it was rejected. */
   summary: string | null;
   score: number;
@@ -55,6 +57,7 @@ type NeighborRow = {
     ai_summary: string | null;
     summary_status: string | null;
     jurisdiction_level: string;
+    context_path: string | null;
   } | null;
 };
 
@@ -69,6 +72,7 @@ function toItem(anchorId: string, row: NeighborRow): RelatedItem | null {
     title: n.title,
     reg_key: key,
     jurisdiction_level: n.jurisdiction_level,
+    path: n.context_path ?? null,
     summary: paras[0] ?? null,
     score: row.score,
     rank: row.rank,
@@ -89,7 +93,7 @@ export function orderForDisplay(items: RelatedItem[]): RelatedItem[] {
 }
 
 const SELECT =
-  "rank, score, neighbor:provisions!provision_neighbors_neighbor_id_fkey(id, citation, title, ai_summary, summary_status, jurisdiction_level)";
+  "rank, score, neighbor:provisions!provision_neighbors_neighbor_id_fkey(id, citation, title, ai_summary, summary_status, jurisdiction_level, context_path)";
 
 /** Related provisions as the current visitor (RLS-bound). */
 export async function fetchRelated(provisionId: string): Promise<RelatedItem[]> {

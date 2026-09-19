@@ -183,37 +183,6 @@
   text-decoration: underline;
 }
 
-/* A top-level group (Part/Appendix/series) with a section list renders as a
-   native <details> instead of the plain <div> above, so the ECMC-scale
-   sidebar (14 series x 20-60 rules) isn't fully expanded by default. A
-   group with no children still renders as the plain .nav-part div (no
-   marker, nothing to collapse) -- these rules only touch the <details>
-   variant, matched via the tag, not the shared .nav-part class. */
-.reg-reader details.nav-part > summary {
-  cursor: pointer;
-  list-style: none;
-  position: relative;
-  padding-left: 14px;
-}
-.reg-reader details.nav-part > summary::-webkit-details-marker {
-  display: none;
-}
-.reg-reader details.nav-part > summary::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 5px;
-  width: 0;
-  height: 0;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 5px solid var(--ink-soft);
-  transition: transform 0.15s ease;
-}
-.reg-reader details.nav-part[open] > summary::before {
-  transform: rotate(90deg);
-}
-
 /* ---------- Main ---------- */
 .reg-reader #main-scroll {
   flex: 1;
@@ -476,19 +445,6 @@
   white-space: nowrap;
 }
 
-/* Applied by promoteHeadingParagraph() (regulation.ts) to a provision's
-   first <p> when it's a printed heading the importer stored as its own
-   paragraph (e.g. "<p>Definitions</p>") rather than as part of the title.
-   withItemIdBadge still lands its badge inside this same <p>, so a promoted
-   heading reads as "I.G. Definitions" on one bold line. Cloned into
-   #popup-body along with the rest of the item, so it needs no separate
-   popup override -- it inherits this rule there too. */
-.reg-reader .item-heading {
-  font-weight: 600;
-  font-size: 1.05em;
-  margin-bottom: 4px;
-}
-
 .reg-reader .xref {
   color: var(--accent);
   border-bottom: 1.5px dotted var(--accent);
@@ -743,4 +699,128 @@
   .reg-reader #popup-head {
     padding: 14px 16px;
   }
+}
+
+
+/* ---- Related provisions (semantic neighbours; see src/lib/related.ts) ---- */
+.reg-reader details.related-panel {
+  margin: 0 0 12px;
+  padding: 0;
+  background: #f6f7f9;
+  border: 1px solid #dde1e6;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.reg-reader .related-panel > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  padding: 7px 12px;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: #4b5563;
+  border-radius: 6px;
+}
+.reg-reader .related-panel > summary::-webkit-details-marker {
+  display: none;
+}
+.reg-reader .related-panel > summary::before {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-right: 8px;
+  vertical-align: 2px;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid #6b7280;
+  transition: transform 0.15s ease;
+}
+.reg-reader .related-panel[open] > summary::before {
+  transform: rotate(90deg);
+}
+.reg-reader .related-panel > summary:hover,
+.reg-reader .related-panel > summary:focus-visible {
+  background: #e9ecf0;
+  outline: none;
+}
+.reg-reader .related-body {
+  padding: 4px 12px 10px;
+}
+.reg-reader .related-note {
+  margin: 4px 0;
+  color: #6b7280;
+  font-size: 12.5px;
+}
+.reg-reader ul.related-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.reg-reader ul.related-list li {
+  padding: 6px 0;
+  border-top: 1px solid #e5e7eb;
+}
+.reg-reader ul.related-list li:first-child {
+  border-top: 0;
+}
+.reg-reader .related-badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: #e6f4ee;
+  color: #1f6f4a;
+}
+.reg-reader .related-badge-federal {
+  background: #e8f0fe;
+  color: #1d4ed8;
+}
+.reg-reader .related-badge-ecmc {
+  background: #f1eafe;
+  color: #6d28d9;
+}
+.reg-reader .related-reg {
+  margin-right: 6px;
+  color: #6b7280;
+  font-size: 12px;
+}
+.reg-reader .related-link {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 12.5px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+}
+.reg-reader .related-link:hover {
+  text-decoration: underline;
+}
+.reg-reader .related-path {
+  display: block;
+  margin-top: 1px;
+  color: #9ca3af;
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+.reg-reader .related-title {
+  display: block;
+  margin-top: 1px;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.reg-reader .related-snip {
+  display: block;
+  margin-top: 1px;
+  color: #4b5563;
+  font-size: 12.5px;
+}
+.reg-reader #popup-body .related-panel {
+  display: none; /* keep the preview popup focused on the provision itself */
 }

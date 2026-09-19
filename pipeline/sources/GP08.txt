@@ -1,0 +1,932 @@
+                    GENERAL CONSTRUCTION PERMIT
+
+                                Oil and Gas Industry
+
+                                      Storage Tanks
+
+Permit Number GP08 Issuance 4                                       Final Approval
+
+
+
+                                                                    July 23, 2025
+
+
+Bradley Eades, P.E.                                                 Date Issued
+
+
+Oil and Gas Permitting Section Supervisor
+
+
+
+
+Table of Contents
+
+   I.     General Permit Applicability ............................................................. 2
+
+   II.    Operating Terms and Conditions ........................................................ 5
+
+   III.   Alternative Operating Scenario (AOS) .................................................. 8
+
+   IV.    Operating and Maintenance Plan ........................................................ 9
+
+   V.     Recordkeeping and Reporting.......................................................... 13
+
+
+
+
+                                              Page 1 of 25
+     VI.       Additional Requirements for Sources located in an Ozone Non-Attainment Area15
+
+     VII.     Monitoring Requirements for Facilities located in Disproportionately Impacted (DI)
+               Communities .......................................................................... 18
+
+      VIII.     General Permit Terms and Administration ........................................... 19
+
+
+
+
+Note: See the Oil and Gas Industry Storage Tank guidance document (PS Memo 14-03) and the
+Emission Calculation Manual for further information on definitions, and emission calculation
+guidelines.
+
+I.          General Permit Applicability
+
+     I.A.       Definitions
+
+           I.A.1.     “Storage Tank” means any fixed roof storage vessel or series of storage
+                      vessels that are manifolded together via liquid line. Storage vessel is as
+                      defined in 40 CFR Part 60, Subpart OOOO and OOOOa – Standards of
+                      Performance for Crude Oil and Natural Gas Facilities.
+
+I.B.            Qualified Sources: The owner or operator of any oil and gas industry (exploration
+                and production (E&P), non-E&P, midstream and downstream) operation that can
+                comply with all of the operating conditions described in Section II of this permit
+                and meet all of the requirements in Section I may register for this general permit.
+                This general permit covers the following:
+
+           I.B.1.   Storage Tanks, including:
+
+                I.B.1.a. Condensate storage tanks with a design capacity less than or equal to
+                        10,000 barrels per storage vessel, used for the storage of condensate;
+
+                I.B.1.b. Crude oil storage tanks with a design capacity less than or equal to 10,000
+                        barrels per storage vessel, used for the storage of crude oil;
+
+
+
+
+                                                    Page 2 of 25
+       I.B.1.c. Produced water storage tanks used for the storage of produced water; and
+
+       I.B.1.d. Intermediate hydrocarbon liquid storage tanks with a design capacity less
+                 than or equal to 10,000 barrels per storage vessel, used for storage of
+                 intermediate hydrocarbon liquid.
+
+   I.B.2.    Combustion devices, vapor recovery units, or other Division approved control
+             equipment used to reduce emissions below the limits specified in Section II.
+
+   I.B.3.    Equipment as described in condition I.B.1 and I.B.2 located at a true minor
+             source or synthetic minor source for Operating Permit (OP), New Source Review
+             (NSR), and Maximum Achievable Control Technology (MACT) program
+             applicability, except as provided for in I.C., I.D. and I.E. below.
+
+I.C.        Stationary Sources that became subject to Title V Operating Permit
+            requirements or became classified as an existing major stationary source for
+            which a complete GP08 registration request was received by the Division prior to
+            the effective date (January 27, 2020) on which the 8-hour Ozone Control Area
+            was re-classified from moderate to serious may continue to operate under this
+            General Permit. 8-hour Ozone Control Area is as defined in Regulation Number
+            7, Part A, Section II.A.1. (Adopted 12/14/2023, Effective 02/14/2024).
+
+I.D.        Stationary Sources that: a) became subject to Title V Operating Permit
+            requirements or became classified as an existing major stationary source due to
+            the reclassification of the 8-hour Ozone Control Area from serious to severe, and
+            b) for which a complete GP08 registration request was received by the Division
+            prior to the effective date of GP08, Issuance 3 (November 3, 2022), may
+            continue to operate under this General Permit. 8-hour Ozone Control Area is as
+            defined in Regulation Number 7, Part A, Section II.A.1. (Adopted 12/14/2023,
+            Effective 02/14/2024).
+
+I.E.        Stationary Sources that became subject to Title V Operating Permit
+            requirements or became classified as an existing major stationary source for
+
+
+
+
+                                          Page 3 of 25
+            which a GP08 registration request was deemed complete by the Division prior to
+            the effective date (July 24, 2024) on which Northern Weld County was re-
+            classified from moderate to serious may continue to operate under this General
+            Permit. Northern Weld County is as defined in Regulation Number 7, Part A,
+            Section II.A.3. (Adopted 12/14/2023, Effective 02/14/2024).
+
+I.F.        This general permit applies only to the equipment as described in Section I.A.
+            above having uncontrolled actual emissions of Sulfur Oxides (SOx), Particulate
+            Matter (PM), Particulate Matter 2.5 (PM2.5), and Particulate Matter 10 (PM10)
+            less than the APEN reporting thresholds for each pollutant in Regulation Number
+            3, Part A, Section II.D.1.a.
+
+I.G.        Excluded Sources: The following sources may not register for this general
+            permit:
+
+   I.G.1. Equipment subject to a New Source Performance Standard (NSPS) other than
+             NSPS Subpart OOOOb – Standards of Performance for Crude Oil and Natural Gas
+             Facilities.
+
+   I.G.2. This general permit applies only to the equipment as described in Section I.B
+             above. Other equipment at the same stationary source must be permitted
+             separately as required by Regulation Number 3, Part B.
+
+   I.G.3. Newly constructed or modified existing equipment that is part of a project
+             permit action that is subject to Non-Attainment New Source Review (NA NSR)
+             or Prevention of Significant Deterioration (PSD) permitting under Regulation
+             Number 3, Part D.
+
+   I.G.4.      On or after the issuance date of Issuance 4 of this general permit, new dual
+               product storage tanks containing commingled condensate and produced
+               water, cannot register for this general permit. A new dual product storage
+               tank is a storage tank that is not registered to GP08 prior to Issuance 4 of
+               this general permit.
+
+
+
+
+                                           Page 4 of 25
+II.           Operating Terms and Conditions
+
+      II.A.        Emission Limitations Specific to Tanks Registered Under This General Permit
+
+         II.A.1. Maximum allowable controlled emissions of the following air pollutants from
+                    each condensate, crude oil, produced water, or intermediate hydrocarbon
+                    liquid storage tank, registered under this general permit, must not exceed the
+                    following limitation: (Reference: Regulation Number 3, Part B, Section II.A.4.)
+
+                          Volatile Organic Compounds:                 5.9 tons per year
+
+         II.A.2. For new or modified registrations deemed complete on or after the effective
+                    date of this permit issuance (Issuance 4), the maximum allowable emissions of
+                    nitrogen oxides (NOx) and carbon monoxide (CO) from all tank batteries and
+                    control of emissions from all tank batteries under the GP08 registration that
+                    are owned and operated by the same person and co-located at the same
+                    stationary source must not exceed the requested annual emission limitations
+                    (tons per year) as listed on the general permit registration approval letter, or if
+                    an approval letter has not been issued, as certified by the owner or operator in
+                    the APEN included with the general permit registration APEN (Regulation
+                    Number 3, Part B, Sections II.A.4. and II.A.7.)
+
+      II.B.        Facility-Wide Emission Limitation Requirements
+
+        II.B.1.      The owner or operator not subject to Conditions I.C. or I.D. or I.E. of this
+                     permit must track potential emissions from all insignificant activities at the
+                     facility on an annual basis to demonstrate compliance with the facility
+                     emission limitations indicated below. An inventory of each insignificant
+                     activity and associated emission calculations must be made available to the
+                     Division for inspection upon request. For the purposes of this condition,
+                     insignificant activities are defined as any activity or equipment, which emits
+                     any amount of a regulated pollutant but does not require an APEN or is permit
+                     exempt. Note that for reclassifications of an existing nonattainment area, the
+
+
+
+
+                                                 Page 5 of 25
+limit applies for the existing classification until the effective date of
+reclassification. (Regulation Number 3, Part B. Section III.E.)
+
+        II.B.1.a   Facilities located in an area classified as attainment,
+                   marginal nonattainment, or moderate nonattainment for all
+                   pollutants, total potential point source emissions from the
+                   facility, including all permitted emissions and potential to
+                   emit from all insignificant activities, must be less than:
+
+                   Volatile Organic Compounds (VOC):          100 tons per year
+
+                   Nitrogen Oxides (NOx):                     100 tons per year
+
+                   Carbon Monoxide (CO):                      100 tons per year
+
+        II.B.1.b   Facilities located in an area classified as serious
+                   nonattainment for ozone, total potential point source
+                   emissions from the facility, including all permitted
+                   emissions and potential to emit from all insignificant
+                   activities, must be less than:
+
+                   Volatile Organic Compounds (VOC):          50 tons per year
+
+                   Nitrogen Oxides (NOx):                     50 tons per year
+
+                   Carbon Monoxide (CO):                      100 tons per year
+
+        II.B.1.c   Facilities located in an area classified as severe
+                   nonattainment for ozone, total potential point source
+                   emissions from the facility, including all permitted
+                   emissions and potential to emit from all insignificant
+                   activities, must be less than:
+
+                   Volatile Organic Compounds (VOC):          25 tons per year
+
+
+
+
+                            Page 6 of 25
+                                       Nitrogen Oxides (NOx):                 25 tons per year
+
+                                       Carbon Monoxide (CO):                  100 tons per year
+
+        II.B.2.    Combined maximum allowable controlled emissions of hazardous air
+                   pollutants (HAPs) from all equipment at the same stationary source must not
+                   exceed the following limitations (Reference: Regulation Number 3, Part B,
+                   Section II.A.4.):
+
+                      Each Individual HAP:                                    8.0 tons per year
+
+                      Total of all HAPs:                                      20.0 tons per year
+
+        II.B.3.   A control device may be used to comply with these emission limits.
+
+II.C.         Emissions Control Requirements for Storage Tanks
+
+        II.C.1.    Condensate, Crude Oil, and Produced Water Storage Tanks
+
+            II.C.1.a The owner or operator may be subject to emission control, auto igniter,
+                      operate without venting, storage tank emissions management (STEM) plan,
+                      performance testing, metering, reporting, and recordkeeping requirements
+                      contained in Regulation Number 7, Part B, Section II.B and Section II.C.
+
+II.D.         General Operating Conditions
+
+         II.D.1. This source is subject to the odor requirements of Regulation Number 2.
+
+        II.D.2.    The ten digit AIRS ID number assigned by the Division (e.g., 123/1234/001)
+                   must be marked on the subject equipment for ease of identification. The
+                   permit number (i.e. GP08) must be marked on equipment newly registered
+                   and deemed complete on or after the issuance date of Issuance 4 of this
+                   general permit (Reference: Regulation Number 3, Part B, Section III.E.)
+
+
+
+
+                                              Page 7 of 25
+       II.D.3.      The owner or operator must comply with opacity requirements in Regulation
+                    Number 1, Section II.A., as applicable per the most current version of
+                    Regulation Number 1.
+
+       II.D.4.      The owner or operator must follow the Operating and Maintenance /
+                    Recordkeeping and Reporting specified in Sections IV and V. (Reference:
+                    Regulation Number 3, Part B, Section III.I.6.)
+
+       II.D.5.      This source's condensate, crude oil, produced water and intermediate
+                    hydrocarbon liquid throughput must be limited by the emission limits
+                    specified in this permit, and all other activities, operational parameters and
+                    numbers of equipment as stated in the registration. (Reference: Regulation
+                    Number 3, Part B, Section II.A.4.)
+
+III.      Alternative Operating Scenario (AOS)
+
+ III.A.          Provided that there are no emissions increases, and the emission limits set forth
+                 in Section II.A and Section II.B. are still met, the owner or operator may invoke
+                 an AOS for the following changes to an existing storage tank registered under this
+                 general permit without modifying the general permit registration:
+
+                     •   Replacement of an existing control device by control equipment of the
+                         same make, model, and no changes to the configuration that will impact
+                         a dispersion analysis; or
+
+                     •   Replacement of a storage vessel with another storage vessel of the same
+                         type, dimensions, and physical characteristics (e.g., same design, same
+                         color, same construction material) and no changes to the configuration
+                         that will impact a dispersion analysis; or
+
+                     •   Replacement of a separator with another separator of the same type,
+                         dimensions, and physical characteristics (e.g., same design) with no
+                         changes to the configuration that will impact a dispersion analysis.
+
+
+
+
+                                                Page 8 of 25
+III.B.       The owner or operator must maintain a log to contemporaneously record the date
+             and description of any change made under the provisions of this AOS. (Reference:
+             Regulation Number 3, Part A, Section IV.A.1.)
+
+III.C.       The following changes are not considered modifications. These changes should be
+             reflected in any revised APEN required by Condition VIII.C.1.
+
+                   •   Removal of a well serviced by the storage tank with no increase to
+                       permitted emission rates and no changes to the configuration that will
+                       impact a dispersion analysis;
+
+                   •   Re-piping of an existing well with no increase to permitted emission
+                       rates and no changes to the configuration that will impact a dispersion
+                       analysis;
+
+                   •   Routine equipment maintenance, repair and replacement, except as
+                       otherwise listed in Condition III.A., with no increase to permitted
+                       emissions rates and no changes to the configuration that will impact a
+                       dispersion analysis.
+
+IV.       Operating and Maintenance Plan
+
+ IV.A.        If a control device is used to comply with the emission limits in Section II.A. of
+              this permit the following conditions must be met:
+
+         IV.A.1. Control devices must be adequately designed, operated and maintained
+                according to manufacturer specifications to achieve a control efficiency of at
+                least 95%, and to handle reasonably foreseeable fluctuations in emissions of
+                VOCs. Fluctuations in emissions that occur when the separator dumps into the
+                storage tank are reasonably foreseeable.
+
+         IV.A.2. Combustion devices operated to control emissions authorized by this permit
+                must be enclosed; have no visible emissions during normal operations, as
+
+
+
+
+                                              Page 9 of 25
+       defined under Regulation Number 7, Part B, Section II.A.45.; and be designed
+       so that an observer can, by means of visual observation from the outside of
+       the combustion device, or by other convenient means approved by the
+       Division, determine whether the combustion device is operating properly. This
+       combustion device must be equipped with an operational auto-igniter
+       according to the schedule in Regulation Number 7, Part B, Section II.B.2.d.
+       (Reference: Regulation Number 7, Part B, Sections II.B.2.b. and II.B.2.d.,
+       effective 02/14/2024)
+
+IV.A.3. For all new and modified storage tanks controlled by a combustion device,
+       auto-igniters must be installed and operational, beginning on the date of first
+       production for E&P locations and upon commencement of storage tank
+       operation for non-E&P locations after any new storage tank installation or
+       storage tank modification.
+
+IV.A.4. If a boiler or process heater is used as a control device, the storage tank vent
+       stream must be introduced with the primary fuel or used as the primary fuel.
+       In addition, the boiler or process heater must be equipped with and operate a
+       continuous burning pilot flame.
+
+IV.A.5. For each control device, owner or operator must keep a maintenance log on
+       site (at the field office). The log must display the date, time, and nature of
+       each maintenance activity. Maintenance log may also be located at a local
+       office or electronically, and made available upon request.
+
+IV.A.6. Owners and operators of storage tanks covered by this permit must route all
+       VOC emissions to air pollution control equipment and must operate without
+       venting VOC emissions from the thief hatch (or other access point to the tank)
+       or pressure relief device during normal operations unless venting is reasonably
+       required for maintenance, gauging or safety of personnel or equipment.
+
+
+
+
+                                    Page 10 of 25
+IV.B.       All condensate, crude oil, produced water, or intermediate hydrocarbon liquid
+            collection, storage, processing and handling operations, regardless of size, must be
+            designed, operated and maintained so as to minimize leakage of volatile organic
+            compounds to the atmosphere to the maximum extent practicable.
+
+        IV.B.1. If a control device is used to comply with the emission limits in Section II.A.
+                  and Section II.B. of this permit, leakage of VOCs to the atmosphere must be
+                  minimized as follows:
+
+            IV.B.1.a. Thief hatch seals must be inspected for integrity at least annually, or
+                      otherwise specified in Regulation Number 7, Part B, Section II.C., and
+                      replaced as necessary. Thief hatch covers must be weighted and
+                      properly sealed.
+
+            IV.B.1.b. Pressure relief valves (PRV) must be inspected for proper operation at
+                      least annually, or as otherwise specified in Regulation Number 7, Part B,
+                      Section II.C., and replaced as necessary. PRVs must be set to release at
+                      a pressure that will ensure flashing, working, and breathing losses are
+                      routed to the control device under normal operating conditions.
+
+            IV.B.1.c. Inspections of thief hatches and PRVs must be documented with an
+                      indication of status, a description of any problems found, and their
+                      resolution.
+
+IV.C.       The owner or operator must commence monitoring the pilot light/auto-igniter and
+            visible emissions observation and document the proper operation of the control
+            device based on the monitoring frequency in Table 1.
+
+                      Table 1: Monitoring Frequencies
+
+
+
+
+                                            Page 11 of 25
+                   Effective         Classification                Permitted VOC               Monitoring
+                   Date of                                         Emissions                   Frequency
+                   Registration 1
+
+
+                   Prior to          Any                           Any                         Weekly
+                   Issuance 4
+
+
+                   On or after       Attainment                    Less than 80 TPY            Weekly
+                   Issuance 4
+
+
+                   On or after       Attainment                    Greater than or             Daily
+                   Issuance 4                                      equal to 80 TPY
+
+
+                   On or after       Marginal/Moderate             Less than 80 TPY            Weekly
+                   Issuance 4        Ozone Non-
+                                     Attainment
+
+
+                   On or after       Marginal/Moderate             Greater than or             Daily
+                   Issuance 4        Ozone Non-                    equal to 80 TPY
+                                     Attainment
+
+
+                   On or after       Serious Ozone Non-            Less than 40 TPY            Weekly
+                   Issuance 4        Attainment
+
+
+                   On or after       Serious Ozone Non-            Greater than or             Daily
+
+
+
+1
+ The Effective Date of Registration is the date that the registration request was granted conditional
+certification per Condition VIII.F.1.
+
+
+
+
+                                                 Page 12 of 25
+                 Effective           Classification                Permitted VOC                Monitoring
+                 Date of                                           Emissions                    Frequency
+                 Registration 1
+
+                 Issuance 4          Attainment                    equal to 40 TPY
+
+
+                 On or after         Severe Ozone Non-             Less than 15 TPY             Weekly
+                 Issuance 4          Attainment
+
+
+                 On or after         Severe Ozone Non-             Greater than or              Daily
+                 Issuance 4          Attainment                    equal to 15 TPY
+
+
+          Time intervals for monitoring proper operation of a control device may be
+          shorter if required under Regulation Number 7, Part B, Section I or Section II.
+          Indications of improper operation for a control device include, but are not limited
+          to, absence of auto-igniter or pilot light, malfunction of electronic ignition,
+          v a l ve s f o r p i p i n g o f p i lo t ga s o r wa st e ga s t o t h e c o n t r o l d e vi c e n o t
+          b e i n g o p e n and/or presence of smoke. A check box is suitable for recording
+          proper operation. Improper operation of a control device must be further
+          documented with a description of the problem and its resolution, the date range
+          the control was inoperable, and the production through the battery during the
+          downtime. Inspections can be done by either visible observation or other means
+          approved by the Division. During control device downtime, emissions must be
+          considered to be uncontrolled.
+
+V.      Recordkeeping and Reporting
+
+ V.A.       Records may be kept in either electronic format or hard copy provided that they
+            can be promptly supplied to the Division upon request. All records must be
+            retained for a period of five years.
+
+
+
+
+                                                Page 13 of 25
+V.B.    For storage tanks, the following records must be maintained on site or at a local
+        field office with site responsibility for Division review:
+
+  V.B.1.    The current issuance of this general construction permit.
+
+   V.B.2.   The most recently submitted APEN and any associated site-specific emission
+            factor documentation.
+
+  V.B.3.    The general permit registration approval letter (once issued).
+
+  V.B.4.    Records of installation dates for each individual storage vessel installed.
+
+   V.B.5.   Records that clearly demonstrate compliance with the emission limits of this
+            permit. This must include the most current condensate, crude oil, produced
+            water and intermediate hydrocarbon liquid production records necessary to
+            calculate emissions in accordance with this Condition V.B.5 and documentation
+            of all periods of control device downtime for sources where a control device is
+            required to comply with the emission limits of Section II.A. of this permit.
+
+                     V.B.5.a    For sources located at a true minor facility, compliance
+                                with the emission limits in Section II.A and Section II.B.
+                                must be determined by calculating the annual emissions
+                                from each storage tank for the calendar year.
+
+                     V.B.5.b    For sources located at a synthetic minor or major facilities,
+                                compliance with the emission limits in Section II.A and
+                                Section II.B. must be determined by recording the annual
+                                emissions from each storage tank on a rolling 12-month
+                                total. By the end of each month a new 12-month total is
+                                calculated based on the previous twelve months’ data.
+                                During the first year of operation, compliance must be
+                                assumed providing that cumulative emissions from all
+
+
+
+
+                                        Page 14 of 25
+                                    months of operation do not exceed the emission limits in
+                                    Section II.A.
+
+      V.B.6. Records required by Conditions III.B (AOS), IV.B.1.c (Storage tank inspections)
+                    and IV.C (Control device monitoring).
+
+      V.B.7. On or before June 30th of each calendar year, the owner or operator of oil and
+               natural gas operations and equipment at or upstream of a natural gas
+               processing plant or class II disposal well facilities in Colorado must submit a
+               single annual report that includes actual emissions and specified information in
+               the Division-approved report format. The information included in the annual
+               report must be in accordance with the general reporting requirements of
+               Regulation Number 7, Part B, Section V.B. Each calendar year owners or
+               operators must maintain the information according to Regulation Number 7,
+               Part B, Section V.C. for inclusion in the annual report. (Reference: Regulation
+               Number 7, Part B, Section V)
+
+VI.      Additional Requirements for Sources located in an Ozone Non-Attainment Area
+
+ VI.A.       This Section VI only applies to facilities located in an Ozone Non-Attainment
+             Area. (Reference: Regulation Number 7, Part B, Section I.A.1.)
+
+ VI.B.       The owner or operator may be subject to emission control, monitoring,
+             performance testing, and recordkeeping and reporting requirements contained in
+             Regulation Number 7, Part B, Section I.C., Section I.D., Section I.E. and Section
+             I.F.
+
+ VI.C.       Control devices used to comply with Regulation Number 7, Part B, Section I.D.3.
+             and II.D.2. must be a combustion device or a vapor recovery unit and must meet
+             all requirements of Regulation Number 7, Part B, Section I.C.1 and II.B.2.
+             Alternative control equipment must be approved via an individual permit as
+             required by Regulation Number 7, Part B, Section I.D.4 or II.B.2.e.
+
+
+
+
+                                            Page 15 of 25
+VI.D.   At the frequency specified in Table 2, the owner or operator of storage tanks
+        utilizing site-specific emission factors must complete site-specific sampling as
+        necessary to develop site-specific emission factors. Periodic site-specific
+        sampling must be conducted at a minimum of one hundred and eighty (180) days
+        apart. Sampling and analysis must be in accordance with Division approved
+        methods and, where flash is expected, the sample must be obtained from the
+        outlet of separation equipment immediately prior to the storage tank, where
+        technically feasible. Results of the analysis must be used to calculate site-
+        specific emissions factors for VOC (in units of lb/bbl hydrocarbon liquid
+        throughput) using Division approved methods. The total calculated emission
+        factors must include all flash, working, and breathing emissions. Results of the
+        analysis must be used to demonstrate that the VOC emission factor established
+        through the analysis is less than or equal to, the emission factor submitted with
+        the GP08 registration and established on the APEN for this emissions point. If the
+        VOC site-specific emission factor developed through this analysis is greater than
+        the emission factor submitted with the GP08 registration and established on the
+        most recently submitted APEN for this emissions point, the operator must submit
+        to the Division within 90 days, or in a timeframe as agreed to by the Division, a
+        modification to address this inaccuracy. Records of periodic site-specific
+        sampling must be maintained by the owner or operator for a minimum of five (5)
+        years and made available to the Division for inspection upon request.
+
+                Table 2: Sampling Frequencies
+
+
+
+
+                                      Page 16 of 25
+                    Effective           Classification             Permitted VOC                Frequency
+                    Date of                                        Emissions
+                    Registration 2
+
+
+                    Prior to            Any                        Any                          Every 5 years
+                    Issuance 4
+
+
+                    On or after         Marginal/Moderate          Less than 90 TPY             Every 5 years
+                    Issuance 4          Ozone Non-
+                                        Attainment
+
+
+                    On or after         Marginal/Moderate          Greater than or              Annually
+                    Issuance 4          Ozone Non-                 equal to 90 TPY
+                                        Attainment
+
+
+                    On or after         Serious Ozone Non-         Less than 40 TPY             Every 5 years
+                    Issuance 4          Attainment
+
+
+                    On or after         Serious Ozone Non-         Greater than or              Annually
+                    Issuance 4          Attainment                 equal to 40 TPY
+
+
+                    On or after         Severe Ozone Non-          Less than 15 TPY             Every 5 years
+                    Issuance 4          Attainment
+
+
+                    On or after         Severe Ozone Non-          Greater than or              Annually
+
+
+
+2 The Effective Date of Registration is the date that the registration request was granted conditional
+
+certification per Condition VIII.F.1.
+
+
+
+
+                                                 Page 17 of 25
+            Effective         Classification            Permitted VOC         Frequency
+            Date of                                     Emissions
+            Registration 2
+
+            Issuance 4        Attainment                equal to 15 TPY
+
+
+VII.     Monitoring Requirements for Facilities located in Disproportionately
+         Impacted (DI) Communities
+
+VII.A.   Owners or operators of new or modified sources located in
+         Disproportionately Impacted Communities must submit a notification at
+         the time of registration for a general permit or permits issued pursuant to
+         Regulation Number 3, Part B, Section III.I. indicating the source will
+         comply with the monitoring requirements outlined in Regulation Number
+         3, Part B, Section III.J., as applicable, by either:
+
+           VII.A.1.   Complying with source-specific monitoring pursuant to
+                      Section III.J.2. of Part B;
+
+           VII.A.2.   Paying community monitoring fees pursuant to Section III.J.3.
+                      of Part B; or
+
+           VII.A.3.   Complying with well production facility monitoring pursuant
+                      to Section III.J.4. of Part B.
+
+                      Owners or operators must comply with the monitoring
+                      methodology selected on the general permit registration
+                      form.
+
+VII.B.   Owners or operators subject to VII.A.1 must submit a Division-approved
+         source-specific monitoring plan as part of a complete registration
+         request. (Regulation Number 3, Part B, III.E.)
+
+
+
+
+                                        Page 18 of 25
+VIII.       General Permit Terms and Administration
+
+  VIII.A.     A facility that is classified as a major source for Title V Operating Permit
+              requirements and is operating under Condition I.C. or I.D. must submit a Title V
+              permit application requesting to incorporate the terms of this general permit
+              into a Title V Operating Permit. The due date for this application is one year
+              from the date on which the facility becomes subject to Title V Operating Permit
+              requirements.
+
+  VIII.B.     In accordance with Colorado Regulation Number 3, Part C, Section V.C.5, some
+              or all of the monitoring specified in this general permit will be incorporated as
+              specific conditions in the source’s Title V Operating Permit (if applicable).
+              Additional monitoring not listed in this general permit may be included in the
+              source’s Operating Permit in order to satisfy the periodic monitoring
+              requirements of Section V.C.5.b.
+
+  VIII.C.     General Terms
+
+        VIII.C.1. A revised APEN must be filed: (Reference: Regulation Number 3, Part A,
+                 Section II.C.)
+
+            VIII.C.1.a. Annually by April 30th of the year following a significant increase in
+                    emissions as follows:
+
+               VIII.C.1.a.(i) For VOC, a change in actual emissions of five (5) tons per year or
+                          more, above the level reported on the last APEN; or
+
+               VIII.C.1.a.(ii) For volatile organic compounds and nitrogen oxides sources in
+                          ozone non-attainment areas, a change in annual actual emissions of
+                          one ton per year or more or five percent, whichever is greater, above
+                          the level reported on the last APEN submitted to the Division; or
+
+
+
+
+                                            Page 19 of 25
+        VIII.C.1.a.(iii) For any non-criteria reportable pollutant, if the emissions
+                  increase by 50% or five (5) tons per year, whichever is less, above the
+                  level reported on the last APEN.
+
+    VIII.C.1.b. Whenever there is a change in the owner or operator of any facility,
+             process, or activity; or
+
+    VIII.C.1.c. As required by the alternative operating scenario allowed by Section III.
+
+    VIII.C.1.d. No later than 30 days before the existing APEN expires.
+
+VIII.C.2. The requirements of Colorado Regulation Number 3, Part D must apply at such
+        time that any stationary source or modification becomes a major stationary
+        source or major modification solely by virtue of a relaxation in any enforceable
+        limitation that was established after August 7, 1980, on the capacity of the
+        source or modification to otherwise emit a pollutant such as a restriction on
+        hours of operation (Colorado Regulation Number 3, Part D, Sections VI.B.4
+        and/or V.A.7.b).
+
+VIII.C.3. Sources covered by this General Permit are subject to the Common Provisions,
+        Regulation Part II, Subpart E, Affirmative Defense Provision for Excess Emissions
+        During Malfunctions. The owner or operator must notify the Division of any
+        upset condition which causes a violation of any emission limit or limits
+        stated in this permit as soon as possible, but no later than noon of the next
+        working day, followed by written notice to the Division explaining the cause of
+        the occurrence and that proper action has been or is being taken to correct the
+        conditions causing said violation and to prevent such excess emission in the
+        future.
+
+VIII.C.4. This permit is granted subject to all rules and regulations of the Colorado Air
+        Quality Control Commission and the Colorado Air Pollution Prevention And
+        Control Act C.R.S., sections 25-7-101, et seq, to those general and specific
+        terms and conditions included in this document.
+
+
+
+
+                                     Page 20 of 25
+   VIII.C.5. Unless specifically stated otherwise, the general and specific conditions
+           contained in this permit have been determined by the Division to be necessary
+           to assure compliance with the provisions of Section 25-7-114.5(7)(a), C.R.S.
+
+   VIII.C.6. Each and every condition of this permit is a material part hereof and is not
+           severable. Any challenge to or appeal of a condition herein by the permittee
+           will constitute a rejection of the entire permit and upon such occurrence, this
+           permit must be deemed denied ab initio.
+
+   VIII.C.7. Section 25-7-114.7(2)(a), C.R.S. requires that all sources required to file an
+           APEN must pay an annual fee to cover the costs of inspections and
+           administration.
+
+   VIII.C.8. Violation of the terms of a permit or of the provisions of the Colorado Air
+           Pollution Prevention and Control Act or the regulations of the AQCC may result
+           in administrative, civil or criminal enforcement actions under Sections 25-7-115
+           (enforcement), -121 (injunctions), -122 (civil penalties), -122.1 (criminal
+           penalties), C.R.S.
+
+    VIII.C.9. Registration under this permit is approved in reliance upon the accuracy
+           and completeness of information supplied by the applicant and is conditioned
+           upon operation of the source in accordance with this information and with
+           representations made by the applicant or applicant's agents. It is valid only
+           for the equipment and operations or activity specifically identified on the
+           general permit registration.
+
+VIII.D.   Registration Revision / Termination
+
+    VIII.D.1. The Division may deny or revoke registration under the general permit under
+           the circumstances specified in Regulation Number 3, Part B, Section III.I.3.c.
+
+    VIII.D.2. A registration under this general permit may be reissued to a new owner or in
+           a new company name by the Division as provided in Regulation Number 3, Part
+
+
+
+
+                                       Page 21 of 25
+           B, Section II.B. upon a request for transfer of ownership or company name
+           change and the submittal of a revised APEN and the required fees.
+
+    VIII.D.3. Registration under this general permit is voluntary. The owner or operator
+           may withdraw or cancel a registration under this general permit at any time by
+           notifying the Division in writing.
+
+VIII.E.   General Permit Revision / Termination
+
+    VIII.E.1. This general permit remains in effect until revised or terminated by the
+           Division in accordance with the provisions of Regulation Number 3.
+
+    VIII.E.2. After public notice and comment as provided by Regulation Number 3, Part B,
+           Section III.I.7., the Division may revise this general permit in order to add or
+           delete requirements or limitations to the permit. This public notice must be
+           conducted in a manner consistent with the provisions of Regulation Number 3,
+           Part B, Section III.C.4.
+
+    VIII.E.3. If a revised general permit is issued by the Division, any existing registration to
+           use the general permit will be automatically converted to a registration to use
+           the revised general permit, and the owner or operator is subject to
+           requirements of the revised general permit. Persons not wishing to continue
+           coverage under the revised general permit have the option of applying for an
+           individual permit as required by Regulation Number 3, Part B.
+
+    VIII.E.4. If the Division terminates this general permit, it will provide written notice to
+           affected registrants prior to the termination of the general permit. The notice
+           will advise registrants that they must apply for an individual permit as required
+           by Regulation Number 3, Part B.
+
+    VIII.E.5. The Division may require any source authorized by a general construction
+           permit to apply for and obtain an individual permit if circumstances have
+           changed since the time of the original general permit application so that the
+
+
+
+
+                                         Page 22 of 25
+               source is no longer appropriately controlled and/or permitted under the
+               general construction permit. (Reference: Regulation Number 3, Part B, Section
+               III.I.3.c.(i)(B)
+
+  VIII.F.     General Permit Registration Approval Process
+
+      VIII.F.1. Conditional certification of a registration under this general permit is effective
+               from the date the registration is deemed complete as indicated in Condition
+               VIII.F.2. A complete registration request consists of all General Permit
+               application materials required by the Division and associated fees. The owner
+               or operator may commence construction and operation of the storage tank as
+               represented in the registration once the registration is deemed complete. In
+               the event the storage tank does not qualify for registration under the general
+               permit the owner or operator accepts the liability of commencing these
+               activities.
+
+      VIII.F.2. The Division will determine completeness of the General Permit registration
+               request within sixty (60) days of the date of receipt of the request and provide
+               written notification to the applicant. If the applicant does not receive
+               notification of a completeness determination from the Division within sixty (60)
+               days, the General Permit registration request will be deemed complete for the
+               purpose of Condition VIII.F.1.
+
+      VIII.F.3. The Division has ninety (90) calendar days from the date the Division receives
+               a complete General Permit registration request to provide the applicant with a
+               written approval or denial of the registration.
+
+IX.         Additional Requirements
+
+ IX.A.       Condensate storage tanks subject to 40 CFR Part 60, NSPS Subpart OOOOb -
+             Standards of Performance for Crude Oil and Natural Gas Facilities must comply
+             with all applicable requirements of that subpart including, but not limited to,
+
+
+
+
+                                           Page 23 of 25
+             emissions standards, testing, notification, monitoring, recordkeeping and
+             reporting.
+
+ IX.B.       The owner or operator must maintain documentation clearly outlining applicable
+             requirements of New Source Performance Standard (NSPS) Subpart OOOOb -
+             Standards of Performance for Crude Oil and Natural Gas Facilities for the
+             condensate storage tank battery registered under this general permit. The
+             documentation must be located on-site or at a local field office with stationary
+             source responsibility. Records may be kept in either electronic or hard copy
+             format provided that they can be promptly supplied to the APCD upon request.
+
+
+
+
+Permit History
+
+
+Issuance       Date             Description
+
+
+Issuance 1     8 August 2014    Initial issuance
+
+
+Issuance 2     24 January       Revised to address the Denver ozone
+               2020             nonattainment area re-classification from
+                                moderate to serious
+
+
+Issuance 3     3 November       Revised to address the 8-hour Ozone Control
+               2022             Area re-classification from serious to severe
+                                for existing registrations
+
+
+Issuance 4     This Issuance    Revised to address:
+
+
+
+
+                                          Page 24 of 25
+Issuance   Date   Description
+
+                  •   Revised to address Northern Weld County
+                      Area re-classification from moderate to
+                      serious for existing registrations,
+
+                  •   Changes to the structure of AQCC
+                      Regulation Number 7; and
+
+                  •   New emissions control, reporting,
+                      recordkeeping, performance testing,
+                      training, operating, and monitoring
+                      requirements from AQCC Regulation
+                      Number 7.
+
+                  •   Modification to the AOS provisions
+
+                  •   Updates to Operating and Maintenance
+                      requirements
+
+                  •   Addition of facility-wide limits for other
+                      criteria pollutants
+
+
+
+
+                            Page 25 of 25
+

@@ -1,0 +1,1660 @@
+                 GENERAL CONSTRUCTION PERMIT
+
+                                    Oil and Gas
+
+                        Well Production Facilities
+
+Permit Number GP09 Issuance 3                                    Final Approval
+
+
+
+                                                                  July 23, 2025
+
+
+  Bradley Eades, P.E.                                                 Date Issued
+
+
+  Oil and Gas Permitting Section Supervisor
+
+
+Permit History
+
+
+  Issuance          Date               Description
+
+
+  Issuance 1        October 11, 2019   Initial issuance
+
+
+  Issuance 2        February 11,       Including Addition of routine or predictable gas
+                    2021               venting emissions. Updating regulation citations.
+                                       Revision to condition V.A.3.
+
+
+
+
+                                        Page 1 of 48
+            Issuance          Date                Description
+
+
+            Issuance 3        This Issuance       Revised to address:
+
+                                                  •    Revised to address Northern Weld County Area
+                                                       re-classification from moderate to serious for
+                                                       existing registrations,
+
+                                                  •    Changes to the structure of AQCC Regulations
+                                                       Number 7 and Number 26; and
+
+                                                  •    New emissions control, reporting,
+                                                       recordkeeping, training, operating, and
+                                                       monitoring requirements from AQCC Regulations
+                                                       Number 7 and Number 26.
+
+                                                  •    Removed and expired provisions in Regulation
+                                                       Number 7, Part A, Section II.A.2.a regarding
+                                                       deferred APEN and permitting requirements.
+
+                                                  •    New requirements applicable to engines with
+                                                       rating greater than or equal to 1000 hp.
+
+
+
+
+         Table of Contents
+
+I.       General Permit Applicability                                                                    4
+II.      General Operating Conditions                                                                   10
+III.     Annual Emission Limitation Requirements                                                        12
+      III.A. Equipment Specific Emission Limitations                                                    12
+
+
+                                                   Page 2 of 48
+     III.B. Facility-Wide Emission Limitations                                                        12
+IV.     Other Emission Limitations and Operation and Maintenance Requirements                         13
+     IV.A. Facility-Wide Requirements                                                                 13
+     IV.B. Natural Gas Fired Engine Requirements                                                      15
+     IV.C. Storage Tank Requirements                                                                  21
+     IV.D. Hydrocarbon Loadout Requirements                                                           23
+     IV.E. Separator Venting Requirements                                                             24
+     IV.F. Fugitive Component Leak Emissions Requirements                                             25
+     IV.G. Natural Gas-Driven Diaphragm Pneumatic Pumps Requirements                                  26
+     IV.H. Natural Gas-Driven Pneumatic Controllers Requirements                                      30
+     IV.I. Natural Gas Fired Turbine Requirements                                                     30
+V.      Testing and Monitoring Requirements                                                           35
+VI.     Emission and Process Recordkeeping Requirements                                               40
+VII.    Monitoring Requirements for Facilities located in Disproportionately Impacted (DI)
+        Communities                                                                    42
+VIII. General Permit Registration Approval Process and Expiration                                     43
+IX.     General Permit Terms and Administration                                                       44
+     IX.C. General Terms                                                                              44
+     IX.D. Registration Revision/Termination                                                          46
+     IX.E. General Permit Revision/Termination                                                        47
+
+
+
+
+        Note: See PS Memos and the Emission Calculation Manual for further information on
+        definitions, and emission calculation.
+
+        This permit is granted by the Colorado Department of Public Health and Environment, Air
+        Pollution Control Division subject to all rules and regulations of the Colorado Air Quality
+        Control Commission and the Colorado Air Pollution Prevention and Control Act C.R.S.,
+
+
+
+
+                                                   Page 3 of 48
+sections 25-7-101, et seq, to those general terms and conditions included in this permit and
+the following specific terms and conditions.
+
+I.     General Permit Applicability
+
+I.A.   This general permit may be used only for oil and gas well production facilities as
+       defined in Regulation Number 7, Part B, Section II.A. Equipment covered by this
+       permit is limited to the following sources:
+
+       I.A.1.    Natural gas-fired reciprocating internal combustion engines
+
+       I.A.2.    Storage tanks used to store condensate, crude oil, intermediate
+                 hydrocarbon liquids, or produced water
+
+       I.A.3.    Hydrocarbon liquid loading from storage tanks to transport trucks
+
+       I.A.4.    Gas venting from separators
+
+       I.A.5.    Fugitive component leak emissions
+
+       I.A.6.    Natural gas-driven pneumatic controllers
+
+       I.A.7.    Natural gas-driven diaphragm pneumatic pumps
+
+       I.A.8.    Natural gas fired turbines
+
+       I.A.9.    Included emission activities: The following emitting activities may register
+                 for this general permit:
+
+                 I.A.9.a.   Fixed roof storage tank-related routine or predictable gas venting
+                            emissions events that are not separately permitted:
+
+                                  releasing emissions from a fixed-roof storage tank through
+                                   a storage tank thief hatch, blowdown valve, venting point,
+
+
+                                            Page 4 of 48
+                  or other access point for any routine or predictable
+                  activity, including for liquid level measurement, sampling,
+                  truck loadout, well unloading, equipment maintenance,
+                  repair, decommissioning, or other routine or predictable
+                  activity; and
+
+                 tank hot oil treatments or other tank cleaning activities.
+
+I.A.9.b.   Well-related routine or predictable gas venting emissions events
+           that are not separately permitted, including but not limited to:
+
+                 well liquids unloading;
+
+                 downhole well maintenance, including well workovers,
+                  recompletion, restimulation, reperforating, paraffin/scale
+                  removal, swabbing, and installation of artificial lift;
+
+                 well equipment maintenance at the surface;
+
+                 well plugging;
+
+                 bradenhead gas venting;
+
+                 casinghead gas venting; and
+
+                 other well-related routine or predictable gas venting
+                  emissions activities.
+
+I.A.9.c.   Pigging-related routine or predictable gas venting emissions that
+           are not separately permitted, including, but not limited to:
+
+                 pig launchers; and
+
+                 pig receivers.
+
+
+                          Page 5 of 48
+I.A.9.d.   Routine or predictable blowdowns of facility equipment or piping
+           that are not separately permitted, including but not limited to:
+
+                 pipeline venting within the facility boundary when such
+                  venting is routine or predictable;
+
+                 compressor and turbine blowdowns;
+
+                 scrubber and strainer blowdowns;
+
+                 blowdowns resulting from facility-wide (plant) and/or
+                  equipment shutdowns;
+
+                 blowdown of all other equipment (including pipelines,
+                  compressor case or cylinders, manifolds, suction bottles,
+                  discharge bottles, and vessels); and
+
+                 desiccant dehydration unit blowdowns.
+
+                       I.A.9.d.(i) Emissions resulting from blowdowns from
+                                  facility equipment or piping where the
+                                  physical volume between isolation valves is
+                                  less than 50 cubic feet are not required to
+                                  be reported or permitted with this
+                                  category.
+
+I.A.9.e.   This category DOES NOT include:
+
+              •   Emissions at a storage tank that are not listed in Section
+                  I.A.9.a. of this general permit.
+
+              •   Venting emissions from a storage tank that are prohibited
+                  by Regulation Number 7, Part B, Section II.C.2.a.
+
+
+                          Page 6 of 48
+       I.A.10.   Combustion devices, vapor recovery units, catalysts, or other Division-
+                 approved air pollution control equipment used to reduce emissions (from
+                 the emitting activities registered under this general permit) below the
+                 limits specified in Section III.
+
+I.B.   The owner or operator of any oil and gas well production facility that can comply with
+       all of the conditions described in this permit and meet all of the requirements in this
+       Section I may register for this general permit.
+
+I.C.   This general permit applies only to the well production facility and the equipment
+       described in Section I.A for which the operator has registered under this general
+       permit in the application materials submitted to the Division.
+
+I.D.   This general permit applies only to well production facilities and the equipment
+       described in Section I.A. for which the operator has registered under this general
+       permit located in an attainment area for all criteria pollutants or any marginal or
+       moderate non-attainment areas for all criteria pollutants.
+
+I.E.   This general permit may not be used for new major stationary source well production
+       facilities or modifications at existing major stationary source well production facilities
+       that are subject to Regulation Number 3, Part D Prevention of Significant
+       Deterioration (PSD) or Nonattainment New Source Review (NA NSR).
+
+I.F.   Stationary Sources that: a) became subject to Title V Operating Permit requirements
+       or became classified as an existing major stationary source for which a GP09
+       registration request was deemed complete by the Division prior to the effective date
+       (July 24, 2024) on which Northern Weld County was re-classified from moderate to
+       serious may continue to operate under this General Permit. Northern Weld County is
+       as defined in Regulation Number 7, Part A, Section II.A.3. (Adopted 12/14/2023,
+       Effective 02/14/2024).
+
+
+
+
+                                            Page 7 of 48
+I.G.   The owner or operator of the well production facility registered under this general
+       permit must file emission source specific Air Pollutant Emission Notices (APENs) with
+       the Division, as follows, for each emissions unit requiring an APEN according to the
+       requirements of Regulation Number 3, Part A, Section II.B.3.:
+
+       I.G.1.    No later than ninety (90) days following the commencement of operation of
+                 a new well production facility registered under this permit. For the purpose
+                 of this condition, commencement of operation is defined as “the date
+                 permanent production equipment is in use and product is consistently
+                 flowing to sales lines, gathering lines or storage tanks from the first
+                 producing well at the stationary source, but no later than end of well
+                 completion operations (including flowback).” (Regulation Number 3, Part A,
+                 Section I.B.15.)
+
+       I.G.2.    No later than ninety (90) days following start-up of newly registered
+                 emission units located at a facility with existing sources as defined in
+                 Regulation Number 3, Part A, Section I.B.25.
+
+I.H.   Operators must use the current Air Pollution Emission Notice forms in accordance with
+       the Source Grouping requirements in Regulation Number 3, Part A, Section II.B.4 and
+       II.B.3. (Regulation Number 3, Part B, Section III.E). Registration under this general
+       permit cannot be used to provide enforceable limitations after registration expires.
+       (Reference: Regulation Number 3, Part B, Section III.E.)
+
+       I.H.1.    Registration under this general permit expires at the earliest of the
+                 following:
+
+                 I.H.1.a.     Eighteen (18) months after the GP09 registration request is
+                              deemed complete; or
+
+
+
+
+                                            Page 8 of 48
+         I.H.1.b.    After issuance of all general permits and/or individual
+                     construction permits for those emission points covered under this
+                     general permit that are required to obtain a permit pursuant to
+                     Regulation Number 3, Parts A and B; or
+
+         I.H.1.c.    Six (6) months after the GP09 registration request is deemed
+                     complete if the owner or operator has not commenced
+                     construction of the stationary source. (Reference: Regulation
+                     Number 3, Part A, Section I.B.11)
+
+I.H.2.   For emission points not yet covered by a permit issued by the Division other
+         than this general permit, requirements for those emission points contained
+         in this general permit continue to apply until:
+
+         I.H.2.a.    the date of issuance of an emission source specific construction
+                     permit; or
+
+         I.H.2.b.    the date of approval by the Division of a complete emission point
+                     specific general permit registration request; or
+
+         I.H.2.c.    expiration of the registration under this general permit as defined
+                     above.
+
+I.H.3.   The Division may grant extensions upon request of the owner or operator.
+         The owner or operator must request an extension prior to the expiration of
+         the general permit registration. If an extension has been requested but not
+         yet granted by the Division at the time of expiration, registration under this
+         general permit will be extended until such time as the Division denies the
+         extension request or until the revised expiration date granted by the
+         Division.
+
+
+
+
+                                    Page 9 of 48
+I.I.    The owner or operator must notify the Air Pollution Control Division (the Division) by
+        submitting a Notice of Startup form to the Division.
+
+        I.I.1.    No later than fifteen (15) days following the commencement of operation of
+                  the well production facility registered under this permit. For the purpose of
+                  this condition, commencement of operation is defined as “the date
+                  permanent production equipment is in use and product is consistently
+                  flowing to sales lines, gathering lines or storage tanks from the first
+                  producing well at the stationary source, but no later than end of well
+                  completion operations (including flowback).” (Regulation Number 3, Part A,
+                  Section I.B.15.
+
+        I.I.2.    No later than fifteen (15) days following start-up of newly registered
+                  emission units located at a facility with existing sources as defined in
+                  Regulation Number 3, Part A, Section I.B.25.
+
+        The NOS must be submitted using the Division’s online submission tool on the
+        Division’s self-certification webpage at https://cdphe.colorado.gov/apens-and-air-
+        permits/air-permit-self-certification. Failure to notify the Division of startup of the
+        permitted source is a violation of Air Quality Control Commission (AQCC) Regulation
+        Number 3, Part B, Section III.G.1. and can result in the revocation of the permit.
+
+II.     General Operating Conditions
+
+II.A.   Air pollution control equipment may be used to comply with the emission limits and
+        performance standards required in this general permit.
+
+II.B.   For combustion devices and air pollution control equipment subject to a no visible
+        emissions standard in Regulation Number 7, visible emissions must not exceed any
+        period or periods of duration greater than or equal to one minute in any fifteen-
+        minute period during normal operation. When owners or operators measure opacity
+
+
+
+                                           Page 10 of 48
+        for this standard, EPA Method 22 must be used. (Reference: Regulation Number 7,
+        Part B, Sections II.A.45. and II.B.2.b.)
+
+II.C.   For air pollution control equipment not subject to a no visible emissions standard in
+        Regulation Number 7, the owner or operator must comply with opacity requirements
+        in Regulation Number 1, Section II.A., as applicable per the most current version of
+        Regulation Number 1.
+
+II.D.   If a combustion device is used to comply with the requirements of this permit, the
+        owner or operator must ensure the combustion device meets the following
+        requirements.
+
+        II.D.1.   The combustion device must have a design destruction efficiency of at least
+                  98% for hydrocarbons;
+
+        II.D.2.   Except as provided in Condition IV.J.1.e., the combustion device must be
+                  enclosed;
+
+        II.D.3.   The combustion device must be equipped with an operational auto-igniter;
+
+        II.D.4.   The combustion device must have no visible emissions during normal
+                  operations, as defined under Regulation Number 7, Part B, Section II.A.45.;
+                  and
+
+        II.D.5.   The combustion device must be designed so that an observer can, by means
+                  of visual observation from the outside of the enclosed flare or combustion
+                  device, or by other convenient means approved by the Division, determine
+                  whether it is operating properly.
+
+II.E.   This well production facility is subject to the odor requirements of Regulation Number
+        2.
+
+
+
+
+                                            Page 11 of 48
+III.   Annual Emission Limitation Requirements
+
+III.A. Equipment Specific Emission Limitations
+
+       III.A.1.   The maximum allowable emissions from each emission point registered
+                  under this general permit must not exceed the requested federally
+                  enforceable annual emission limitations (tons per year) as listed on the
+                  general permit registration approval letter, or if an approval letter has not
+                  been issued, as certified by the owner or operator in the APEN included
+                  with the general permit registration. (Reference: Regulation Number 3, Part
+                  B, Sections II.A.4. and II.A.7.)
+
+       III.A.2.   The owner or operator must operate and maintain the equipment registered
+                  under the general permit with the air pollution control equipment as listed
+                  in the general permit registration to reduce emissions to less than or equal
+                  to the emissions limits established in this permit. (Reference: Regulation
+                  Number 3, Part B, Sections II.A.4. and II.A.7.)
+
+III.B. Facility-Wide Emission Limitations
+
+       III.B.1.   The maximum allowable emissions of criteria air pollutants from all
+                  emission points at the stationary source are federally enforceable and must
+                  not exceed the following limitations: (Reference: Regulation Number 3, Part
+                  B, Sections II.A.4. and II.A.7.)
+
+                            Particulate Matter (PM):                          90.0 tons per year
+
+                            Particulate Matter (PM10):                        90.0 tons per year
+
+                            Particulate Matter (PM2.5):                       90.0 tons per year
+
+                            Sulfur Dioxide (SO2):                             90.0 tons per year
+
+
+
+                                            Page 12 of 48
+                           Nitrogen Oxides (NOx):                           90.0 tons per year
+
+                           Carbon Monoxide (CO):                            90.0 tons per year
+
+                           Volatile Organic Compounds (VOC):                90.0 tons per year
+
+      III.B.2.   The maximum allowable emissions of hazardous air pollutants (HAPs) from
+                 all emissions points at the stationary source are federally enforceable and
+                 must not exceed the following limitations: (Reference: Regulation Number
+                 3, Part B, Sections II.A.4. and II.A.7.)
+
+                           Each Individual HAP:                                8.0 tons per year
+
+                           Combined total of all HAPs:                      20.0 tons per year
+
+IV.   Other Emission Limitations and Operation and Maintenance Requirements
+
+IV.A. Facility-Wide Requirements
+
+      IV.A.1.    All hydrocarbon liquids and produced water collection, storage, processing
+                 and handling operations, regardless of size, must be designed, operated and
+                 maintained to minimize leakage of volatile organic compounds and other
+                 hydrocarbons to the atmosphere to the extent reasonably practicable.
+                 (Reference: Regulation Number 7, Part B, Section II.B.1.a.)
+
+      IV.A.2.    In any ozone nonattainment or ozone attainment/maintenance area, all
+                 hydrocarbon liquids and produced water collection, storage, processing, and
+                 handling operations, regardless of size, must be designed, operated and
+                 maintained so as to minimize leakage of volatile organic compounds to the
+                 atmosphere to the maximum extent practicable. (Reference: Regulation
+                 Number 7, Part B, Section I.C.1.b.)
+
+
+
+
+                                           Page 13 of 48
+IV.A.3.   The owner or operator must maintain documentation clearly outlining
+          applicable requirements of New Source Performance Standard (NSPS) and
+          Maximum Achievable Control Technology (MACT) for equipment registered
+          under this permit. The documentation must be located on-site or at a local
+          field office with well production facility responsibility. Records may be kept
+          in either electronic or hard copy format provided that they can be promptly
+          supplied to the Division upon request. Potentially applicable requirements
+          that may apply include, but are not limited to:
+
+          IV.A.3.a. NSPS GG, Standards of Performance for Stationary Gas Turbines
+                    (Reference: 40 C.F.R Part 60, Subparts A and GG and Regulation
+                    Number 6, Part A, Subparts A and GG)
+
+          IV.A.3.b. NSPS Kb, Standards of Performance for Volatile Organic Liquid
+                    Storage Vessels for which construction, reconstruction or
+                    modification commenced after July 23, 1984. (Reference: 40
+                    C.F.R Part 60, Subparts A and Kb and Regulation Number 6, Part
+                    A, Subparts A and Kb)
+
+          IV.A.3.c. NSPS JJJJ, Standards of Performance for Spark Ignition Internal
+                    Combustion Engines (Reference: 40 C.F.R. Part 60, Subparts A and
+                    JJJJ)
+
+          IV.A.3.d. NSPS KKKK, Standards of Performance for Stationary Combustion
+                    Turbines (Reference: 40 C.F.R Part 60, Subparts A and KKKK and
+                    Regulation Number 6, Part A, Subparts A and KKKK)
+
+          IV.A.3.e. NSPS OOOO, Standards of Performance for Crude Oil and Natural
+                    Gas Production, Transmission, and Distribution (Reference: 40
+                    C.F.R. Part 60, Subparts A and OOOO and Regulation Number 6,
+                    Part A, Subparts A and OOOO)
+
+
+                                  Page 14 of 48
+                IV.A.3.f. NSPS OOOOa, Standards of Performance for Crude Oil and Natural
+                          Gas Production, Transmission, and Distribution (Reference: 40
+                          C.F.R. Part 60, Subparts A and OOOOa)
+
+                IV.A.3.g. NSPS OOOOb, Standards of Performance for Crude Oil and Natural
+                          Gas Production, Transmission, and Distribution (Reference: 40
+                          C.F.R. Part 60, Subparts A and OOOOb)
+
+                IV.A.3.h. MACT HH, National Emissions Standards for Hazardous Air
+                          Pollutants for Source Categories from Oil and Natural Gas
+                          Production Facilities (Reference: 40 C.F.R Part 63, Subparts A and
+                          HH and Regulation Number 8, Part E, Subpart A and HH)
+
+                IV.A.3.i. MACT YYYY, National Emission Standards for Hazardous Air
+                          Pollutants for Stationary Combustion Turbines (Reference: 40
+                          C.F.R. Part 63, Subparts A and YYYY and Regulation Number 8,
+                          Part D, Subparts A and YYYY)
+
+                IV.A.3.j. MACT ZZZZ, National Emission Standards for Hazardous Air
+                          Pollutants for Stationary Reciprocating Internal Combustion
+                          Engines (Reference: 40 C.F.R. Part 63, Subparts A and ZZZZ and
+                          Regulation Number 8, Part D, Subparts A and ZZZZ)
+
+IV.B. Natural Gas Fired Engine Requirements
+
+      IV.B.1.   The owner or operator of natural gas fired reciprocating internal
+                combustion engines registered under this permit must be operated such that
+                emissions do not exceed the emission standards contained in the table
+                below. If the engine is subject to a more stringent applicable performance
+                standard for a specific pollutant, the most stringent performance standard
+                will apply. (Reference: Regulation Number 3, Part B, Section III.E.)
+
+
+
+                                        Page 15 of 48
+          Table 1: Emission Standards (g/hp-hr) for Rich Burn and Lean Burn Engines
+
+
+               Engine Design (horsepower              NOx     CO          VOC
+               (hp))
+
+
+              Rich Burn (Greater than or              2.0     4.0         1.0
+              equal to 100 and less than 500)
+
+
+              Lean Burn (Greater than or              2.0     4.0         1.0
+              equal to 100 and less than 500)
+
+
+              Rich Burn (Greater than or              0.7     1.5         1.0
+              equal to 500)
+
+
+              Lean Burn (Greater than or              2.0     1.5         0.7
+              equal to 500)
+
+
+IV.B.2.   The owner or operator of natural gas fired reciprocating internal
+          combustion engines that are greater than or equal to 100 hp and
+          constructed in or relocated to the state of Colorado from another state on
+          or after the applicable date below must be operated such that emissions do
+          not exceed the emission standards in the table below as expressed in units
+          of grams per horsepower-hour (g/hp-hr). (Reference: Regulation Number
+          26, Part B, Section I.D.)
+
+          Table 2: Emission Standards (g/hp-hr) for Rich Burn and Lean Burn Engines
+
+
+
+
+                                      Page 16 of 48
+           Maximum               Construction         NOx         CO          VOC
+           Engine HP             or Relocation
+                                 Date
+
+
+             Greater than or    January 1, 2011      1.0         2.0         0.7
+             equal to 100 and
+             less than 500
+
+
+             Greater than or    July 1, 2010         1.0         2.0         0.7
+             equal to 500
+
+
+IV.B.3.   Engines registered to operate in accordance with the provisions of this
+          general permit with a manufacturer’s design rate greater than or equal to
+          1,000 horsepower must not exceed the emission standards in Regulation
+          Number 26, Part B, Section I.D.5. as applicable per the most current version
+          of Regulation Number 26.
+
+IV.B.4.   Rich burn engines with a manufacturer’s design rate greater than or equal
+          to 100 horsepower but less than 1000 horsepower and lean burn engines
+          with a manufacturer’s design rate greater than or equal to 250 horsepower
+          but less than 1000 horsepower must comply with the requirements in
+          Regulation Number 26, Part B, Section I.D.6., as applicable per the most
+          current version of Regulation Number 26.
+
+IV.B.5.   The owner or operator of any rich burn natural gas-fired reciprocating
+          internal combustion engine with a nameplate rating of 500 horsepower or
+          greater located in an ozone nonattainment area must install and operate
+
+
+
+
+                                  Page 17 of 48
+          the engine with a non-selective catalyst reduction (NSCR) system and an air
+          fuel controller. (Reference: Regulation Number 26, Part B, Section I.B.1.)
+
+IV.B.6.   The owner or operator of any lean burn natural gas-fired reciprocating
+          internal combustion engine with a nameplate rating of 500 horsepower or
+          greater located in an ozone nonattainment area must install and operate
+          the engine with an oxidation catalyst. (Reference: Regulation Number 26,
+          Part B, Section I.B.2.)
+
+IV.B.7.   These general operation and maintenance requirements apply to all natural
+          gas spark ignition engines at the well production facility if controlled by air
+          pollution control equipment.
+
+          IV.B.7.a. Each engine and associated catalytic control device, if applicable,
+                    must be maintained and operated according to the
+                    manufacturer’s scheduled maintenance guide or equivalent. A
+                    company may establish its own equivalent maintenance schedule
+                    providing it achieves efficient engine operation and meets or
+                    exceeds the performance standards of this permit.
+
+          IV.B.7.b. A copy of maintenance schedules must be kept including the date
+                    and description of maintenance.
+
+          IV.B.7.c. If maintenance activities or actions are dependent upon hours of
+                    operation, then engine operating hours must be tracked and
+                    recorded. If a method other than hours of operation is used, then
+                    the tracking method must be recorded.
+
+          IV.B.7.d. For each rich burn engine controlled with a NSCR must be
+                    equipped with an air-fuel ratio controller (AFRC). Each AFRC must
+                    be maintained per the manufacturer’s recommended maintenance
+
+
+
+                                    Page 18 of 48
+         or equivalent, including replacement of the oxygen sensor as
+         necessary for oxygen sensor-based controllers.
+
+IV.B.7.e. For each engine equipped with a catalytic emission control
+         device, the catalyst must be cleaned, reconditioned, and replaced
+         at least as often as the manufacturer’s recommended
+         maintenance schedule or equivalent.
+
+IV.B.7.f. For each engine equipped with a catalytic emission control
+         device, the catalyst inlet temperature must be recorded weekly,
+         unless a more stringent requirement is specified in Regulation
+         Number 26, Part B, Section I.D.5.e.(ii). If the temperature is
+         outside of the range specified below, corrective action must be
+         taken and documented.
+
+         IV.B.7.f.(i)   For a rich burn engine with a non-selective catalytic
+                        reduction (NSCR) emission control device, the
+                        temperature into the catalyst must be between
+                        750°F and 1250°F.
+
+         IV.B.7.f.(ii) For a lean burn engine with an oxidation catalyst
+                        emission control device, the temperature into the
+                        catalyst must be between 450°F and 1350°F.
+
+IV.B.7.g. The pressure drop across the catalyst bed must be measured and
+         recorded monthly. The monthly pressure drop values must not
+         deviate by more than +/- 2 inches of water column of the most
+         recent baseline value established.
+
+         IV.B.7.g.(i)   If the pressure drop value is out of range, corrective
+                        action must be taken and documented within 15
+
+
+
+                        Page 19 of 48
+             days of the measurement. The owner or operator
+             must perform one or more of the following:
+
+             ■ The owner or operator may artificially load the
+                engine to within +/- 10 percent of the most
+                recent baseline load value established. If the
+                pressure drop is then within range, the pressure
+                drop and load values must be documented and no
+                further corrective action is required;
+
+             ■ The owner or operator may forego maintenance
+                activities and perform a portable analyzer test to
+                establish a new pressure drop baseline; or
+
+             ■ Other corrective action as the owner or operator
+                deems appropriate.
+
+IV.B.7.g.(ii) The baseline pressure drop must be established by
+             recording the engine load and pressure drop across
+             the catalyst during engine testing. The baseline
+             pressure drop must be periodically reestablished
+             upon the following occurrences:
+
+             ■ During each initial compliance test required by
+                Section V. If historical initial compliance test
+                data is used to fulfill Section V and baseline
+                pressure drop was not recorded during the
+                compliance test, the operator may defer
+                establishing the baseline pressure drop until the
+                first periodic performance test required by
+                Section VI.D.4.
+
+
+              Page 20 of 48
+                                        ■ During each periodic performance test required
+                                            by Section VI.E.4.
+
+                                        ■ Within the first thirty (30) days of engine
+                                            operation from the date that the catalyst is
+                                            cleaned, reconditioned, or replaced.
+
+      IV.B.8.   Engines subject to the requirements of Regulation Number 26, Part B,
+                Section II.A.1. (requirements for major sources of NOx) must comply with
+                all applicable requirements of Regulation Number 26, Part B, Section II.A.
+
+IV.C. Storage Tank Requirements
+
+      IV.C.1.   The owner or operator of storage tanks must comply with the applicable
+                emission control and recordkeeping requirements in Regulation Number 7,
+                Part B, Sections II.C.1. and II.C.4., including, without limitation:
+
+                IV.C.1.a. The owner or operator of storage tanks with uncontrolled actual
+                          emissions greater than or equal to two (2) tons per year VOC
+                          based on a rolling twelve-month total must collect and control
+                          emissions from each storage tank by routing emissions to and
+                          operating air pollution control equipment that achieves a
+                          hydrocarbon control efficiency of 95%. (Reference: Regulation
+                          Number 7, Part B, Section II.C.1.c.)
+
+                IV.C.1.b. The owner or operator must follow the inspection requirements of
+                          Regulation Number 7, Part B, Section II.C.1.d.
+
+                IV.C.1.c. The owner or operator must comply with the storage tank system
+                          measurement system requirements of Regulation Number 7, Part
+                          B, Section II.C.4.
+
+
+
+                                         Page 21 of 48
+IV.C.2.   The owner or operator of storage tanks required to operate and maintain air
+          pollution control equipment by Regulation Number 7, Part B, Sections I.D.
+          or II.C.1. must comply with the requirements of Regulation Number 7, Part
+          B, Sections II.C.2. and II.C.3.
+
+IV.C.3.   In any ozone nonattainment or ozone attainment/maintenance area, the
+          owner or operator of storage tanks containing condensate must comply with
+          all applicable requirements of Regulation Number 7, Part B, Sections I.C.,
+          I.D., I.E., and I.F.
+
+IV.C.4.   These general operation and maintenance requirements apply to all storage
+          tanks equipped with air pollution control equipment at the well production
+          facility.
+
+          IV.C.4.a. Where present, thief hatch seals must be inspected for integrity
+                      monthly and replaced as necessary. Inspections may be completed
+                      with Approved Instrument Monitoring Method (AIMM) equipment,
+                      to avoid unnecessary openings of the thief hatch.
+
+          IV.C.4.b. Where present, thief hatch covers must be properly rated and
+                      properly sealed.
+
+          IV.C.4.c. Where present, thief hatch springs must be inspected semi-
+                      annually to ensure proper rating and function.
+
+          IV.C.4.d. If the separator immediately upstream of the tanks is equipped
+                      with a dump valve, inspect the valve weekly to ensure it is not
+                      stuck open and not visibly clogged.
+
+
+
+
+                                    Page 22 of 48
+               IV.C.4.e. Operators must retain records of these inspections, including the
+                         date, method (e.g. AIMM v. physical inspection), findings, and
+                         corrective action taken, if any.
+
+IV.D. Hydrocarbon Loadout Requirements
+
+     IV.D.1.   Owners or operators of well production facilities with a hydrocarbon liquids
+               loadout to transport vehicles throughput of greater than or equal to 5,000
+               barrels per year on a rolling 12-month basis must control emissions from the
+               loadout of hydrocarbon liquids from controlled storage tanks to transport
+               vehicles by using (a) submerged fill and (b) a vapor collection and return
+               system and/or air pollution control equipment. Compliance with this section
+               must be achieved in accordance with the following schedule: (Reference:
+               Regulation Number 7, Part B, Section II.C.5.a.)
+
+               IV.D.1.a. Facilities constructed or modified on or after May 1, 2020, must
+                         be in compliance by commencement of operation.
+
+               IV.D.1.b. Facilities constructed before May 1, 2020, must be in compliance
+                         by May 1, 2021.
+
+               IV.D.1.c. Facilities not subject to Conditions IV.D.1.a or IV.D.1.b that
+                         exceed the hydrocarbon liquids loadout to transport vehicles
+                         throughput of greater than or equal to 5,000 barrels per year on a
+                         rolling 12-month basis must control emissions from loadout upon
+                         exceeding the loadout threshold.
+
+     IV.D.2.   Owners or operators that are subject to Regulation Number 7, Part B,
+               Section II.C.5. must comply with loadout observations and operator training
+               requirements in Regulation Number 7, Part B, Section II.C.5.a.(iv).
+
+
+
+
+                                       Page 23 of 48
+                Compliance with this section must be achieved in accordance with the
+                schedule set forth in Regulation Number 7, Part B, Section II.C.5.a.(i).
+
+      IV.D.3.   Owners or operators that are subject to Regulation Number 7, Part B,
+                Section II.C.5. must comply with the requirements in Regulation Number 7,
+                Part B, Section II.C.5.a.(iii). Compliance with this section must be achieved
+                in accordance with the schedule set forth in Regulation Number 7, Part B,
+                Section II.C.5.a.(i).
+
+      IV.D.4.   Owners or operators that are subject to Regulation Number 7, Part B,
+                Section II.C.5. must retain records for at least two (2) years and make such
+                records available to the Division upon request. Compliance with this section
+                must be achieved in accordance with the schedule set forth in Regulation
+                Number 7, Part B, Section II.C.5.a.(i).
+
+      IV.D.5.   Air pollution control equipment used to comply with Regulation Number 7,
+                Part B, Section II.C.5. must comply with Regulation Number 7, Part B,
+                Section II.B., and achieve a hydrocarbon control efficiency of 95% in
+                accordance with Regulation Number 7, Part B, Section II.C.5.a.(vi).
+
+      IV.D.6.   Storage tanks must operate without venting at all times during loadout.
+                Compliance with this section must be achieved in accordance with the
+                schedule set forth in Regulation Number 7, Part B, Section II.C.5.a.(ii).
+
+IV.E. Separator Venting Requirements
+
+      IV.E.1.   The owner or operator of a separator covered by this permit must ensure
+                that gas coming off the separator, produced during normal operation from
+                any newly constructed, hydraulically fractured, or recompleted oil and gas
+                well, must either be routed to a gas gathering line or controlled from the
+                date of first production by air pollution control equipment that achieves an
+
+
+
+                                        Page 24 of 48
+                average hydrocarbon control efficiency of 95%. (Reference: Regulation
+                Number 7, Part B, Section II.F.)
+
+      IV.E.2.   The owner or operator must continuously monitor and record the volumetric
+                flow rate of natural gas emitted from the separator(s) using a flow meter.
+                For this requirement, records do not include natural gas delivered to a gas
+                gathering line. Total volumetric flow rate of natural gas must be recorded
+                on a monthly basis. The owner or operator must follow manufacturer
+                recommendations for the operation, maintenance, and calibration of the
+                flow meter.
+
+      IV.E.3.   These general operation and maintenance requirements apply to all
+                separators equipped with air pollution control equipment at the well
+                production facility. The owner or operator of separators controlled by air
+                pollution control equipment must inspect the separator on a weekly basis
+                including monitoring and documenting the operating pressure of the
+                separator.
+
+IV.F. Fugitive Component Leak Emissions Requirements
+
+      IV.F.1.   The owner or operator of a well production facility located in the 8-hour
+                ozone control area (8-hour Ozone Control Area is as defined in Regulation
+                Number 7, Part A, Section II.A.1. (Adopted 12/14/2023, Effective
+                02/14/2024)) must comply with leak detection and repair requirements,
+                including but not limited to: monitoring, repair, re-monitoring,
+                recordkeeping and reporting contained in Regulation Number 7, Part B,
+                Section I.L.
+
+      IV.F.2.   The owner or operator of a well production facility must comply with leak
+                detection and repair, including but not limited to: monitoring, repair, re-
+                monitoring, recordkeeping and reporting contained in Regulation Number 7,
+
+
+                                        Page 25 of 48
+                Part B, Section II.E. Where the requirements of Regulation Number 7, Part
+                B, Sections I.L. and II.E. overlap, the more stringent will control.
+
+IV.G. Natural Gas-Driven Diaphragm Pneumatic Pumps Requirements
+
+      IV.G.1.   The owner or operator of natural gas-driven diaphragm pneumatic pumps,
+                as defined in Regulation Number 7, Part B, Section I.B.20., located at a well
+                production facility in an ozone nonattainment or ozone
+                attainment/maintenance area must comply with applicable requirements of
+                Regulation Number 7, Part B, Section I.K., including but not limited to:
+                monitoring, repair, re-monitoring, recordkeeping and reporting
+                requirements. Natural gas-driven diaphragm pneumatic pumps that are in
+                operation during any period of time during a calendar day less than 90 days
+                per calendar year are not subject to Section IV.G.1. (Reference: Regulation
+                Number 7, Part B, Section I.K.)
+
+                IV.G.1.a. The owner or operator of each natural gas-driven pneumatic
+                          pump must reduce volatile organic compound emissions from the
+                          natural gas-driven pneumatic pump by 95% if it is technically
+                          feasible to route emissions to an existing control device or process
+                          at the well production facility. If the air pollution control
+                          equipment available onsite is unable to achieve a 95% emission
+                          reduction and it is not technically feasible to route the emissions
+                          to a process at the well production facility, the owner or operator
+                          must still route the natural gas-driven pneumatic pump emissions
+                          to the existing control device.
+
+                IV.G.1.b. If the owner or operator subsequently installs a control device or
+                          it becomes technically feasible to route the emissions to a
+                          process, the owner or operator must reduce volatile organic
+
+
+
+                                         Page 26 of 48
+          compound emissions from the natural gas-driven pneumatic pump
+          by 95% within thirty (30) days of startup of the control device or
+          of the feasibility of routing emissions to a process at the well
+          production facility.
+
+IV.G.1.c. The owner or operator is not required to control natural gas-
+          driven pneumatic pump emissions if, through an engineering
+          assessment by a qualified professional engineer, routing a natural
+          gas-driven pneumatic pump to a control device or process at the
+          well production facility is shown to be technically infeasible.
+
+IV.G.1.d. If the owner or operator uses a control device or routes emissions
+          to a process to reduce emissions, the owner or operator must
+          connect the natural gas-driven pneumatic pump through a closed
+          vent system that routes the natural gas-driven pneumatic pump
+          emissions to the process or control device.
+
+IV.G.1.e. The owner or operator must conduct annual visual inspections of
+          the closed vent system for defects that could result in air
+          emissions. Defects of the closed vent system include, but are not
+          limited to, visible cracks, holes, gaps in piping, loose connections,
+          liquid leaks, or broken or missing caps or other closure devices.
+
+IV.G.1.f. The owner or operator must conduct annual EPA Method 21
+          inspections of the closed vent system to determine whether the
+          closed vent system operates with VOC emissions less than 500
+          ppm.
+
+IV.G.1.g. In the event that a defect that could result in emissions or leak is
+          detected, the owner or operator must make a first attempt to
+          repair no later than five (5) days after detecting the defect or
+
+
+                         Page 27 of 48
+         leak and complete repair no later than thirty (30) days after
+         detecting the defect or leak.
+
+IV.G.1.h. Owners or operators may delay inspection or repair of a closed
+         vent system if:
+
+                IV.G.1.h.(i) Repair is technically infeasible without a
+                              shutdown. If shutdown is required, a repair
+                              attempt must be made during the next
+                              scheduled shutdown and final repair
+                              completed within two (2) years after
+                              discovery.
+
+                IV.G.1.h.(ii) The closed vent system is unsafe to inspect or
+                              repair because personnel would be exposed to
+                              an immediate danger as a consequence of
+                              completing the inspection or repair.
+
+                IV.G.1.h.(iii) The closed vent system is difficult to inspect
+                              or repair because personnel must be elevated
+                              more than two (2) meters above a supported
+                              surface or are unable to inspect or repair via a
+                              wheeled scissor-lift or hydraulic type scaffold
+                              that allows access up to 7.6 meters (25 feet)
+                              above the ground.
+
+               IV.G.1.h.(iv) The closed vents system is inaccessible to
+                              inspect or repair because the closed vent
+                              system is buried, insulated, or obstructed by
+                              equipment or piping that prevents access.
+
+
+
+
+                       Page 28 of 48
+IV.G.2.   As an alternative to the inspection, repair, and recordkeeping provisions in
+          IV.G.1.e. through IV.G.1.h., IV.G.1.e. and IV.G.1.f., the owner or operator
+          may inspect, repair, and document the closed vent system in accordance
+          with the leak detection and repair program in Condition IV.F.1, including
+          the inspection frequency.
+
+IV.G.3.   As an alternative to the emission control, inspection, repair, and
+          recordkeeping provisions described in Conditions IV.G.3 through IV.G.4, the
+          owner or operator may comply with natural gas-driven pneumatic pump
+          emission control, monitoring, recordkeeping, and reporting requirements of
+          New Source Performance Standard in 40 CFR Part 60 (November 16, 2017).
+
+IV.G.4.   The owner or operator of pneumatic pumps located at a well production
+          facility in an ozone nonattainment or ozone attainment/maintenance area
+          must maintain the following records for at least five (5) years and make
+          records available to the Division upon request. (Reference: Regulation
+          Number 7, Part B, Section I.K.3.)
+
+          IV.G.4.a. Identification of each natural gas-driven pneumatic pump;
+
+          IV.G.4.b. For natural gas-driven diaphragm pneumatic pumps in operation
+                    less than 90 days per calendar year, records of the days of
+                    operation each calendar year;
+
+          IV.G.4.c. Records of control devices designed to achieve less than 95%
+                    emission reduction, including an evaluation or manufacturer
+                    specifications indicating the percentage reduction the control
+                    device is designed to achieve;
+
+          IV.G.4.d. Records of the engineering assessment and certification by a
+                    qualified professional engineer that routing natural gas-driven
+
+
+
+                                  Page 29 of 48
+                               pneumatic pump emissions to a control device or process is
+                               technically infeasible;
+
+                  IV.G.4.e. Each closed vent system inspection and any resulting responsive
+                               actions; and
+
+                  IV.G.4.f. Each closed vent system on the delay of inspection or repair list,
+                               the reason for and duration of the delay of inspection or repair,
+                               and the schedule for inspecting or repairing such closed vent
+                               system.
+
+IV.H. Natural Gas-Driven Pneumatic Controllers Requirements
+
+        IV.H.1.   The owner or operator of natural gas-driven pneumatic controllers located
+                  in an ozone nonattainment or ozone attainment/maintenance area must
+                  comply with Regulation Number 7, Part B, Sections III.C., III.D., III.E., and
+                  III.F. This includes, but is not limited, to: monitoring, repair, re-monitoring,
+                  recordkeeping and reporting requirements.
+
+IV.I.   Natural Gas Fired Turbine Requirements
+
+        IV.I.1.   The owner or operator of a natural gas fired turbine at a well production
+                  facility must comply with the particulate matter and sulfur dioxide emission
+                  regulations of Regulation Number 1 including, but not limited to, the
+                  following:
+
+                  IV.I.1.a. Emissions of particulate matter in the flue gases must not exceed
+                               the requirements listed in Regulation Number 1, Section III.A.1.
+
+                  IV.I.1.b. Emissions of sulfur dioxide must not exceed the combustion
+                               turbine limitations listed in Regulation Number 1. For existing
+                               turbines refer to the requirements listed in Regulation Number 1,
+
+
+                                              Page 30 of 48
+                          Section VI.A.3.c and for new turbines refer to the requirements
+                          listed in Regulation Number 1, Section VI.B.4.c.
+
+      IV.I.2.   The owner or operator must follow manufacturer recommendations for the
+                operation and maintenance of the turbine and its air pollution control
+                equipment. These schedules and practices, as well as all maintenance
+                records showing compliance with these recommendations, must be made
+                available to the Division upon request.
+
+IV.J. Routine or Predictable Gas Venting Emissions Requirements
+
+      IV.J.1.   For downhole well maintenance, well liquids unloading events, and well
+                plugging activities:
+
+                IV.J.1.a. Owners or operators must use best management practices to
+                          minimize hydrocarbon emissions and the need for emissions
+                          from the well associated with downhole well maintenance, well
+                          liquids unloading, and well plugging, unless emitting is
+                          necessary for safety. (Regulation Number 7, Part B, Section
+                          II.G.1.)
+
+                IV.J.1.b. Prior to January 1, 2023, during liquids unloading events, any
+                          means of creating differential pressure must first be used to
+                          attempt to unload the liquids from the well without emitting. If
+                          these methods are not successful in unloading the liquids from
+                          the well, the well may emit in order to create the necessary
+                          differential pressure to bring the liquids to the surface.
+                          (Regulation Number 7, Part B, Section II.G.1.a)
+
+                IV.J.1.c. The owner or operator must be present on-site during any
+                          planned downhole well maintenance, well liquids unloading, or
+
+
+
+                                        Page 31 of 48
+         well plugging event and must ensure that any emissions from
+         the well associated with the event are limited to the maximum
+         extent practicable. (Regulation Number 7, Part B, Section
+         II.G.1.b)
+
+IV.J.1.d. Beginning January 1, 2023, for all downhole well maintenance
+         and well liquids unloading activities with emissions to
+         atmosphere, owners or operators must, consistent with well site
+         conditions and good engineering practices (Regulation Number
+         7, Part B, Section II.G.1.c.):
+
+         IV.J.1.d.(i)   Use best engineering practices in the design and
+                        construction of oil and gas wells and well
+                        production facilities that commence operation
+                        after January 1, 2023, to minimize the need for
+                        well liquids unloading with emissions to
+                        atmosphere and other downhole well maintenance
+                        as the well ages.
+
+         IV.J.1.d.(ii) Attempt to create differential pressure to unload
+                        the liquids from the well without emitting.
+
+         IV.J.1.d.(iii) Monitor wellhead pressure and/or flow rate of the
+                        vented natural gas.
+
+         IV.J.1.d.(iv) Equalize the wellhead pressure with the
+                        production separator pressure prior to conducting
+                        unloading, swabbing, or maintenance activities,
+                        when practicable.
+
+
+
+
+                        Page 32 of 48
+                   IV.J.1.d.(v) Close wellhead vents to the atmosphere or
+                                 otherwise end direct emission of natural gas to
+                                 atmosphere as soon as practicable.
+
+                   IV.J.1.d.(vi) Minimize emissions to atmosphere from well liquids
+                                 unloading and well swabbing, through the
+                                 installation, use, and optimization of artificial lift,
+                                 such as plunger lift with smart automation, except
+                                 as provided in Regulation Number 7, Part B,
+                                 Sections II.G.1.c.(vi)(A) through II.G.1.c.(vi)(D).
+
+          IV.J.1.e. Beginning January 1, 2023, unless exempted in Regulation
+                   Number 7, Part B, Sections II.G.1.d.(i) or II.G.1.d.(ii), owners or
+                   operators must use capture and recovery techniques or install
+                   and use a control device to achieve at least 95% control of
+                   hydrocarbon emissions during well liquids unloading and well
+                   swabbing operations. Notwithstanding any provision in
+                   Regulation Number 7, Part B, Section II.B. to the contrary,
+                   owners or operators may use open flares and portable
+                   combustion devices to comply with this section. (Regulation
+                   Number 7, Part B, Section II.G.1.d.)
+
+          IV.J.1.f. The owner or operator must comply with the Recordkeeping and
+                   Reporting requirements of Regulation Number 7, Part B,
+                   Sections II.G.2. and II.G.3.
+
+IV.J.2.   The owner or operator must use best management practices to minimize
+          hydrocarbon emissions during, or to reduce the frequency of, routine or
+          predictable gas venting emissions events.
+
+
+
+
+                                 Page 33 of 48
+          IV.J.2.a. The owner and operator must develop and maintain a
+                    description of best management practices implemented to
+                    minimize hydrocarbon emissions during, or to reduce the
+                    frequency of, routine or predictable gas venting events covered
+                    by this permit. The description must also include how those best
+                    management practices are implemented and performed.
+
+IV.J.3.   The owner or operator must perform routine or predictable gas venting
+          emissions activities between October 1 and April 30, when practicable.
+
+IV.J.4.   The owner or operator must avoid performing routine or predictable gas
+          venting emissions activities on Ozone Action Days, when practicable.
+          Ozone Action Day advisories are published by the Colorado Department of
+          Public Health and Environment.
+
+IV.J.5.   The owner or operator, or authorized third party representative, must:
+
+          IV.J.5.a. Remain on site while a storage tank thief hatch is open if there
+                    are liquids in the tank, if the thief hatch was opened to perform
+                    routine or predictable emitting activities; and
+
+          IV.J.5.b. Minimize the duration of time the thief hatch is open during
+                    activities to determine the quality and/or quantity of storage
+                    tank contents.
+
+IV.J.6.   For pigging-related activities, the owner or operator must install, operate
+          and maintain a liquids handling system to remove any accumulated liquid
+          prior to pig receiver depressurization.
+
+IV.J.7.   For equipment blowdowns, the owner or operator must avoid blowing
+          down the equipment completely to ambient pressure, where practicable.
+
+
+
+                                  Page 34 of 48
+       IV.J.8.   Where applicable, Conditions IV.J.1 through IV.J.7. fulfill the
+                 requirements to apply Reasonably Available Control Technology of
+                 Regulation Number 3, Part B, Section III.D.2.
+
+V.     Testing and Monitoring Requirements
+
+V.A.   Testing requirements
+
+       V.A.1.    The owner or operator of any flare or combustion device used to meet the
+                 requirements of this permit must visually check for, on a weekly basis, the
+                 presence or absence of smoke. If smoke is observed, either the equipment
+                 must be immediately shut-in to investigate the potential cause for smoke
+                 and perform repairs, as necessary, or EPA Method 22 must be conducted to
+                 determine whether visible emissions are present for a period of at least one
+                 (1) minute in fifteen (15) minutes. (Reference: Regulation Number 7, Part
+                 B, Sections I.C., I.E.2., II.A.45, II.B.2.)
+
+       V.A.2.    The owner or operator of natural gas fired engines covered by this permit
+                 which are equipped with a catalytic emission control device must complete
+                 periodic performance tests for NOx and CO using a portable analyzer semi-
+                 annually (or within a 4,380 hour operating period if the engine does not run
+                 continuously) to indicate continued performance of the catalyst and proper
+                 operation of the engine per emission limits specified in this permit. The
+                 initial periodic performance test must be completed within 180 days of
+                 commencement of operation of the natural gas fired engine.
+
+                 V.A.2.a. Each performance test should be performed with the engine
+                            operating at the highest load practicable. However, it is not
+                            required to artificially load the engine in order to perform the
+                            test.
+
+
+
+
+                                            Page 35 of 48
+         V.A.2.b. All performance tests using a portable analyzer must meet the
+                   requirements established in the Portable Analyzer Monitoring
+                   Protocol or other Division approved protocol, including
+                   recordkeeping requirements.
+
+         V.A.2.c. At the owner or operator’s discretion, a performance test using a
+                   reference test method may be used instead of a portable
+                   analyzer.
+
+         V.A.2.d. If the engine fails a portable analyzer test, corrective action must
+                   be taken and documented within 15 days of the test.
+
+         V.A.2.e. The owner or operator must document the results of each
+                   portable analyzer or reference test, including:
+
+                   V.A.2.e.(i)   Air-fuel ratio controller (AFRC) oxygen sensor mV
+                                 reading, and
+
+                   V.A.2.e.(ii) Record the AFRC setpoint and reading.
+
+V.A.3.   Engines subject to the requirements of Regulation Number 26, Part B,
+         Section I.D.5. must comply with the monitoring requirements listed in
+         Regulation Number 26, Part B, Section I.D.5.e., as applicable per the most
+         current version of Regulation Number 26.
+
+V.A.4.   Engines subject to the requirements of Regulation Number 26, Part B,
+         Section I.D.5. must comply with the performance testing requirements
+         listed in Regulation Number 26, Part B, Section I.D.5.d., as applicable per
+         the most current version of Regulation Number 26.
+
+V.A.5.   Engines subject to the requirements of Regulation Number 26, Part B,
+         Section I.D.6.a. must comply with the monitoring requirements listed in
+
+
+                                 Page 36 of 48
+         Regulation Number 26, Part B, Section I.D.6.d., as applicable per the most
+         current version of Regulation Number 26.
+
+V.A.6.   Engines subject to the requirements of Regulation Number 26, Part B,
+         Section I.D.6. must comply with the performance testing requirements
+         listed in Regulation Number 26, Part B, Section I.D.6.c., as applicable per
+         the most current version of Regulation Number 26.
+
+V.A.7.   If the general permit registration application requests greater than 95%
+         control efficiency for VOC emissions from any separator the owner or
+         operator must conduct an initial source compliance test on the enclosed
+         combustion device. The initial compliance test must be completed within
+         180 days of commencement of operation of the separator. The initial
+         compliance test must demonstrate compliance with the emissions limit VOC
+         and to demonstrate a minimum destruction efficiency equal to or greater
+         than the control efficiency requested in the general permit registration
+         application. At a minimum the following must be measured and recorded
+         during the compliance test:
+
+            ■ mass emission rates of VOC at the inlet of the control device (Mi)
+               using EPA or other Division approved methods;
+
+            ■ mass emission rates of VOC at the outlet of the control device (Mo)
+               using EPA or other Division approved methods;
+
+            ■ combustion chamber temperature;
+
+            ■ gas flow rate;
+
+            ■ supplemental fuel flow rate;
+
+            ■ gas heat content; and
+
+
+                                 Page 37 of 48
+                   ■ gas composition.
+
+                The destruction efficiency (DE) for VOC must be calculated using the
+                following equation:
+
+                       ● DE (%) = 100*(Mi-Mo)/Mi
+
+                The test protocol, test, and test report must be in accordance with the
+                requirements of the Air Pollution Control Division Compliance Test Manual.
+                The test protocol must be submitted to the Division for review and approval
+                at least thirty (30) days prior to testing. No compliance test will be
+                conducted without prior approval from the Division. Within thirty (30) days
+                following completion of the test(s), a compliance test report must be
+                submitted to the Division for review within 30 days of completion of the
+                compliance test. Additional time may be granted upon written request. Any
+                compliance test conducted to demonstrate compliance with an annual
+                emission limitation must have the results projected up to the annual
+                averaging time by multiplying the test results by the process limit(s) for
+                that averaging time as indicated in the application for this general permit.
+                (Regulation Number 3, Part B., Section III.G.3)
+
+                Results of the initial compliance tests must be submitted to the Division
+                within 60 days of the test.
+
+V.B.   Air pollution control equipment monitoring requirements
+
+       V.B.1.   The owner or operator of air pollution control equipment used to meet the
+                requirements of this permit must monitor and document the proper
+                operation of the air pollution control equipment on a weekly basis.
+
+
+
+
+                                         Page 38 of 48
+         V.B.1.a. Inspections can be done by either visible observation or other
+                   means approved by the Division.
+
+         V.B.1.b. A check box is suitable for recording proper operation.
+
+         V.B.1.c. Indications of improper operation for a flare or combustion device
+                   include, but are not limited to,
+
+                   V.B.1.c.(i)    absence of pilot light,
+
+                   V.B.1.c.(ii)   malfunction of electronic ignition,
+
+                   V.B.1.c.(iii) clogged burner tray, or
+
+                   V.B.1.c.(iv) presence of smoke.
+
+V.B.2.   The owner or operator of air pollution control equipment used to comply
+         with this permit must document improper operation by recording:
+
+         V.B.2.a. a description of the problem,
+
+         V.B.2.b. the resolution of the problem,
+
+         V.B.2.c. the date range the air pollution control equipment was improperly
+                   operating or not operating, and
+
+         V.B.2.d. the process throughput when the air pollution control equipment
+                   is not operating.
+
+V.B.3.   The owner or operator of any flare or combustion device used to meet the
+         requirements of this permit must check and document on a weekly basis
+         that the valves for piping of gas to the auto-igniter or pilot light and piping
+         of waste gas to the air pollution control equipment are open.
+
+
+
+                                  Page 39 of 48
+VI.   Emission and Process Recordkeeping Requirements
+
+VI.A. Emission limitations and emission tracking requirements
+
+      VI.A.1.   The owner or operator must calculate actual emissions of criteria and
+                hazardous air pollutants from all APEN reportable sources each month and
+                keep a compliance record on site or at a local field office with site
+                responsibility for Division review. For criteria and hazardous air pollutants,
+                the owner or operator must maintain records on a rolling twelve (12) month
+                total basis. By the end of each month a new twelve-month total is
+                calculated and recorded based on the previous twelve-months’ data.
+
+      VI.A.2.   For emission sources registered to this general permit, the owner or
+                operator must maintain monthly process records used to support monthly
+                actual emissions calculations for each emissions point, as listed in the table
+                below.
+
+                Table 5: Summary of monthly records requirements per emission source
+
+
+                 Emission Source                   Monthly records of the following data
+
+
+                 Natural gas fired engine          Natural gas fuel consumption
+
+
+                 Storage tanks                     Produced water, crude oil, condensate,
+                                                   and intermediate hydrocarbon liquid
+                                                   throughput.
+
+                                                   When a vapor recovery unit (VRU) is
+                                                   present: produced water, crude oil,
+                                                   condensate, and intermediate
+
+
+
+                                         Page 40 of 48
+Emission Source                  Monthly records of the following data
+
+                                 hydrocarbon liquid throughput during VRU
+                                 downtime.
+
+
+Hydrocarbon liquid loadout to    Crude oil, condensate, and intermediate
+tanker trucks                    hydrocarbon liquid throughput.
+
+                                 When a vapor recovery unit (VRU) is
+                                 present: Produced water, crude oil,
+                                 condensate and intermediate hydrocarbon
+                                 liquid throughput during VRU downtime
+
+
+Gas venting from separators      Natural gas vented to combustion device
+
+
+Natural gas-driven diaphragm     Natural gas actuation throughput
+pneumatic pumps
+
+
+Natural gas fired turbines       Natural gas fuel consumption
+
+
+Natural gas-driven pneumatic     Number and type of pneumatic controller
+controllers
+
+
+Fugitive component leaks         Number, type, and gas/liquid service of
+                                 components
+
+
+Routine or predictable gas       Emitted volume of gas and data necessary
+
+
+
+                       Page 41 of 48
+                  Emission Source                      Monthly records of the following data
+
+                  venting emissions                    to complete calculation of emitted mass
+                                                       of pollutants
+
+
+       VI.A.3.   The owner or operator must maintain documentation of all periods of air
+                 pollution control equipment downtime and use the information to
+                 determine appropriate control percentages in calculating actual emissions.
+                 During periods of air pollution control equipment downtime, emissions must
+                 be calculated as uncontrolled.
+
+VI.B. Records may be kept in either electronic format or hard copy provided that they can
+       be promptly supplied to the Division upon request. All records must be retained for a
+       period of five (5) years.
+
+VI.C. The following records must be maintained on site or at a local field office with site
+       responsibility for Division review:
+
+       VI.C.1.   The current issuance of this general construction permit.
+
+       VI.C.2.   The general permit registration approval letter, once received.
+
+       VI.C.3.   Records of commencement of operation for each individual piece of
+                 equipment covered under this general permit.
+
+       VI.C.4.   Records of commencement of operation for air pollution control equipment
+                 used to meet the requirements of this general permit.
+
+       VI.C.5.   Any other records required by conditions of this permit.
+
+VII.   Monitoring Requirements for Facilities located in Disproportionately Impacted
+
+
+
+                                             Page 42 of 48
+        (DI) Communities
+
+VII.A. Owners or operators of new or modified sources located in Disproportionately Impacted
+        Communities must submit a notification at the time of registration for a general permit
+        or permits issued pursuant to Regulation Number 3, Part B, Section III.I. indicating the
+        source will comply with the monitoring requirements outlined in Regulation Number 3,
+        Part B, Section III.J., as applicable, by either:
+        VII.A.1.     Complying with source-specific monitoring pursuant to Section III.J.2. of Part
+                     B;
+        VII.A.2.     Paying community monitoring fees pursuant to Section III.J.3. of Part B; or
+        VII.A.3.     Complying with well production facility monitoring pursuant to Section III.J.4.
+                     of Part B.
+
+        Owners or operators must comply with the monitoring methodology selected on the
+        general permit registration form.
+
+VII.B. Owners or operators subject to VII.A.1 must submit a Division-approved source-specific
+        monitoring plan as part of a complete registration request. (Regulation Number 3, Part
+        B, III.E.)
+
+VIII.   General Permit Registration Approval Process and Expiration
+
+VIII.A. Conditional certification of a registration under this general permit is effective from
+        the date the registration is deemed complete as indicated in Condition VIII.B. A
+        complete registration request consists of all General Permit application materials
+        required by the Division and associated fees. The owner or operator may commence
+        construction and operation of the well production facility as represented in the
+        registration once the registration is deemed complete. In the event the well
+        production facility does not qualify for registration under the general permit the
+        owner or operator accepts the liability of commencing these activities.
+
+
+
+
+                                             Page 43 of 48
+VIII.B. The Division will determine completeness of the General Permit registration request
+      within sixty (60) days of the date of receipt of the request and provide written
+      notification to the applicant. If the applicant does not receive notification of a
+      completeness determination from the Division within sixty (60) days, the General
+      Permit registration request will be deemed complete for the purpose of Conditions
+      VIII.A. and VIII.B.
+
+VIII.C. The Division has ninety (90) calendar days from the date the Division receives a
+      complete General Permit registration request to provide the applicant with a written
+      approval or denial of the registration.
+
+IX.   General Permit Terms and Administration
+
+IX.A. A facility that is classified as a major source for Title V Operating Permit requirements
+      and is operating under Condition I.F., must submit a Title V operating permit
+      application requesting to incorporate the terms of this general permit into a Title V
+      Operating Permit. The due date for this application is one year from the date on which
+      the facility becomes subject to Title V Operating Permit requirements.
+IX.B. In accordance with Colorado Regulation Number 3, Part C, Section V.C.5, some or all
+      of the monitoring specified in this general permit will be incorporated as specific
+      conditions in the source’s Title V Operating Permit (if applicable). Additional
+      monitoring not listed in this general permit may be included in the source’s Operating
+      Permit in order to satisfy the periodic monitoring requirements of Section V.C.5.b.
+
+IX.C. General Terms
+
+      IX.C.1.    The requirements of Regulation Number 3, Part D apply at such time that
+                 any well production facility or modification becomes a major well
+                 production facility or major modification solely by virtue of a relaxation in
+                 any enforceable limitation that was established after August 7, 1980 on the
+                 capacity of the well production facility or modification to otherwise emit a
+
+
+                                         Page 44 of 48
+          pollutant, such as a restriction on hours of operation. (Reference:
+          Regulation Number 3, Part D, Sections V.A.7.b. and VI.B.4.)
+
+IX.C.2.   This well production facility may be able to utilize the Affirmative Defense
+          Provision for Excess Emissions During Malfunctions contained in Common
+          Provisions Regulation, Part II, Subpart E. The owner or operator must notify
+          the Division of any malfunction condition which causes a violation of any
+          emission limit or limits stated in this permit as soon as possible, but no later
+          than noon of the next working day, followed by written notice to the
+          Division addressing all of the criteria set forth in Part II.E.1 of the Common
+          Provisions Regulation.
+
+IX.C.3.   This permit is granted subject to all rules and regulations of the Colorado
+          Air Quality Control Commission and the Colorado Air Pollution Prevention
+          and Control Act C.R.S., sections 25-7-101, et seq, to those general and
+          specific terms and conditions included in this document.
+
+IX.C.4.   Unless specifically stated otherwise, the general and specific conditions
+          contained in this permit have been determined by the Division to be
+          necessary to assure compliance with the provisions of Section 25-7-
+          114.5(7)(a), C.R.S.
+
+IX.C.5.   Each and every condition of this permit is a material part hereof and is not
+          severable. Any challenge to or appeal of a condition herein by the
+          permittee will constitute a rejection of the entire permit and upon such
+          occurrence, this permit must be deemed denied ab initio.
+
+IX.C.6.   Section 25-7-114.7(2)(a), C.R.S. requires that all well production facilities
+          required to file an Air Pollutant Emission Notice (APEN) must pay an annual
+          fee to cover the costs of inspections and administration.
+
+
+
+
+                                   Page 45 of 48
+      IX.C.7.   Violation of the terms of a permit or of the provisions of the Colorado Air
+                Pollution Prevention and Control Act or the regulations of the AQCC may
+                result in administrative, civil or criminal enforcement actions under
+                Sections 25-7-115 (enforcement), -121 (injunctions), -122 (civil penalties), -
+                122.1 (criminal penalties), C.R.S.
+
+      IX.C.8.   Registration under this permit is approved in reliance upon the accuracy
+                and completeness of information supplied by the owner or operator and is
+                conditioned upon operation of the well production facility, in accordance
+                with this information and with representations made by the owner or
+                operator or owner or operator's agents. It is valid only for the equipment
+                and operations or activity specifically identified on the general permit
+                registration.
+
+IX.D. Registration Revision/Termination
+
+      IX.D.1.   The Division may deny or revoke registration under the general permit
+                under the circumstances specified in Regulation Number 3, Part B, Section
+                III.I.3.c. and require the owner or operator to apply for a Construction
+                Permit as required by Regulation Number 3, Part B.
+
+      IX.D.2.   A registration under this general permit may be reissued to a new owner by
+                the Division as provided in Regulation Number 3, Part B, Section II.B. upon
+                request for transfer of ownership and the submittal of a revised APEN,
+                revised general permit registration and the required fees.
+
+      IX.D.3.   Registration under this general permit is voluntary. The owner or operator
+                may withdraw or cancel a registration under this general permit at any time
+                by notifying the Division in writing. The owner or operator can apply for a
+                Construction permit as necessary per Regulation Number 3, Part B.
+
+
+
+
+                                          Page 46 of 48
+IX.E. General Permit Revision/Termination
+
+      IX.E.1.   This general permit remains in effect until revised or terminated by the
+                Division in accordance with the provisions of Regulation Number 3 or
+                through expiration per the provisions of condition I.F.1.
+
+      IX.E.2.   After public notice and comment as provided by Regulation Number 3, Part
+                B, Section III.I.7., the Division may revise this general permit in order to add
+                or delete requirements or limitations to the permit. This public notice must
+                be conducted in a manner consistent with the provisions of Regulation
+                Number 3, Part B, Section III.C.4.
+
+      IX.E.3.   If the Division revises this general permit, it will provide written notice to
+                affected owner or operators prior to the revision of the general permit.
+                The notice will advise the owner or operators that any existing registration
+                to use the general permit will be automatically converted to a registration
+                to use the revised general permit, provided that the owner or operator
+                continues to meet all requirements of the revised general permit. Persons
+                not wishing to continue coverage under the revised general permit have the
+                option of applying for a Construction Permit as required by Regulation
+                Number 3, Part B, or apply for a different general permit, as appropriate.
+
+      IX.E.4.   If the Division terminates this general permit, it will provide written notice
+                to affected owner or operators prior to the termination of the general
+                permit. The notice will advise owner or operators that they must apply for a
+                Construction Permit as required by Regulation Number 3, Part B.
+
+      IX.E.5.   The Division may require any well production facility authorized by a
+                general construction permit to apply for and obtain a Construction Permit if
+                circumstances have changed since the time of the original general permit
+                application so that the well production facility is no longer appropriately
+
+
+                                         Page 47 of 48
+controlled and/or permitted under the general construction permit.
+(Reference: Regulation Number 3, Part B, Section III.I.3.c.(i)(B))
+
+
+
+
+                        Page 48 of 48
+

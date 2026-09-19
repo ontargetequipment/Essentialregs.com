@@ -1,0 +1,940 @@
+                                GENERAL CONSTRUCTION PERMIT
+
+                                           Oil and Gas Industry
+
+                        Routine or Predictable Gas Venting Emissions
+
+
+        Permit Number GP11 Issuance 3                               Final Approval
+
+
+
+                                                                    July 23, 2025
+
+
+        Bradley Eades, PE                                           Date Issued
+
+
+        Oil and Gas Permitting Section Supervisor
+
+
+        Table of Contents
+
+I.      General Permit Applicability                                                                 2
+
+II.     Emission Limitation Requirements                                                             6
+
+III.    Operating Terms and Conditions                                                              11
+
+IV.     Operating and Maintenance Plan                                                              16
+
+V.      Recordkeeping Plan                                                                          18
+
+VI.     Monitoring Requirements for Facilities located in Disproportionately Impacted (DI) Communities
+                                                                                                     19
+
+VII.    General Permit Registration Approval Process                                                20
+
+VIII.   General Permit Terms and Administration                                                     20
+
+
+
+
+                                                 Page 1 of 26
+Note: See the Routine or Predictable Gas Venting Emissions Calculation and Instructions on
+Permitting for Oil and Gas Operations Guidance document (PS Memo 20-04) for further
+information on definitions, and emission calculations.
+
+This permit is granted by the Colorado Department of Public Health and Environment, Air
+Pollution Control Division (Division) subject to all rules and regulations of the Colorado Air
+Quality Control Commission and the Colorado Air Pollution Prevention and Control Act
+C.R.S., sections 25-7-101, et seq, to those general terms and conditions included in this
+permit and the following specific terms and conditions:
+
+I.     General Permit Applicability
+
+I.A.   This general permit may be used for any oil and gas industry well production facility
+       or centralized production facility, and the associated oil well(s) or natural gas well(s),
+       that meets all of the requirements in this Section and that can comply with all of the
+       applicable conditions described in this permit.
+
+       I.A.1.    Included Emission Activities: The following emitting activities may register
+                 for this general permit:
+
+                 I.A.1.a.   Fixed roof storage tank-related routine or predictable gas venting
+                            emissions events that are not separately permitted:
+
+                              ■ releasing emissions from a fixed-roof storage tank through a
+                                 storage tank thief hatch, blowdown valve, venting point, or
+                                 other access point for any routine or predictable activity,
+                                 including for liquid level measurement, sampling, truck
+                                 loadout, well unloading, equipment maintenance, repair,
+                                 decommissioning, or other routine or predictable activity;
+                                 and
+
+                              ■ tank hot oil treatments or other tank cleaning activities.
+
+                 I.A.1.b.   Well-related routine or predictable gas venting emissions events
+
+
+                                            Page 2 of 26
+           that are not separately permitted, including but not limited to:
+
+             ■ well liquids unloading;
+
+             ■ downhole well maintenance, including well workovers,
+                recompletion, restimulation, reperforating, paraffin/scale
+                removal, swabbing, and installation of artificial lift;
+
+             ■ well equipment maintenance at the surface;
+
+             ■ well plugging;
+
+             ■ bradenhead gas venting;
+
+             ■ casinghead gas venting; and
+
+             ■ other well-related routine or predictable gas venting
+                emissions activities.
+
+I.A.1.c.   Pigging-related routine or predictable gas venting emissions that
+           are not separately permitted, including, but not limited to:
+
+             ■ pig launchers; and
+
+             ■ pig receivers.
+
+I.A.1.d.   Routine or predictable blowdowns of facility equipment or piping
+           that are not separately permitted, including but not limited to:
+
+             ■ pipeline venting within the facility boundary when such
+                venting is routine or predictable;
+
+             ■ compressor and turbine blowdowns;
+
+             ■ scrubber and strainer blowdowns;
+
+             ■ blowdowns resulting from facility-wide (plant) and/or
+
+
+                        Page 3 of 26
+                             equipment shutdowns;
+
+                      ■ blowdown of all other equipment (including pipelines,
+                             compressor case or cylinders, manifolds, suction bottles,
+                             discharge bottles, and vessels); and
+
+                      ■ desiccant dehydration unit blowdowns.
+
+               I.A.1.d.(i)      Emissions resulting from blowdowns from facility
+                                equipment or piping where the physical volume between
+                                isolation valves is less than 50 cubic feet are not
+                                required to be reported or permitted with this category.
+
+         I.A.1.e.   Combustion devices, vapor recovery units, catalysts, or other
+                    Division-approved air pollution control equipment used to reduce
+                    emissions (from the emitting activities registered under this
+                    general permit) below the limits specified in Section II.
+
+I.A.2.   Excluded Sources: The following types of facilities, facility classifications,
+         and emitting activities may not register for this general permit:
+
+         I.A.2.a.   A natural gas processing plant.
+
+         I.A.2.b.   A natural gas compressor station.
+
+         I.A.2.c.   A petroleum refinery.
+
+         I.A.2.d.   A facility that is a major source as defined in Regulation Number
+                    3, Part A, Section I.B.30., except as provided by Section I.A.3.
+                    below.
+
+         I.A.2.e.   A facility that is a major stationary source as defined in
+                    Regulation Number 3, Part D, Section II.A.25., except as provided
+                    by Section I.A.3. below.
+
+         I.A.2.f.   Emissions at a storage tank that are not listed in Section I.A.1.a.
+
+                                     Page 4 of 26
+                            of this general permit.
+
+                 I.A.2.g.   Venting emissions from a storage tank that are prohibited by
+                            Regulation Number 7, Part B, Section II.C.2.a.
+
+                 I.A.2.h.   This general permit may not be used for newly constructed or
+                            modified existing equipment that is part of a project permit
+                            action that is subject to Non-Attainment New Source Review (NA
+                            NSR) or Prevention of Significant Deterioration (PSD) permitting
+                            under Regulation Number 3, Part D.
+
+       I.A.3.    Stationary Sources that: a) became subject to Title V Operating Permit
+                 requirements or became classified as an existing major stationary source due
+                 to the reclassification of the 8-hour Ozone Control Area from serious to
+                 severe, and b) for which a complete GP11 registration request was received
+                 by the Division prior to the effective date of GP11, Issuance 2 (November 3,
+                 2022), may continue to operate under this General Permit. 8-hour Ozone
+                 Control Area is as defined in Regulation Number 7, Part A, Section II.A.1.
+                 (Adopted 12/14/2023, Effective 02/14/2024).
+
+       I.A.4.    Stationary Sources that became subject to Title V Operating Permit
+                 requirements or became classified as an existing major stationary source for
+                 which a GP11 registration request was deemed complete by the Division
+                 prior to the effective date (July 24, 2024) on which Northern Weld County
+                 was re- classified from moderate to serious may continue to operate under
+                 this General Permit. Northern Weld County is as defined in Regulation
+                 Number 7, Part A, Section II.A.3. (Adopted 12/14/2023, Effective
+                 02/14/2024).
+
+I.B.   This general permit applies only to the oil and gas facility and the emitting activities
+       described in Section I.A for which the operator has registered under this general
+       permit using an Air Pollutant Emission Notice (APEN) Form APCD-213 and APCD-215, as
+       needed. Emissions sources that do not fall into the activities described in Section I.A
+
+                                          Page 5 of 26
+        at the same stationary source must be permitted separately as required by Regulation
+        Number 3, Part B.
+
+II.     Emission Limitation Requirements
+
+II.A.   General Permit Emission Limitations
+
+        II.A.1.   Actual emissions from the sum of all of the emitting activities registered
+                  under this general permit must not exceed the requested federally
+                  enforceable annual emission limitations (tons per year) as listed on the
+                  general permit registration approval letter, or if an approval letter has not
+                  been issued, as certified by the owner or operator in the APEN included
+                  with the general permit registration. (Regulation Number 3, Part B, Sections
+                  II.A.4. and II.A.7.)
+
+        II.A.2.   For emitting activities registered under this general permit that are
+                  registered with a control efficiency, the owner or operator must conduct
+                  the activities with the air pollution control equipment as listed in the
+                  general permit registration APEN to reduce emissions to less than or equal
+                  to the requested federally enforceable annual emission limitations (tons per
+                  year) as listed on the general permit registration approval letter, or if an
+                  approval letter has not been issued, as certified by the owner or operator in
+                  the general permit registration APEN. (Regulation Number 3, Part B,
+                  Sections II.A.4. and II.A.7.)
+
+                  II.A.2.a. For a combustion device controlling routine or predictable gas
+                             venting emissions, the maximum allowed control efficiency is 95%.
+
+II.B.   Facility-Wide Emission Limitations
+
+        II.B.1.   For facilities located inside of the 8-hour Ozone Control Area (8-hour
+                  Ozone Control Area is as defined in Regulation Number 7, Part A, Section
+                  II.A.1. (Adopted 12/14/2023, Effective 02/14/2024)):
+
+
+
+                                           Page 6 of 26
+II.B.1.a. The maximum allowable emissions of criteria air pollutants from
+          all APEN-reportable emissions points at the same stationary
+          source (including the routine or predictable gas venting emissions
+          registered to this permit) shall be federally enforceable and must
+          not exceed the following limitations (Regulation Number 3, Part
+          B, Section II.A.4):
+
+            ■ Particulate Matter (PM):                        90.0 tons per year
+
+            ■ Particulate Matter (PM10):                      90.0 tons per year
+
+            ■ Particulate Matter (PM2.5):                     90.0 tons per year
+
+            ■ Sulfur Dioxide (SO2):                           90.0 tons per year
+
+            ■ Nitrogen Oxides (NOx):                          45.0 tons per year
+
+            ■ Carbon Monoxide (CO):                           90.0 tons per year
+
+            ■ Volatile Organic Compounds (VOC):               45.0 tons per year
+
+                For sources that are also subject to Condition II.B.4. or
+                II.B.5., the owner or operator must comply with the most
+                stringent limits for each pollutant.
+
+II.B.1.b. If the permitted facility-wide emissions at the same stationary
+          source (including the routine or predictable gas venting emissions
+          registered under this permit) of VOC and/or NOx exceeds 40.0
+          tons per year, the owner or operator must track emissions from
+          all insignificant activities at the facility on an annual basis to
+          demonstrate compliance with the facility emission limitations as
+          indicated below. An inventory of each insignificant activity and
+          associated emission calculations must be made available to the
+          Division for inspection upon request. For the purposes of this
+          condition, insignificant activities are defined as any activity or
+
+                        Page 7 of 26
+                    equipment, which emits any amount but does not require an Air
+                    Pollutant Emission Notice (APEN) or is permit exempt. (Regulation
+                    Number 3, Part C. Section II.E.)
+
+                    For all facilities located inside of the 8-hour Ozone Control Area
+                    (8-hour Ozone Control Area is as defined in Regulation Number 7,
+                    Part A, Section II.A.1. (Adopted 12/14/2023, Effective
+                    02/14/2024)), total potential emissions from the facility,
+                    including all permitted emissions and potential to emit from all
+                    insignificant activities, must be less than:
+
+                      ■ 50 tons per year of VOC; and
+
+                      ■ 50 tons per year of NOx.
+
+II.B.2.   For facilities located outside of the 8-hour Ozone Control Area (8-hour
+          Ozone Control Area is as defined in Regulation Number 7, Part A, Section
+          II.A.1. (Adopted 12/14/2023, Effective 02/14/2024)):
+
+          II.B.2.a. The maximum allowable emissions of criteria air pollutants from
+                    all APEN-reportable emissions points at the same stationary
+                    source (including the routine or predictable gas venting emissions
+                    registered to this permit) must be federally enforceable and must
+                    not exceed the following limitations (Regulation Number 3, Part
+                    B, Section II.A.4):
+
+                         Particulate Matter (PM):                 90.0 tons per year
+
+                         Particulate Matter (PM10):               90.0 tons per year
+
+                         Particulate Matter (PM2.5):              90.0 tons per year
+
+                         Sulfur Dioxide (SO2):                    90.0 tons per year
+
+                         Nitrogen Oxides (NOx):                   90.0 tons per year
+
+
+                                  Page 8 of 26
+                          Carbon Monoxide (CO):                     90.0 tons per year
+
+                          Volatile Organic Compounds (VOC):         90.0 tons per year
+
+                           For sources that are also subject to Condition II.B.4. or
+                           II.B.5., the owner or operator must comply with the most
+                           stringent limits for each pollutant.
+
+II.B.3.   The maximum allowable emissions of hazardous air pollutants (HAPs) from
+          all emissions points at the stationary source are federally enforceable and
+          must not exceed the following limitations (Regulation Number 3, Part B,
+          Sections II.A.4. and II.A.7.):
+
+                       ■ Each Individual HAP:                            8.0 tons per year
+
+                       ■ Combined total of all HAPs:                    20.0 tons per year
+
+II.B.4.   The owner or operator of facilities located in an area classified as serious
+          nonattainment for ozone, and which are not otherwise subject to Conditions
+          I.A.3. or I.A.4. of this permit, must track potential emissions from all
+          insignificant activities at the facility on an annual basis to demonstrate
+          compliance with facility emission limitations as indicated below. An inventory
+          of each insignificant activity and associated emission calculations must be
+          made available to the Division for inspection upon request. For the purposes
+          of this condition, insignificant activities are defined as any activity or
+          equipment, which emits any amount of VOC or NOx but does not require an
+          APEN or is permit exempt. Note that for reclassifications of an existing
+          nonattainment area to serious, the limit applies upon the effective date of
+          reclassification. (Regulation Number 3, Part B. Section III.E.).
+
+
+
+
+                                   Page 9 of 26
+                  II.B.4.a. Total point source potential emissions from the facility, including all
+                           permitted emissions and potential to emit from all insignificant
+                           activities, must be less than:
+
+                                 Volatile Organic Compounds (VOC):           50 tons per year
+
+                                 Nitrogen Oxides (NOx):                      50 tons per year
+
+        II.B.5.   The owner or operator of facilities located in an area classified as severe
+                  nonattainment for ozone, and which are not otherwise subject to Conditions
+                  I.A.3. or I.A.4. of this permit, must track potential emissions from all
+                  insignificant activities at the facility on an annual basis to demonstrate
+                  compliance with facility emission limitations as indicated below. An inventory
+                  of each insignificant activity and associated emission calculations must be
+                  made available to the Division for inspection upon request. For the purposes
+                  of this condition, insignificant activities are defined as any activity or
+                  equipment, which emits any amount of VOC or NOx but does not require an
+                  APEN or is permit exempt. Note that for reclassifications of an existing
+                  nonattainment area to severe, the limit applies upon the effective date of
+                  reclassification. (Regulation Number 3, Part B. Section III.E.)
+
+                  II.B.5.a. Total potential emissions from the facility, including all permitted
+                             emissions and potential to emit from all insignificant activities,
+                             must be less than:
+
+                           Volatile Organic Compounds (VOC):                     25 tons per year
+
+                           Nitrogen Oxides (NOx):                                25 tons per year
+
+II.C.   Emission Limitations and Facility-Wide Emission Limitations for both criteria and
+        hazardous air pollutants must be determined on an annual calendar-year basis. The
+        permit holder must keep a compliance record on-site or at a local field office for
+        Division review.
+
+
+
+                                          Page 10 of 26
+II.D.   For sources located at synthetic minor or major facilities, compliance with the
+        General Permit Emission Limitations and Facility-Wide Emission Limitations for both
+        criteria and hazardous air pollutants must be determined on a rolling twelve (12)
+        month total basis. By the end of each month, a new twelve-month total is calculated
+        based on the previous twelve month’s data. During the first year of operation,
+        compliance must be based upon cumulative emissions from all months of operation.
+        The permit holder must calculate actual emissions each month and keep a compliance
+        record on-site or at a local field office for Division review.
+
+III.    Operating Terms and Conditions
+
+III.A. Emission Calculation Methods
+
+        III.A.1.   Emissions must be calculated using the emission factors as shown on the
+                   GP11 registration approval letter most recently issued by the Division. If a
+                   GP11 registration approval letter has not yet been issued, emissions must be
+                   calculated using the emission factors as certified by the owner or operator
+                   in the general permit registration APEN.
+
+        III.A.2.   The owner or operator must monitor and record the data necessary to
+                   quantify the emissions for each category listed in this permit. These records
+                   of the events must be maintained in accordance with the Recordkeeping
+                   Plan specified in Section V.
+
+                   III.A.2.a. For sources calculating emissions using a lb/event emission factor,
+                             the owner or operator must monitor and record the number of
+                             routine or predictable gas venting emissions events that occur for
+                             each activity type registered to this permit.
+
+                   III.A.2.b. For sources calculating emissions using a lb/MMscf emission
+                             factor, the owner or operator must:
+
+                               ■ Monitor and record the parameters required to calculate the
+                                   volume associated with each routine or predictable gas
+
+                                           Page 11 of 26
+                                     venting emission event, as specified in the general permit
+                                     registration approval letter, or
+
+                               ■ Monitor and record the volume associated with each routine
+                                     or predictable gas venting emission event using a flow
+                                     meter.
+
+      III.A.3.   For each routine or predictable gas venting emissions activity registered
+                 under this general permit, actual emissions must be calculated using the
+                 emission factors from III.A.1. and the data from III.A.2.
+
+III.B. General Operating Conditions
+
+      III.B.1.   The owner or operator must comply with opacity requirements in Regulation
+                 Number 1, Section II.A., as applicable per the most current version of
+                 Regulation Number 1.
+
+      III.B.2.   This source is subject to the odor requirements of Regulation Number 2.
+
+      III.B.3.   Air pollution control equipment may be used to comply with the emission
+                 limits and performance standards required in this general permit. The
+                 owner or operator must maintain documentation of all periods when air
+                 pollution control equipment is not operating and must use the information
+                 to determine appropriate control percentages in calculating actual
+                 emissions. During periods where air pollution control equipment is not
+                 operating, emissions must be calculated as uncontrolled.
+
+      III.B.4.   If air pollution control equipment is used to comply with the emission limits
+                 of this permit, the owner or operator must follow the Operating and
+                 Maintenance Plan specified in Section IV. (Regulation Number 3, Part B,
+                 Section III.I.6.)
+
+      III.B.5.   The owner or operator must maintain records in accordance with the
+                 Recordkeeping Plan specified in Section V.
+
+
+                                              Page 12 of 26
+III.B.6.   The owner or operator must use best management practices to minimize
+           hydrocarbon emissions during, or to reduce the frequency of, routine or
+           predictable gas venting emissions events.
+
+           III.B.6.a. The owner and operator must develop and maintain a description
+                      of best management practices implemented to minimize
+                      hydrocarbon emissions during, or to reduce the frequency of,
+                      routine or predictable gas venting events covered by this permit.
+                      The description must also include how those best management
+                      practices are implemented and performed.
+
+III.B.7.   The owner or operator must perform routine or predictable gas venting
+           emissions activities between October 1 and April 30, when practicable.
+
+III.B.8.   The owner or operator must avoid performing routine or predictable gas
+           venting emissions activities on Ozone Action Days, when practicable. Ozone
+           Action Day advisories are published by the Colorado Department of Public
+           Health and Environment.
+
+III.B.9.   For downhole well maintenance, well liquids unloading events, and well
+           plugging activities:
+
+           III.B.9.a. Owners or operators must use best management practices to
+                      minimize hydrocarbon emissions and the need for emissions from
+                      the well associated with downhole well maintenance, well liquids
+                      unloading, and well plugging, unless emitting is necessary for
+                      safety. (Regulation Number 7, Part B, Section II.G.1.)
+
+                 III.B.9.a.(i)    Prior to January 1, 2023, during liquids unloading events,
+                                  any means of creating differential pressure must first
+                                  be used to attempt to unload the liquids from the well
+                                  without emitting. If these methods are not successful in
+                                  unloading the liquids from the well, the well may emit in
+
+
+                                      Page 13 of 26
+             order to create the necessary differential pressure to
+             bring the liquids to the surface. (Regulation Number 7,
+             Part B, Section II.G.1.a)
+
+III.B.9.a.(ii) The owner or operator must be present on-site during
+             any planned downhole well maintenance, well liquids
+             unloading, or well plugging event and must ensure that
+             any emissions from the well associated with the event
+             are limited to the maximum extent practicable.
+             (Regulation Number 7, Part B, Section II.G.1.b)
+
+III.B.9.a.(iii) Beginning January 1, 2023, for all downhole well
+             maintenance and well liquids unloading activities with
+             emissions to atmosphere, owners or operators must,
+             consistent with well site conditions and good engineering
+             practices (Regulation Number 7, Part B, Section II.G.1.c):
+
+                 •   Use best engineering practices in the design and
+                     construction of oil and gas wells and well
+                     production facilities that commence operation
+                     after January 1, 2023, to minimize the need for
+                     well liquids unloading with emissions to
+                     atmosphere and other downhole well maintenance
+                     as the well ages.
+
+                 •   Attempt to create differential pressure to unload
+                     the liquids from the well without emitting.
+
+                 •   Monitor wellhead pressure and/or flowrate of the
+                     vented natural gas.
+
+                 •   Equalize the wellhead pressure with the
+                     production separator pressure prior to conducting
+
+
+                  Page 14 of 26
+                                    unloading, swabbing, or maintenance activities,
+                                    when practicable.
+
+                                •   Close wellhead vents to the atmosphere or
+                                    otherwise end direct emission of natural gas to
+                                    atmosphere as soon as practicable.
+
+                                •   Minimize emissions to atmosphere from well
+                                    liquids unloading and well swabbing, through the
+                                    installation, use, and optimization of artificial lift,
+                                    such as plunger lift with smart automation, except
+                                    as provided in Regulation Number 7, Part B,
+                                    Sections II.G.1.c.(vi)(A) through II.G.1.c.(vi)(D)
+
+         III.B.9.a.(iv)     Beginning January 1, 2023, unless exempted in
+                            Regulation Number 7, Part B, Sections II.G.1.d.(i) or
+                            II.G.1.d.(ii), owners or operators must use capture and
+                            recovery techniques or install and use a control device to
+                            achieve at least 95% control of hydrocarbon emissions
+                            during well liquids unloading and well swabbing
+                            operations. Notwithstanding any provision in Section II.B.
+                            to the contrary, owners or operators may use open flares
+                            and portable combustion devices to comply with this
+                            Section II.G.1.d. (Regulation Number 7, Part B, Section
+                            II.G.1.d)
+
+III.B.10. The owner or operator, or authorized third party representative, must:
+
+            ● Comply with storage tank measurement system requirements of
+               Regulation Number 7, Part B, Section II.C.4. if the facility meets the
+               applicability criteria of Regulation Number 7, Part B, Section II.C.4.a.;
+
+            ● Comply with storage tank hydrocarbon liquids loadout requirements of
+
+
+                                 Page 15 of 26
+                       Regulation Number 7, Part B, Section II.C.5.a. if the facility meets the
+                       applicability criteria of Regulation Number 7, Part B, Section II.C.5.a.;
+
+                   ● Remain on site while a storage tank thief hatch is open if there are
+                       liquids in the tank, if the thief hatch was opened to perform routine
+                       or predictable emitting activities; and
+
+                   ● Minimize the duration of time the thief hatch is open during activities
+                       to determine the quality and/or quantity of storage tank contents.
+
+      III.B.11. For pigging-related activities, the owner or operator must install, operate
+                 and maintain a liquids handling system to remove any accumulated liquid
+                 prior to pig receiver depressurization.
+
+      III.B.12. For equipment blowdowns, the owner or operator must avoid blowing down
+                 the equipment completely to ambient pressure, where practicable.
+
+      III.B.13. Conditions III.B.6. through III.B.12. fulfill the requirements to apply
+                 Reasonably Available Control Technology of Regulation Number 3, Part B,
+                 Section III.D.2.
+
+IV.   Operating and Maintenance Plan
+
+IV.A. If air pollution control equipment is used to comply with the emission limits of this
+      permit, the owner or operator must comply with the following requirements:
+
+      IV.A.1.    Air pollution control equipment must be adequately designed and sized to
+                 achieve the control efficiency rates and to handle reasonably foreseeable
+                 fluctuations in gas quantity and/or composition during emitting activities.
+                 Additionally, the air pollution control equipment must be operated and
+                 maintained consistent with manufacturer specifications and good
+                 engineering and maintenance practices. The owner or operator must keep
+                 manufacturer specifications or equivalent on file for Division review.
+
+      IV.A.2.    If a combustion device is used to comply with the emission limits of this
+
+                                         Page 16 of 26
+          permit, it must have a design destruction efficiency of at least 98% for
+          hydrocarbons, and must achieve a hydrocarbon control efficiency of 95%.
+
+IV.A.3.   If an enclosed combustion device or open flare is used to control emissions
+          of VOCs and other hydrocarbons, it must be equipped with and operate an
+          auto-igniter, have no visible emissions during normal operation, and be
+          designed so that an observer can, by means of visual observation from the
+          outside of the enclosed combustion device, or by other means approved by
+          the Division, determine whether it is operating properly.
+
+IV.A.4.   During air pollution control equipment use, the owner or operator must
+          monitor proper operation of the air pollution control equipment. This
+          monitoring must occur at least once each day that air pollution control
+          equipment is in use to control the emitting activities registered under this
+          general permit.
+
+          IV.A.4.a. Indications of improper operation for combustion devices can
+                    include, but are not limited to, absence of auto-igniter or pilot
+                    light, malfunction of electronic ignition, valves for piping of pilot
+                    gas or waste gas to the control device not being open, or presence
+                    of smoke. A check box is suitable for recording proper operation.
+
+          IV.A.4.b. Improper operation of air pollution control equipment must be
+                    further documented with a description of the problem and its
+                    resolution, the date range the control equipment was inoperable,
+                    and the uncontrolled mass of emissions during the downtime.
+
+          IV.A.4.c. Inspections can be done by either visible observation or other
+                    means approved by the Division.
+
+IV.A.5.   For each separate air pollution control equipment, the owner or operator
+          must keep an air pollution control equipment maintenance log. The log
+          must display the date, time, and nature of each air pollution control
+
+
+                                  Page 17 of 26
+                 equipment maintenance activity. The air pollution control equipment
+                 maintenance log may also be located at a local office or electronically, and
+                 must be made available to the Division upon request.
+
+V.     Recordkeeping Plan
+
+V.A.   The following records must be maintained on site or at a local field office with site
+       responsibility for Division review:
+
+       V.A.1.    The current issuance of this general construction permit.
+
+       V.A.2.    The most recent general permit registration approval letter, once received.
+
+       V.A.3.    The APEN most recently submitted to the Division and any required site-
+                 specific emission factor documentation.
+
+       V.A.4.    Records of actual emissions from all emitting activities. This must include
+                 the most currently available emitting activity data necessary to calculate
+                 emissions, and documentation of all periods of control device downtime for
+                 emitting activities where a control device is used to comply with the
+                 emission limits of this permit.
+
+                 V.A.4.a. For sources located at true minor facilities, actual emissions must
+                            be calculated on an annual calendar-year basis.
+
+                 V.A.4.b. For sources located at synthetic minor or major facilities, actual
+                            emissions must be calculated on a rolling twelve (12) month total.
+                            By the end of each month, the actual emissions for that month
+                            are calculated and a new twelve-month total is calculated based
+                            on the previous twelve months of emission data.
+
+       V.A.5.    For downhole well maintenance, well liquids unloading events, and well
+                 plugging, the records and reporting required by Regulation Number 7, Part
+                 B, Sections II.G.2 and II.G.3.
+
+
+
+                                             Page 18 of 26
+       V.A.6.      The air pollution control equipment maintenance log for each control
+                   device if air pollution control equipment is used to comply with the
+                   emission limits of this permit.
+
+       V.A.7.      Description of the best management practices used to minimize
+                   hydrocarbon emissions or to reduce the frequency of routine or predictable
+                   gas venting emissions, including how those best management practices are
+                   implemented and performed.
+
+       V.A.8.      Any other records required by conditions of this permit.
+
+V.B.   Records may be kept in either electronic format or hard copy, provided that they can
+       be promptly supplied to the Division upon request. All records must be retained for a
+       period of five (5) years.
+
+VI.    Monitoring Requirements for Facilities located in Disproportionately Impacted (DI)
+       Communities
+
+VI.A. Owners or operators of new or modified sources located in Disproportionately Impacted
+       Communities must submit a notification at the time of registration for a general permit
+       or permits issued pursuant to Regulation Number 3, Part B, Section III.I. indicating the
+       source will comply with the monitoring requirements outlined in Regulation Number 3,
+       Part B, Section III.J., as applicable, by either:
+
+       VI.A.1.     Complying with source-specific monitoring pursuant to Section III.J.2. of Part
+                   B;
+
+       VI.A.2.     Paying community monitoring fees pursuant to Section III.J.3. of Part B; or
+
+       VI.A.3.     Complying with well production facility monitoring pursuant to Section III.J.4.
+                   of Part B.
+
+                 Owners or operators must comply with the monitoring methodology selected on
+                 the general permit registration form.
+
+
+
+                                           Page 19 of 26
+VI.B. Owners or operators subject to VI.A.1 must submit a Division-approved source-specific
+        monitoring plan as part of a complete registration request. (Regulation Number 3, Part
+        B, III.E.)
+
+VII.    General Permit Registration Approval Process
+
+VII.A. Conditional certification of a registration under this general permit is effective from
+        the date the registration is deemed complete as indicated in Condition VII.B. A
+        complete registration request consists of all General Permit application materials
+        required by the Division and associated fees. The owner or operator may commence
+        construction and operation of the emitting activities as represented in the registration
+        once the registration is deemed complete. In the event the source does not qualify for
+        registration under the general permit the owner or operator accepts the liability of
+        commencing these activities.
+
+VII.B. The Division will determine completeness of the General Permit registration request
+        within sixty (60) days of the date of receipt of the request and provide written
+        notification to the applicant. If the applicant does not receive notification of a
+        completeness determination from the Division within sixty (60) days, the General
+        Permit registration request will be deemed complete for the purpose of Conditions
+        VII.A and VII.B.
+
+VII.C. The Division has ninety (90) calendar days from the date the Division receives a
+        complete General Permit registration request to provide the applicant with a written
+        approval or denial of the registration.
+
+VIII.   General Permit Terms and Administration
+
+VIII.A. A facility that is classified as a major source for Title V Operating Permit
+        requirements and is operating under Condition I.A.2.h must submit a Title V permit
+        application requesting to incorporate the terms of this general permit into a Title V
+        Operating Permit. The due date for this application is one year from the date on
+        which the facility becomes subject to Title V Operating Permit requirements.
+
+
+                                          Page 20 of 26
+VIII.B. In accordance with Colorado Regulation Number 3, Part C, Section V.C.5, some or all
+      of the monitoring specified in this general permit will be incorporated as specific
+      conditions in the source’s Title V Operating Permit (if applicable). Additional
+      monitoring not listed in this general permit may be included in the source’s Operating
+      Permit in order to satisfy the periodic monitoring requirements of Section V.C.5.b.
+
+VIII.C. General Terms
+
+      VIII.C.1. A revised APEN must be filed: (Reference: Regulation Number 3, Part A,
+                Section II.C.)
+
+
+                 VIII.C.1.a. Annually by April 30th of the year following a significant
+                              increase in emissions as follows:
+
+                              ■ For VOC, a change in actual emissions of five (5) tons per
+                                 year or more, above the level reported on the last APEN; or
+
+                              ■ For volatile organic compounds and nitrogen oxides sources
+                                 in ozone non-attainment areas, a change in annual actual
+                                 emissions of one ton per year or more or five percent,
+                                 whichever is greater, above the level reported on the last
+                                 APEN submitted to the Division; or
+
+                              ■ For any non-criteria reportable pollutant, if the emissions
+                                 increase by 50% or five (5) tons per year, whichever is less,
+                                 above the level reported on the last APEN.
+
+                VIII.C.1.b.   Whenever there is a change in the owner or operator of any
+                              facility, process, or activity; or
+
+                VIII.C.1.c.   Whenever new control equipment is installed, or whenever a
+                              different type of control equipment replaces an existing type of
+                              control equipment; or
+
+
+
+                                         Page 21 of 26
+          VIII.C.1.d.   Whenever a permit limitation must be modified; or
+
+          VIII.C.1.e.   No later than 30 days before the existing APEN expires.
+
+VIII.C.2. The submittal of an APEN requesting a GP11 registration satisfies the
+          requirement for the applicant to give notice to the Division for the
+          commencement of operation. (Regulation Number 3, Part B, Section
+          III.G.1.)
+
+VIII.C.3. The requirements of Regulation Number 3, Part D apply at such time that
+          any stationary source or modification becomes a major stationary source or
+          major modification solely by virtue of a relaxation in any enforceable
+          limitation that was established after August 7, 1980 on the capacity of the
+          source or modification to otherwise emit a pollutant, such as a restriction
+          on hours of operation. (Regulation Number 3, Part D, Sections V.A.7.b. and
+          VI.B.4.)
+
+VIII.C.4. Sources covered by this General Permit are subject to the Common
+          Provisions Regulation Part II, Subpart E, Affirmative Defense Provision for
+          Excess Emissions During Malfunctions. The owner or operator must notify
+          the Division of any malfunction condition which causes a violation of any
+          emission limit or limits stated in this permit as soon as possible, but no later
+          than noon of the next working day, followed by written notice to the
+          Division addressing all of the criteria set forth in Part II.E.1 of the Common
+          Provisions Regulation.
+
+VIII.C.5. This permit is granted subject to all rules and regulations of the Colorado
+          Air Quality Control Commission and the Colorado Air Pollution Prevention
+          And Control Act C.R.S., sections 25-7-101, et seq, to those general and
+          specific terms and conditions included in this document.
+
+VIII.C.6. Unless specifically stated otherwise, the general and specific conditions
+          contained in this permit have been determined by the Division to be
+
+
+                                   Page 22 of 26
+                necessary to assure compliance with the provisions of §25-7-114.5(7)(a),
+                C.R.S.
+
+      VIII.C.7. Each and every condition of this permit is a material part hereof and is not
+                severable. Any challenge to or appeal of a condition herein by the
+                permittee will constitute a rejection of the entire permit and upon such
+                occurrence, this permit must be deemed denied ab initio.
+
+      VIII.C.8. Section 25-7-114.7(2)(a), C.R.S. requires that all sources required to file an
+                Air Pollutant Emission Notice (APEN) must pay an annual fee to cover the
+                costs of inspections and administration.
+
+      VIII.C.9. Violation of the terms of a permit or of the provisions of the Colorado Air
+                Pollution Prevention and Control Act or the regulations of the AQCC may
+                result in administrative, civil or criminal enforcement actions under §§25-7-
+                115 (enforcement), -121 (injunctions), -122 (civil penalties), -122.1
+                (criminal penalties), C.R.S.
+
+      VIII.C.10. Registration under this permit is approved in reliance upon the accuracy and
+                completeness of information supplied by the owner or operator and is
+                conditioned upon operation of the source in accordance with this
+                information and with representations made by the owner or operator or
+                owner or operator's agents. It is valid only for the equipment and operations
+                or activity specifically identified on the general permit registration.
+
+VIII.D. Registration Revision/Termination
+
+      VIII.D.1. The Division may deny or revoke registration under the general permit
+                under the circumstances specified in Regulation Number 3, Part B, Section
+                III.I.3.c. and require the owner or operator to apply for a construction
+                permit as required by Regulation Number 3, Part B.
+
+      VIII.D.2. A registration under this general permit may be reissued to a new owner by
+                the Division as provided in Regulation Number 3, Part B, Section II.B. upon
+
+                                        Page 23 of 26
+                request for transfer of ownership and the submittal of a revised APEN,
+                revised general permit registration and the required fees.
+
+      VIII.D.3. Registration under this general permit is voluntary. The owner or operator
+                may withdraw or cancel a registration under this general permit at any time
+                by notifying the Division in writing. The owner or operator can apply for a
+                construction permit as necessary per Regulation Number 3, Part B.
+
+VIII.E. General Permit Revision/Termination
+
+      VIII.E.1. This general permit remains in effect until revised or terminated by the
+                Division in accordance with the provisions of Regulation Number 3.
+
+      VIII.E.2. After public notice and comment as provided by Regulation Number 3, Part
+                B, Section III.I.7., the Division may revise this general permit in order to add
+                or delete requirements or limitations to the permit. This public notice must
+                be conducted in a manner consistent with the provisions of Regulation
+                Number 3, Part B, Section III.C.4.
+
+      VIII.E.3. If the Division revises this general permit, it will provide written notice to
+                affected owners or operators prior to the revision of the general permit.
+                The notice will advise the owner or operators that any existing registration
+                to use the general permit will be automatically converted to a registration
+                to use the revised general permit, provided that the owner or operator
+                continues to meet all requirements of the revised general permit. Persons
+                not wishing to continue coverage under the revised general permit have the
+                option of applying for a Construction Permit as required by Regulation
+                Number 3, Part B, or apply for a different general permit, as appropriate.
+
+      VIII.E.4. If the Division terminates this general permit, it will provide written notice
+                to affected owners or operators prior to the termination of the general
+                permit. The notice will advise the owner or operators that they must apply
+                for a Construction Permit as required by Regulation Number 3, Part B.
+
+
+                                        Page 24 of 26
+       VIII.E.5. The Division may require any oil and gas facility authorized by a general
+                 construction permit to apply for and obtain an individual permit if
+                 circumstances have changed since the time of the original general permit
+                 application so that the oil and gas facility is no longer appropriately
+                 controlled and/or permitted under the general permit. (Regulation Number
+                 3, Part B, Section III.I.3.c.(i)(B))
+
+Permit History
+
+
+                 Issuance         Date                     Description
+
+
+                 Issuance 1        4 December 2020         Initial issuance
+
+
+                 Issuance 2        3 November               Revised to address the 8-hour Ozone
+                                  2022                      Control Area re-classification from
+                                                            serious to severe for existing
+                                                            registrations
+
+
+                 Issuance 3       This Issuance             Revised to address:
+
+                                                                •   Revised to address Northern
+                                                                    Weld County Area re-
+                                                                    classification from moderate to
+                                                                    serious for existing registrations,
+
+                                                                •   Revisions to Air Quality Control
+                                                                    Commission (AQCC) Regulation
+                                                                    Number 7, including, new
+                                                                    requirements and restructuring
+                                                                    of the regulation;
+
+
+
+
+                                           Page 25 of 26
+Issuance   Date                   Description
+
+                                      •   Revisions to facility-wide
+                                          limitations;
+
+                                      •   Revisions to General Permit
+                                          registration approval process.
+
+
+
+
+                  Page 26 of 26
+

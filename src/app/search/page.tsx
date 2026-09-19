@@ -305,6 +305,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                     )}
                     <span className="font-mono uppercase tracking-wide text-emerald-700">{hit.citation}</span>
                   </p>
+                  {hit.path && <p className="mt-1 text-xs leading-snug text-zinc-500">{hit.path}</p>}
                   {hit.title && (
                     <p className="mt-1 font-semibold text-zinc-900">{hit.title}</p>
                   )}
@@ -365,7 +366,8 @@ export default async function SearchPage(props: PageProps<"/search">) {
                         {hit.keyword_hit && hit.score != null ? " · words" : ""}
                       </span>
                     </div>
-                    <p className="mt-2 font-mono text-xs uppercase tracking-wide text-emerald-700">
+                    {hit.path && <p className="mt-2 text-xs leading-snug text-zinc-500">{hit.path}</p>}
+                    <p className="mt-1 font-mono text-xs uppercase tracking-wide text-emerald-700">
                       {hit.citation}
                     </p>
                     {hit.title && hit.title !== hit.citation && (

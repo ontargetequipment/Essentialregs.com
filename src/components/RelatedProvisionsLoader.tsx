@@ -7,6 +7,7 @@ type Item = {
   citation: string;
   title: string;
   reg_key: string | null;
+  path: string | null;
   summary: string | null;
   badge: string;
   regLabel: string;
@@ -44,10 +45,11 @@ export function RelatedProvisionsLoader({ currentReg }: { currentReg: string }) 
             ? `<span class="xref related-link" data-target="${esc(it.id)}">${esc(it.citation)}</span>`
             : `<a class="related-link" href="/regulations/${esc(it.reg_key ?? "")}#${esc(it.id)}">${esc(it.citation)}</a>`;
           const title = it.title && it.title !== it.citation ? `<span class="related-title">${esc(it.title)}</span>` : "";
+          const path = it.path ? `<span class="related-path">${esc(it.path)}</span>` : "";
           const summary = it.summary ? `<span class="related-snip">${esc(it.summary)}</span>` : "";
           return (
             `<li><span class="related-badge related-badge-${esc(it.badge.toLowerCase())}">${esc(it.badge)}</span>` +
-            `<span class="related-reg">${esc(it.regLabel)}</span> ${link} ${title}${summary}</li>`
+            `<span class="related-reg">${esc(it.regLabel)}</span> ${link} ${path}${title}${summary}</li>`
           );
         })
         .join("");

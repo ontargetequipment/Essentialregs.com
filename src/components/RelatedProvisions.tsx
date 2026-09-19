@@ -51,6 +51,7 @@ export async function RelatedProvisions({
                 <span className="text-xs text-zinc-500">{item.regLabel}</span>
                 <span className="font-mono text-xs text-emerald-700 group-hover:underline">{item.citation}</span>
               </div>
+              {item.path && <p className="mt-0.5 text-xs leading-snug text-zinc-400">{item.path}</p>}
               {item.title && item.title !== item.citation && (
                 <p className="mt-0.5 text-sm font-medium text-zinc-900">{item.title}</p>
               )}

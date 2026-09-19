@@ -1,0 +1,3593 @@
+                       GENERAL PERMIT 12 (GP12)
+
+                 Oil and Gas - WELL PRODUCTION FACILITIES
+
+                                       Issuance 1
+
+                                    Final Approval
+
+                            Date Issued: May 28, 2026
+
+
+
+
+________________________________________
+
+Bradley Eades, PE
+
+Oil and Gas Permitting Section Supervisor
+
+Permit History
+
+
+  Issuance          Date                    Description
+
+
+  Issuance 1        This Issuance           Initial issuance
+
+
+
+
+                                       Page 1 of 107
+   Table of Contents
+
+   I.         General Permit Applicability ............................................................. 4
+
+   II.        General Operating Conditions ......................................................... 10
+
+   III.       Annual Emission Limitation............................................................. 11
+
+   IV.        Annual Process Limitations ............................................................. 14
+
+   V.         State and Federal Regulatory Requirements ........................................ 19
+
+   VI.        Control, Operating, and Maintenance Requirements ............................... 30
+
+   VII.       Initial and Periodic Compliance Test Requirements ................................ 45
+
+   VIII.      Recordkeeping and Reporting Requirements ........................................ 59
+
+   IX.        Alternative Operating Scenarios (AOS) ............................................... 65
+
+   X.         General Permit Registration Approval Process and Expiration .................... 72
+
+   XI.        General Permits Terms and Administration.......................................... 73
+
+   XII.       Additional Requirements ............................................................... 78
+
+   Attachment A: Alternative Operating Scenarios - Natural gas-fired reciprocating internal
+   combustion engines ................................................................................. 81
+
+   Attachment B: Alternative Operating Scenarios – Diesel fuel-fired reciprocating internal
+   combustion engines ................................................................................. 98
+
+Note: See PS Memos and the Emission Calculation Manual for further information on
+definitions and emission calculations.
+
+
+                                            Page 2 of 107
+This general permit is granted by the Colorado Department of Public Health and Environment,
+Air Pollution Control Division (Division) subject to all rules and regulations of the Colorado Air
+Quality Control Commission (Commission) and the Colorado Air Pollution Prevention and
+Control Act (C.R.S. 25-7-101 et seq), to those general terms and conditions included in this
+general permit, and the following specific terms and conditions:
+
+
+
+
+                                         Page 3 of 107
+I.    General Permit Applicability
+
+I.A   This general permit may be used only for oil and gas well production facilities as
+      defined in Regulation Number 7, Part B, Section I.B.33 and Section II.A.46 (Adopted:
+      04/18/2025, Effective: 06/14/2025). Equipment covered by this general permit is
+      limited to the following sources:
+
+      I.A.1     Natural gas-fired reciprocating internal combustion engines.
+
+      I.A.2     Diesel fuel-fired reciprocating internal combustion engines.
+
+      I.A.3     Storage tanks used to store condensate, crude oil, intermediate
+                hydrocarbon liquids, or produced water:
+
+                I.A.3.a   Condensate storage tanks with a design capacity less than or
+                          equal to 10,000 barrels per storage vessel, used for the storage of
+                          condensate.
+
+                I.A.3.b   Crude oil storage tanks with a design capacity less than or equal
+                          to 10,000 barrels per storage vessel, used for the storage of crude
+                          oil.
+
+                I.A.3.c   Intermediate hydrocarbon liquid storage tanks with a design
+                          capacity less than or equal to 10,000 barrels per storage vessel,
+                          used for storage of intermediate hydrocarbon liquid.
+
+                I.A.3.d   Produced water storage tanks used for the storage of produced
+                          water.
+
+      I.A.4     Hydrocarbon liquid loading operations including condensate loading, crude
+                oil, and intermediate hydrocarbon liquid loading.
+
+
+
+                                          Page 4 of 107
+I.A.5   Gas venting from separators.
+
+I.A.6   Fugitive component leak emissions.
+
+I.A.7   Combustion devices, vapor recovery units, catalysts, or other Division-
+        approved air pollution control equipment used to reduce emissions (from
+        the emitting activities registered under this general permit) below the
+        limits specified in Section III below.
+
+I.A.8   Routine or predictable emissions: The following emitting activities may
+        register for this general permit:
+
+        I.A.8.a   Fixed roof storage tank-related routine or predictable gas venting
+                  emissions events that are not separately permitted:
+
+                   I.A.8.a.(i)      Releasing emissions from a fixed-roof storage tank
+                                    through a storage tank thief hatch, blowdown
+                                    valve, venting point, or other access point for any
+                                    routine or predictable activity, including for well
+                                    level measurement, sampling, truck loadout, well
+                                    unloading, equipment maintenance, repair,
+                                    decommissioning, or other routine or predictable
+                                    activity; and
+
+                   I.A.8.a.(ii)     Tank hot oil treatments or other tank cleaning
+                                    activities.
+
+        I.A.8.b   Well-related routine or predictable gas venting emissions events
+                  that are not separately permitted, including but not limited to:
+
+                  I.A.8.b.(i)     Wells liquids unloading;
+
+
+
+                                  Page 5 of 107
+          I.A.8.b.(ii)   Downhole well maintenance, including well
+                         workovers, recompletion, restimulation,
+                         reperforating, paraffin/scale removal, swabbing,
+                         and installation of artificial lift;
+
+          I.A.8.b.(iii) Well equipment maintenance at the surface;
+
+          I.A.8.b.(iv)   Well plugging;
+
+          I.A.8.b.(v)    Bradenhead gas venting.
+
+          I.A.8.b.(vi)   Casinghead gas venting; and
+
+          I.A.8.b.(vii) Other well-related routine or predictable gas venting
+                         emissions activities.
+
+I.A.8.c   Pigging-related routine or predictable gas venting emissions that
+          are not separately permitted, including, but not limited to:
+
+          I.A.8.c.(i)    Pig launchers; and
+
+          I.A.8.c.(ii)   Pig receivers.
+
+I.A.8.d   Routine or predictable blowdowns of facility equipment or piping
+          that are not separately permitted, including but not limited to:
+
+          I.A.8.d.(i)    Pipeline venting within the facility boundary when
+                         such venting is routine or predictable.
+
+          I.A.8.d.(ii)   Compressor and turbine blowdowns.
+
+          I.A.8.d.(iii) Scrubber and strainer blowdowns.
+
+
+
+
+                         Page 6 of 107
+          I.A.8.d.(iv)   Blowdowns resulting from facility-wide (plant)
+                         and/or equipment shutdowns.
+
+          I.A.8.d.(v)    Blowdown of all other equipment (including
+                         pipelines, compressor case or cylinders, manifolds,
+                         suction bottles, discharge bottles, and vessels); and
+
+          I.A.8.d.(vi)   Desiccant dehydration unit blowdowns.
+
+                         I.A.8.d.vi.(A)   Emissions resulting from blowdowns
+                                          from facility equipment or piping
+                                          where the physical volume between
+                                          isolation valves is less than 50 cubic
+                                          feet and that are not required to be
+                                          tracked and reported for the
+                                          purposes of Regulation Number 7,
+                                          Part B, Section V.C.2.d. and not
+                                          required to be reported or permitted
+                                          with this category.
+
+I.A.8.e   This category DOES NOT include:
+
+          I.A.8.e.(i)    Emissions at a storage tank that are not listed in
+                         Section I.A.8 of this general permit.
+
+          I.A.8.e.(ii)   Venting emissions from a storage tank that are
+                         prohibited by Regulation Number 7, Part B, Section
+                         II.C.2.a.
+
+
+
+
+                         Page 7 of 107
+I.B   The owner or operator of any oil and gas well production facility that can comply with
+      all of the conditions described in this general permit and meet all of the requirements
+      in this Section I may register for this general permit.
+
+I.C   This general permit applies only to the well production facility and the equipment
+      described in Condition I.A. for which the operator has registered under this general
+      permit in the application materials submitted to the Division.
+
+I.D   This general permit applies only to the equipment as described in Condition I.A above
+      having uncontrolled actual emissions of Sulfur Oxides (SOx), Particulate Matter (PM),
+      Particulate Matter 2.5 (PM2.5), and Particulate Matter 10 (PM10) less than the Air
+      Pollutant Emission Notice (APEN) reporting thresholds for each pollutant in Regulation
+      Number 3, Part A, Section II.D.1.a.
+
+I.E   This general permit applies only to the equipment described in Condition I.A located
+      at a true minor source or synthetic minor source for Operating Permit (OP), New
+      Source Review (NSR), Prevention of Significant Deterioration (PSD) and Maximum
+      Achievable Control Technology (MACT) programs, except as provided for in Condition
+      I.F below.
+
+I.F   Stationary Sources that a) become subject to Title V Operating Permit requirements
+      or become classified as an existing major stationary source due to a reclassification of
+      an ozone non-attainment area, and b) for which a complete GP12 registration request
+      was deemed complete by the Division prior to the effective date of a new
+      reclassification of an ozone non-attainment area or prior to the effective date of a
+      new ozone non-attainment area, may continue to operate under this general permit.
+      A new reclassification is defined as any ozone non-attainment reclassification that
+      happens after the effective date of GP12 registration as described in Condition X.A.
+      For the purposes of this general permit, ozone non-attainment area must mean any
+
+
+
+                                        Page 8 of 107
+      ozone non-attainment area defined per the most current version of Regulation
+      Number 7, Part A, Section II.A. or Regulation Number 26, Part A, Section I.A.
+
+I.G   The owner or operator must use state default emissions factors to register
+      Hydrocarbon Liquids Loadout Operations under this general permit. The owner or
+      operator must use state default emission factors approved in PS-Memo 14-02 issued by
+      the Division. The owner or operator must use the state default emissions factors to
+      show compliance with annual emission limitations established in this general permit.
+
+I.H   Excluded Sources: The following sources may not register for this general permit:
+
+      I.H.1     A natural gas processing plant.
+
+      I.H.2     A natural gas compressor station.
+
+      I.H.3     A pigging facility.
+
+      I.H.4     A class II disposal well facility.
+
+      I.H.5     An oil stabilization facility.
+
+      I.H.6     A petroleum refinery.
+
+      I.H.7     A portable source.
+
+      I.H.8     Equipment subject to a New Source Performance Standard (NSPS), other
+                than NSPS Subparts OOOO, OOOOa, OOOOb, JJJJ, and IIII.
+
+      I.H.9     Other equipment at the same stationary source not described in Condition
+                I.A above must be permitted separately as required by Regulation Number
+                3, Part B.
+
+
+
+
+                                         Page 9 of 107
+       I.H.10    This general permit may not be used for new major stationary source well
+                 production facilities or modifications at existing major stationary source
+                 well production facilities that are subject to Regulation Number 3, Part D
+                 Prevention of Significant Deterioration (PSD) or Nonattainment New Source
+                 Review (NA NSR).
+
+II.    General Operating Conditions
+
+II.A   The owner or operator must notify the Division no later than fifteen (15) days after
+       commencement of operation of an emissions unit under this general permit by
+       submitting a Notice of Startup (NOS) to the Division. The NOS must be submitted using
+       the Division’s online submission tool on the Division’s self-certification webpage.
+       Individual NOSs must be submitted per emissions unit. Failure to notify the Division of
+       startup of the permitted source is a violation of Regulation Number 3, Part B, Section
+       III.G.1. and can result in the revocation of the permit.
+
+II.B   The general permit registration expires if the owner or operator of the sources for
+       which this general permit was issued: (i) does not commence construction,
+       modification or operation of these sources within 18 months after either the date of
+       completeness of the general permit registration or the date on which such
+       construction or activity was scheduled to commence as set forth in the permit
+       application associated with this general permit; (ii) discontinues construction for a
+       period of eighteen months or more; (iii) does not complete construction within a
+       reasonable time of the estimated completion date. The Division may grant extensions
+       of the deadline. (Regulation Number 3, Part B, Section III.F.4.)
+
+II.C   The operator must complete all initial compliance testing and sampling as required in
+       this general permit.
+
+
+
+
+                                        Page 10 of 107
+II.D    Air pollution control equipment may be used to comply with the emission limits and
+        performance standards required in this general permit. (Regulation Number 7, Part B,
+        Section I.B.2.)
+
+II.E    This general permit may not be used to grant an overall control efficiency from
+        enclosed combustion devices over 95% for Volatile Organic Compounds (VOC).
+
+II.F    The owner or operator must construct and operate the facility in accordance with the
+        general permit registration approval letter, or if an approval letter has not been
+        issued yet, as certified by the owner or operator and/or required in the approved
+        GP12 modeling workbook, the approved APCD Form 114, or the approved ambient air
+        impact analysis (whichever is applicable). This includes, but is not limited to, stack
+        heights, stack diameters, source’s location relative to the ambient air boundary,
+        emission rates, and preclusion of public access to the site.
+
+III.    Annual Emission Limitation
+
+III.A   Equipment Specific Emission Limitations
+
+        III.A.1   The maximum allowable VOC, NOx, and CO emissions from each emission
+                  point registered under this general permit must not exceed the requested
+                  annual emission limitations (tons per year) as listed in the general permit
+                  registration approval letter, or if an approval letter has not been issued, as
+                  certified by the owner or operator in the Air Pollutant Emission Notices
+                  (APEN) included with the general permit registration. (Regulation Number 3,
+                  Part B, Sections II.A.4. and II.A.7.)
+
+        III.A.2   The owner or operator must operate and maintain the equipment registered
+                  under the general permit with the air pollution control equipment as listed
+                  in the general permit registration together with the process limitations in
+
+
+
+                                          Page 11 of 107
+                  Section IV to reduce emissions to less than or equal to the emissions limits
+                  established in this general permit. (Regulation Number 3, Part B, Sections
+                  II.A.4. and II.A.7.)
+
+III.B   Facility-Wide Emission Limitations
+
+        III.B.1   The maximum allowable emissions of hazardous air pollutants (HAPs) from
+                  all permitted emission points at the stationary source must not exceed the
+                  following limitations. (Regulation Number 3, Part B, Sections II.A.4. and
+                  II.A.7.)
+
+                  III.B.1.a Each Individual HAP:                     8.0 tons per year
+
+                  III.B.1.b Combined total of all HAPs:              20.0 tons per year
+
+III.C   For sources located at true minor facilities, compliance with the annual emission
+        limitations in the Equipment Specific Emission Limitations and Facility-Wide Emission
+        Limitations conditions above for both criteria and hazardous air pollutants must be
+        determined on an annual calendar-year basis, unless required elsewhere in this
+        general permit. The permit holder must keep a compliance record on-site or at a local
+        field office for Division review.
+
+III.D   For sources located at synthetic minor or major source subject to Condition I.F,
+        compliance with the Equipment Specific Emission Limitations and Facility-Wide
+        Emission Limitations for both criteria and hazardous air pollutants must be
+        determined on a rolling twelve (12) month total basis. By the end of each month, a
+        new twelve-month total is calculated based on the previous twelve months’ data.
+        During the first year of operation, compliance must be based upon cumulative
+        emissions from all months of operation. The permit holder must calculate actual
+
+
+
+
+                                            Page 12 of 107
+        emissions each month and keep a compliance record on-site or at a local field office
+        for Division review.
+
+III.E   The owner or operator of Storage Tanks, Gas Venting from Separators, and Routine or
+        Predictable Emissions must use the most recently developed emission factors as
+        required by the Initial and Periodic Compliance Test Requirements section of this
+        general permit to calculate actual emissions and to show compliance with the limits
+        in this general permit. If a source is not subject to initial or periodic testing or prior
+        to the initial compliance deadlines outlined in the Initial and Periodic Compliance
+        Test Requirement section of this general permit, the owner or operator must use the
+        emission factors listed in the general permit registration approval letter, or if an
+        approval letter has not been issued, as certified by the owner or operator in the
+        APEN(s) included with the general permit registration to calculate actual emissions
+        and to show compliance with the limits in this permit.
+
+III.F   The owner or operator of Natural Gas-Fired Reciprocating Internal Combustion
+        Engines must calculate actual emissions from each engine using the following
+        parameters and equations. For the purposes of this condition, placed in service means
+        the bringing of an engine on-site for use. The placed in service date is the date the
+        engine begins to operate. Replacement under an authorized alternative operating
+        scenario is not considered placed in service.
+
+        III.F.1   The emission factors as listed in the general permit registration approval
+                  letter, or if an approval letter has not been issued, as certified by the
+                  owner or operator in the APEN(s) included with the general permit
+                  registration;
+
+        III.F.2   actual monthly fuel consumption as determined by Condition IV.A.6, and
+
+
+
+
+                                          Page 13 of 107
+             III.F.3             for engines placed in service on or after the issuance date of Issuance 1 of
+                                 this permit, the owner or operator must use the fuel gas heat content
+                                 obtained from the most recent site-specific analysis as required by
+                                 Condition VII.E.1. For engines placed in service before the issuance date of
+                                 Issuance 1 of this permit, the owner or operator must use the fuel gas heat
+                                 content as listed in the general permit registration approval letter, or if an
+                                 approval letter has not been issued, as certified by the owner or operator in
+                                 the APEN(s) included with the general permit registration.
+
+                                                                           𝑙𝑙𝑙𝑙             𝐹𝐹𝐹𝐹𝐹𝐹𝐹𝐹                      𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀                                               𝐵𝐵𝐵𝐵𝐵𝐵
+                                      𝐸𝐸𝐸𝐸𝐸𝐸𝐸𝐸𝐸𝐸𝐸𝐸𝐸𝐸𝐸𝐸 𝑓𝑓𝑓𝑓𝑓𝑓𝑓𝑓𝑓𝑓𝑓𝑓 �              �×                                   �            � × 𝐹𝐹𝐹𝐹𝐹𝐹𝐹𝐹 𝐺𝐺𝐺𝐺𝐺𝐺 𝐻𝐻𝐻𝐻𝐻𝐻𝐻𝐻 𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶 �        �
+                         𝑡𝑡𝑡𝑡𝑡𝑡                                         𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀    𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝑒𝑒𝑒𝑒𝑒𝑒𝑒𝑒𝑒𝑒𝑒𝑒 𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚ℎ                                                 𝑆𝑆𝑆𝑆𝑆𝑆
+𝐸𝐸𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚 (             )=
+                       𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚ℎ                                                                                                 2000𝑙𝑙𝑙𝑙
+                                                                                               𝑈𝑈𝑈𝑈𝑈𝑈𝑈𝑈 𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶 (            )
+                                                                                                                                  𝑡𝑡𝑡𝑡𝑡𝑡
+
+III.G        The owner or operator must calculate Fugitive Component Leak actual emissions
+             based on the most recent component counts for the facility and with the most recent
+             extended gas and liquids analyses, as required in the Initial and Periodic Compliance
+             Test Requirements section of this permit. Prior to the initial compliance deadlines
+             outlined in the Initial and Periodic Compliance Test Requirement section of this
+             general permit, the owner or operator must use the component counts and the gas
+             and liquids compositions listed in the general permit registration approval letter, or if
+             an approval letter has not been issued, as certified by the owner or operator in the
+             APEN(s) included with the general permit registration to calculate actual emissions
+             and to show compliance with the limits in this general permit.
+
+IV.          Annual Process Limitations
+
+IV.A         The maximum allowable process rates of the parameters listed below from each
+             emission point registered under this general permit must not exceed the requested
+             annual process limitation as listed on the general permit registration approval letter,
+             or if an approval letter has not been issued, as certified by the owner or operator in
+
+
+                                                                                   Page 14 of 107
+the APEN included with the general permit registration. The owner or operator must
+track and maintain monthly process records of the parameters listed below for each
+emission point registered under this general permit. The owner or operator must use
+monthly throughput records to demonstrate compliance with the process limits
+established in this condition and to demonstrate compliance with emission limits
+established in Conditions III.A and III.B for each emission point registered under this
+general permit. (Regulation Number 3, Part B, Sections II.A.4. and II.A.7.)
+
+IV.A.1    Storage Tanks
+
+          IV.A.1.a The owner or operator must maintain monthly records of
+                    condensate, crude oil, produced water, and intermediate
+                    hydrocarbon liquid throughput.
+
+          IV.A.1.b Whenever the owner or operator collects waste gas vapors from
+                    this source through a Vapor Recovery Unit (VRU) to a process and
+                    during any VRU downtime, the owner or operator must track and
+                    maintain condensate, crude oil, produced water, and
+                    intermediate hydrocarbon liquid throughput.
+
+IV.A.2    Hydrocarbon liquid loading operations
+
+          IV.A.2.a The owner or operator must maintain monthly records of
+                    condensate and crude oil, and intermediate hydrocarbon liquid
+                    throughput.
+
+          IV.A.2.b Whenever the owner or operator collects waste gas vapors from
+                    this source through a Vapor Recovery Unit (VRU) to a process and
+                    during any VRU downtime, the owner or operator must track and
+
+
+
+
+                                  Page 15 of 107
+                  maintain crude oil, condensate, and intermediate hydrocarbon
+                  liquid throughput.
+
+IV.A.3   Gas Venting from Separators
+
+         IV.A.3.a The owner or operator must continuously track and record the
+                  volumetric flow rate of gas emitted from the separator(s) to a
+                  combustion device using a continuous operational flow meter. The
+                  owner or operator must maintain monthly records of the
+                  volumetric flow rate of gas emitted from the separator(s) to a
+                  combustion device using a flow meter. For this requirement,
+                  records do not include gas delivered to a gas gathering line. The
+                  owner or operator must follow manufacturer recommendations for
+                  the operation, maintenance, and calibration of the flow meter.
+
+IV.A.4   Routine or Predictable Emissions
+
+         IV.A.4.a When using a volumetric process:
+
+                   IV.A.4.a.(i)      The owner or operator must continuously monitor
+                                     and record the volumetric flow rate of gas
+                                     emitted from routine or predictable activities
+                                     using a continuous operational flow meter. The
+                                     owner or operator must maintain monthly records
+                                     of the volumetric flow rate of gas emitted from
+                                     routine or predictable activities. For this
+                                     requirement, records do not include gas delivered
+                                     to a gas gathering line or process. The owner or
+                                     operator must follow manufacturer
+
+
+
+
+                                  Page 16 of 107
+                                      recommendations for the operation, maintenance,
+                                      and calibration of the flow meter. Or;
+
+                   IV.A.4.a.(ii)      The owner or operator must maintain monthly
+                                      records of parametric data necessary to complete
+                                      calculations of emitted volume of pollutants.
+
+         IV.A.4.b When using hours of operation: The owner or operator must
+                   maintain monthly records of the hours of operation of each
+                   activity permitted under this general permit.
+
+         IV.A.4.c When using events-based processes: The owner or operator must
+                   maintain monthly records of the number of events from each
+                   activity permitted under this general permit.
+
+IV.A.5   Combustion Devices – Pilot light gas
+
+         IV.A.5.a The owner or operator must maintain monthly records of hours of
+                   operation of all pilot lights from all combustion devices covered
+                   by this general permit or assume the pilot light operates 8760
+                   hours per year. The owner or operator must use the monthly
+                   hours of operation of pilot lights and the pilot light emission rates
+                   in standard cubic feet per hour (scf/hr) provided by the enclosed
+                   combustion device manufacturer or estimated through
+                   engineering calculations to calculate monthly pilot light gas
+                   throughput.
+
+IV.A.6   Natural gas-fired reciprocating internal combustion engines – the owner or
+         operator must use one of the following compliance methods. For the
+         purposes of this condition, placed in service means the bringing of an
+
+
+
+                                   Page 17 of 107
+                             engine on-site for use. The placed in service date is the date the engine
+                             begins to operate. Replacement under an authorized alternative operating
+                             scenario is not considered placed in service.
+
+                             IV.A.6.a Engines placed in service on or after the issuance date of Issuance
+                                               1 of this permit: The owner or operator must maintain monthly
+                                               records of natural gas fuel consumption. Fuel consumption must
+                                               be measured and recorded using a continuous fuel flow meter at
+                                               the inlet to the engine. The owner or operator must continuously
+                                               monitor and record the volumetric flow rate of fuel. The owner or
+                                               operator must follow manufacturer recommendations for the
+                                               operation, maintenance, and calibration of the flow meter.
+
+                             IV.A.6.b Engines placed in service before the issuance date of Issuance 1 of
+                                               this permit: The owner or operator must maintain monthly
+                                               records of hours of operation. The actual monthly process rate
+                                               must be calculated using the following equation:
+
+
+                                                    𝐻𝐻𝐻𝐻𝐻𝐻𝐻𝐻𝐻𝐻 𝑜𝑜𝑜𝑜 𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜𝑜 � ℎ𝑟𝑟𝑟𝑟 � × 𝐵𝐵𝐵𝐵𝐵𝐵𝐵𝐵 � 𝐵𝐵𝐵𝐵𝐵𝐵 � × 𝑆𝑆𝑆𝑆𝑆𝑆𝑆𝑆 𝑟𝑟𝑟𝑟𝑟𝑟𝑟𝑟𝑟𝑟 𝐻𝐻𝐻𝐻 (ℎ𝑝𝑝)
+      𝐹𝐹𝐹𝐹𝐹𝐹𝐹𝐹                      𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀                                          𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚ℎ                     ℎ𝑝𝑝 ℎ𝑟𝑟
+                                  �            �=
+                                                                      𝐹𝐹𝐹𝐹𝐹𝐹𝐹𝐹 𝐺𝐺𝐺𝐺𝐺𝐺 𝐻𝐻𝐻𝐻𝐻𝐻𝐻𝐻 𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶 �𝐵𝐵𝐵𝐵𝐵𝐵� × 106 ( 𝑆𝑆𝑆𝑆𝑆𝑆 )
+𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝐶𝑒𝑒𝑒𝑒𝑒𝑒𝑒𝑒𝑒𝑒𝑒𝑒 𝑚𝑚𝑚𝑚𝑚𝑚𝑚𝑚ℎ
+                                                                                                               𝑆𝑆𝑆𝑆𝑆𝑆         𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀𝑀
+
+                                                    IV.A.6.b.(i)          BSFC is the Break Specific Fuel Consumption at
+                                                                          100% load as listed in the general permit
+                                                                          registration approval letter, or if an approval
+                                                                          letter has not been issued, as certified by the
+                                                                          owner or operator in the APEN(s) included with
+                                                                          the general permit registration.
+
+
+
+
+                                                                     Page 18 of 107
+                             IV.A.6.b.(ii)      The owner or operator must use the fuel gas heat
+                                                content as listed in the general permit registration
+                                                approval letter, or if an approval letter has not
+                                                been issued, as certified by the owner or operator
+                                                in the APEN(s) included with the general permit
+                                                registration.
+
+       IV.A.7    Diesel fuel-fired reciprocating internal combustion engines
+
+                 IV.A.7.a The owner or operator must maintain monthly records of diesel
+                            fuel consumption.
+
+IV.B   For sources located at true minor facilities, compliance with the annual process limits
+       must be determined on an annual calendar-year basis, unless required elsewhere in
+       this general permit. The permit holder must keep a compliance record on-site or at a
+       local field office for division review.
+
+IV.C   For sources located at synthetic minor or major stationary source subject to Condition
+       I.F, compliance with process limits must be determined on a rolling twelve (12) month
+       total basis. By the end of each month, a new twelve-month total is calculated based
+       on the previous twelve months’ data. During the first year of operation, compliance
+       must be based upon cumulative emissions from all months of operation. The permit
+       holder must calculate actual emissions each month and keep a compliance record on-
+       site or at a local field office for Division review.
+
+V.     State and Federal Regulatory Requirements
+
+V.A    This stationary source is subject to the odor requirements of Regulation Number 2.
+
+V.B    The permit number (GP12) must be marked at the entrance to the facility or in
+       another easily identifiable location within the facility. Except for Routine or
+
+
+                                             Page 19 of 107
+      Predictable Emissions and Fugitives Component Leak Emissions, the AIRS number (e.g.
+      123/1234/001) must be marked on equipment for ease of identification. (Regulation
+      Number 3, Part B, Section III.E.)
+
+V.C   Visible emissions shall not exceed twenty percent (20%) opacity during normal
+      operation of any source registered to operate under this general permit. During
+      periods of startup, process modification, or adjustment of control equipment visible
+      emissions shall not exceed 30% opacity for more than six minutes in any sixty
+      consecutive minutes. (Regulation Number 1, Sections II.A.1. & II.A.4.)
+
+V.D   Owners or operators of new or modified sources located in Disproportionately
+      Impacted Communities must submit a notification at the time of registration for a
+      general permit or permits issued pursuant to Regulation Number 3, Part B, Section
+      III.I. indicating the source will comply with the monitoring requirements outlined in
+      Regulation Number 3, Part B, Section III.J., as applicable, by either:
+
+      V.D.1     Complying with source-specific monitoring pursuant to Section III.J.2. of
+                Part B;
+
+      V.D.2     Paying community monitoring fees pursuant to Section III.J.3. of Part B; or
+
+      V.D.3     Complying with well production facility monitoring pursuant to Section
+                III.J.4. of Part B.
+
+      Owners or operators must comply with the monitoring methodology selected on the
+      general permit registration form.
+
+V.E   For sources subject to Regulation Number 3, Part B, Section III.J.2, the owner or
+      operator must design and implement an approved source-specific monitoring plan
+      (SSMP) to monitor emissions of nitrogen dioxide, PM2.5, benzene, toluene,
+      ethylbenzene, and xylene in accordance with Regulation Number 3, Part B, Section
+
+
+                                          Page 20 of 107
+      III.J.2. The SSMP must be submitted for Division review and approval at least sixty
+      (60) days prior to commencement of operation under this general permit. Failure to
+      submit an approvable SSMP could result in revocation of the general permit
+      registration. The owner or operator may discontinue source-specific monitoring
+      requirements upon the Division’s approval of a petition submitted in accordance with
+      Regulation Number 3, Part B, Section III.J.2.f. (Regulation Number 3, Part B, Sections
+      III.E. & III.G.7.c.)
+
+V.F   On or before June 30th of each calendar year the owner or operator of well production
+      facilities in Colorado must submit a single annual report that includes actual emissions
+      and specified information in the Division-approved report format. The information
+      included in the annual report must be in accordance with the general reporting
+      requirements of Regulation Number 7, Part B, Section V.B. Each calendar year owners
+      or operators must maintain the information according to Regulation Number 7, Part D,
+      Section V.C. for inclusion in the annual report. (Regulation Number 7, Part B, Section
+      V)
+
+V.G   Unless otherwise defined in this general permit, any terms and conditions in this
+      general permit are as defined per the most current version of Regulation Number 7,
+      Part B, Section II.A.
+
+V.H   Storage Tanks
+
+      V.H.1      The owner or operator must comply with all applicable requirements per
+                 the most current version of Regulation Number 7, Part B, Sections I.C., I.D.,
+                 I.E., and I.F., including, but not limited to, compliance deadlines, control,
+                 monitoring, performance testing, inspection, recordkeeping, and reporting
+                 requirements.
+
+
+
+
+                                        Page 21 of 107
+      V.H.2    The owner or operator must comply with all applicable requirements per
+               the most current version of Regulation Number 7, Part B, Sections, II.B. and
+               II.C., including, but not limited to, compliance deadlines, control,
+               monitoring, performance testing, inspection, design, recordkeeping and
+               reporting requirements.
+
+      V.H.3    Storage tanks subject to 40 CFR Part 60, NSPS Subpart OOOO - Standards of
+               Performance for Crude Oil and Natural Gas Facilities - must comply with
+               all applicable requirements of that subpart including, but not limited to,
+               emissions standards, testing, notification, monitoring, recordkeeping and
+               reporting.
+
+      V.H.4    Compliance with Conditions V.H.1 through V.H.3 fulfills the requirements to
+               comply with Reasonably Available Control Technology (RACT) of Regulation
+               Number 3, Part B, Section III.D.2.
+
+V.I   Hydrocarbon liquid loading operations
+
+      V.I.1    The owner or operator must comply with all applicable requirements per
+               the most current version of Regulation Number 7, Part B, Sections I.C. and
+               I.M., including, but not limited to, compliance deadlines, control,
+               monitoring, inspection, design, recordkeeping and reporting requirements.
+
+      V.I.2    The owner or operator must comply with all applicable requirements per
+               the most current version of Regulation Number 7, Part B, Sections II.B. And
+               II.C.5., including, but not limited to, compliance deadlines, control,
+               training, monitoring, inspection, design, recordkeeping and reporting
+               requirements.
+
+
+
+
+                                      Page 22 of 107
+      V.I.3    Compliance with Conditions V.I.1 and V.I.2 fulfills the requirements to
+               comply with RACT of Regulation Number 3, Part B, Section III.D.2.
+
+V.J   Gas Venting from Separators
+
+      V.J.1    The owner or operator must comply with all applicable requirements per
+               the most current version of Regulation Number 7, Part B, Sections II.B. and
+               II.F., including, but not limited to, compliance deadlines, control,
+               performance testing, and collection requirements.
+
+      V.J.2    Compliance with Condition V.J.1 fulfills the requirements to comply with
+               RACT of Regulation Number 3, Part B, Section III.D.2.
+
+V.K   Routine or Predictable Emissions
+
+      V.K.1    The owner or operator must comply with all applicable requirements per
+               the most current version of Regulation Number 7, Part B, Sections II.G.,
+               including, but not limited to, compliance deadlines, control, monitoring,
+               inspection, design, recordkeeping and reporting requirements.
+
+      V.K.2    The owner or operator must use best management practices to minimize
+               hydrocarbon emissions during, or to reduce the frequency of routine or
+               predictable gas venting emissions events. The owner and operator must
+               develop and maintain a description of best management practices
+               implemented to minimize hydrocarbon emissions during, or to reduce the
+               frequency of, routine or predictable gas venting events covered by this
+               general permit. The description must also include how those best
+               management practices are implemented and performed. The description
+               must be made available for Division review upon request. (Regulation
+               Number 3, Part B, Section III.E.)
+
+
+
+                                         Page 23 of 107
+V.K.3   The owner or operator must perform routine or predictable gas venting
+        emissions activities between October 1 and April 30, when practicable.
+        (Regulation Number 3, Part B, Section III.E.)
+
+V.K.4   The owner or operator must avoid performing routine or predictable gas
+        venting emissions activities on Ozone Action Days, when practicable. Ozone
+        Action Day advisories are published by the Colorado Department of Public
+        Health and Environment. The owner or operator shall maintain a record of
+        all venting events occurring during Ozone Action Days. (Regulation Number
+        3, Part B, Section III.E.)
+
+V.K.5   The owner or operator, or authorized third party representative, must:
+        (Regulation Number 3, Part B, Section III.E.)
+
+        V.K.5.a     Remain on site while a storage tank thief hatch is open if there
+                    are liquids in the tank, if the thief hatch was opened to perform
+                    routine or predictable emitting activities; and
+
+        V.K.5.b     Minimize the duration of time the thief hatch is open during
+                    activities to determine the quality and/or quantity of storage tank
+                    contents.
+
+V.K.6   For equipment blowdowns, the owner or operator must avoid blowing down
+        the equipment completely to ambient pressure, where practicable.
+        (Regulation Number 3, Part B, Section III.E.)
+
+V.K.7   For pigging related activities, the owner or operator must install, operate
+        and maintain a liquids handling system to remove any accumulated liquid
+        prior to pig receiver depressurization. (Regulation Number 3, Part B, Section
+        III.D.2.)
+
+
+
+                                Page 24 of 107
+      V.K.8    Compliance with Conditions V.K.1 through V.K.7 fulfills the requirements to
+               comply with RACT of Regulation Number 3, Part B, Section III.D.2.
+
+V.L   Air Pollution Control Equipment used to control Storage Tanks, Hydrocarbon Liquids
+      Loadout, Gas Venting from Separators, or Routine or Predictable Emissions
+
+      V.L.1    The owner or operator must comply with all applicable requirements per
+               the most current version of Regulation Number 7, Part B, Sections I.C., I.D.,
+               I.E., I.F. and I.M., including, but not limited to, compliance deadlines,
+               control, training, monitoring, performance testing, inspection, design,
+               recordkeeping and reporting requirements.
+
+      V.L.2    The owner or operator must comply with all applicable requirements per
+               the most current version of Regulation Number 7, Part B, Section II.B., II.C.,
+               II.F. and II.G., including, but not limited to, compliance deadlines, control,
+               monitoring, performance testing, inspection, design, recordkeeping and
+               reporting requirements.
+
+V.M   Natural gas-fired reciprocating internal combustion engines
+
+      V.M.1    Engines registered to operate in accordance with the provisions of this
+               general permit must be subject to and must not exceed the emissions
+               standards contained in Table 1 - Emission Standards (g/hp-hr) for Rich Burn
+               and Lean Burn Engines. If the engine is subject to a more stringent
+               applicable performance standard for a specific pollutant, the most stringent
+               performance standard shall apply (Regulation Number 3, Part B, Section
+               III.E).
+
+
+
+
+                                      Page 25 of 107
+              Table 1 - Emission Standards (g/hp-hr) for Rich Burn and Lean Burn Engines
+
+
+                       Engine Design (horsepower (hp))           NOx         CO         VOC
+
+
+                   Rich Burn (Greater than or equal to 100
+                                                                 2.0         4.0           1.0
+                             and less than 500)
+
+
+                  Lean Burn (Greater than or equal to 100
+                                                                 2.0         4.0           1.0
+                             and less than 500)
+
+
+                  Rich Burn (Greater than or equal to 500)       0.7         1.5           1.0
+
+
+                  Lean Burn (Greater than or equal to 500)       2.0         1.5           0.7
+
+
+      V.M.2       The owner or operator must comply with all applicable requirements per
+                  the most current version of Regulation Number 26, Part B, Sections I.A.
+                  through I.D. including, but not limited to, compliance deadlines, control,
+                  emission standards, training, monitoring, performance testing, inspection,
+                  design, recordkeeping and reporting requirements.
+
+      V.M.3       Compliance with Conditions V.M.1 and V.M.2 fulfills the requirements to
+                  comply with RACT of Regulation Number 3, Part B, Section III.D.2.
+
+V.N   Diesel fuel-fired reciprocating internal combustion engines
+
+      V.N.1       The owner or operator must comply with all applicable requirements per
+                  the most current version of Regulation Number 26, Part B, Section I.D.,
+                  including, but not limited to, compliance deadlines, control, emission
+
+
+                                        Page 26 of 107
+        standards, training, monitoring, performance testing, inspection, design,
+        recordkeeping and reporting requirements.
+
+V.N.2   If an engine is subject to the New Source Performance Standards
+        requirements of Regulation Number 6, Part A, Subpart IIII, Standards of
+        Performance for Stationary Compression Ignition Internal Combustion
+        Engines (CI ICE):
+
+        V.N.2.a   Owners and operators of 2007 model year and later non-
+                  emergency stationary CI ICE with a displacement of less than 30
+                  liters per cylinder must comply with the emission standards for
+                  new CI engines in 40 CFR 60.4201 for their 2007 model year and
+                  later stationary CI ICE, as applicable.
+
+                   V.N.2.a.(i)      All fuel used shall meet the following
+                                    specifications:
+
+                                 V.N.2.a.i.(A)    Sulfur content shall not exceed 15
+                                                  ppm.
+
+                                 V.N.2.a.i.(B)    Have a minimum cetane index of 40
+                                                  or have a maximum aromatic
+                                                  compound content of 35% by volume.
+
+                  Compliance shall be demonstrated by maintaining copies of the
+                  fuel specifications provided by the supplier on-site or in a readily
+                  accessible location and made available to the Division for
+                  inspection upon request.
+
+
+
+
+                                 Page 27 of 107
+V.N.3   All engines and control devices must be installed, configured, operated, and
+        maintained according to the specifications and instructions provided by the
+        engine manufacturer.
+
+V.N.4   If the engine is equipped with a diesel particulate filter, the filter must be
+        installed with a backpressure monitor that notifies the owner or operator
+        when the high backpressure limit of the engine is approached. Records shall
+        be kept of any corrective action taken after the backpressure monitor has
+        notified the owner or operator that the high backpressure limit is
+        approached. If the engine is an emergency stationary CI internal combustion
+        engine that does not meet the standards applicable to non-emergency
+        engines, the owner or operator must install a non-resettable hour meter
+        prior to startup of the engine per Subpart IIII §60.4209(a).
+
+V.N.5   The following requirements of Regulation Number 6, Part A, Subpart A,
+        General Provisions, including but not limited to, apply:
+
+        V.N.5.a   At all times, including periods of start-up, shutdown, and
+                  malfunction, the facility and control equipment shall, to the
+                  extent practicable, be maintained and operated in a manner
+                  consistent with good air pollution control practices for minimizing
+                  emissions. Determination of whether or not acceptable operating
+                  and maintenance procedures are being used will be based on
+                  information available to the Division, which may include, but is
+                  not limited to, monitoring results, opacity observations, review of
+                  operating and maintenance procedures, and inspection of the
+                  source. (Regulation Number 6, Part A. General Provisions from 40
+                  CFR 60.11(d))
+
+
+
+
+                               Page 28 of 107
+               V.N.5.b   No article, machine, equipment or process shall be used to
+                         conceal an emission which would otherwise constitute a violation
+                         of an applicable standard. Such concealment includes, but is not
+                         limited to, the use of gaseous diluents to achieve compliance with
+                         an opacity standard or with a standard which is based on the
+                         concentration of a pollutant in the gases discharged to the
+                         atmosphere. (Regulation Number 6, Part A. General Provisions
+                         from 40 CFR 60.12)
+
+               V.N.5.c   Written notification of construction and initial startup dates shall
+                         be submitted to the Division as required under 40 CFR § 60.7.
+
+               V.N.5.d   Records of startups, shutdowns, and malfunctions shall be
+                         maintained, as required under 40 CFR § 60.7.
+
+      V.N.6    Compliance with Conditions V.N.1 through V.N.5 fulfills the requirements to
+               comply with RACT of Regulation Number 3, Part B, Section III.D.2.
+
+V.O   Fugitive Component leak emissions
+
+      V.O.1    The owner or operator must comply with all applicable requirements per
+               the most current version of Regulation Number 7, Part B, Sections I.L.,
+               including, but not limited to, compliance deadlines, inspection, monitoring,
+               repair, remonitoring, recordkeeping and reporting requirements.
+
+      V.O.2    The owner or operator must comply with all applicable per the most current
+               version of Regulation Number 7, Part B, Section II.E., including, but not
+               limited to, compliance deadlines, inspection, monitoring, repair,
+               remonitoring, recordkeeping and reporting requirements.
+
+
+
+
+                                      Page 29 of 107
+       V.O.3    Compliance with Conditions V.O.1 and V.O.2 fulfill the requirements to
+                comply with RACT of Regulation Number 3, Part B, Section III.D.2.
+
+VI.    Control, Operating, and Maintenance Requirements
+
+VI.A   Storage Tanks
+
+       VI.A.1   If air pollution control equipment is used to comply with the emission limits
+                of this general permit, it must collect and control emissions from each
+                storage tank by routing emissions to air pollution control equipment that
+                achieves a VOC control efficiency of 95%. If a combustion device is used, it
+                must have a design destruction efficiency of at least 98% for VOC.
+                (Regulation Number 3, Part B, Section III.E.)
+
+       VI.A.2   If air pollution control equipment is used to comply with the emission limits
+                of this general permit, the owner or operator must comply with the
+                applicable requirements in Condition VI.E. (Regulation Number 3, Part B,
+                Section III.E.)
+
+VI.B   Hydrocarbon Liquids Loadout
+
+       VI.B.1   If air pollution control equipment is used to comply with the emission limits
+                of this general permit, it must achieve a VOC control efficiency of 95%. If a
+                combustion device is used, it must have a design destruction efficiency of at
+                least 98% for VOC. (Regulation Number 3, Part B, Section III.E.)
+
+       VI.B.2   If air pollution control equipment is used to comply with the emission limits
+                of this general permit, the owner or operator must comply with the
+                applicable requirements in Condition VI.E. (Regulation Number 3, Part B,
+                Section III.E.)
+
+
+
+
+                                       Page 30 of 107
+VI.C   Gas Venting from Separators
+
+       VI.C.1   Gas coming off a separator, produced during normal operation from any oil
+                and gas well, must either be routed to a gas gathering line or controlled by
+                air pollution control equipment that achieves a VOC control efficiency of
+                95%. If a combustion device is used, it must have a design destruction
+                efficiency of at least 98% for VOC. (Regulation Number 3, Part B, Section
+                III.E.)
+
+       VI.C.2   If air pollution control equipment is used to comply with the emission limits
+                of this general permit, the owner or operator must comply with the
+                applicable requirements in Condition VI.E. (Regulation Number 3, Part B,
+                Section III.E.)
+
+VI.D   Routine or Predictable Emissions
+
+       VI.D.1   If air pollution control equipment is used to comply with the emission limits
+                of this general permit, it must achieve a VOC control efficiency of 95%. If a
+                combustion device is used, it must have a design destruction efficiency of at
+                least 98% for VOC. (Regulation Number 3, Part B, Section III.E.)
+
+       VI.D.2   If air pollution control equipment is used to comply with the emission limits
+                of this general permit, the owner or operator must comply with the
+                applicable requirements in Condition VI.E. (Regulation Number 3, Part B,
+                Section III.E.)
+
+VI.E   Air Pollution Control Equipment used to control Storage Tanks, Hydrocarbon Liquids
+       Loadout, Gas Venting from Separators, or Routine or Predictable Emissions
+
+       VI.E.1   All air pollution control equipment must be operated and maintained
+                pursuant to the manufacturing specifications or equivalent to the extent
+
+
+                                          Page 31 of 107
+         practicable, and consistent with technological limitations and good
+         engineering and maintenance practices. The owner or operator must keep
+         manufacturer specifications or equivalent on file. In addition, all such air
+         pollution control equipment must be adequately designed and sized to
+         achieve the control efficiency rates and to handle reasonably foreseeable
+         fluctuations in emissions of VOCs and other hydrocarbons during normal
+         operations. Fluctuations in emissions that occur when the separator dumps
+         into the tank are reasonably foreseeable. (Regulation Number 3, Part B,
+         Section III.E.)
+
+VI.E.2   If a combustion device is used to control emissions of VOCs and other
+         hydrocarbons, it must be enclosed, have no visible emissions during normal
+         operation, and be designed so that an observer can, by means of visual
+         observation from the outside of the enclosed combustion device, or by
+         other means approved by the Division, determine whether it is operating
+         properly. (Regulation Number 3, Part B, Section III.E.)
+
+VI.E.3   All combustion devices used to control emissions of hydrocarbons must be
+         equipped with and operate an auto-igniter. (Regulation Number 3, Part B,
+         Section III.E.)
+
+VI.E.4   Air pollution control equipment must achieve a VOC control efficiency of
+         95% and must have a design destruction efficiency of at least 98% for VOC.
+         (Regulation Number 3, Part B, Section III.E.)
+
+VI.E.5   The owner or operator must conduct visual inspections of air pollution
+         control equipment. Visual inspections must follow the schedule in Table 2 -
+         ECD monitoring frequency. Visual inspections must include, at a minimum:
+         (Regulation Number 3, Part B, Section III.E.)
+
+
+
+                                Page 32 of 107
+VI.E.5.a Inspection or monitoring of each combustion device to ensure that
+         it is operating, including that the pilot light is lit and the auto-
+         igniter is properly functioning. The owner or operator may use a
+         surveillance system to maintain records on combustion device
+         operation. For storage tanks equipped with a surveillance system
+         or other Division-approved monitoring system, the owner or
+         operator must check weekly that the system is functioning
+         properly and that necessary information is being collected. Any
+         loss of data or failure to collect required data must be treated as
+         control device downtime and will be considered by the Division as
+         if the data was not collected.
+
+VI.E.5.b Inspection or monitoring of each combustion device to ensure that
+         the valves for the piping of gas to the pilot light are open and
+         functioning properly.
+
+VI.E.5.c Inspection or monitoring of each combustion device to ensure the
+         burner tray is not visibly clogged.
+
+VI.E.5.d Inspection of each combustion device for the presence or absence
+         of smoke. If smoke is observed, either the equipment must be
+         immediately shut-in to investigate the potential cause for smoke
+         and perform repairs, as necessary, or EPA Method 22 must be
+         conducted to determine whether visible emissions are present for
+         a period of at least one (1) minute in fifteen (15) minutes.
+
+VI.E.5.e Inspection or monitoring of each vapor recovery unit to ensure
+         that the unit is operating and that vapors are being routed to the
+         unit.
+
+
+
+                      Page 33 of 107
+VI.E.5.f    Inspection or monitoring of air pollution control equipment to
+            ensure that valves for the piping of gas to the air pollution control
+            equipment are open.
+
+VI.E.5.g Recording the flow meter readings or pressure actuator system
+            data. For flow meter readings, this must include the maximum
+            and minimum measured flow rate since the previous visual
+            inspection. For pressure actuator system data, this must include
+            the maximum and minimum measured pressures while the
+            actuator valve is open since the previous visual inspection. An
+            owner or operator may use automation to continuously record
+            flow and/or pressure to the enclosed combustion devices(s).
+
+VI.E.5.h Visual inspections of air pollution control equipment must follow
+            the schedule below:
+
+                        Table 2 - ECD monitoring frequency
+
+
+                                  Permitted facility-
+     Area classification                                 Monitoring Frequency
+                                  wide VOC emissions
+
+
+           Attainment              Less than 90 TPY              Weekly
+
+
+                                 Greater than or equal
+           Attainment                                             Daily
+                                       to 90 TPY
+
+
+                                   Less than 90 TPY              Weekly
+  Marginal/Moderate Non-
+
+
+
+
+                          Page 34 of 107
+                                                Permitted facility-
+                     Area classification                               Monitoring Frequency
+                                               wide VOC emissions
+
+                           Attainment
+
+
+                  Marginal/Moderate Non-      Greater than or equal
+                                                                               Daily
+                           Attainment               to 90 TPY
+
+
+                   Serious Non-Attainment        Less than 40 TPY             Weekly
+
+
+                                              Greater than or equal
+                   Serious Non-Attainment                                      Daily
+                                                    to 40 TPY
+
+
+                   Severe Non-Attainment         Less than 15 TPY             Weekly
+
+
+                                              Greater than or equal
+                   Severe Non-Attainment                                       Daily
+                                                    to 15 TPY
+
+
+                    Extreme Ozone Non-
+                                                  Any emissions                Daily
+                           attainment
+
+
+                VI.E.5.i
+
+VI.F   Natural gas-fired reciprocating internal combustion engines
+
+       VI.F.1   This Condition VI.F applies only to engines covered by this general permit
+                that are located at a stationary source that is synthetic minor or major for
+
+
+
+                                        Page 35 of 107
+         NOx, CO, or formaldehyde except as indicated in Condition VI.F.5.f.
+         (Regulation Number 3, Part B, Section III.E.)
+
+VI.F.2   These general requirements apply to all parts of Condition VI.F: (Regulation
+         Number 3, Part B, Section III.E.)
+
+         VI.F.2.a Each engine and associated catalytic control device, if applicable,
+                   must be maintained and operated according to the
+                   manufacturer’s scheduled maintenance guide or equivalent. A
+                   company may establish its own equivalent maintenance schedule
+                   providing it achieves efficient engine operation and meets or
+                   exceeds the performance standards of this general permit.
+
+         VI.F.2.b A copy of maintenance schedules must be kept.
+
+         VI.F.2.c Records indicating the date and description of maintenance must
+                   be kept.
+
+         VI.F.2.d If maintenance activities or actions are dependent upon hours of
+                   operation, then engine operating hours must be tracked and
+                   recorded. If a method other than hours of operation is used, then
+                   the tracking method must be recorded.
+
+VI.F.3   For each rich burn engine controlled with a Non-Selective Catalytic
+         Reduction (NSCR) converter the following conditions must be met:
+         (Regulation Number 3, Part B, Section III.E.)
+
+         VI.F.3.a The engine must be equipped with an air-fuel ratio controller
+                   (AFRC).
+
+
+
+
+                                Page 36 of 107
+         VI.F.3.b Each AFRC must be maintained per the manufacturer’s
+                   recommended maintenance or equivalent, including replacement
+                   of the oxygen sensor as necessary for oxygen sensor-based
+                   controllers. In the absence of specific manufacturer’s
+                   recommendations or equivalent, the oxygen sensor must be
+                   replaced quarterly (or within a 2190-hour operating period if the
+                   engine does not run continuously).
+
+VI.F.4   For each lean burn engine equipped with a NOx sensor the operator must
+         follow the manufacturer’s recommended maintenance schedule or
+         equivalent. (Regulation Number 3, Part B, Section III.E.)
+
+VI.F.5   For each engine equipped with a catalytic emission control device, the
+         following conditions must be met: (Regulation Number 3, Part B, Section
+         III.E.)
+
+         VI.F.5.a Engines subject to the requirements of Regulation Number 26,
+                   Part B, Section I.D.5. must comply with the monitoring
+                   requirements listed in Regulation Number 26, Part B, Section
+                   I.D.5.e.
+
+         VI.F.5.b Engines subject to the requirements of Regulation Number 26,
+                   Part B, Section I.D.6. must comply with the monitoring
+                   requirements listed in Regulation Number 26, Part B, Section
+                   I.D.6.d.
+
+         VI.F.5.c The catalyst must be cleaned, reconditioned and replaced per the
+                   manufacturer’s recommended maintenance or equivalent.
+
+
+
+
+                                Page 37 of 107
+VI.F.5.d The catalyst inlet temperature must be recorded weekly, unless a
+         more stringent requirement is required in Regulation Number 26,
+         Part B, Section I.D.5.e.(ii). If the temperature is outside of the
+         range specified in this condition, corrective action must be taken
+         and documented:
+
+          VI.F.5.d.(i)       For a rich burn engine with an NSCR emission
+                             control device, the temperature into the catalyst
+                             must be between 750°F and 1250°F.
+
+          VI.F.5.d.(ii)      For a lean burn engine with an oxidation catalyst
+                             emission control device, the temperature into the
+                             catalyst must be between 450°F and 1350°F.
+
+VI.F.5.e The pressure drop across the catalyst bed must be recorded
+         monthly. The monthly pressure drop values must not deviate by
+         more than +/- 2 inches of water column of the most recent
+         baseline value established according to this condition.
+
+          VI.F.5.e.(i)       If the pressure drop value is out of range, the
+                             owner or operator must perform any one or more
+                             of the following:
+
+                          VI.F.5.e.i.(A)   Corrective action must be taken and
+                                           documented, or
+
+                          VI.F.5.e.i.(B)   The owner or operator may
+                                           artificially load the engine to within
+                                           +/- 10 percent of the most recent
+                                           baseline load value established. If
+
+
+
+                          Page 38 of 107
+                                  the pressure drop is then within
+                                  range, the pressure drop and load
+                                  values must be documented and no
+                                  further corrective action is required,
+                                  or
+
+                VI.F.5.e.i.(C)    The owner or operator may forego
+                                  maintenance activities and perform
+                                  a portable analyzer test to establish
+                                  a new pressure drop baseline.
+
+VI.F.5.e.(ii)      The baseline pressure drop must be established by
+                   recording the engine load and pressure drop
+                   across the catalyst during engine testing. The
+                   baseline pressure drop must be periodically
+                   reestablished as follows:
+
+                VI.F.5.e.ii.(A)   During each initial compliance test
+                                  required by the Initial and Periodic
+                                  Compliance Test Requirements
+                                  section of this general permit.
+
+                VI.F.5.e.ii.(B)   During each periodic performance
+                                  test required by this general permit.
+
+                VI.F.5.e.ii.(C) Within the first thirty (30) days of
+                                  engine operation from the date that
+                                  the catalyst is cleaned,
+                                  reconditioned, or replaced.
+
+
+
+
+                Page 39 of 107
+VI.F.5.f   For each engine equipped with a catalytic emission control
+           device, periodic performance tests for NOx and CO using a
+           portable analyzer are required to indicate continued performance
+           of the catalyst and proper operation of the engine following the
+           schedule:
+
+           VI.F.5.f.(i)       Major sources of NOx or CO allowed to operate
+                              under this general permit pursuant to Condition
+                              I.F must perform performance tests quarterly. The
+                              frequency must remain quarterly regardless of the
+                              number of consecutive passing tests.
+
+           VI.F.5.f.(ii)      Minor sources and synthetic minor sources with
+                              facility-wide permitted NOx or CO emissions
+                              greater than or equal to the monitoring thresholds
+                              in Table 3 - Portable analyzer testing NOx and CO
+                              thresholds must perform performance tests
+                              quarterly. After four (4) consecutive quarterly
+                              passing tests, the operator may perform
+                              performance tests semi-annually.
+
+           VI.F.5.f.(iii)     Minor sources and synthetic minor sources with
+                              facility-wide NOx or CO permitted emissions lower
+                              than the monitoring thresholds in Table 3 -
+                              Portable analyzer testing NOx and CO thresholds
+                              must perform performance tests semi-annually.
+                              After two (2) consecutive semi-annual passing
+                              tests the operator may perform performance tests
+                              annually.
+
+
+                           Page 40 of 107
+       Table 3 - Portable analyzer testing NOx and CO thresholds
+
+
+                                   NOx monitoring             CO monitoring
+  Area classification
+                                        threshold                threshold
+
+
+     Attainment                            80                        80
+
+
+Marginal/Moderate Non-
+                                           80                 Not Applicable
+     Attainment
+
+
+Serious Non-Attainment                     40                 Not Applicable
+
+
+Severe Non-Attainment                      15                 Not Applicable
+
+
+ Extreme Ozone Non-
+                                        Zero (0)              Not Applicable
+     attainment
+
+
+       VI.F.5.f.(iv)      Each performance test should be performed with
+                          the engine operating at the highest load
+                          practicable. However, it is not required to
+                          artificially load the engine in order to perform the
+                          test.
+
+       VI.F.5.f.(v)       All performance tests using a portable analyzer,
+                          including tests triggered by a replacement engine
+                          authorized by an Alternative Operating Scenario
+                          (AOS) in this general permit, must meet the
+
+
+                       Page 41 of 107
+                                                requirements established in the Portable Analyzer
+                                                Monitoring Protocol or other Division approved
+                                                protocol.
+
+                             VI.F.5.f.(vi)      At the owner or operator’s discretion, a
+                                                performance test using a reference test method
+                                                may be used instead of a portable analyzer.
+
+VI.G   Diesel fuel-fired reciprocating internal combustion engines
+
+       VI.G.1    This Condition VI.G applies only to engines covered by this general permit
+                 that are located at a stationary source that is synthetic minor or major for
+                 NOx, CO, or formaldehyde except as indicated in Condition VI.G.6.
+                 (Regulation Number 3, Part B, Section III.E.).
+
+       VI.G.2    Each engine and associated emission control device, if applicable, must be
+                 maintained and operated according to the manufacturer’s scheduled
+                 maintenance guide or equivalent. A company may establish its own
+                 equivalent maintenance schedule providing it achieves efficient engine
+                 operation and meets or exceeds the performance standards of this general
+                 permit. (Regulation Number 3, Part B, Section III.E.)
+
+       VI.G.3    A copy of maintenance schedules must be kept. (Regulation Number 3, Part
+                 B, Section III.E.)
+
+       VI.G.4    Records indicating the date and description of maintenance must be kept.
+                 (Regulation Number 3, Part B, Section III.E.)
+
+       VI.G.5    If maintenance activities or actions are dependent upon hours of operation,
+                 then engine operating hours must be tracked and recorded. If a method
+
+
+
+
+                                             Page 42 of 107
+         other than hours of operation is used, then the tracking method must be
+         recorded. (Regulation Number 3, Part B, Section III.E.)
+
+VI.G.6   For each engine, periodic performance tests for NOx and CO using a
+         portable analyzer are required to indicate continued proper performance
+         and operation of the engine following the schedule (Regulation Number 3,
+         Part B, Section III.E.):
+
+         VI.G.6.a Major sources of NOx or CO allowed to operate under this general
+                   permit pursuant to Condition I.F must perform performance tests
+                   quarterly. The frequency must remain quarterly regardless of the
+                   number of consecutive passing tests.
+
+         VI.G.6.b Minor sources and synthetic minor sources with facility-wide
+                   permitted NOx or CO emissions greater than or equal to the
+                   monitoring thresholds in Table 4 - Portable analyzer testing NOx
+                   and CO thresholds must perform performance tests quarterly.
+                   After four (4) consecutive quarterly passing tests, the operator
+                   may perform performance tests semi-annually.
+
+         VI.G.6.c Minor sources and synthetic minor sources with facility-wide
+                   permitted NOx or CO emissions lower than the monitoring
+                   thresholds in Table 4 - Portable analyzer testing NOx and CO
+                   thresholds must perform performance tests semi-annually. After
+                   two (2) consecutive semi-annual passing tests the operator may
+                   perform performance tests annually.
+
+
+
+
+                                    Page 43 of 107
+           Table 4 - Portable analyzer testing NOx and CO thresholds
+
+
+                                    NOx monitoring            CO monitoring
+      Area classification
+                                        threshold                threshold
+
+
+         Attainment                        80                        80
+
+
+   Marginal/Moderate Non-
+                                           80                 Not Applicable
+         Attainment
+
+
+   Serious Non-Attainment                  40                 Not Applicable
+
+
+   Severe Non-Attainment                   15                 Not Applicable
+
+
+    Extreme Ozone Non-
+                                        Zero (0)              Not Applicable
+         attainment
+
+
+VI.G.6.d Each performance test should be performed with the engine
+          operating at the highest load practicable. However, it is not
+          required to artificially load the engine in order to perform the
+          test.
+
+VI.G.6.e All performance tests using a portable analyzer, including tests
+          triggered by a replacement engine authorized by an AOS in this
+          general permit, must meet the requirements established in the
+          Portable Analyzer Monitoring Protocol or other Division approved
+          protocol.
+
+
+                       Page 44 of 107
+                 VI.G.6.f At the owner or operator’s discretion, a performance test using a
+                           reference test method may be used instead of a portable
+                           analyzer.
+
+VII.   Initial and Periodic Compliance Test Requirements
+
+VII.A Storage Tanks
+
+       VII.A.1   Condensate, crude oil, or intermediate hydrocarbons: Within one hundred
+                 and eighty days (180) after commencement of operation under the terms of
+                 this general permit, and periodically following the schedule in Table 5 -
+                 Sampling frequency, the owner or operator must complete site-specific
+                 sampling including a compositional analysis of the pre-flash pressurized
+                 condensate, crude oil, or intermediate hydrocarbons routed to these
+                 storage tanks and, if necessary for emission factor development, a sales oil
+                 analysis to determine RVP and API gravity. Sampling and analysis must be in
+                 accordance with the guidance contained in PS Memo 25-02 and 17-01, and
+                 the pre-flash pressurized condensate, crude oil, or intermediate
+                 hydrocarbons sample must be obtained from the outlet of the low-pressure
+                 side of the separator immediately upstream of the storage tank. Results of
+                 the analysis must be used to calculate site-specific emissions factors for
+                 VOC, benzene, toluene, ethylbenzene, xylenes, n-hexane, and 2,2,4-
+                 trimethylpentane (in units of lb/bbl of condensate, crude oil or
+                 intermediate hydrocarbons throughput) using Division approved methods.
+                 The total calculated emission factors must include flash, working, and
+                 breathing emissions. The owner or operator must use the results of this
+                 analysis to calculate actual emissions and to demonstrate compliance with
+                 emission limits starting with the calendar month following the sampling
+                 event. The owner or operator must report initial and periodic emission
+
+
+                                        Page 45 of 107
+          factors as required per the most current version of Regulation Number 7,
+          Part B, Section V. Records of initial and periodic site-specific sampling must
+          be maintained by the owner or operator for a minimum of five (5) years and
+          made available to the Division for inspection upon request. Owners or
+          operators of condensate or crude oil storage tanks with uncontrolled actual
+          VOC emissions below 80 tons per year and 20 tons per year, respectively,
+          and that are also using state-default emission factors, are not required to
+          comply with this condition.
+
+VII.A.2   Produced water: Within one hundred and eighty days (180) after
+          commencement of operation under this general permit, and periodically
+          following the schedule in Table 5 - Sampling frequency, the owner or
+          operator must complete site-specific sampling including a compositional
+          analysis of the pre-flash pressurized produced water routed to these storage
+          tanks and, if necessary for emission factor development, a sales oil analysis
+          to determine RVP and API gravity of the hydrocarbon liquids present in the
+          produced water. Sampling and analysis must be in accordance with the
+          guidance contained in PS Memo 25-02 and the pre-flash pressurized
+          produced water sample must be obtained from the outlet of the low-
+          pressure side of the separators immediately prior to the storage tank.
+          Results of the analysis must be used to calculate site-specific emissions
+          factors for VOC, benzene, toluene, ethylbenzene, xylenes, n-hexane, and
+          2,2,4-trimethylpentane (in units of lb/bbl of produced water throughput)
+          using Division approved methods. The total calculated emission factors must
+          include flash, working and breathing emissions. The owner or operator must
+          use the results of this analysis to calculate actual emissions and to
+          demonstrate compliance with emission limits starting with the calendar
+          month following the sampling event. The owner or operator must report
+
+
+
+                                 Page 46 of 107
+                initial and periodic emission factors as required per the most current
+                version of Regulation Number 7, Part B, Section V. Records of initial and
+                periodic site-specific sampling must be maintained by the owner or operator
+                for a minimum of five (5) years and made available to the Division for
+                inspection upon request. Owners or operators using state-default emission
+                factors are not required to comply with this condition.
+
+VII.B Gas Venting from Separators
+
+      VII.B.1   Within one hundred and eighty days (180) after commencement of
+                operation under this general permit, and periodically following the schedule
+                in Table 5 - Sampling frequency, the owner or operator must complete a
+                site specific extended gas analysis ("Analysis") including a compositional
+                analysis of gas vented from this emissions unit. The gas sample must be
+                obtained from the outlet of each distinct separator point covered by this
+                general permit. Results of the Analysis must be used to calculate site-
+                specific emissions factors for VOC, benzene, toluene, ethylbenzene,
+                xylenes, n-hexane, and 2,2,4-trimethylpentane (in units of lb/MMscf of gas
+                vented throughput) using Division approved methods. The owner or operator
+                must use the results of this Analysis to calculate actual emissions and to
+                demonstrate compliance with emission limits starting with the calendar
+                month following the sampling event. The owner or operator must report
+                initial and periodic emission factors as required per the most current
+                version of Regulation Number 7, Part B, Section V. Records of initial and
+                periodic site-specific sampling must be maintained by the owner or operator
+                for a minimum of five (5) years and made available to the Division for
+                inspection upon request.
+
+VII.C Routine or Predictable Emissions
+
+
+                                         Page 47 of 107
+VII.C.1   When using a volumetric processes as allowed by the by the Annual Process
+          Limitations section of this general permit: Within one hundred and eighty
+          days (180) after commencement of operation under this general permit, and
+          periodically following the schedule in Table 5 - Sampling frequency, the
+          owner or operator must complete an site specific extended gas analysis
+          ("Analysis"), of the gas vented during these activities in order to verify the
+          VOC (weight fraction) of this emission stream. The gas sample must be
+          obtained either from a gas line with VOC and HAPs contents that are
+          representative of the gas vented during blowdown events or directly from
+          the equipment blowdown line. Results of the Analysis must be used to
+          calculate site-specific emission factors for VOC, benzene, toluene,
+          ethylbenzene, xylenes, n-hexane, and 2,2,4-trimethylpentane (in units of
+          lb/MMSCF gas vented) using Division approved methods. For the pollutants
+          identified in this permit condition as needing sampling, if any site-specific
+          emission factors developed through this analysis are greater than the
+          emissions factors listed in the general permit registration approval letter, or
+          if an approval letter has not been issued, as certified by the owner or
+          operator in the Air Pollutant Emission Notices (APEN) included with the
+          general permit registration, the owner or operator must use the results of
+          this analysis to calculate actual emissions and to demonstrate compliance
+          with emission limits starting with the calendar month following the
+          sampling event. The owner or operator must report initial and periodic
+          emission factors as required per the most current version of Regulation
+          Number 7, Part B, Section V. Records of initial and periodic site-specific
+          sampling must be maintained by the owner or operator for a minimum of
+          five (5) years and made available to the Division for inspection upon
+          request.
+
+
+
+
+                                 Page 48 of 107
+VII.C.2   When using events-based processes as allowed by the by the Annual Process
+          Limitations section of this general permit: Within one hundred and eighty
+          days (180) after commencement of operation under this general permit, and
+          periodically following the schedule in Table 5 - Sampling frequency, the
+          owner or operator must complete an analysis of all equipment associated
+          with these activities. For each activity, the owner or operator must indicate
+          the following for each piece of equipment:
+
+          VII.C.2.a Actual unique physical volume between isolation valves, as built.
+                    The owner or operators may use engineering calculations and
+                    estimations to determine the actual unique physical volume
+                    between isolation valves (i.e. internal physical volume);
+
+          VII.C.2.b Absolute pressure at actual conditions in the unique physical
+                    volume. The owner or operators may use engineering calculations
+                    and estimations to determine the absolute pressure.
+
+          VII.C.2.c The owner or operator must complete either:
+
+                    VII.C.2.c.(i)      a site-specific extended gas analysis of the gas
+                                       vented during this activity in order to verify the
+                                       VOC, benzene, toluene, ethylbenzene, xylenes, n-
+                                       hexane, and 2,2,4-trimethylpentane content
+                                       (weight fraction) of this emission stream. The gas
+                                       sample must be obtained either from a gas line
+                                       with VOC and HAPs contents that are
+                                       representative of the gas vented during blowdown
+                                       events or directly from the equipment blowdown
+                                       line.
+
+
+
+                                    Page 49 of 107
+           VII.C.2.c.(ii)   a site-specific sampling including a compositional
+                            analysis of the pre-flash pressurized condensate,
+                            crude oil, intermediate hydrocarbons, or produced
+                            water routed to storage tanks and, if necessary
+                            for emission factor development, a sales oil
+                            analysis to determine RVP and API gravity in order
+                            to verify the VOC, benzene, toluene,
+                            ethylbenzene, xylenes, n-hexane, and 2,2,4-
+                            trimethylpentane content (weight fraction) of this
+                            emission stream.
+
+Results of the analysis must be used to calculate site-specific emission
+factors for VOC, benzene, toluene, ethylbenzene, xylenes, n-hexane, and
+2,2,4-trimethylpentane using Division approved methods. For the pollutants
+identified in this permit condition as needing sampling, if any site-specific
+emission factors developed through this analysis are greater than the
+emissions factors listed in the general permit registration approval letter, or
+if an approval letter has not been issued, as certified by the owner or
+operator in the Air Pollutant Emission Notices (APEN) included with the
+general permit registration, the owner or operator must use the results of
+this analysis to calculate actual emissions and to demonstrate compliance
+with emission limits starting with the calendar month following the
+sampling event. The owner or operator must report initial and periodic
+emission factors as required per the most current version of Regulation
+Number 7, Part B, Section V. Records of initial and periodic site-specific
+sampling must be maintained by the owner or operator for a minimum of
+five (5) years and made available to the Division for inspection upon
+
+
+
+
+                        Page 50 of 107
+      request. Owners or operators using state-default emission factors are not
+      required to comply with this condition.
+
+                         Table 5 - Sampling frequency
+
+
+                                                                 Sampling
+                                                              frequency for
+                           Facility-wide                       storage tanks
+                                                Sampling
+  Area classification     permitted VOC                         with actual
+                                                Frequency
+                             emissions                       uncontrolled VOC
+                                                              emissions ≥ 80
+                                                              tons per year.
+
+
+                                                Every five
+     Attainment          Less than 90 TPY                     Every two years
+                                                  years
+
+
+                          Greater than or
+     Attainment                                  Annually        Annually
+                          equal to 90 TPY
+
+
+Marginal/Moderate Non-                          Every five
+                         Less than 90 TPY                     Every two years
+     Attainment                                   years
+
+
+Marginal/Moderate Non-    Greater than or
+                                                 Annually        Annually
+     Attainment           equal to 90 TPY
+
+
+Serious Non-Attainment   Less than 40 TPY                     Every two years
+                                                Every five
+
+
+
+                            Page 51 of 107
+                                                                          Sampling
+                                                                        frequency for
+                                     Facility-wide                      storage tanks
+                                                        Sampling
+           Area classification      permitted VOC                        with actual
+                                                       Frequency
+                                       emissions                      uncontrolled VOC
+                                                                       emissions ≥ 80
+                                                                       tons per year.
+
+                                                          years
+
+
+
+                                    Greater than or
+        Serious Non-Attainment                          Annually          Annually
+                                    equal to 40 TPY
+
+
+                                                        Every five
+         Severe Non-Attainment      Less than 15 TPY                   Every two years
+                                                          years
+
+
+                                    Greater than or
+         Severe Non-Attainment                          Annually          Annually
+                                    equal to 15 TPY
+
+
+          Extreme Ozone Non-
+                                     Any emissions      Annually          Annually
+                attainment
+
+
+VII.D Enclosed Combustion Devices
+
+      VII.D.1   Within one hundred and eighty days (180) after commencement of
+                operation under the terms of this general permit, the owner or operator
+                must demonstrate compliance with opacity standards, using EPA Reference
+
+
+                                      Page 52 of 107
+          Method 22, 40 C.F.R. Part 60, Appendix A, on basis to determine the
+          presence or absence of visible emissions. “Visible Emissions” means
+          observations of smoke for any period or periods of duration greater than or
+          equal to one minute in any fifteen-minute period during normal operation.
+          (Regulation Number 7, Part B, Sections II.B.2. and II.A.45.)
+
+VII.D.2   For sources subject to Conditions VI.A and VI.C, the owner or operator must
+          conduct source performance tests to demonstrate compliance with the
+          requested destruction efficiency of 95% for volatile organic compounds
+          (VOC). The owner or operator must comply with the following testing
+          schedules:
+
+          VII.D.2.a If the enclosed combustion device is subject to Regulation
+                     Number 7, Part B, Section II.B, the owner or operator must follow
+                     the source performance testing schedule established in the most
+                     current version of Regulation Number 7, Part B, Section II.B.2.h.
+
+          VII.D.2.b If the enclosed combustion device is NOT subject to Regulation
+                     Number 7, Part B, Section II.B, the owner or operator must
+                     complete an initial source performance test within one hundred
+                     and eighty days (180) after commencement of operation under
+                     the terms of this general permit, and periodically every five (5)
+                     years.
+
+          Performance tests are not required for enclosed combustion devices serving
+          solely as limited-use control devices during vapor recovery unit downtime. A
+          performance test that does not demonstrate that an enclosed combustion
+          device is achieving at least 95% destruction efficiency for VOC is considered
+          a failing test.
+
+
+
+                                 Page 53 of 107
+                The compliance test must be conducted in accordance with the APCD
+                Compliance Test Manual (as updated and amended by the Division),
+                including deadlines for preparation and submittal of the protocol for
+                Division review and approval and for submittal of the test report. All
+                compliance testing must be approved by the Division prior to conducting the
+                test. Additional time may be granted upon written request. (Regulation
+                Number 3, Part B, Section III.G.3.)
+
+                If the results of compliance tests do not demonstrate compliance with
+                requested destruction efficiency of 95% the owner or operator must, within
+                thirty (30) days, follow the manufacturer’s repair instructions, if available,
+                or best combustion engineering practices to return the device to compliant
+                operation or shut-in all equipment or operations controlled by the enclosed
+                combustion device.
+
+                Owners or operators must retest the enclosed combustion device within
+                ninety (90) days of corrective action in response to a failed test or within
+                thirty (30) days of return to operation if the equipment or operations
+                controlled by the enclosed combustion device were shut-in as a response to
+                a failed test. Division approval of the testing protocol is not required for a
+                retest where: the owner or operator is following the same test protocol as
+                the original, failed test, and conditions have not materially changed such
+                that a new test protocol would be required.
+
+VII.E Natural gas-fired reciprocating internal combustion engines
+
+      VII.E.1   Engines subject to Condition IV.A.6.a: Within one hundred and eighty days
+                (180) after commencement of operation under this general permit, and
+                periodically following the schedule in Table 6 - Sampling and testing
+
+
+
+                                       Page 54 of 107
+          frequency, the owner or operator must sample and analyze the heat
+          content of the fuel used in the engines covered by this general permit using
+          appropriate ASTM Methods or equivalent, if approved in advance by the
+          Division. The fuel heat content must be based on the higher (gross) heating
+          value (HHV) of the fuel. Results of the heat content verification must be
+          retained for a period of five years and made available to the Division upon
+          request. The heat content indicated by the most recent analysis must be
+          used to monitor compliance with the emission limits for each engine.
+
+VII.E.2   Within one hundred and eighty days (180) after commencement of
+          operation under this general permit, the owner or operator must perform an
+          initial compliance test on these emissions points to measure the emission
+          rate(s) for the pollutants listed below in order to demonstrate compliance
+          with the emission limits in the APEN(s) or approval letter. The compliance
+          test must be conducted in accordance with the APCD Compliance Test
+          Manual (as updated and amended by the Division), including deadlines for
+          preparation and submittal of the protocol for Division review and approval
+          and for submittal of the test report. All compliance testing must be
+          approved by the Division prior to conducting the test. Any compliance test
+          conducted to show compliance with a monthly or annual emission limitation
+          shall have the results projected up to the monthly or annual averaging time
+          by multiplying the test results by the allowable number of operating hours
+          for that averaging time (Regulation Number 3, Part B, Section III.G.3.)
+
+          VII.E.2.a Oxides of Nitrogen using EPA approved methods.
+
+          VII.E.2.b Carbon Monoxide using EPA approved methods.
+
+          VII.E.2.c Volatile Organic Compounds using EPA approved methods.
+
+
+
+                                Page 55 of 107
+VII.F Diesel fuel-fired reciprocating internal combustion engines
+
+      VII.F.1   Within one hundred and eighty days (180) after commencement of
+                operation under this general permit, and periodically following the schedule
+                in Table 6 - Sampling and testing frequency, the owner or operator must
+                demonstrate compliance with opacity standards, using EPA Reference
+                Method 9, 40 C.F.R. Part 60, Appendix A, to measure opacity from this
+                source. The opacity must be measured and interpreted as an average of the
+                readings taken over fifteen (15) second intervals for a total of six (6)
+                minutes. (Regulation Number 1, Section II.A.1.)
+
+      VII.F.2   Within one hundred and eighty days (180) after commencement of
+                operation under this general permit, the owner or operator must perform an
+                initial compliance test on the engine to measure the emission rate(s) for the
+                pollutants listed below in order to demonstrate compliance with the
+                emission limits in the APEN or approval letter. The compliance test must be
+                conducted in accordance with the APCD Compliance Test Manual (as
+                updated and amended by the Division), including deadlines for preparation
+                and submittal of the protocol for Division review and approval and for
+                submittal of the test report. All compliance testing must be approved by
+                the Division prior to conducting the test. Any compliance test conducted to
+                show compliance with a monthly or annual emission limitation shall have
+                the results projected up to the monthly or annual averaging time by
+                multiplying the test results by the allowable number of operating hours for
+                that averaging time (Regulation Number 3, Part B, Section III.G.3.)
+
+                VII.F.2.a Oxides of Nitrogen using EPA approved methods.
+
+                VII.F.2.b Carbon Monoxide using EPA approved methods.
+
+
+
+                                       Page 56 of 107
+                VII.F.2.c Volatile Organic Compounds using EPA approved methods.
+
+VII.G Fugitive component leak emissions
+
+      VII.G.1   Within one hundred and eighty days (180) of commencement of operation
+                under this general permit, the owner or operator must complete a physical
+                hard count of facility components. This hard count must distinguish
+                between components in “gas service”, “light liquid service”, “water/oil
+                service”, and “heavy liquid service”. The owner or operator must use the
+                most recent component count to determine actual emission and to show
+                compliance with annual emission limits established in this general permit.
+
+      VII.G.2   Any time a physical change is made at the facility which increases the
+                number of components, and not to exceed a period of five years from the
+                previous count, the operator must complete a physical hard count of facility
+                components. This hard count must distinguish between components in “gas
+                service”, “light liquid service”, “water/oil service”, and “heavy liquid
+                service”. The hard-count and running total of all additions and subtractions
+                to the component count must be maintained and made available for the
+                Division upon request. The owner or operator must use the most recent
+                component count to determine actual emission and to show compliance
+                with annual emission limits established in this general permit.
+
+      VII.G.3   Within one hundred and eighty days (180) after commencement of
+                operation under this general permit, and periodically following the schedule
+                in Table 6 - Sampling and testing frequency, the owner or operator must
+                complete an extended gas analysis of gas samples and an extended natural
+                gas liquids analysis of liquids that are representative of volatile organic
+                compounds (VOC) and hazardous air pollutants (HAP) that may be released
+
+
+
+                                       Page 57 of 107
+       as fugitive emissions. These extended gas and liquids analyses must be used
+       in the compliance demonstration with emission limits. The owner or
+       operator that assumes a VOC content of 100% for their gas service is not
+       required to obtain extended gas analyses of gas samples. The owner or
+       operator that assumes a VOC content of 100% for the heavy oil service, light
+       oil service, and water/oil service is not required to obtain extended natural
+       gas liquids analyses of liquids.
+
+                      Table 6 - Sampling and testing frequency
+
+
+                                                                   Major sources
+                                             Synthetic minor
+     Source type           Minor sources                           allowed under
+                                                 sources
+                                                                   Condition I.F
+
+
+  Natural gas-fired
+reciprocating internal    Every five years       Annually          Semi-annually
+ combustion Engines
+
+
+  Diesel fuel-fired
+reciprocating internal    Every five years       Annually          Semi-annually
+ combustion engines
+
+
+ Fugitive component
+                          Every five years       Annually            Annually
+   leak emissions
+
+
+
+
+                               Page 58 of 107
+VIII.   Recordkeeping and Reporting Requirements
+
+VIII.A All records required by the Recordkeeping and Reporting Requirements Section of this
+        general permit must be kept for five (5) years. The owner or operator must make
+        these records available to the Division upon request. (Regulation Number 3, Part B,
+        Section III.E.)
+
+VIII.B The following records must be maintained: (Regulation Number 3, Part B, Section
+        III.E.)
+
+        VIII.B.1   The current issuance of this general construction permit.
+
+        VIII.B.2   The general permit registration approval letter, once received.
+
+        VIII.B.3   Records of commencement of operation for each individual piece of
+                   equipment covered under this general permit.
+
+        VIII.B.4   Records of commencement of operation for air pollution control equipment
+                   used to meet the requirements of this general permit.
+
+VIII.C The owner or operator must maintain records of emission calculations performed to
+        comply with the Annual Emission Limitations section in this general permit.
+        (Regulation Number 3, Part B, Section III.E.)
+
+VIII.D The owner or operator must maintain process records used to show compliance with
+        the requirements in the Annual Process Limitations section of this general permit.
+        (Regulation Number 3, Part B, Section III.E.)
+
+VIII.E The owner or operator must maintain records of monitoring, inspections, tests, and
+        observations performed to comply with the Control, Operating and Maintenance
+
+
+
+
+                                         Page 59 of 107
+      Requirements section in this general permit. (Regulation Number 3, Part B, Section
+      III.E.)
+
+VIII.F The owner or operator must maintain records of any initial or periodic testing
+      performed to comply with the requirements in the Initial and Periodic Compliance
+      Requirements section in this general permit. (Regulation Number 3, Part B, Section
+      III.E.)
+
+VIII.G The owner or operator must maintain records of the analysis used to demonstrate
+      compliance with the National Ambient Air Quality Standards (NAAQS) submitted with
+      the GP12 registration.
+
+VIII.H The owner or operator of facilities not subject to Condition I.F must track and keep
+      records of potential emissions from all insignificant activities at the stationary source
+      on an annual basis to demonstrate compliance with facility emission limitations as
+      indicated in Table 7 - EPA Ozone Classification Thresholds below. An inventory of
+      each insignificant activity and associated emission calculations must be made
+      available to the division for inspection upon request. For the purposes of this
+      condition, insignificant activities are defined as any activity or equipment, which
+      emits any amount but does not require an APEN or is permit exempt. Note that for
+      reclassifications of an existing nonattainment area, the limit applies upon the
+      effective date of reclassification. Total potential emissions from the facility, including
+      all permitted emissions and potential to emit from all insignificant activities, must be
+      less than: (Regulation Number 3, Part B, Section III.E.)
+
+                           Table 7 - EPA Ozone Classification Thresholds
+
+
+
+
+                                        Page 60 of 107
+                             Moderate         Serious      Severe       Extreme
+                 Ozone
+                            ozone non-       ozone non-   ozone non-   ozone non-
+  Criteria     attainment
+                            attainment       attainment   attainment   attainment
+ Pollutant     area (tons
+                             area (tons      area (tons   area (tons   area (tons
+               per year)
+                             per year)       per year)    per year)    per year)
+
+
+  Volatile
+  Organic
+                  100           100             50           25           10
+Compounds
+   (VOC)
+
+
+  Nitrogen
+                  100           100             50           25           10
+Oxides (NOx)
+
+
+  Carbon
+ Monoxide         100           100             100          100          100
+   (CO)
+
+
+Particulate
+                  100           100             100          100          100
+Matter (PM)
+
+
+Particulate
+  Matter          100           100             100          100          100
+  (PM10)
+
+
+
+
+                            Page 61 of 107
+                                         Moderate         Serious        Severe        Extreme
+                            Ozone
+                                         ozone non-      ozone non-   ozone non-      ozone non-
+           Criteria      attainment
+                                        attainment       attainment   attainment      attainment
+           Pollutant      area (tons
+                                         area (tons      area (tons    area (tons     area (tons
+                          per year)
+                                         per year)       per year)     per year)      per year)
+
+
+             Sulfur
+                              100           100             100           100              100
+        Dioxide (SO2)
+
+
+          Individual
+                              10             10             10             10              10
+             HAPs
+
+
+          Total HAPs          25             25             25             25              25
+
+
+VIII.I Storage Tanks, Hydrocarbon Loadout, Gas Venting from Separators, and Routine or
+      Predictable Emissions
+
+      VIII.I.1   If air pollution control equipment is used to comply with the emission limits
+                 of this general permit, the owner or operator must comply with the
+                 requirements applicable requirements in Condition VIII.J. (Regulation
+                 Number 3, Part B, Section III.E.)
+
+VIII.J Air Pollution Control Equipment used to control Storage Tanks, Hydrocarbon Liquids
+      Loadout, Gas Venting from Separators, or Routine or Predictable Emissions
+
+      VIII.J.1   Except as specified in Condition VIII.J.1.g, the owner or operator must
+                 maintain records for a period of five (5) years and make them available to
+
+
+
+
+                                        Page 62 of 107
+the Division upon request, including: (Regulation Number 3, Part B, Section
+III.E.)
+
+VIII.J.1.a Records of the make, model, serial number or other unique
+          identifier, and AIRS ID (if assigned) of each enclosed combustion
+          device; associated facility name and location; and the range of
+          gas flow or pressure at which the combustion device is designed
+          to operate.
+
+VIII.J.1.b Records of visual inspections required by this general permit
+          including the time and date of each inspection and a description
+          of any problems observed, description and date of any corrective
+          action(s) taken, and name of employee or third party performing
+          corrective action(s).
+
+VIII.J.1.c Records of the date and result of any EPA Method 22 test or
+          investigation.
+
+VIII.J.1.d Records of the date and duration of any period where the air
+          pollution control equipment is not operating.
+
+VIII.J.1.e Monthly records of the total hours the vapor recovery unit is not
+          operating, the total throughput volume, and total throughput
+          volume during the time the vapor recovery unit is not operating.
+
+VIII.J.1.f Records of inlet gas flow rate.
+
+VIII.J.1.g Records of performance tests must be maintained for the life of
+          the equipment that the enclosed combustion device is used to
+          control (even if ownership or control of the device is transferred),
+          including manufacturer model and serial number(s) of devices
+
+
+                        Page 63 of 107
+                            tested; the date of the test; a copy of the test protocol followed;
+                            a certification by a responsible official that the performance test
+                            was conducted in accordance with a Division-approved test
+                            protocol; the enclosed combustion device parameters required by
+                            the test protocol; documentation of the methods and results of
+                            the test, including whether the device passed or failed and the
+                            tested control efficiency; and the date and description of any
+                            actions taken in response to a failed test.
+
+                 VIII.J.1.h Records of flow meter or pressure actuation system calibration
+                            and maintenance conducted as required by this general permit,
+                            including manufacturer specifications and schedule if available.
+
+VIII.K Natural gas-fired reciprocating internal combustion engines
+
+      VIII.K.1   The following records must be kept for a period of five years and made
+                 available to the Division upon request. (Regulation Number 3, Part B,
+                 Section III.E.)
+
+                 VIII.K.1.a Records of performance tests conducted as required by this
+                            general permit, including the date, engine settings on the date of
+                            the test, and documentation of the methods and results of the
+                            testing.
+
+                 VIII.K.1.b Records of periodic portable analyzer monitoring, including the
+                            date, engine settings on the date of the monitoring, and
+                            documentation of the results of the monitoring. These records
+                            must include any demonstration that no portable analyzer
+                            monitoring was required as allowed by this general permit, if
+                            applicable.
+
+
+                                          Page 64 of 107
+                  VIII.K.1.c Records of catalyst monitoring required by this general permit and
+                             any actions taken to address monitored values outside the
+                             temperature or pressure drop parameters, including the date and
+                             a description of actions taken.
+
+VIII.L Diesel fuel-fired reciprocating internal combustion engines
+
+       VIII.L.1   The following records must be kept for a period of five years and made
+                  available to the Division upon request. (Regulation Number 3, Part B,
+                  Section III.E.)
+
+                  VIII.L.1.a Records of performance tests conducted as required by this
+                             general permit, including the date, engine settings on the date of
+                             the test, and documentation of the methods and results of the
+                             testing.
+
+                  VIII.L.1.b Records of periodic portable analyzer monitoring, including the
+                             date, engine settings on the date of the monitoring, and
+                             documentation of the results of the monitoring. These records
+                             must include any demonstration that no portable analyzer
+                             monitoring was required as allowed by this general permit, if
+                             applicable.
+
+IX.    Alternative Operating Scenarios (AOS)
+
+IX.A   Storage Tanks
+
+       IX.A.1     Provided that there are no emissions increases and that the emission limits
+                  set forth in this general permit are still met, the owner or operator may
+                  invoke an AOS for the following changes to an existing tank battery
+
+
+
+
+                                           Page 65 of 107
+                registered under the general permit without modifying the GP12
+                registration:
+
+                IX.A.1.a Replacement of an existing control device by control equipment
+                          of the same make, model and no changes to the configuration
+                          that will impact a dispersion analysis; or
+
+                IX.A.1.b Replacement of a storage vessel with another storage vessel of
+                          the same type, dimensions, and physical characteristics (e.g.,
+                          same design, same color, same construction material) and no
+                          changes to the configuration that will impact a dispersion
+                          analysis; or
+
+                IX.A.1.c Replacement of a separator with another separator of the same
+                          type, dimensions, and physical characteristics (e.g., same design)
+                          with no changes to the configuration that will impact a dispersion
+                          analysis.
+
+       IX.A.2   The owner or operator must maintain a log to contemporaneously record
+                the date and description of any change made under the provisions of this
+                AOS. (Regulation Number 3, Part A, Section IV.A.1.)
+
+IX.B   Hydrocarbon Liquids Loadout
+
+       IX.B.1   Provided that there are no emissions increases and that the emission limits
+                set forth in this general permit are still met, the owner or operator may
+                invoke an AOS for the following changes to an existing tank battery
+                registered under the general permit without modifying the GP12
+                registration:
+
+
+
+
+                                         Page 66 of 107
+                IX.B.1.a Replacement of an existing control device by control equipment
+                          of the same make, model, and no changes to the configuration
+                          that might impact a dispersion analysis.
+
+       IX.B.2   The owner or operator must record in a log the date and description of any
+                change made under the provisions of this AOS. This log must be maintained
+                contemporaneously with any changes made under the AOS (Regulation
+                Number 3, Part A, Section IV.A.1.)
+
+IX.C   Gas Venting from Separators
+
+       IX.C.1   Provided that there are no emissions increases and that the emission limits
+                set forth in this general permit are still met, the owner or operator may
+                invoke an AOS for the following changes to an existing separator registered
+                under the general permit without modifying the GP12 registration:
+
+                IX.C.1.a Replacement of an existing control device by control equipment
+                          of the same make, model and no changes to the configuration
+                          that will impact a dispersion analysis; or
+
+                IX.C.1.b Replacement of a separator with another separator of the same
+                          type, dimensions, and physical characteristics (e.g., same design)
+                          with no changes to the configuration that will impact a dispersion
+                          analysis.
+
+       IX.C.2   The owner or operator must record in a log the date and description of any
+                change made under the provisions of this AOS. This log must be maintained
+                contemporaneously with any changes made under the AOS (Regulation
+                Number 3, Part A, Section IV.A.1.)
+
+IX.D   Enclosed Combustion Devices
+
+
+                                       Page 67 of 107
+IX.D.1   Provided that there are no emissions increases and that the emission limits
+         set forth in this general permit are still met, the owner or operator may
+         invoke an AOS for the following changes to an existing enclosed combustion
+         device or a bank of enclosed combustion devices under the general permit
+         without modifying the GP12 registration:
+
+         IX.D.1.a Replacement of an existing control device by control equipment
+                   of the same make, model, and no changes to the configuration
+                   that might impact a dispersion analysis.
+
+IX.D.2   An AOS otherwise allowed by this general permit may not be used if the
+         modification will result in a facility classification change from true minor to
+         synthetic minor. In this case, a revised registration request must be
+         submitted for review.
+
+IX.D.3   An AOS otherwise allowed by this general permit cannot be used for the
+         permanent replacement of an entire combustion device at any source that
+         has become a major stationary source for purposes of Prevention of
+         Significant Deterioration or Non-Attainment Area New Source Review
+         (“PSD/NANSR”) unless the existing combustion device has emission limits
+         that are below the significance levels in Regulation Number 3, Part D,
+         II.A.44. Nothing in this AOS shall preclude the Division from taking an
+         action, based on any permanent combustion device replacement(s), for
+         circumvention of any state or federal PSD/NANSR requirement. Additionally,
+         if any permanent combustion device replacement(s) constitute(s) a
+         circumvention of applicable PSD/NANSR requirements, nothing in this AOS
+         shall excuse the permittee from complying with PSD/NANSR and applicable
+         permitting requirements.
+
+
+
+
+                                 Page 68 of 107
+IX.D.4   An Air Pollutant Emissions Notice (APEN) that includes the specific
+         manufacturer, model, and serial number of the replacement control device
+         must be filed with the Division within 14 calendar days of commencing
+         operation of a replacement control device under the AOS provision. The
+         APEN must be accompanied by the appropriate APEN filing fee and a cover
+         letter explaining that the owner or operator is exercising an AOS and has
+         replaced the control device.
+
+IX.D.5   For sources subject to Conditions VI.A and VI.C, the owner or operator must
+         conduct a source performance test to demonstrate compliance with the
+         requested destruction efficiency of 95% for volatile organic compounds
+         (VOC).
+
+         IX.D.5.a If the enclosed combustion device is subject to Regulation
+                   Number 7, Part B, Section II.B, the owner or operator must follow
+                   the source performance testing schedule established in the most
+                   current version of Regulation Number 7, Part B, Section II.B.2.h.
+
+         IX.D.5.b If the enclosed combustion device is NOT subject to Regulation
+                   Number 7, Part B, Section II.B, the owner or operator must
+                   complete an initial source performance test within one hundred
+                   and eighty days (180) of startup of the replacement control device
+                   in accordance with the AOS provisions.
+
+         Performance tests are not required for enclosed combustion devices serving
+         solely as limited-use control devices during vapor recovery unit downtime. A
+         performance test that does not demonstrate that an enclosed combustion
+         device is achieving at least 95% destruction efficiency for VOC is considered
+         a failing test. During the test, the owner or operator must measure. The
+         test protocol, test, and test report must be in accordance with the
+
+
+                                Page 69 of 107
+                requirements of the Air Pollution Control Division Compliance Test Manual.
+                The test protocol must include testing under all representative operating
+                scenarios at the control device. All compliance testing must be approved by
+                the Division prior to conducting the test. Additional time may be granted
+                upon written request. (Regulation Number 3, Part B, Section III.G.3.)
+
+                If the results of compliance tests do not demonstrate compliance with
+                requested destruction efficiency of 95% the owner or operator must, within
+                thirty (30) days, follow the manufacturer’s repair instructions, if available,
+                or best combustion engineering practices to return the device to compliant
+                operation or shut-in all equipment or operations controlled by the enclosed
+                combustion device.
+
+                Owners or operators must retest the enclosed combustion device within
+                ninety (90) days of corrective action in response to a failed test or within
+                thirty (30) days of return to operation if the equipment or operations
+                controlled by the enclosed combustion device were shut-in as a response to
+                a failed test. Division approval of the testing protocol is not required for a
+                retest where: the owner or operator is following the same test protocol as
+                the original, failed test, and conditions have not materially changed such
+                that a new test protocol would be required.
+
+IX.E   Natural gas-fired reciprocating internal combustion engines
+
+       IX.E.1   Provided that the emission limits set forth in Condition III are still met, the
+                owner or operator may invoke an AOS for the following modifications to an
+                existing engine registered under the general permit:
+
+                IX.E.1.a An existing registered engine may be temporarily replaced with a
+                          different or like-kind engine in accordance with Attachment A.
+
+
+                                       Page 70 of 107
+                 IX.E.1.b An existing registered engine may be permanently replaced with a
+                            like-kind engine in accordance with Attachment A.
+
+                            IX.E.1.b.(i)      A permanent replacement engine must not include
+                                              changes to the configuration that might impact a
+                                              dispersion analysis, this includes but is not limited
+                                              to:
+
+                                           IX.E.1.b.i.(A)   Stack heights;
+
+                                           IX.E.1.b.i.(B)   Stack locations; or
+
+                                           IX.E.1.b.i.(C)   Exit velocity.
+
+                 IX.E.1.c   Routine maintenance, repair, or like-kind replacement of control
+                            equipment.
+
+                 IX.E.1.d Addition of a control device where the operator will not claim
+                            federally enforceable credit for the emission reductions achieved.
+
+       IX.E.2    Modified or replacement equipment are subject to all requirements set
+                 forth in this general permit including, but not limited to, recordkeeping and
+                 reporting, and operation and maintenance plans.
+
+       IX.E.3    An AOS otherwise allowed by this general permit may not be used if the
+                 modification will result in a facility classification change from true minor to
+                 synthetic minor. In this case, a revised GP12 registration request must be
+                 submitted for review.
+
+IX.F   Diesel fuel-fired reciprocating internal combustion engines
+
+
+
+
+                                           Page 71 of 107
+IX.F.1   Provided that the emission limits set forth in Condition III are still met, the
+         owner or operator may invoke an AOS for the following modifications to an
+         existing engine registered under the general permit:
+
+         IX.F.1.a An existing registered engine may be temporarily replaced with a
+                    different or like-kind engine in accordance with Attachment B.
+
+         IX.F.1.b An existing registered engine may be permanently replaced with a
+                    like-kind engine in accordance with Attachment B.
+
+                    IX.F.1.b.(i)      A permanent replacement engine must not include
+                                      changes to the configuration that might impact a
+                                      dispersion analysis, this includes but is not limited
+                                      to:
+
+                                   IX.F.1.b.i.(A)   Stack heights;
+
+                                   IX.F.1.b.i.(B)   Stack locations; or
+
+                                   IX.F.1.b.i.(C)   Exit velocity.
+
+         IX.F.1.c   Routine maintenance, repair, or like-kind replacement of control
+                    equipment.
+
+         IX.F.1.d Addition of a control device where the operator will not claim
+                    federally enforceable credit for the emission reductions achieved.
+
+IX.F.2   Modified or replacement equipment are subject to all requirements set
+         forth in this general permit including, but not limited to, recordkeeping and
+         reporting, and operation and maintenance plans.
+
+
+
+
+                                   Page 72 of 107
+       IX.F.3    An AOS otherwise allowed by this general permit may not be used if the
+                 modification will result in a facility classification change from true minor to
+                 synthetic minor. In this case, a revised GP12 registration request must be
+                 submitted for review.
+
+X.     General Permit Registration Approval Process
+
+X.A    Conditional certification of a registration under this general permit is effective from
+       the date the registration is deemed complete as indicated in Condition X.B. A
+       complete registration request consists of all general permit application materials
+       required by the Division and associated fees. The owner or operator may commence
+       construction and operation of the well production facility as represented in the
+       registration once the registration is deemed complete. In the event the well
+       production facility does not qualify for registration under the general permit the
+       owner or operator accepts the liability of commencing these activities.
+
+X.B    The Division will determine completeness of the general permit registration request
+       within sixty (60) days of the date of receipt of the request and provide written
+       notification to the applicant. If the applicant does not receive notification of a
+       completeness determination from the Division within sixty (60) days, the registration
+       request will be deemed complete for the purpose of Conditions X.A and X.B.
+
+X.C    The Division has ninety (90) calendar days from the date the Division receives a
+       complete general permit registration request to provide the applicant with a written
+       approval or denial of the registration.
+
+XI.    General Permits Terms and Administration
+
+XI.A   A facility that becomes a major source for Title V Operating Permit requirements due
+       to reclassification, and is operating under Condition I.F, must submit a Title V
+
+
+
+                                         Page 73 of 107
+       operating permit application requesting to incorporate the terms of this general
+       permit into a Title V Operating Permit. The due date for this application is one year
+       from the date on which the facility becomes subject to Title V Operating Permit
+       requirements.
+
+XI.B   In accordance with Colorado Regulation Number 3, Part C, Section V.C.5., some or all
+       of the monitoring specified in this general permit will be incorporated as specific
+       conditions in the source’s Title V Operating Permit (if applicable). Additional
+       monitoring not listed in this general permit may be included in the source’s Operating
+       Permit in order to satisfy the periodic monitoring requirements of Regulation Number
+       3, Part C, Section V.C.5.b.
+
+XI.C   General Terms
+
+       XI.C.1    A revised APEN must be filed: (Regulation Number 3, Part A, Section II.C.)
+
+                 XI.C.1.a Annually by April 30th of the year following a significant increase
+                           in emissions as follows:
+
+                            XI.C.1.a.(i)       For VOC, a change in actual emissions of five (5)
+                                               tons per year or more, above the level reported
+                                               on the last APEN; or
+
+                            XI.C.1.a.(ii)      For VOC and NOx sources in ozone non-attainment
+                                               areas, a change in annual actual emissions of one
+                                               ton per year or more or five percent, whichever is
+                                               greater, above the level reported on the last APEN
+                                               submitted to the Division; or
+
+                            XI.C.1.a.(iii)     For any non-criteria reportable pollutant, if the
+                                               emissions increase by 50% or five (5) tons per
+
+
+                                            Page 74 of 107
+                                       year, whichever is less, above the level reported
+                                       on the last APEN.
+
+         XI.C.1.b Whenever there is a change in the owner or operator of any
+                   facility, process, or activity; or
+
+                    XI.C.1.b.(i)       As required by the requirements in the AOS
+                                       section of this general permit,
+
+                    XI.C.1.b.(ii)      No later than 30 days before the existing APEN
+                                       expires.
+
+XI.C.2   The requirements of Regulation Number 3, Part D apply at such time that
+         any well production facility or modification becomes a major well
+         production facility or major modification solely by virtue of a relaxation in
+         any enforceable limitation that was established after August 7, 1980 on the
+         capacity of the well production facility or modification to otherwise emit a
+         pollutant, such as a restriction on hours of operation. (Regulation Number
+         3, Part D, Sections V.A.7.b. and VI.B.4.)
+
+XI.C.3   This well production facility may be able to utilize the Affirmative Defense
+         Provision for Excess Emissions During Malfunctions contained in Common
+         Provisions Regulation, Part II, Subpart E. The owner or operator must notify
+         the Division of any malfunction condition which causes a violation of any
+         emission limit or limits stated in this general permit as soon as possible, but
+         no later than noon of the next working day, followed by written notice to
+         the Division addressing all of the criteria set forth in Part II.E.1 of the
+         Common Provisions Regulation.
+
+
+
+
+                                    Page 75 of 107
+XI.C.4   This general permit is granted subject to all rules and regulations of the
+         Commission, the Colorado Air Pollution Prevention and Control Act C.R.S.
+         (25-7-101 et seq), and to those general and specific terms and conditions
+         included in this document.
+
+XI.C.5   Unless specifically stated otherwise, the general and specific conditions
+         contained in this general permit have been determined by the Division to be
+         necessary to assure compliance with the provisions of section 25-7-
+         114.5(7)(a), C.R.S.
+
+XI.C.6   Each and every condition of this general permit is a material part hereof
+         and is not severable. Any challenge to or appeal of a condition herein by the
+         permittee will constitute a rejection of the entire permit and upon such
+         occurrence, this general permit must be deemed denied ab initio.
+
+XI.C.7   Section 25-7-114.7(2)(a), C.R.S. requires that all well production facilities
+         required to file an APEN must pay an annual fee to cover the costs of
+         inspections and administration.
+
+XI.C.8   Violation of the terms of a permit or of the provisions of the Colorado Air
+         Pollution Prevention and Control Act or the regulations of the Commission
+         may result in administrative, civil or criminal enforcement actions under
+         Sections 25-7-115 (enforcement), -121 (injunctions), -122 (civil penalties), -
+         122.1 (criminal penalties), C.R.S.
+
+XI.C.9   Registration under this general permit is approved in reliance upon the
+         accuracy and completeness of information supplied by the owner or
+         operator and is conditioned upon operation of the well production facility in
+         accordance with this information and with representations made by the
+         owner or operator or owner or operator's agents. It is valid only for the
+
+
+                                Page 76 of 107
+                equipment and operations or activity specifically identified on the general
+                permit registration.
+
+XI.D   Registration Revision/Termination
+
+       XI.D.1   The Division may deny or revoke registration under the general permit
+                under the circumstances specified in Regulation Number 3, Part B, Section
+                III.I.3.c. and require the owner or operator to apply for a source-specific
+                construction permit as required by Regulation Number 3, Part B.
+
+       XI.D.2   A registration under this general permit may be reissued to a new owner by
+                the Division as provided in Regulation Number 3, Part B, Section II.B. upon
+                request for transfer of ownership and the submittal of a revised APEN,
+                revised general permit registration and the required fees.
+
+       XI.D.3   Registration under this general permit is voluntary. The owner or operator
+                may withdraw or cancel a registration under this general permit at any time
+                by notifying the Division in writing. The owner or operator can apply for a
+                source-specific construction permit as necessary per Regulation Number 3,
+                Part B.
+
+XI.E   General Permit Revision/Termination
+
+       XI.E.1   This general permit remains in effect until revised or terminated by the
+                Division in accordance with the provisions of Regulation Number 3.
+
+       XI.E.2   After public notice and comment as provided by Regulation Number 3, Part
+                B, Section III.I.7., the Division may revise this general permit in order to add
+                or delete requirements or limitations to the permit. This public notice must
+                be conducted in a manner consistent with the provisions of Regulation
+                Number 3, Part B, Section III.C.4.
+
+
+                                       Page 77 of 107
+       XI.E.3   If the Division revises this general permit, it will first provide written notice
+                to affected owners or operators. The notice will advise the owner or
+                operator that any existing registration to use the general permit will be
+                automatically converted to a registration to use the revised general permit,
+                provided that the owner or operator continues to meet all requirements of
+                the revised general permit. Persons not wishing to continue coverage under
+                the revised general permit have the option of applying for a source-specific
+                construction permit as required by Regulation Number 3, Part B, or apply
+                for a different general permit, as appropriate.
+
+       XI.E.4   If the Division terminates this general permit, it will provide written notice
+                to affected owner or operators prior to the termination of the general
+                permit. The notice will advise owner or operators that they must apply for a
+                source-specific construction permit as required by Regulation Number 3,
+                Part B.
+
+       XI.E.5   The Division may require any well production facility authorized by a
+                general construction permit to apply for and obtain a source-specific
+                construction permit if circumstances have changed since the time of the
+                original general permit application so that the well production facility is no
+                longer appropriately controlled and/or permitted under the general
+                construction permit. (Regulation Number 3, Part B, Section III.I.3.c.(i)(B))
+
+XII.   Additional Requirements
+
+XII.A Storage tanks registered under this general permit may be subject to 40 CFR, Part 60,
+       Subpart OOOOa – Standards of Performance for Crude Oil and Natural Gas Facilities
+       for which Construction, Modification, or Reconstruction Commenced after September
+       18, 2015. 81 Fed. Reg. 35824 (June 3, 2016). This rule has not yet been incorporated
+
+
+
+                                        Page 78 of 107
+      into the Commission’s Regulation Number 6. A copy of the complete subpart is
+      available at the Office of the Federal Register website.
+
+XII.B Storage tanks registered under this general permit may be subject to 40 CFR, Part 60,
+      Subpart OOOOb – Standards of Performance for Crude Oil and Natural Gas Facilities
+      for which Construction, Modification, or Reconstruction Commenced after December
+      6, 2022.89 Fed. Reg. 16820 (Mar. 8, 2024). This rule has not yet been incorporated
+      into Commission’s Regulation Number 6. A copy of the complete subpart is available
+      at the Office of the Federal Register website.
+
+XII.C Natural gas-fired spark ignition engines registered under this general permit may be
+      subject to 40 CFR, Part 60, Subpart JJJJ—Standards of Performance for Stationary
+      Spark Ignition Internal Combustion Engines.73 Fed. Reg. 3568 (Jan. 18, 2008) . This
+      rule has not yet been incorporated into the Commission’s Regulation Number 6. A
+      copy of the complete subpart is available on the EPA's website - Standards of
+      Performance for Stationary Spark Ignition Internal Combustion Engines - Subpart JJJJ.
+
+XII.D Natural gas-fired spark ignition engines registered under this general permit may be
+      subject to 40 CFR, Part 63, Subpart ZZZZ - National Emission Standards for Hazardous
+      Air Pollutants for Reciprocating Internal Combustion Engines. 73 Fed. Reg. 3568 (Jan.
+      18, 2008). The January 18, 2008 amendments to include requirements for area
+      sources and engines < 500 hp located at major sources have not yet been incorporated
+      into the Commission’s Regulation Number 8. A copy of the complete subpart is
+      available on the EPA's website - National Emissions Standards for Hazardous Air
+      Pollutants for Stationary Reciprocating Internal Combustion Engines – Subpart ZZZZ.
+      Additional information regarding area source standards can be found on the EPA
+      guidance website.
+
+
+
+
+                                       Page 79 of 107
+XII.E Natural gas-fired spark ignition engines registered under this general permit may be
+      subject to 40 CFR, Part 63, Subpart ZZZZ - National Emission Standards for Hazardous
+      Air Pollutants for Reciprocating Internal Combustion Engines. 75 Fed. Reg. 51570
+      (Aug. 20, 2010). The August 20, 2010 amendments to include requirements for
+      existing engines located at area sources and existing engines < 500 hp located at
+      major sources have not yet been incorporated into the Commission’s Regulation
+      Number 8. A copy of the complete subpart is available on the EPA website - National
+      Emission Standards for Hazardous Air Pollutants – Subpart ZZZZ. Additional
+      information regarding area source standards can be found on the EPA guidance
+      website.
+
+
+
+
+                                       Page 80 of 107
+   Attachment A: Alternative Operating Scenarios - Natural gas-fired reciprocating
+                              internal combustion engines
+
+1. The following AOS for the temporary and permanent replacement of natural gas fired
+   reciprocating internal combustion engines has been reviewed in accordance with the
+   requirements of Regulation Number 3., Part A, Section IV.A, Operational Flexibility-
+   Alternative Operating Scenarios, Regulation Number 3, Part B, Construction Permits,
+   and Regulation Number 3, Part D, Major Stationary Source New Source Review and
+   Prevention of Significant Deterioration, and it has been found to meet all applicable
+   substantive and procedural requirements. This general permit incorporates and is
+   considered to be a Construction Permit for any engine replacement performed in
+   accordance with this AOS, and the owner or operator is allowed to perform such
+   engine replacement without applying for a revision to this general permit or
+   obtaining a new Construction Permit.
+
+2. The following AOS is incorporated into this general permit in order to deal with an
+   engine breakdown or periodic routine maintenance and repair of an existing onsite
+   engine that requires the use of either a temporary or permanent replacement
+   engine. The compliance demonstrations and any periodic monitoring required by this
+   AOS are in addition to any compliance demonstrations or periodic monitoring
+   required by this general permit.
+
+3. Prohibitions
+
+    3.1. The AOS cannot be used for the permanent replacement of an entire engine at
+         any source that becomes a major stationary source for purposes of Prevention
+         of Significant Deterioration or Non-Attainment Area New Source Review
+         ("PSD/NANSR") unless the existing engine has emission limits that are below the
+         significance levels in Regulation Number 3, Part D, II.A.44. Nothing in this AOS
+
+
+
+                                   Page 81 of 107
+     precludes the Division from taking an action, based on any permanent engine
+     replacement(s), for circumvention of any state or federal PSD/NANSR
+     requirement. Additionally, in the event that any permanent engine
+     replacement(s) constitute(s) a circumvention of applicable PSD/NANSR
+     requirements, nothing in this AOS excuses the owner or operator from
+     complying with PSD/NANSR and applicable permitting requirements.
+
+3.2. This AOS cannot be used to change the annual permitted emission limits or any
+     compliance emission factor or calculation method that is required by a permit
+     to be used for the purposes of monitoring compliance with the annual
+     permitted emission limits.
+
+3.3. This AOS cannot be used for the permanent replacement of an engine subject
+     to an emission limitation under Regulation Number 26, Part B, Section I.D.5
+     (state-wide requirements for natural gas-fired reciprocating internal
+     combustion engines with manufacturer's design rate greater than or equal to
+     1000 hp), unless the replacement is subject to the same numerical emission
+     standard and compliance date as the unit being replaced, on the date that the
+     replacement will occur.
+
+3.4. This AOS cannot be used for the permanent replacement of an engine subject
+     to an emission limitation under Regulation Number 26, Part B, Section I.D.6
+     (state-wide requirements for rich burn and lean burn natural gas-fired
+     reciprocating internal combustion engines with manufacturer's design rate
+     greater than or equal to 100 hp and 250 hp, respectively, and less than 1000
+     hp), unless the replacement is subject to the same numerical emission standard
+     and compliance date as the unit being replaced, on the date that the
+     replacement will occur.
+
+
+
+
+                               Page 82 of 107
+   3.5. Additional Sources: The replacement of an existing engine with a new engine is
+         viewed by the Division as the installation of a new emissions unit, not “routine
+         replacement” of an existing unit. The AOS is therefore essentially an advanced
+         GP12 registration review. The AOS cannot be used for additional new emission
+         points for any site; an engine that is being installed as an entirely new emission
+         point and not as part of an AOS-approved replacement of an existing onsite
+         engine has to go through the appropriate Construction/Operating permitting
+         process prior to installation.
+
+4. General Provisions
+
+   4.1. All replacement engines are subject to all federally applicable and state-only
+         requirements set forth in this general permit for the replaced engine (including
+         monitoring and recordkeeping), unless otherwise superseded by the applicable
+         requirements identified in the Applicability Report for a particular permanently
+         replaced engine.
+
+   4.2. The results of all tests and the associated calculations required by this AOS
+         must be submitted to the Division within 30 calendar days of the test or within
+         60 days of the test if such testing is required to demonstrate compliance with
+         NSPS or MACT requirements. Results of all tests must be maintained and made
+         available to the Division upon request.
+
+   4.3. Contemporaneous Log: The owner or operator must maintain a log on-site and
+         contemporaneously record the start and stop date of any engine replacement,
+         the manufacturer, date of manufacture, model number, horsepower, and serial
+         number of the engine(s) that are replaced during the term of this general
+         permit, and the manufacturer, model number, horsepower, and serial number
+         of the replacement engine. In addition to the log, for permanent engine
+
+
+
+                                    Page 83 of 107
+         replacements, the owner or operator must maintain a copy of all Applicability
+         Reports required under Condition 6 below and make them available to the
+         Division upon request.
+
+   4.4. Definition of Temporary Replacement and Permanent Replacement
+
+         4.4.1. “Temporary” is defined as in the same service for either 90 operating
+                days or 270 operating days or less in any 12 month period, based on the
+                total number of days that the engine is in operation. If the engine
+                operates only part of a day, that day counts as a full day towards the
+                total. Except as provided below for natural gas-fired reciprocating
+                internal combustion engines subject to an emission limitation under
+                Regulation Number 26, Part B, Section I.D.5 or I.D.6., temporary is
+                defined as 90 operating days for engines where permanent
+                replacements are allowed or 270 operating days where permanent
+                replacements are not allowed.
+
+         4.4.2. “Temporary” for natural gas-fired reciprocating internal combustion
+                engines subject to an emission limitation under Regulation Number 26,
+                Part B, Section I.D.5 or I.D.6. is defined as 270 days operating days.
+
+         4.4.3. “Permanent” is defined as in the same service for more operating days
+                than allowed under temporary replacement, as defined for each
+                specific engine.
+
+5. Specific Provisions for Temporary Replacements: The owner or operator may
+   temporarily replace an existing engine that is subject to the emission limits set forth
+   in this general permit with an engine that is of the same manufacturer, model, and
+   horsepower or a different manufacturer, model, or horsepower as the existing engine
+   without modifying the GP12 registration, so long as the temporary replacement
+
+
+                                   Page 84 of 107
+   engine complies with all permit limitations and other requirements applicable to the
+   existing engine. The owner or operator must also comply with any additional
+   requirements applicable to the temporary replacement. Measurement of emissions
+   from the temporary replacement engine must be made as set forth in Condition 8
+   below.
+
+6. Specific Provisions for Permanent Replacements
+
+   6.1. Except as provided in Condition 5, the owner or operator may permanently
+         replace an existing engine with another engine with the same manufacturer,
+         model, and horsepower without modifying the GP12 registration so long as the
+         permanent replacement engine complies with all permit limitations and
+         requirements applicable to the existing engine, unless otherwise superseded by
+         the regulations identified in the Applicability Report, as well as any other
+         applicable requirements for the replacement engine. Measurement of emissions
+         from the permanent replacement engine and compliance with the applicable
+         emission limitations must be made as set forth in Condition 8 below.
+
+   6.2. An Air Pollutant Emissions Notice (APEN) that includes the specific
+         manufacturer, model and serial number and horsepower of the permanent
+         replacement engine must be filed with the Division for the permanent
+         replacement engine within 14 calendar days of commencing operation of the
+         replacement engine. The annual emission limitations and associated emission
+         factors requested on the APEN must exactly match the annual emission
+         limitations and emission factors associated with the annual emission limits set
+         forth in the GP12 registration for the existing engine. Any changes to these
+         values cannot be processed as a permanent replacement under this AOS and
+         will instead require a GP12 registration modification.
+
+
+
+
+                                   Page 85 of 107
+6.3. The APEN must be accompanied by the appropriate APEN filing fee, a cover
+     letter explaining that the owner or operator is exercising an alternative
+     operating scenario and is installing a permanent replacement engine, and a
+     copy of the relevant Applicability Reports for the replacement engine.
+     Applicability Reports can be found at Divisions’ alternate operating scenarios
+     webpage. This submittal must be accompanied by a certification from the
+     person legally authorized to act on behalf of the owner or operator indicating
+     that “based on the information and belief formed after reasonable inquiry, the
+     statements and information included in the submittal are true, accurate and
+     complete”.
+
+6.4. Annual emission calculations for monitoring compliance with annual permit
+     limits for permanent replacement engines must be performed using the
+     emission factors and calculation methods set forth in the GP12 registration for
+     the existing engine. If the owner or operator elects to modify either the annual
+     emission limit or the emission factor in the GP12 registration associated with
+     annual limit to more closely reflect the replacement engine operation, a GP12
+     registration modification must be submitted to the Division. The use of any
+     emission factors or calculation methods for the purposes of monitoring
+     compliance with annual limits is prohibited until a complete application to
+     modify the GP12 registration is received by the Division.
+
+6.5. Nothing in this AOS is intended to require the owner or operator to use
+     emission factors associated with annual permit limits to monitor compliance
+     with any other emission limits or standards, unless the owner or operator is
+     already explicitly required to do so by a specific permit condition or applicable
+     requirement.
+
+
+
+
+                               Page 86 of 107
+    6.6. The owner or operator must pay fees based on the normal permit processing
+         rate for review of information submitted to the Division in regard to any
+         permanent engine replacement.
+
+7. Applicable Regulations for Permanent Engine Replacements: An analysis of all
+   applicable requirements, including but not limited to monitoring, recordkeeping and
+   reporting, for the permanent engine replacement must be included in the
+   Applicability Reports required under Condition 6. Any testing required by the rules
+   listed in Conditions 7.2 through 7.10 below is in addition to that required by this AOS.
+
+    7.1. Reasonably Available Control Technology (RACT) – Regulation Number 3, Part B,
+         Section III.D.2.: All permanent replacement engines that are located in an area
+         that is classified as attainment/maintenance or nonattainment must apply
+         Reasonably Available Control Technology (RACT) for the pollutants for which
+         the area is attainment/maintenance or nonattainment. Note that both VOC and
+         NOx are precursors for ozone. RACT must be applied for any level of emissions
+         of the pollutant for which the area is in attainment/maintenance or
+         nonattainment, except as follows:
+
+         7.1.1. In the Denver Metropolitan PM10 attainment/maintenance area, RACT
+                applies to PM10 at any level of emissions and to NOx and SO2, as
+                precursors to PM10, if the potential to emit of NOx or SO2 exceeds 40
+                tons/yr.
+
+         7.1.2. For purposes of this AOS, the following are considered RACT for natural-
+                gas fired reciprocating internal combustion engines:
+
+                7.1.2.1. VOC: The emission limitations in NSPS JJJJ.
+
+                7.1.2.2. CO: The emission limitations in NSPS JJJJ.
+
+
+
+                                   Page 87 of 107
+            7.1.2.3. NOx: The emission limitations in NSPS JJJJ.
+
+            7.1.2.4. SO2: Use of natural gas as fuel.
+
+            7.1.2.5. PM10: Use of natural gas as fuel.
+
+     7.1.3. As defined in 40 CFR Part 60 Subparts GG (§ 60.331) and 40 CFR Part 72
+            (§ 72.2), natural gas contains 20.0 grains or less of total sulfur per 100
+            standard cubic feet.
+
+7.2. Regulation Number 26, Part B, Section I.A – Requirements for new and existing
+     engines (in the 8-hour Ozone Control Area). 8-hour Ozone Control Area is as
+     defined in Regulation Number 7, Part A, Section II.A.1.
+
+     7.2.1. Natural gas-fired stationary source in the 8-hour Ozone Control Area
+            with manufacturer’s design rate greater than 500 horsepower shall
+            employ a non-selective catalyst reduction system and air fuel controller
+            (for rich burn engines), or an oxidation catalyst (for lean burn engines).
+
+     7.2.2. For specific rule requirements, see:
+
+            7.2.2.1. Section I.A - Applicability and compliance dates
+
+            7.2.2.2. Section I.B - Requirements for Control Devices
+
+            7.2.2.3. Section I.C – Exemptions
+
+7.3. Regulation Number 26, Part B, Section I.D.3 – New, Modified and Relocated
+     Natural Gas Fired Reciprocating Internal Combustion Engines (State Only)
+
+     7.3.1. A natural gas-fired reciprocating internal combustion engines that is
+            either constructed or relocated to the state of Colorado from another
+
+
+
+                               Page 88 of 107
+             state after the date listed in the table are is subject to the emission
+             standards in the Table 8 - Table 1 from Regulation Number 26, Part B.
+
+                Table 8 - Table 1 from Regulation Number 26, Part B
+
+
+Max Engine      Construction or
+                                      NOX (g/hp-hr)     CO (g/hp-hr)    VOC (g/hp-hr)
+   (HP)         Relocation Date
+
+
+100≤hp<500      January 1, 2008            2.0               4.0              1.0
+
+
+                January 1, 2011            1.0               2.0              0.7
+
+
+ 500<hp           July 1, 2007             2.0               4.0              1.0
+
+
+                  July 1, 2010             1.0               2.0              0.7
+
+
+
+
+     7.3.2. For specific rule requirements, see:
+
+             7.3.2.1. Section I.D.1 – Exemptions.
+
+             7.3.2.2. Section I.D.2 - General Provisions
+
+             7.3.2.3. XIV.G.3.b. (ii) Section I.D.3 - Emission Standards.
+
+7.4. Regulation Number 26, Part B, Section I.D.4 – Existing Natural Gas Fired
+     Reciprocating Internal Combustion Engines
+
+
+
+
+                                 Page 89 of 107
+     7.4.1. Rich burn natural gas-fired reciprocating internal combustion engines
+             with manufacturer’s name plate design rate greater than 500
+             horsepower constructed or modified before February 1, 2009 shall
+             install and operate a non-selective catalyst reduction system and air
+             fuel controller.
+
+     7.4.2. (State-Only) All lean burn natural gas-fired reciprocating internal
+             combustion engines with manufacturer’s name plate design rate greater
+             than 500 horsepower shall install and operate an oxidation catalyst.
+
+     7.4.3. For specific rule requirements, see:
+
+             7.4.3.1. Section I.D.1 - Exemptions
+
+             7.4.3.2. Section I.D.4.a.(i)(B)-(C) - Exemptions
+
+             7.4.3.3. Section I.D.4.a.(i)(A) - General Provisions
+
+             7.4.3.4. Section I.D.4.a.(i) - Control Requirements
+
+             7.4.3.5. Section I.D.4.b.(i) - Control Requirements
+
+             7.4.3.6. Section I.D.4.c. - Control Requirements listed engines ≥ 1000
+                      HP
+
+7.5. Additional Requirements for Natural Gas Fired Reciprocating Internal
+     Combustion Engines: Regulation Number 26, Part B, Section I.D.5 (State-Only).
+
+     7.5.1. Stationary natural gas-fired reciprocating internal combustion engines
+             with a manufacturer’s design rate greater than or equal to 1000
+             horsepower are subject to specific emission standards. The specific
+             applicable standards and compliance date of any particular engine or
+
+
+                                Page 90 of 107
+             any particular replacement of that engine at any particular point in
+             time is variable, dependent on multiple factors, and can potentially be
+             subject to further changes at the discretion of the owner or operator.
+
+     7.5.2. For specific rule requirements, see:
+
+             7.5.2.1. Section I.D.5.a. - Applicability and exemptions
+
+             7.5.2.2. Section I.D.5.b. - Standards for engines not under a company-
+                      wide plan
+
+             7.5.2.3. Section I.D.5.c. - Alternative Company-Wide Compliance Plan
+
+             7.5.2.4. Section I.D.5.d. - Performance Testing
+
+             7.5.2.5. Section I.D.5.e. - Monitoring and Combustion Process
+                      Adjustment
+
+             7.5.2.6. Section I.D.5.f. – Recordkeeping
+
+             7.5.2.7. Section I.D.5.g – Reporting.
+
+7.6. Additional Requirements for Natural Gas Fired Reciprocating Internal
+     Combustion Engines: Regulation Number 26, Part B, Section I.D.6 (State-Only).
+
+     7.6.1. Rich burn stationary natural gas-fired reciprocating internal combustion
+             engines with a manufacturer’s design rate greater than or equal to 100
+             horsepower but less than 1000 horsepower and lean burn stationary
+             natural gas-fired reciprocating internal combustion engines with a
+             manufacturer’s design rate greater than or equal to 250 horsepower,
+             but less than 1000 horsepower are subject to specific emission
+             standards. The specific applicable standards and compliance date of
+
+
+                               Page 91 of 107
+            any particular engine or any particular replacement of that engine at
+            any particular point in time is variable, dependent on multiple factors,
+            and can potentially be subject to further changes at the discretion of
+            the owner or operator.
+
+     7.6.2. For specific rule requirements, see:
+
+            7.6.2.1. Section I.D.6.a - Applicability and exemptions
+
+            7.6.2.2. Section I.D.6.b - Emission Standards and Compliance deadlines
+
+            7.6.2.3. Section I.D.6.c - Performance Testing
+
+            7.6.2.4. Section I.D.6.d - Monitoring and Combustion Process
+                     Adjustment
+
+            7.6.2.5. Section I.D.6.e - Recordkeeping
+
+            7.6.2.6. Section I.D.6.f – Reporting.
+
+7.7. Control of Emissions from Stationary and Portable Combustion Equipment in the
+     8-hour Ozone Control Area or Northern Weld County: Regulation Number 26,
+     Part B, Section II. 8-hour Ozone Control Area is as defined in Regulation
+     Number 7, Part A, Section II.A.1. Northern Weld County is as defined in
+     Regulation Number 7, Part A, Section II.A.3.
+
+     7.7.1. Replacements stationary internal combustion engines that were located
+            at a major sources of NOx prior to specific dates must complete
+            inspections and adjustments.
+
+     7.7.2. For specific rule requirements, see:
+
+
+
+
+                               Page 92 of 107
+             7.7.2.1. Section II.A.1 - Applicability
+
+             7.7.2.2. Section II.A.2 - Exemptions
+
+             7.7.2.3. Section II.A.6.b.(iv) & (vii) - Combustion Process Adjustment
+                      for Engines
+
+             7.7.2.4. Section II.A.6.b.(viii) - Compliance dates and frequency
+
+             7.7.2.5. Section II.A.6.c - Alternatives
+
+             7.7.2.6. Section II.A.7 – Recordkeeping
+
+7.8. Control of Emissions from Specific Major Sources of VOC and/or NOx in the 8-
+     hour Ozone Control Area: Regulation Number 26, Part B, Section III. 8-hour
+     Ozone Control Area is as defined in Regulation Number 7, Part A, Section II.A.1.
+     Replacements of units specifically identified in Section III are subject to the
+     additional requirements of the original unit, as specified in Section III.
+
+7.9. NSPS for stationary spark ignition internal combustion engines: 40 CFR Part 60,
+     Subpart JJJJ
+
+     7.9.1. A permanent replacement engine that is manufactured on or after
+             1/1/2009 for emergency engines greater than 25 hp, 7/1/2008 for
+             engines less than 500 hp, 7/1/2007 for engines greater than or equal to
+             500 hp except for lean burn engines greater than or equal to 500 hp and
+             less than 1,350 hp, and 1/1/2008 for lean burn engines greater than or
+             equal to 500 hp and less than 1,350 hp are subject to the requirements
+             of 40 CFR Part 60, Subpart JJJJ.
+
+
+
+
+                                Page 93 of 107
+     7.9.2. Note that the initial test required by NSPS Subpart JJJJ can serve as the
+            testing required by this AOS under Condition 8, if approved in advance
+            by the Division, provided that such test is conducted within the time
+            frame specified in Condition 8.
+
+     7.9.3. Under the provisions of Regulation Number 6, Part B, Section I.C, which
+            are triggered upon the adoption of NSPS JJJJ, relocation of an internal
+            combustion engine (ICE) is defined as the earlier of the date the owner
+            or operator submits an APEN to the Division, or the date the ICE is
+            placed in a secured location where it is intended to be operated within
+            the State of Colorado. However, as of March 23, 2023 the Division has
+            not yet adopted NSPS JJJJ. Until such time as it does, any engine
+            subject to NSPS JJJJ will be subject only under Federal law. Once the
+            Division adopts NSPS JJJJ, determination of the applicable State-Only
+            Enforceable requirements of NSPS JJJJ for the purposes of Regulation
+            Number 6 must be based on the relocation date (if any) as defined in §
+            I.C.1.a. Note that special provisions apply to engines < 500 hp. Refer to
+            PS-Memo 10-03 for additional information on Regulation Number 6
+            applicability for new and relocated engines.
+
+7.10. Reciprocating internal combustion engine (RICE) MACT: 40 CFR Part 63, Subpart
+     ZZZZ
+
+     7.10.1. A permanent replacement engine located at either an area or major
+            source is subject to the requirements in 40 CFR Part 63, Subpart ZZZZ.
+
+     7.10.2. Note that the initial test required by the MACT can serve as the testing
+            required by this AOS under Condition 8, if approved in advance by the
+
+
+
+
+                               Page 94 of 107
+                Division, provided that such test is conducted within the time frame
+                specified in Condition 8.
+
+8. Portable Analyzer Monitoring
+
+   8.1. Note: In some cases, there may be conflicting and/or duplicative testing
+         requirements due to overlapping Applicable Requirements. In those instances,
+         please contact the Division’s Compliance and Enforcement Unit to discuss
+         streamlining the testing requirements.
+
+   8.2. Note that the testing required by this Condition may be used to satisfy the
+         portable analyzer monitoring requirements specified by the permit for the
+         relevant time period (i.e. if the permit requires quarterly portable analyzer
+         monitoring, this monitoring event conducted under the AOS will serve as the
+         quarterly monitoring event required by the permit and an additional portable
+         analyzer monitoring event is not required for another three months).
+
+   8.3. The owner or operator may conduct a reference method test, in lieu of the
+         portable analyzer test required by this Condition, if approved in advance by the
+         Division.
+
+   8.4. The owner or operator must measure nitrogen oxide (NOx) and carbon
+         monoxide (CO) emissions in the exhaust from the replacement engine using a
+         portable flue gas analyzer within seven (7) calendar days of commencing
+         operation of the replacement engine.
+
+   8.5. All portable analyzer monitoring required by this general permit must be
+         conducted using the Division’s Portable Analyzer Monitoring Protocol (version
+         March 2006 or newer) as found on the Division’s web site at:
+         https://cdphe.colorado.gov/compliance-and-enforcement
+
+
+
+                                   Page 95 of 107
+8.6. Results of the portable analyzer monitoring must be used to monitor the
+     compliance status of this unit, except for any specifically applicable emission
+     limitations or standards for which an applicable requirement specifies a
+     performance test or Continuous Emission Monitoring System as the compliance
+     monitoring method.
+
+8.7. For comparison with an annual (tons/year) or short term (lbs/unit of time)
+     emission limit, the results of the monitoring event must be converted to a
+     lb/hr basis and multiplied by the allowable operating hours in the month or
+     year (whichever applies) in order to monitor compliance. If a source is not
+     limited in its hours of operation the test results will be multiplied by the
+     maximum number of hours in the month (744) or year (8760), whichever
+     applies.
+
+8.8. For comparison with a short-term limit that is either input based (lb/mmBtu),
+     output based (g/hp-hr) or concentration based (ppmvd @ 15% O2) that the
+     existing unit is currently subject to or the replacement engine will be subject
+     to, the results of the test must be converted to the appropriate units as
+     described in the above-mentioned Portable Analyzer Monitoring Protocol
+     document.
+
+8.9. If the portable analyzer results indicate compliance with both the NOx and CO
+     emission limitations, in the absence of credible evidence to the contrary, the
+     owner or operator may certify that the engine complies with both the NOx and
+     CO emission limitations for the relevant time period.
+
+8.10. Subject to the provisions of § 25-7-123.1, C.R.S. and in the absence of credible
+     evidence to the contrary, if the portable analyzer results fail to demonstrate
+     compliance with either the NOx or CO emission limitations, the engine will be
+
+
+
+                                Page 96 of 107
+considered to be out of compliance from the date of the portable analyzer test
+until a portable analyzer test indicates compliance with both the NOx and CO
+emission limitations or until the engine is taken offline.
+
+
+
+
+                           Page 97 of 107
+   Attachment B: Alternative Operating Scenarios – Diesel fuel-fired reciprocating
+                              internal combustion engines
+
+1. The following AOS for the temporary and permanent replacement of Stationary (CI)
+   engines has been reviewed in accordance with the requirements of Regulation
+   Number 3, Part A, Section IV.A, Operational Flexibility- Alternative Operating
+   Scenarios; Regulation Number 3, Part B, Construction Permits; and Regulation
+   Number 3, Part D, Major Stationary Source New Source Review and Prevention of
+   Significant Deterioration and has been found to meet all applicable substantive and
+   procedural requirements. This general permit incorporates and shall be considered a
+   Construction Permit for any engine replacement performed in accordance with this
+   AOS, and the owner or operator shall be allowed to perform such engine replacement
+   without applying for a revision to this general permit or obtaining a new Construction
+   Permit. Depending on the type of replacement, the owner or operator may be
+   required to submit an application to modify the GP12 registration.
+
+2. The following AOS is incorporated into this general permit in order to deal with an
+   engine breakdown or periodic routine maintenance and repair of an existing onsite
+   engine that requires the use of either a temporary or permanent replacement
+   engine. The compliance demonstrations and any periodic monitoring required by this
+   AOS are in addition to any compliance demonstrations or periodic monitoring
+   required by this general permit.
+
+3. Prohibitions
+
+    3.1. The AOS cannot be used for the permanent replacement of an entire engine at
+         any source that becomes a major stationary source for purposes of Prevention
+         of Significant Deterioration or Non-Attainment Area New Source Review
+         ("PSD/NANSR") unless the existing engine has emission limits that are below the
+
+
+
+                                   Page 98 of 107
+         significance levels in Regulation Number 3, Part D, II.A.44. Nothing in this AOS
+         precludes the Division from taking an action, based on any permanent engine
+         replacement(s), for circumvention of any state or federal PSD/NANSR
+         requirement. Additionally, in the event that any permanent engine
+         replacement(s) constitute(s) a circumvention of applicable PSD/NANSR
+         requirements, nothing in this AOS excuses the owner or operator from
+         complying with PSD/NANSR and applicable permitting requirements.
+
+   3.2. This AOS cannot be used to change the annual permitted emission limits or any
+         compliance emission factor or calculation method that is required by a permit
+         to be used for the purposes of monitoring compliance with the annual
+         permitted emission limits.
+
+   3.3. This AOS cannot be used for the permanent replacement of an engine subject
+         to an emission limitation under Regulation Number 26, Part B, Section I.D.6,
+         unless the replacement is subject to the same numerical emission standard and
+         compliance date as the unit being replaced, on the date that the replacement
+         will occur.
+
+4. General Provisions
+
+   4.1. All replacement engines are subject to all federally applicable and state-only
+         requirements set forth in this general permit for the replaced engine (including
+         monitoring and recordkeeping), unless otherwise superseded by the applicable
+         requirements identified in the Applicability Report for a particular permanently
+         replaced engine.
+
+   4.2. The results of all tests and the associated calculations required by this AOS
+         must be submitted to the Division within 30 calendar days of the test or within
+         60 days of the test if such testing is required to demonstrate compliance with
+
+
+                                   Page 99 of 107
+     NSPS or MACT requirements. Results of all tests must be maintained and made
+     available to the Division upon request.
+
+4.3. Contemporaneous Log: The owner or operator must maintain a log on-site and
+     contemporaneously record the start and stop date of any engine replacement,
+     the manufacturer, date of manufacture, model number, horsepower, and serial
+     number of the engine(s) that are replaced during the term of this general
+     permit, and the manufacturer, model number, horsepower, and serial number
+     of the replacement engine. In addition to the log, for permanent engine
+     replacements, the owner or operator must maintain a copy of all Applicability
+     Reports required under Condition 6 below and make them available to the
+     Division upon request.
+
+4.4. Definition of Temporary Replacement and Permanent Replacement
+
+     4.4.1. “Temporary” is defined as in the same service for either 90 operating
+            days or 270 operating or less in any 12 month period, based on the total
+            number of days that the engine is in operation. If the engine operates
+            only part of a day, that day counts as a full day towards the total.
+            Except as provided below for diesel-fired reciprocating internal
+            combustion engines subject to an emission limitation under Regulation
+            Number 26, Part B, Section I.D.6., temporary is defined as 90 operating
+            days for engines where permanent replacements are allowed or 270
+            operating days where permanent replacements are not allowed.
+
+     4.4.2. “Temporary” for diesel-fired reciprocating internal combustion engines
+            subject to an emission limitation under Regulation Number 26, Part B,
+            Section I.D.6. is defined as 270 days operating days.
+
+
+
+
+                              Page 100 of 107
+         4.4.3. “Permanent” is defined as in the same service for more operating days
+                than allowed under temporary replacement, as defined for each
+                specific engine.
+
+5. Specific Provisions for Temporary Replacements: The owner or operator may
+   temporarily replace an existing engine that is subject to the emission limits set forth
+   in this general permit with an engine that is of the same manufacturer, model, and
+   horsepower or a different manufacturer, model, or horsepower as the existing engine
+   without modifying the GP12 registration, so long as the temporary replacement
+   engine complies with all permit limitations and other requirements applicable to the
+   existing engine. The owner or operator must also comply with any additional
+   requirements applicable to the temporary replacement. Measurement of emissions
+   from the temporary replacement engine must be made as set forth in Condition 8
+   below.
+
+6. Specific Provisions for Permanent Replacements
+
+   6.1. Except as provided in Condition 5, the owner or operator may permanently
+         replace an existing engine with another engine with the same manufacturer,
+         model, and horsepower without modifying the GP12 registration so long as the
+         permanent replacement engine complies with all permit limitations and
+         requirements applicable to the existing engine, unless otherwise superseded by
+         the regulations identified in the Applicability Report, as well as any other
+         applicable requirements for the replacement engine. Measurement of emissions
+         from the permanent replacement engine and compliance with the applicable
+         emission limitations must be made as set forth in Condition 8 below.
+
+   6.2. An Air Pollutant Emissions Notice (APEN) that includes the specific
+         manufacturer, model and serial number and horsepower of the permanent
+
+
+
+                                   Page 101 of 107
+     replacement engine must be filed with the Division for the permanent
+     replacement engine within 14 calendar days of commencing operation of the
+     replacement engine. The annual emission limitations and associated emission
+     factors requested on the APEN must exactly match the annual emission
+     limitations and emission factors associated with the annual emission limits set
+     forth in the GP12 registration for the existing engine. Any changes to these
+     values cannot be processed as a permanent replacement under this AOS and
+     will instead require a GP12 registration modification.
+
+6.3. The APEN must be accompanied by the appropriate APEN filing fee, a cover
+     letter explaining that the owner or operator is exercising an alternative
+     operating scenario and is installing a permanent replacement engine, and a
+     copy of the relevant Applicability Reports for the replacement engine.
+     Applicability Reports can be found at Divisions’ alternate operating scenarios
+     webpage. This submittal must be accompanied by a certification from the
+     person legally authorized to act on behalf of the owner or operator indicating
+     that “based on the information and belief formed after reasonable inquiry, the
+     statements and information included in the submittal are true, accurate and
+     complete”.
+
+6.4. Annual emission calculations for monitoring compliance with annual permit
+     limits for permanent replacement engines must be performed using the
+     emission factors and calculation methods set forth in the GP12 registration for
+     the existing engine. If the owner or operator elects to modify either the annual
+     emission limit or the emission factor in the GP12 registration associated with
+     annual limit to more closely reflect the replacement engine operation, a GP12
+     registration modification must be submitted to the Division. The use of any
+     emission factors or calculation methods for the purposes of monitoring
+
+
+
+                              Page 102 of 107
+         compliance with annual limits is prohibited until a complete application to
+         modify the GP12 registration is received by the Division.
+
+   6.5. Nothing in this AOS is intended to require the owner or operator to use
+         emission factors associated with annual permit limits to monitor compliance
+         with any other emission limits or standards, unless the owner or operator is
+         already explicitly required to do so by a specific permit condition or applicable
+         requirement.
+
+   6.6. The owner or operator must pay fees based on the normal permit processing
+         rate for review of information submitted to the Division in regard to any
+         permanent engine replacement.
+
+   6.7. The replacement engine’s compliance with the applicable emission limitations
+         of the original engine shall be monitored by one of the following methods:
+
+         6.7.1. Manufacturer certified emission factors showing compliance.
+
+         6.7.2. Stack tests of same make and model showing compliance. This would
+                 only be considered if the test was done under similar conditions to
+                 Colorado (i.e. at altitude).
+
+         6.7.3. Stack tests on the engine.
+
+7. Applicable Regulations for Permanent Engine Replacements
+
+   7.1. NSPS for stationary compression ignition internal combustion engines: 40 CFR
+         Part 60, Subpart IIII.
+
+         7.1.1. A permanent replacement engine that is ordered after July 11, 2005
+                 and manufactured after April 1, 2006 or is modified or reconstructed
+
+
+
+                                   Page 103 of 107
+             after July 11, 2005 is subject to the requirements of 40 CFR Part 60,
+             Subpart IIII. An analysis of applicable monitoring, recordkeeping, and
+             reporting requirements for the permanent engine replacement shall be
+             included in any request for a permanent engine replacement.
+
+     7.1.2. Note that under the provisions of Regulation Number 6, Part B, Section
+             I.B. that relocation of a source from outside of the State of Colorado
+             into the State of Colorado is considered to be a new source, subject to
+             the requirements of Regulation Number 6 (i.e., the date that the source
+             is first relocated to Colorado becomes equivalent to the date of
+             manufacture for purposes of determining the applicability of NSPS IIII
+             requirements).
+
+7.2. MACT for Stationary Reciprocating Internal Combustion Engines: 40 CFR Part
+     63, Subpart ZZZZ.
+
+     7.2.1. Any permanent replacement engine located at either an area or major
+             source is subject to the requirements of 40 CFR Part 63, Subpart ZZZZ.
+             An analysis of applicable monitoring, recordkeeping, and reporting
+             requirements for the permanent engine replacement shall be included
+             in any request for a permanent engine replacement.
+
+7.3. Additional Requirements for Natural Gas Fired Reciprocating Internal
+     Combustion Engines: Regulation Number 26, Part B, Section I.D.6 (State-Only).
+
+     7.3.1. stationary diesel or dual-fuel fired internal combustion engines state-
+             wide with a manufacturer's design rate greater than or equal to 500
+             horsepower. The specific applicable standards and compliance date of
+             any particular engine or any particular replacement of that engine at
+             any particular point in time is variable, dependent on multiple factors,
+
+
+                               Page 104 of 107
+                and can potentially be subject to further changes at the discretion of
+                the owner or operator.
+
+         7.3.2. For specific rule requirements, see:
+
+                7.3.2.1. Section I.D.6.a - Applicability and exemptions
+
+                7.3.2.2. Section I.D.6.b - Emission Standards and Compliance deadlines
+
+                7.3.2.3. Section I.D.6.c - Performance Testing
+
+                7.3.2.4. Section I.D.6.d - Monitoring and Combustion Process
+                         Adjustment
+
+                7.3.2.5. Section I.D.6.e - Recordkeeping
+
+                7.3.2.6. Section I.D.6.f – Reporting.
+
+8. Portable Analyzer Monitoring
+
+   8.1. Note: In some cases, there may be conflicting and/or duplicative testing
+         requirements due to overlapping Applicable Requirements. In those instances,
+         please contact the Division’s Compliance and Enforcement Unit to discuss
+         streamlining the testing requirements.
+
+   8.2. Note that the testing required by this Condition may be used to satisfy the
+         portable analyzer monitoring requirements specified by the permit for the
+         relevant time period (i.e. if the permit requires quarterly portable analyzer
+         monitoring, this monitoring event conducted under the AOS will serve as the
+         quarterly monitoring event required by the permit and an additional portable
+         analyzer monitoring event is not required for another three months).
+
+
+
+
+                                  Page 105 of 107
+8.3. The owner or operator may conduct a reference method test, in lieu of the
+     portable analyzer test required by this Condition, if approved in advance by the
+     Division.
+
+8.4. The owner or operator must measure nitrogen oxide (NOx) and carbon
+     monoxide (CO) emissions in the exhaust from the replacement engine using a
+     portable flue gas analyzer within seven (7) calendar days of commencing
+     operation of the replacement engine.
+
+8.5. All portable analyzer monitoring required by this general permit must be
+     conducted using the Division’s Portable Analyzer Monitoring Protocol (ver March
+     2006 or newer) as found on the Division’s web site at:
+     https://cdphe.colorado.gov/compliance-and-enforcement
+
+8.6. Results of the portable analyzer monitoring must be used to monitor the
+     compliance status of this unit, except for any specifically applicable emission
+     limitations or standards for which an applicable requirement specifies a
+     performance test or Continuous Emission Monitoring System as the compliance
+     monitoring method.
+
+8.7. For comparison with an annual (tons/year) or short term (lbs/unit of time)
+     emission limit, the results of the monitoring event must be converted to a
+     lb/hr basis and multiplied by the allowable operating hours in the month or
+     year (whichever applies) in order to monitor compliance. If a source is not
+     limited in its hours of operation the test results will be multiplied by the
+     maximum number of hours in the month (744) or year (8760), whichever
+     applies.
+
+8.8. For comparison with a short-term limit that is either input based (lb/mmBtu),
+     output based (g/hp-hr) or concentration based (ppmvd @ 15% O2) that the
+
+
+                               Page 106 of 107
+     existing unit is currently subject to or the replacement engine will be subject
+     to, the results of the test must be converted to the appropriate units as
+     described in the above-mentioned Portable Analyzer Monitoring Protocol
+     document.
+
+8.9. If the portable analyzer results indicate compliance with both the NOx and CO
+     emission limitations, in the absence of credible evidence to the contrary, the
+     owner or operator may certify that the engine complies with both the NOx and
+     CO emission limitations for the relevant time period.
+
+8.10. Subject to the provisions of § 25-7-123.1, C.R.S. and in the absence of credible
+     evidence to the contrary, if the portable analyzer results fail to demonstrate
+     compliance with either the NOx or CO emission limitations, the engine will be
+     considered to be out of compliance from the date of the portable analyzer test
+     until a portable analyzer test indicates compliance with both the NOx and CO
+     emission limitations or until the engine is taken offline.
+
+
+
+
+                               Page 107 of 107
+

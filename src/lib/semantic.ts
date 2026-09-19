@@ -40,6 +40,8 @@ export type SemanticHit = {
   keyword_hit?: boolean;
   /** reciprocal-rank-fusion score the hybrid results are ordered by */
   fused?: number;
+  /** ancestor headings below the regulation ("PART B — … › II. …"); null when directly under it */
+  path?: string | null;
 };
 
 export type SemanticOptions = {

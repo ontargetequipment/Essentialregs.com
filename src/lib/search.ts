@@ -11,6 +11,8 @@ export type SearchHit = {
   /** ts_headline output: plain text with <mark>…</mark> around query terms. Sanitize before rendering. */
   headline: string;
   rank: number;
+  /** Ancestor headings below the regulation ("PART B — … › II. …"); null when the provision sits directly under it. */
+  path: string | null;
 };
 
 /** Longest query we'll pass to Postgres; anything past this is noise, not a search. */
