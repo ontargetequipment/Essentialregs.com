@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProvisionCard } from "@/components/ProvisionCard";
+import { RelatedProvisions } from "@/components/RelatedProvisions";
 import type { Provision } from "@/lib/types";
 
 export const metadata = {
@@ -45,7 +46,11 @@ export default async function SamplePage() {
 
       <div className="mt-8 flex flex-col gap-6">
         {provisions.map((provision) => (
-          <ProvisionCard key={provision.id} provision={provision} />
+          <div key={provision.id} className="flex flex-col gap-3">
+            <ProvisionCard provision={provision} />
+            {/* Public teaser: citation/title/reviewed summary only, links to /preview. */}
+            <RelatedProvisions provisionId={provision.id} teaser />
+          </div>
         ))}
       </div>
 

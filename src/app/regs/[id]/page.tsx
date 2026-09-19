@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProvisionCard } from "@/components/ProvisionCard";
+import { RelatedProvisions } from "@/components/RelatedProvisions";
 import type { Provision } from "@/lib/types";
 
 // Matches the provision id format used throughout the corpus, e.g.
@@ -44,8 +45,9 @@ export default async function ProvisionPage(
       <Link href="/sample" className="text-sm text-blue-700 hover:underline">
         ← Back to sample
       </Link>
-      <div className="mt-4">
+      <div className="mt-4 flex flex-col gap-3">
         <ProvisionCard provision={provision} />
+        <RelatedProvisions provisionId={provision.id} />
       </div>
     </div>
   );

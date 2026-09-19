@@ -12,6 +12,8 @@ import {
   withItemIdBadge,
 } from "@/lib/regulation";
 import { RegulationReader } from "@/components/RegulationReader";
+import { RelatedProvisionsLoader } from "@/components/RelatedProvisionsLoader";
+import { relatedPanelHtml } from "@/lib/related";
 import "../reader.css";
 
 // `reg` gets interpolated straight into a `like "sec-{reg}-%"` filter
@@ -56,6 +58,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
   return (
     <div className="reg-reader">
       <RegulationReader searchIndex={searchIndex} />
+      <RelatedProvisionsLoader currentReg={reg.toLowerCase()} />
 
       <nav id="sidebar">
         <div id="sidebar-header">
@@ -143,7 +146,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                     __html: `<div class="part-tag">${escapeHtml(p.citation)}</div>${p.full_text}${summaryPanelHtml(
                       p,
                       root.source_url
-                    )}${containsBoxHtml(children)}`,
+                    )}${relatedPanelHtml(p.id)}${containsBoxHtml(children)}`,
                   }}
                 />
               );
@@ -155,7 +158,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                   id={p.id}
                   className="appendix-block"
                   dangerouslySetInnerHTML={{
-                    __html: `${p.full_text}${summaryPanelHtml(p, root.source_url)}${containsBoxHtml(children)}`,
+                    __html: `${p.full_text}${summaryPanelHtml(p, root.source_url)}${relatedPanelHtml(p.id)}${containsBoxHtml(children)}`,
                   }}
                 />
               );
@@ -175,7 +178,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                 id={p.id}
                 className={`item depth-${depth}${isFedRoot ? " fed-block" : ""}`}
                 dangerouslySetInnerHTML={{
-                  __html: `${withItemIdBadge(p.full_text, p.citation)}${summaryPanelHtml(p, root.source_url)}${containsBoxHtml(children)}`,
+                  __html: `${withItemIdBadge(p.full_text, p.citation)}${summaryPanelHtml(p, root.source_url)}${relatedPanelHtml(p.id)}${containsBoxHtml(children)}`,
                 }}
               />
             );
