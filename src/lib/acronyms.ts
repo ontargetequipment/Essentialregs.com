@@ -5,9 +5,9 @@
  * acronym AND adds the phrase ("ECD (enclosed combustion device) testing"),
  * so both the keyword side and the meaning side of hybrid search benefit.
  *
- * Whole-word matches in any case are expanded ("ecd", "ECD"), except the few
- * keys that are also ordinary words (CASE_SENSITIVE below). Add entries
- * freely; keep the expansion to the phrase the regulations themselves use.
+ * Whole-word matches in any case are expanded ("ecd", "ECD"); see
+ * CASE_SENSITIVE for the two exceptions. Add entries freely; keep the
+ * expansion to the phrase the regulations themselves use.
  */
 export const ACRONYMS: Record<string, string> = {
   // CDPHE / AQCC
@@ -98,11 +98,12 @@ export const ACRONYMS: Record<string, string> = {
 };
 
 /**
- * Keys that are also ordinary words (or too short to trust) and are only
- * expanded when typed in capitals. Everything else matches in any case, so
- * "ecd testing" expands like "ECD testing" — people type queries in lowercase.
+ * Everything matches in any case ("ecd", "Ecd", "ECD"). The only exceptions
+ * are keys that are ordinary English words a person might type for their
+ * plain meaning: "cap" (a cap on emissions) and "eg" (e.g.). Those expand
+ * only when typed in capitals.
  */
-const CASE_SENSITIVE = new Set(["CAP", "SIP", "EG", "MIT", "HOB", "TAC", "APD", "SUA", "ESD", "LEL", "PRV", "PTE", "FIP", "AVO", "BMP"]);
+const CASE_SENSITIVE = new Set(["CAP", "EG"]);
 
 const BY_LOWER: Record<string, string> = Object.fromEntries(
   Object.keys(ACRONYMS).map((k) => [k.toLowerCase(), k])
