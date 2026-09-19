@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccessStatus } from "@/lib/access";
-import { expandAcronyms } from "@/lib/acronyms";
+import { expandAcronyms, keywordQuery } from "@/lib/acronyms";
 
 /**
  * Semantic ("Ask") search — Phase 3 of the semantic-search plan.
@@ -176,6 +176,8 @@ export async function semanticSearch(
           reg_filter: regFilter.length ? regFilter : null,
           jurisdiction_filter: jurisdiction,
           include_basis: includeBasis,
+          // Structured full-text query: (ecd | enclosed<->combustion<->device) & testing
+          keyword_query: keywordQuery(q) || null,
         });
   if (error) {
     if (error.code === "42501") throw new SemanticError("Ask is available to subscribers.", "forbidden");

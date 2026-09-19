@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { embedQueries, hrefForHit, regLabel, type SemanticHit } from "@/lib/semantic";
-import { expandAcronyms } from "@/lib/acronyms";
+import { expandAcronyms, keywordQuery } from "@/lib/acronyms";
 import { EVAL_QUESTIONS } from "@/lib/semantic-eval";
 
 export const metadata = { title: "Ask acceptance test" };
@@ -47,6 +47,7 @@ export default async function SemanticEvalPage() {
           reg_filter: null,
           jurisdiction_filter: null,
           include_basis: true,
+          keyword_query: keywordQuery(e.q) || null,
         });
         if (error) throw new Error(`${e.q}: ${error.message}`);
         const hits = (data ?? []) as SemanticHit[];

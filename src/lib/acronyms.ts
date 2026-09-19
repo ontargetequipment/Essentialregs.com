@@ -5,9 +5,9 @@
  * acronym AND adds the phrase ("ECD (enclosed combustion device) testing"),
  * so both the keyword side and the meaning side of hybrid search benefit.
  *
- * Only whole-word, case-sensitive matches are expanded (so "apen" in a
- * sentence is left alone but "APEN" is expanded). Add entries freely; keep
- * the expansion to the phrase the regulations themselves use.
+ * Whole-word matches in any case are expanded ("ecd", "ECD"), except the few
+ * keys that are also ordinary words (CASE_SENSITIVE below). Add entries
+ * freely; keep the expansion to the phrase the regulations themselves use.
  */
 export const ACRONYMS: Record<string, string> = {
   // CDPHE / AQCC
@@ -97,6 +97,17 @@ export const ACRONYMS: Record<string, string> = {
   scf: "standard cubic feet",
 };
 
+/**
+ * Keys that are also ordinary words (or too short to trust) and are only
+ * expanded when typed in capitals. Everything else matches in any case, so
+ * "ecd testing" expands like "ECD testing" — people type queries in lowercase.
+ */
+const CASE_SENSITIVE = new Set(["CAP", "SIP", "EG", "MIT", "HOB", "TAC", "APD", "SUA", "ESD", "LEL", "PRV", "PTE", "FIP", "AVO", "BMP"]);
+
+const BY_LOWER: Record<string, string> = Object.fromEntries(
+  Object.keys(ACRONYMS).map((k) => [k.toLowerCase(), k])
+);
+
 const PATTERN = new RegExp(
   "(^|[^A-Za-z0-9])(" +
     Object.keys(ACRONYMS)
@@ -104,15 +115,81 @@ const PATTERN = new RegExp(
       .map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
       .join("|") +
     ")(?=$|[^A-Za-z0-9])",
-  "g"
+  "gi"
 );
 
-/** "ECD testing requirements" → "ECD (enclosed combustion device) testing requirements". */
-export function expandAcronyms(text: string): string {
+/** Canonical dictionary key for a typed token, or null when it shouldn't expand. */
+function keyFor(token: string): string | null {
+  const key = ACRONYMS[token] ? token : BY_LOWER[token.toLowerCase()];
+  if (!key) return null;
+  if (CASE_SENSITIVE.has(key) && token !== key) return null;
+  return key;
+}
+
+function normalise(text: string): string {
   // Permit numbers are typed every which way ("gp02", "Gp-02"); normalise to GP02.
-  text = text.replace(/(^|[^A-Za-z0-9])gp-?(\d{2})(?=$|[^A-Za-z0-9])/gi, "$1GP$2");
-  return text.replace(PATTERN, (_m, pre: string, key: string) => {
-    const full = ACRONYMS[key];
-    return full ? `${pre}${key} (${full})` : `${pre}${key}`;
+  return text.replace(/(^|[^A-Za-z0-9])gp-?(\d{2})(?=$|[^A-Za-z0-9])/gi, "$1GP$2");
+}
+
+/** "ecd testing requirements" → "ecd (enclosed combustion device) testing requirements". */
+export function expandAcronyms(text: string): string {
+  return normalise(text).replace(PATTERN, (_m, pre: string, token: string) => {
+    const key = keyFor(token);
+    return key ? `${pre}${token} (${ACRONYMS[key]})` : `${pre}${token}`;
   });
+}
+
+/**
+ * Keyword-side phrase for an acronym when the full expansion is descriptive
+ * rather than the words the regulations use (the general permits: the corpus
+ * says "general permit", never "GP02 for diesel engines").
+ */
+const KEYWORD_PHRASE: Record<string, string> = Object.fromEntries(
+  Object.keys(ACRONYMS).filter((k) => /^GP\d\d$/.test(k)).map((k) => [k, "general permit"])
+);
+
+/**
+ * Extra keyword alternatives: how the regulations refer to the same thing.
+ * Reg 7 Part B I.B.2 defines "air pollution control equipment" as "a
+ * combustion device or vapor recovery unit", and the text says "combustion
+ * device" far more often than "enclosed combustion device"; "ECD" itself
+ * appears nowhere in the corpus.
+ */
+const KEYWORD_ALTS: Record<string, string[]> = {
+  ECD: ["combustion device", "air pollution control equipment"],
+  ECDs: ["combustion devices", "air pollution control equipment"],
+  VRU: ["vapor recovery", "air pollution control equipment"],
+  LDAR: ["leak detection", "leak inspection"],
+  APEN: ["emission notice"],
+  OGI: ["infrared camera"],
+  AIMM: ["instrument monitoring"],
+};
+
+const STOP = new Set(["a", "an", "the", "of", "for", "and", "or", "to", "in", "on", "at", "is", "are", "do", "i", "my", "we", "our", "what", "when", "how", "does", "need", "with", "by", "from", "that", "this", "it", "be", "can", "any"]);
+
+/**
+ * Builds the full-text query for match_provisions_hybrid in to_tsquery
+ * syntax. Plain words are ANDed; an acronym becomes an OR-group of the
+ * acronym and its spelled-out phrase, so "ecd testing" searches for
+ * (ecd | enclosed<->combustion<->device) & testing — Postgres's websearch
+ * parser can't express that grouping. Returns "" when nothing is left.
+ */
+export function keywordQuery(text: string): string {
+  const parts: string[] = [];
+  const tokens = normalise(text).match(/[A-Za-z0-9][A-Za-z0-9.]*[A-Za-z0-9]|[A-Za-z0-9]/g) ?? [];
+  for (const raw of tokens) {
+    const key = keyFor(raw);
+    if (key) {
+      const acr = raw.replace(/\./g, "");
+      const alts = [KEYWORD_PHRASE[key] ?? ACRONYMS[key], ...(KEYWORD_ALTS[key] ?? [])]
+        .map((ph) => ph.replace(/\([^)]*\)/g, " ").match(/[A-Za-z0-9]+/g)?.filter((w) => !STOP.has(w.toLowerCase())) ?? [])
+        .filter((ws) => ws.length > 0)
+        .map((ws) => (ws.length === 1 ? ws[0] : `(${ws.join(" <-> ")})`));
+      parts.push(alts.length ? `(${[acr, ...alts].join(" | ")})` : acr);
+    } else {
+      const w = raw.replace(/\./g, "");
+      if (w && !STOP.has(w.toLowerCase())) parts.push(w);
+    }
+  }
+  return parts.join(" & ");
 }

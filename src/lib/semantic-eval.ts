@@ -117,6 +117,11 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     note: "Reg 7 Part B II.B.2.h enclosed combustion device requirements (acronym expansion + keyword side)",
   },
   {
+    q: "ecd testing",
+    expect: ["sec-7-B-II-B-2-h", "sec-7-B-I-E-3"],
+    note: "Lowercase acronym (Sept 19 miss: 'ECD' appears nowhere in the corpus; expansion must be case-insensitive and OR-grouped on the keyword side)",
+  },
+  {
     q: "flare testing",
     expect: ["sec-7-B-II-B-2-h", "sec-oooob-60.5412b", "sec-ooooa-60.5412a", "sec-oooob-60.5417b"],
     note: "Reg 7 combustion devices / OOOO flare control-device requirements — a two-word keyword-style query",
