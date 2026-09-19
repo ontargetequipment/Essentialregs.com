@@ -1,0 +1,187 @@
+{
+  "_comment": "One entry per imported source document. `kind` selects the checker in freshness.py. Dates are ISO (YYYY-MM-DD). Update a key's recorded values with `python freshness.py --update-manifest <key>` after re-importing that source, then commit this file.",
+  "sources": {
+    "cp": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-2",
+      "ruleId": "2334",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "12286",
+      "effective_date": "2025-12-15"
+    },
+    "1": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-3",
+      "ruleId": "2335",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "11648",
+      "effective_date": "2024-10-15"
+    },
+    "2": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-4",
+      "ruleId": "2336",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "5444",
+      "effective_date": "2013-11-01"
+    },
+    "3": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-5",
+      "ruleId": "2337",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "12619",
+      "effective_date": "2026-07-15"
+    },
+    "6": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-8",
+      "ruleId": "2340",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "12287",
+      "effective_date": "2025-12-15"
+    },
+    "7": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-9",
+      "ruleId": "2341",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "12621",
+      "effective_date": "2026-07-15"
+    },
+    "8": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-10",
+      "ruleId": "2343",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "12288",
+      "effective_date": "2025-12-15"
+    },
+    "9": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-11",
+      "ruleId": "2344",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "11420",
+      "effective_date": "2024-04-15"
+    },
+    "22": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-26",
+      "ruleId": "3325",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "11724",
+      "effective_date": "2024-12-15"
+    },
+    "24": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-28",
+      "ruleId": "3409",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "12562",
+      "effective_date": "2026-06-14"
+    },
+    "26": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-30",
+      "ruleId": "3411",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "12356",
+      "effective_date": "2026-01-14"
+    },
+    "30": {
+      "kind": "sos",
+      "ccr": "5 CCR 1001-34",
+      "ruleId": "3464",
+      "deptID": "16",
+      "agencyID": "7",
+      "ruleVersionId": "12561",
+      "effective_date": "2026-06-14"
+    },
+    "ecmc": {
+      "kind": "sos",
+      "ccr": "2 CCR 404-1",
+      "ruleId": "2124",
+      "deptID": "13",
+      "agencyID": "79",
+      "ruleVersionId": "12558",
+      "effective_date": "2026-05-30"
+    },
+    "ooooa": {
+      "kind": "ecfr",
+      "title": "40",
+      "part": "60",
+      "subpart": "OOOOa",
+      "as_of": "2026-09-11",
+      "xml_sha256": null
+    },
+    "oooob": {
+      "kind": "ecfr",
+      "title": "40",
+      "part": "60",
+      "subpart": "OOOOb",
+      "as_of": "2026-09-10",
+      "xml_sha256": null
+    },
+    "ooooc": {
+      "kind": "ecfr",
+      "title": "40",
+      "part": "60",
+      "subpart": "OOOOc",
+      "as_of": "2026-09-11",
+      "xml_sha256": null
+    },
+    "jjjj": {
+      "kind": "ecfr",
+      "title": "40",
+      "part": "60",
+      "subpart": "JJJJ",
+      "as_of": "2026-09-17",
+      "xml_sha256": null
+    },
+    "iiii": {
+      "kind": "ecfr",
+      "title": "40",
+      "part": "60",
+      "subpart": "IIII",
+      "as_of": "2026-09-17",
+      "xml_sha256": null
+    },
+    "zzzz": {
+      "kind": "ecfr",
+      "title": "40",
+      "part": "63",
+      "subpart": "ZZZZ",
+      "as_of": "2026-09-17",
+      "xml_sha256": null
+    },
+    "cdphe_gp": {
+      "kind": "cdphe_gp",
+      "page_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+      "permits": {
+        "gp01": { "docid": "11306933", "issuance": "6", "date": "2025-07-23" },
+        "gp02": { "docid": "11306935", "issuance": "4", "date": "2025-07-23" },
+        "gp03": { "docid": "6159373", "issuance": "2", "date": "2020-01-24" },
+        "gp05": { "docid": "11306936", "issuance": "5", "date": "2025-07-23" },
+        "gp06": { "docid": "11306939", "issuance": "4", "date": "2025-07-23" },
+        "gp07": { "docid": "11306940", "issuance": "4", "date": "2025-07-23" },
+        "gp08": { "docid": "11306945", "issuance": "4", "date": "2025-07-23" },
+        "gp09": { "docid": "6754291", "issuance": "3", "date": "2025-07-23" },
+        "gp10": { "docid": "11306946", "issuance": "4", "date": "2025-07-23" },
+        "gp11": { "docid": "11306947", "issuance": "3", "date": "2025-07-23" },
+        "gp12": { "docid": "63372084", "issuance": "1", "date": "2026-05-28" }
+      }
+    }
+  }
+}

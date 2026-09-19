@@ -326,3 +326,72 @@ instead of hours.
 Failures are written to `pipeline/embed_failed.jsonl` (uploaded as a workflow
 artifact) and retried automatically on the next run, because a failed row
 still has no matching hash on record.
+
+## Source freshness watcher
+
+"Updates included" is a promise we monitor rather than a promise we just
+make. The **Source freshness check** workflow (`.github/workflows/freshness.yml`)
+runs every Monday at 7 AM Mountain (`workflow_dispatch` also lets you run it
+on demand) and checks every imported source document against its live
+upstream:
+
+- **Colorado SOS CCR rules** (`kind: "sos"`, e.g. Reg 3, Reg 7, the ECMC
+  rules) — loads the rule's `DisplayRule.do` page and reads the current
+  `ruleVersionId` out of the first `OpenRuleWindow(...)` call in the HTML.
+- **eCFR subparts** (`kind: "ecfr"`, e.g. NSPS OOOOa/OOOOb/OOOOc, JJJJ, IIII,
+  ZZZZ) — calls the eCFR versioner API and compares the latest amendment
+  date to the `as_of` date we imported.
+- **CDPHE general air permits** (`kind: "cdphe_gp"`, GP01–GP12) — loads the
+  general-air-permits page and compares each permit's OnBase `docid` (and
+  watches for a docid that vanished, or a new GP number that isn't in the
+  manifest yet).
+
+What we hold for each source lives in `pipeline/sources/manifest.json`. The
+check never writes to the database or touches secrets — it only reads public
+pages/APIs and prints a report.
+
+### Reading the report
+
+Every run writes a markdown table to the job summary (Actions tab → the run →
+**Summary**), one row per source: `key | source | ours | theirs | status`,
+where status is ✅ (unchanged), 🔔 (upstream changed), or ⚠️ (couldn't be
+checked — a timeout or a page layout change; these do **not** fail the run,
+since a flaky site shouldn't page anyone).
+
+When at least one source shows 🔔, the job fails (red X) and the workflow
+opens or updates a single GitHub issue titled **"Source update detected:
+\<keys\>"** with the full report attached. If that issue is already open from
+a previous week, it's updated in place (with a comment noting the re-check)
+instead of opening a duplicate — there's only ever one open freshness issue
+at a time.
+
+### Re-import procedure once a change is flagged
+
+1. Open the flagged issue and note which key(s) changed (e.g. `3`, `ooooa`,
+   `cdphe_gp:gp03`).
+2. Run the **Import regulation from official PDF** workflow for that
+   regulation with `execute`, `regenerate_summaries`, and `embed` all
+   checked, using the latest official PDF/text for that source. (For eCFR
+   subparts and CDPHE general permits — which aren't PDF-based CCR imports —
+   follow the same execute/summarize/embed steps against whatever import
+   path that source type uses; the point is the DB rows, summaries, and
+   embeddings all need to reflect the new text before you clear the flag.)
+3. Once the re-import lands, run:
+   ```
+   python pipeline/freshness.py --update-manifest <key>
+   ```
+   for each changed key. This re-fetches the live source and writes its
+   current version (ruleVersionId/effective date, eCFR as_of date, or CDPHE
+   docid) back into `manifest.json`.
+4. Commit the updated `manifest.json`. The next scheduled run will see the
+   new value as "ours" and close back out to ✅ — close the GitHub issue by
+   hand once you've confirmed that.
+
+### Running it locally / testing
+
+```
+python pipeline/freshness.py check                    # live check, needs network access to the source sites
+python pipeline/freshness.py check --fixtures DIR      # check against saved HTML/JSON fixtures instead (no network)
+python pipeline/freshness.py --update-manifest 3       # record source "3"'s current upstream version
+python3 -m pytest -q pipeline/test_freshness.py        # run the test suite (all fixture-based, no network)
+```

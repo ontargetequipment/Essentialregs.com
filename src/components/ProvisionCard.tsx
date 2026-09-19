@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { summaryParagraphs } from "@/lib/regulation";
+import { sanitizeHtml, summaryParagraphs } from "@/lib/regulation";
 import type { Provision } from "@/lib/types";
 
 // Renders one regulation entry: citation/title, the plain-English summary in
@@ -42,9 +42,16 @@ export function ProvisionCard({ provision }: { provision: Provision }) {
         <summary className="cursor-pointer text-sm font-semibold text-zinc-700">
           Original regulatory text
         </summary>
-        <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-zinc-700">
-          {provision.full_text}
-        </p>
+        {/* full_text is the importer's HTML (paragraphs, tables, citation
+            spans) for every corpus row, so it is sanitized and rendered as
+            markup rather than printed as escaped text. The `.card-text`
+            styles in globals.css space the paragraphs and style the
+            citation spans (which are not clickable here -- the popups are a
+            reader-only feature). */}
+        <div
+          className="card-text mt-2 text-sm leading-relaxed text-zinc-700"
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(provision.full_text) }}
+        />
       </details>
 
       {provision.cross_references && provision.cross_references.length > 0 && (
