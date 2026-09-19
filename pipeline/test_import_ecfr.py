@@ -1346,18 +1346,19 @@ class PartCliXmlPathTests(unittest.TestCase):
         self.assertIsNone(ie.part_xml_path(self._Args()))
 
     def test_full_cli_parse_with_workflow_style_args_and_no_pdf_on_disk(self):
+        import shutil
         import tempfile
 
         if not os.path.exists(P192_XML):
             self.skipTest("P192.xml not present")
-        self.assertFalse(os.path.exists(os.path.join(SOURCES, "P192.pdf")))
         with tempfile.TemporaryDirectory() as tmp:
+            shutil.copy(P192_XML, os.path.join(tmp, "P192.xml"))
             out = os.path.join(tmp, "p192_parsed.json")
             ie.cmd_parse(
                 _WorkflowArgs(
                     reg="p192",
-                    pdf=os.path.join(SOURCES, "P192.pdf"),   # does not exist
-                    txt=os.path.join(SOURCES, "P192.txt"),   # does not exist
+                    pdf=os.path.join(tmp, "P192.pdf"),   # does not exist
+                    txt=os.path.join(tmp, "P192.txt"),   # does not exist
                     out=out,
                 )
             )
