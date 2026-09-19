@@ -7,6 +7,15 @@ export const metadata = {
   title: "Federal regulations",
 };
 
+// One-line "Applies to ..." card description per federal regulation number
+// (keyed the same way regulationNumber() derives it from the id) -- display
+// copy only, not stored data, same convention RegulationList already uses
+// for the /general-permits page's appliesTo prop.
+const APPLIES_TO: Record<string, string> = {
+  p191: "Reporting: incidents, annual reports, safety-related conditions",
+  p192: "Gas pipelines: design, construction, operation, maintenance, integrity management, OQ",
+};
+
 export default async function FederalIndexPage() {
   // Same fetch and access handling as the Colorado index at /regulations;
   // only the jurisdiction filter differs. The cards still open the shared
@@ -27,10 +36,11 @@ export default async function FederalIndexPage() {
         <Link href="/regulations/6" className="font-medium text-zinc-900 underline underline-offset-2">
           Colorado Regulation Number 6 Part A
         </Link>
-        .
+        . Also included: 49 CFR Parts 191–192, PHMSA's federal pipeline
+        safety standards for gas pipelines, administered by the US DOT.
       </p>
 
-      <RegulationList regs={regs} access={access} mode="federal" />
+      <RegulationList regs={regs} access={access} mode="federal" appliesTo={APPLIES_TO} />
     </div>
   );
 }

@@ -138,12 +138,15 @@ SYSTEM_PROMPT_TEMPLATE = (
     "compressors and pumps. The \"Under:\" lines and \"Parent paragraph "
     "text:\" are there to tell you what this paragraph hangs off of, not to "
     "be folded into it.\n\n"
-    "In federal CFR text (40 CFR parts, e.g. the OOOO subparts), the body "
-    "that approves, receives, or is notified is \"the Administrator\" (the "
-    "EPA Administrator) unless the text itself names someone else. Never "
-    "write \"the Division\" in a federal CFR summary -- that term belongs to "
-    "the Colorado regulations -- and never mention Colorado, CDPHE, or any "
-    "state or state agency unless the text you were given mentions it.\n\n"
+    "In 40 CFR text ONLY (e.g. the OOOO subparts), the body that approves, "
+    "receives, or is notified is \"the Administrator\" (the EPA "
+    "Administrator) unless the text itself names someone else -- this does "
+    "NOT hold for any other CFR title (e.g. 49 CFR), where \"the "
+    "Administrator\" means whatever that title's own regulation-specific "
+    "guidance below says it means. Never write \"the Division\" in a "
+    "federal CFR summary -- that term belongs to the Colorado regulations "
+    "-- and never mention Colorado, CDPHE, or any state or state agency "
+    "unless the text you were given mentions it.\n\n"
     "Do not invent illustrative examples for a defined term -- if the text "
     "defines something without examples, don't supply your own. Do not "
     "expand an acronym unless the text in front of you expands it; leave "
@@ -160,6 +163,29 @@ SYSTEM_PROMPT_TEMPLATE = (
     "sentence. No preamble, no markdown, no bullet lists -- output only the "
     "summary."
 )
+
+# The one sentence in SYSTEM_PROMPT_TEMPLATE that names "the EPA
+# Administrator" -- scoped to 40 CFR text ONLY in its own wording, but
+# system_prompt_for() strips it entirely (rather than relying on the reader
+# to honor the parenthetical) for regs from a different CFR title, i.e.
+# 49 CFR Parts 191/192 (PHMSA) -- see _REG_49_CFR_KEYS below. Every other
+# reg (Colorado and the existing 40 CFR subparts alike) keeps it, so
+# SYSTEM_PROMPT itself, and every hint/test built on it, is unchanged.
+_EPA_ADMINISTRATOR_SENTENCE = (
+    "In 40 CFR text ONLY (e.g. the OOOO subparts), the body that approves, "
+    "receives, or is notified is \"the Administrator\" (the EPA "
+    "Administrator) unless the text itself names someone else -- this does "
+    "NOT hold for any other CFR title (e.g. 49 CFR), where \"the "
+    "Administrator\" means whatever that title's own regulation-specific "
+    "guidance below says it means. "
+)
+
+# Regs whose CFR title is NOT 40 -- system_prompt_for() strips
+# _EPA_ADMINISTRATOR_SENTENCE from their rendered base prompt so a 49 CFR
+# row's summary is never told, even conditionally, that "the Administrator"
+# might be the EPA Administrator; their own REG_PROMPT_HINTS entry supplies
+# the correct (PHMSA) meaning instead.
+_REG_49_CFR_KEYS = frozenset({"p191", "p192"})
 
 # The rendered prompt for the default (oil & gas) audience -- every existing
 # call site and test refers to this literal string, so it must stay
@@ -459,6 +485,49 @@ REG_PROMPT_HINTS["zzzz"] = (
     "about Colorado unless the text says so."
 )
 
+REG_PROMPT_HINTS["p191"] = (
+    "This row is from 49 CFR Part 191 (PHMSA, US DOT) -- Transportation of "
+    "Natural and Other Gas by Pipeline; Annual, Incident, and Other "
+    "Reporting. \"Administrator\" means the PHMSA Administrator (or a "
+    "delegate) -- NEVER EPA and never \"the Division\" or any Colorado "
+    "agency. \"Operator\" means the pipeline operator (a "
+    "person who transports gas), not an equipment or well-site operator. "
+    "\"This part\" means Part 191 itself, never 40 CFR anything. Gathering "
+    "(Type A/B/C/R), transmission, and distribution lines are legally "
+    "distinct categories with different reporting duties -- never "
+    "generalize a requirement written for one to another. Expand an "
+    "acronym only as this text itself defines it. Incorporated standards "
+    "are named, never described. A \"[Reserved]\" row should summarize as "
+    "\"[Reserved] -- no requirements,\" nothing more. A definition row "
+    "states what a term means, not an obligation. This is a federal "
+    "minimum standard -- say nothing about Colorado, CDPHE, AQCC, or ECMC "
+    "unless the text itself does. An effective date printed in the text "
+    "(e.g. \"Effective October 1, 2026\") is a real requirement and must "
+    "survive into the summary; a bracketed \"[Amdt. ...]\" citation is not."
+)
+
+REG_PROMPT_HINTS["p192"] = (
+    "This row is from 49 CFR Part 192 (PHMSA, US DOT) -- gas pipeline "
+    "safety standards. \"Administrator\" means the PHMSA Administrator -- "
+    "NEVER EPA, never \"the Division\" or a Colorado agency. \"Operator\" "
+    "is the pipeline operator, not an equipment or well-site operator. "
+    "\"This part\" means Part 192, never 40 CFR. "
+    "Gathering (Type A/B/C/R), transmission, and distribution are legally "
+    "distinct -- never generalize a requirement across them. Class "
+    "locations 1-4 are population-density design classes, not hazard "
+    "classes. Expand MAOP, SMYS, HCA, MCA, IM, DIMP, OQ, ILI, ECDA, GWUT, "
+    "PIR, or UNGSF only as the text defines them, only where used. "
+    "Incorporated standards (API, ASME, NACE/AMPP, PPI, ASTM) are named, "
+    "never described. Describe a table by its purpose, not cell by cell; a "
+    "figure-omitted row has no formula -- never reconstruct one. "
+    "\"[Reserved]\" summarizes as \"[Reserved] -- no requirements,\" "
+    "nothing more. A definition row states what a term means, scoped to "
+    "its own section -- \"high\" vs. \"moderate\" consequence area must "
+    "not be conflated. Say nothing about Colorado, CDPHE, AQCC, or ECMC "
+    "unless the text does. An effective date in the text is a real "
+    "requirement."
+)
+
 
 # --------------------------------------------------------------------------
 # Text helpers
@@ -502,6 +571,8 @@ def system_prompt_for(provision_id: str) -> str:
     existing reg; it's the hook for a future non-oil-and-gas regulation."""
     key = reg_key_of(provision_id) or ""
     base = SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE.get(key, DEFAULT_AUDIENCE))
+    if key in _REG_49_CFR_KEYS:
+        base = base.replace(_EPA_ADMINISTRATOR_SENTENCE, "")
     hint = REG_PROMPT_HINTS.get(key)
     return f"{base}\n\n{hint}" if hint else base
 

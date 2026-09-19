@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       reg:
-        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, cp, ecmc, oooob, ooooa, ooooc, gp01-gp12, jjjj, iiii, zzzz."
+        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, cp, ecmc, oooob, ooooa, ooooc, gp01-gp12, jjjj, iiii, zzzz, p191, p192."
         required: true
       execute:
         description: "Execute: actually write the plan to Supabase. Leave unchecked to only parse/export/diff/build the apply plan and upload the report -- no database writes."
@@ -47,6 +47,10 @@ jobs:
           # jjjj -> JJJJ.pdf/.txt, iiii -> IIII.pdf/.txt, zzzz -> ZZZZ.pdf/.txt.
           # APCD general permits (gp01-gp12) use their upper-cased key as the
           # basename -- gp01 -> GP01.pdf/.txt, ..., gp12 -> GP12.pdf/.txt.
+          # 49 CFR Parts 191/192 (PHMSA) are whole-PART eCFR imports, read
+          # directly from pipeline/sources/P191.xml / P192.xml -- p191 ->
+          # P191, p192 -> P192. No PDF/TXT is required for these two (see
+          # the pdftotext step below).
           if [[ "$REG" =~ ^[0-9]+$ ]]; then
             SRC_BASENAME="REG_${REG}"
           elif [ "$REG" = "cp" ]; then
@@ -63,8 +67,10 @@ jobs:
             SRC_BASENAME="${REG^^}"
           elif [[ "$REG" =~ ^(jjjj|iiii|zzzz)$ ]]; then
             SRC_BASENAME="${REG^^}"
+          elif [[ "$REG" =~ ^p19[12]$ ]]; then
+            SRC_BASENAME="${REG^^}"
           else
-            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), cp, ecmc, one of oooob/ooooa/ooooc/jjjj/iiii/zzzz, or an APCD general permit gp01-gp12."
+            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), cp, ecmc, one of oooob/ooooa/ooooc/jjjj/iiii/zzzz, an APCD general permit gp01-gp12, or p191/p192."
             exit 1
           fi
           echo "SRC_BASENAME=${SRC_BASENAME}" >> "$GITHUB_ENV"
@@ -83,16 +89,31 @@ jobs:
 
       - name: pdftotext (skip if the .txt is already committed)
         run: |
-          PDF="pipeline/sources/${SRC_BASENAME}.pdf"
-          TXT="pipeline/sources/${SRC_BASENAME}.txt"
-          if [ -f "$TXT" ]; then
-            echo "$TXT already exists in the repo -- skipping pdftotext."
-          elif [ -f "$PDF" ]; then
-            pdftotext -layout "$PDF" "$TXT"
-            echo "Generated $TXT from $PDF."
+          # p191/p192 are whole-PART eCFR imports parsed directly from the
+          # eCFR versioner XML (import_ecfr.py's parse_ecfr_part()) -- they
+          # need neither a PDF nor a pdftotext .txt to exist, only the XML.
+          # This is the "sources present" sanity check for these two: it
+          # fails the job early, with a clear message, instead of letting
+          # a missing XML surface later as an obscure parse error.
+          if [[ "$REG" =~ ^p19[12]$ ]]; then
+            XML="pipeline/sources/${SRC_BASENAME}.xml"
+            if [ ! -f "$XML" ]; then
+              echo "::error::$XML not found. p191/p192 are parsed directly from the eCFR versioner XML; commit it to pipeline/sources/ first."
+              exit 1
+            fi
+            echo "$XML present -- p191/p192 read the eCFR XML directly, no PDF/TXT needed. Skipping pdftotext."
           else
-            echo "::error::Neither $TXT nor $PDF found. Commit the official PDF to pipeline/sources/ first."
-            exit 1
+            PDF="pipeline/sources/${SRC_BASENAME}.pdf"
+            TXT="pipeline/sources/${SRC_BASENAME}.txt"
+            if [ -f "$TXT" ]; then
+              echo "$TXT already exists in the repo -- skipping pdftotext."
+            elif [ -f "$PDF" ]; then
+              pdftotext -layout "$PDF" "$TXT"
+              echo "Generated $TXT from $PDF."
+            else
+              echo "::error::Neither $TXT nor $PDF found. Commit the official PDF to pipeline/sources/ first."
+              exit 1
+            fi
           fi
 
       - name: Parse PDF into provisions JSON

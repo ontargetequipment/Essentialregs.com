@@ -1,0 +1,274 @@
+<?xml version="1.0"?>
+<DIV5 N="191" TYPE="PART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-191&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 191&amp;quot;}">
+<HEAD>PART 191&#x2014;TRANSPORTATION OF NATURAL AND OTHER GAS BY PIPELINE; ANNUAL, INCIDENT, AND OTHER REPORTING
+</HEAD>
+<AUTH>
+<HED>Authority:</HED><PSPACE>30 U.S.C. 185(w)(3), 49 U.S.C. 5121, 60101 <I>et. seq.,</I> and 49 CFR 1.97.
+</PSPACE></AUTH>
+<DIV8 N="191.1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.1&quot;,&quot;citation&quot;:&quot;49 CFR 191.1&quot;}">
+<HEAD>&#xA7; 191.1 Scope.</HEAD>
+<P>(a) This part prescribes requirements for the reporting of incidents, safety-related conditions, annual pipeline summary data, National Operator Registry information, and other miscellaneous conditions by operators of underground natural gas storage facilities and natural gas pipeline facilities located in the United States or Puerto Rico, including underground natural gas storage facilities and pipelines within the limits of the Outer Continental Shelf as that term is defined in the Outer Continental Shelf Lands Act (43 U.S.C. 1331). This part applies to offshore gathering lines (except as provided in paragraph (b) of this section) and to onshore gathering lines, including Type R gathering lines as determined in &#xA7; 192.8 of this chapter.</P>
+<P>(b) This part does not apply to&#x2014;</P>
+<P>(1) Offshore gathering of gas in State waters upstream from the outlet flange of each facility where hydrocarbons are produced or where produced hydrocarbons are first separated, dehydrated, or otherwise processed, whichever facility is farther downstream;</P>
+<P>(2) Pipelines on the Outer Continental Shelf (OCS) that are producer-operated and cross into State waters without first connecting to a transporting operator's facility on the OCS, upstream (generally seaward) of the last valve on the last production facility on the OCS. Safety equipment protecting PHMSA-regulated pipeline segments is not excluded. Producing operators for those pipeline segments upstream of the last valve of the last production facility on the OCS may petition the Administrator, or designee, for approval to operate under Pipeline and Hazardous Materials Safety Administration (PHMSA) regulations governing pipeline design, construction, operation, and maintenance under 49 CFR 190.9; or</P>
+<P>(3) Pipelines on the Outer Continental Shelf upstream of the point at which operating responsibility transfers from a producing operator to a transporting operator.</P>
+<P>(c) Sections 191.22(b) and (c) and 191.23 do not apply to the onshore gathering of gas&#x2014;</P>
+<P>(1) Through a pipeline that operates at less than 0 psig (0 kPa);</P>
+<P>(2) Through a pipeline that is not a regulated onshore gathering pipeline; or</P>
+<P>(3) Within inlets of the Gulf of America, except for the requirements in &#xA7; 192.612 of this chapter.</P>
+<CITA TYPE="N">[Amdt. 191-5, 49 FR 18960, May 3, 1984, as amended by Amdt. 191-6, 53 FR 24949, July 1, 1988; Amdt. 191-11, 61 FR 27793, June 3, 1996; Amdt. 191-12, 62 FR 61695, Nov. 19, 1997; Amdt. 191-15, 68 FR 46111, Aug. 5, 2003; 70 FR 11139, Mar. 8, 2005; 75 FR 72904, Nov. 26, 2010; Amdt. 191-24, 81 FR 91871, Dec. 19, 2016; Amdt. 191-27, 85 FR 8124, Feb. 12, 2020; Amdt. 191-30, 86 FR 63294, Nov. 15, 2021; Amdt. 191-34, 90 FR 21436, May 20, 2025]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.3" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.3&quot;,&quot;citation&quot;:&quot;49 CFR 191.3&quot;}">
+<HEAD>&#xA7; 191.3 Definitions.</HEAD>
+<P>As used in this part and the PHMSA Forms referenced in this part&#x2014;</P>
+<P><I>Administrator</I> means the Administrator, Pipeline and Hazardous Materials Safety Administration or his or her delegate</P>
+<P><I>Confirmed Discovery</I> means when it can be reasonably determined, based on information available to the operator at the time a reportable event has occurred, even if only based on a preliminary evaluation.</P>
+<P><I>Gas</I> means natural gas, flammable gas, or gas which is toxic or corrosive;</P>
+<P><I>Incident</I> means any of the following events:</P>
+<P>(1) An event that involves a release of gas from a pipeline, gas from an underground natural gas storage facility (UNGSF), liquefied natural gas, liquefied petroleum gas, refrigerant gas, or gas from an LNG facility, and that results in one or more of the following consequences:</P>
+<P>(i) A death, or personal injury necessitating in-patient hospitalization;</P>
+<P>(ii) Estimated property damage of $122,000 or more, including loss to the operator and others, or both, but excluding the cost of gas lost. For adjustments for inflation observed in calendar year 2021 onwards, changes to the reporting threshold will be posted on PHMSA's website. These changes will be determined in accordance with the procedures in appendix A to part 191.</P>
+<P>(iii) Unintentional estimated gas loss of three million cubic feet or more.</P>
+<P>(2) An event that results in an emergency shutdown of an LNG facility or a UNGSF. Activation of an emergency shutdown system for reasons other than an actual emergency within the facility does not constitute an incident.</P>
+<P>(3) An event that is significant in the judgment of the operator, even though it did not meet the criteria of paragraph (1) or (2) of this definition.</P>
+<P><I>LNG facility</I> means a liquefied natural gas facility as defined in &#xA7; 193.2007 of part 193 of this chapter;</P>
+<P><I>Master Meter System</I> means a pipeline system for distributing gas within, but not limited to, a definable area, such as a mobile home park, housing project, or apartment complex, where the operator purchases metered gas from an outside source for resale through a gas distribution pipeline system. The gas distribution pipeline system supplies the ultimate consumer who either purchases the gas directly through a meter or by other means, such as by rents;</P>
+<P><I>Municipality</I> means a city, county, or any other political subdivision of a State;</P>
+<P><I>Offshore</I> means beyond the line of ordinary low water along that portion of the coast of the United States that is in direct contact with the open seas and beyond the line marking the seaward limit of inland waters;</P>
+<P><I>Operator</I> means a person who engages in the transportation of gas;</P>
+<P><I>Outer Continental Shelf</I> means all submerged lands lying seaward and outside the area of lands beneath navigable waters as defined in Section 2 of the Submerged Lands Act (43 U.S.C. 1301) and of which the subsoil and seabed appertain to the United States and are subject to its jurisdiction and control.</P>
+<P><I>Person</I> means any individual, firm, joint venture, partnership, corporation, association, State, municipality, cooperative association, or joint stock association, and includes any trustee, receiver, assignee, or personal representative thereof;</P>
+<P><I>Pipeline</I> or <I>Pipeline System</I> means all parts of those physical facilities through which gas moves in transportation, including, but not limited to, pipe, valves, and other appurtenance attached to pipe, compressor units, metering stations, regulator stations, delivery stations, holders, and fabricated assemblies.</P>
+<P><I>Regulated onshore gathering</I> means a Type A, Type B, or Type C gas gathering pipeline system as determined in &#xA7; 192.8 of this chapter.</P>
+<P><I>Reporting-regulated gathering</I> means a Type R gathering line as determined in &#xA7; 192.8 of this chapter. A Type R gathering line is subject only to this part.</P>
+<P><I>State</I> includes each of the several States, the District of Columbia, and the Commonwealth of Puerto Rico;</P>
+<P><I>Transportation of gas</I> means the gathering, transmission, or distribution of gas by pipeline, or the storage of gas in or affecting interstate or foreign commerce.</P>
+<P><I>Underground natural gas storage facility</I> (<I>UNGSF</I>) means an underground natural gas storage facility or UNGSF as defined in &#xA7; 192.3 of this chapter.</P>
+<CITA TYPE="N">[35 FR 320, Jan. 8, 1970, as amended by Amdt. 191-5, 49 FR 18960, May 3, 1984; Amdt. 191-10, 61 FR 18516, Apr. 26, 1996; Amdt. 191-12, 62 FR 61695, Nov. 19, 1997; 68 FR 11749, Mar. 12, 2003; 70 FR 11139, Mar. 8, 2005; 75 FR 72905, Nov. 26, 2010; Amdt. 191-24, 81 FR 91871, Dec. 19, 2016; Amdt. 191-25, 82 FR 7997, Jan. 23, 2017; Amdt. 191-27, 85 FR 8125, Feb. 12, 2020; 86 FR 2237, Jan. 11, 2021; Amdt. 191-30, 86 FR 63295, Nov. 15, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.5" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.5&quot;,&quot;citation&quot;:&quot;49 CFR 191.5&quot;}">
+<HEAD>&#xA7; 191.5 Immediate notice of certain incidents.</HEAD>
+<P>(a) At the earliest practicable moment following discovery, but no later than one hour after confirmed discovery, each operator must give notice in accordance with paragraph (b) of this section of each incident as defined in &#xA7; 191.3.</P>
+<P>(b) Each notice required by paragraph (a) of this section must be made to the National Response Center by telephone to 800-424-8802 (in Washington, DC, 202-267-2675) and must include the following information:</P>
+<P>(1) Names of operator and person making report and their telephone numbers.</P>
+<P>(2) The location of the incident.</P>
+<P>(3) The time of the incident.</P>
+<P>(4) The number of fatalities and personal injuries, if any.</P>
+<P>(5) All other significant facts that are known by the operator that are relevant to the cause of the incident or extent of the damages.</P>
+<P>(c) Within 48 hours after the confirmed discovery of an incident, to the extent practicable, an operator must revise or confirm its initial telephonic notice required in paragraph (b) of this section with an estimate of the amount of product released, an estimate of the number of fatalities and injuries, and all other significant facts that are known by the operator that are relevant to the cause of the incident or extent of the damages. If there are no changes or revisions to the initial report, the operator must confirm the estimates in its initial report.</P>
+<CITA TYPE="N">[Amdt. 191-4, 47 FR 32720, July 29, 1982, as amended by Amdt. 191-5, 49 FR 18960, May 3, 1984; Amdt. 191-8, 54 FR 40878, Oct. 4, 1989; 75 FR 72905, Nov. 26, 2010; Amdt. 191-25, 82 FR 7997, Jan. 23, 2017; Amdt. 191-38, 91 FR 21981, Apr. 24, 2026]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.7" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.7&quot;,&quot;citation&quot;:&quot;49 CFR 191.7&quot;}">
+<HEAD>&#xA7; 191.7 Report submission requirements.</HEAD>
+<P>(a) <I>General.</I> Except as provided in paragraphs (b) and (e) of this section, an operator must submit each report required by this part electronically to the Pipeline and Hazardous Materials Safety Administration at <I>http://portal.phmsa.dot.gov/pipeline</I> unless an alternative reporting method is authorized in accordance with paragraph (d) of this section.</P>
+<P>(b) <I>Exceptions:</I> An operator is not required to submit a safety-related condition report (&#xA7; 191.25) electronically.</P>
+<P>(c) <I>Safety-related conditions.</I> An operator must submit concurrently to the applicable State agency a safety-related condition report required by &#xA7; 191.23 for intrastate pipeline transportation or when the State agency acts as an agent of the Secretary with respect to interstate transmission facilities.</P>
+<P>(d) <I>Alternative Reporting Method.</I> If electronic reporting imposes an undue burden and hardship, an operator may submit a written request for an alternative reporting method to the Information Resources Manager, Office of Pipeline Safety, Pipeline and Hazardous Materials Safety Administration, PHP-20, 1200 New Jersey Avenue, SE, Washington DC 20590. The request must describe the undue burden and hardship. PHMSA will review the request and may authorize, in writing, an alternative reporting method. An authorization will state the period for which it is valid, which may be indefinite. An operator must contact PHMSA at 202-366-8075, or electronically to <I>informationresourcesmanager@dot.gov</I> or make arrangements for submitting a report that is due after a request for alternative reporting is submitted but before an authorization or denial is received.</P>
+<P>(e) <I>National Pipeline Mapping System (NPMS).</I> An operator must provide the NPMS data to the address identified in the NPMS Operator Standards manual available at <I>www.npms.phmsa.dot.gov</I> or by contacting the PHMSA Geographic Information Systems Manager at (202) 366-4595.</P>
+<CITA TYPE="N">[75 FR 72905, Nov. 26, 2010, as amended at by Amdt. 191-23, 80 FR 12777, Mar. 11, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.9" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.9&quot;,&quot;citation&quot;:&quot;49 CFR 191.9&quot;}">
+<HEAD>&#xA7; 191.9 Distribution system: Incident report.</HEAD>
+<P>(a) Except as provided in paragraph (c) of this section, each operator of a distribution pipeline system shall submit Department of Transportation Form PHMSA F 7100.1 as soon as practicable but not more than 30 days after detection of an incident required to be reported under &#xA7; 191.5.</P>
+<P>(b) When additional relevant information is obtained after the report is submitted under paragraph (a) of this section, the operator shall make supplementary reports as deemed necessary with a clear reference by date and subject to the original report.</P>
+<P>(c) Master meter operators are not required to submit an incident report as required by this section.</P>
+<CITA TYPE="N">[Amdt. 191-5, 49 FR 18960, May 3, 1984, as amended at 75 FR 72905, Nov. 26, 2010; Amdt. 191-37, 90 FR 40760, Aug. 21, 2025]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.11" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.11&quot;,&quot;citation&quot;:&quot;49 CFR 191.11&quot;}">
+<HEAD>&#xA7; 191.11 Distribution system: Annual report.</HEAD>
+<P>(a) <I>General.</I> Except as provided in paragraph (b) of this section, each operator of a distribution pipeline system must submit an annual report for that system on DOT Form PHMSA F 7100.1-1. This report must be submitted each year, not later than March 15, for the preceding calendar year.</P>
+<P>(b) <I>Not required.</I> The annual report requirement in this section does not apply to a master meter system, a petroleum gas system that serves fewer than 100 customers from a single source, or an individual service line directly connected to a production pipeline or a gathering line other than a regulated gathering line as determined in &#xA7; 192.8.</P>
+<CITA TYPE="N">[75 FR 72905, Nov. 26, 2010, as amended at 86 FR 2237, Jan. 11, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.12" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.12&quot;,&quot;citation&quot;:&quot;49 CFR 191.12&quot;}">
+<HEAD>&#xA7; 191.12 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="191.13" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.13&quot;,&quot;citation&quot;:&quot;49 CFR 191.13&quot;}">
+<HEAD>&#xA7; 191.13 Distribution systems reporting transmission pipelines; transmission or gathering systems reporting distribution pipelines.</HEAD>
+<P>Each operator, primarily engaged in gas distribution, who also operates gas transmission or gathering pipelines shall submit separate reports for these pipelines as required by &#xA7;&#xA7; 191.15 and 191.17. Each operator, primarily engaged in gas transmission or gathering, who also operates gas distribution pipelines shall submit separate reports for these pipelines as required by &#xA7;&#xA7; 191.9 and 191.11.</P>
+<CITA TYPE="N">[Amdt. 191-5, 49 FR 18961, May 3, 1984]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.15" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.15&quot;,&quot;citation&quot;:&quot;49 CFR 191.15&quot;}">
+<HEAD>&#xA7; 191.15 Transmission systems; gathering systems; liquefied natural gas facilities; and underground natural gas storage facilities: Incident report.</HEAD>
+<P>(a) <I>Pipeline systems</I>&#x2014;(1) <I>Transmission, offshore gathering, or regulated onshore gathering.</I> Each operator of a transmission, offshore gathering, or a regulated onshore gathering pipeline system must submit Department of Transportation (DOT) Form PHMSA F 7100.2 as soon as practicable but not more than 30 days after detection of an incident required to be reported under &#xA7; 191.5.</P>
+<P>(2) <I>Reporting-regulated gathering.</I> Each operator of a reporting-regulated gathering pipeline system must submit DOT Form PHMSA F 7100.2-2 as soon as practicable but not more than 30 days after detection of an incident required to be reported under &#xA7; 191.5 that occurs after May 16, 2022.</P>
+<P>(b) <I>LNG.</I> Each operator of a liquefied natural gas plant or facility must submit DOT Form PHMSA F 7100.3 as soon as practicable but not more than 30 days after detection of an incident required to be reported under &#xA7; 191.5 of this part.</P>
+<P>(c) <I>Underground natural gas storage facility.</I> Each operator of a UNGSF must submit DOT Form PHMSA F7100.2 as soon as practicable but not more than 30 days after the detection of an incident required to be reported under &#xA7; 191.5.</P>
+<P>(d) <I>Supplemental report.</I> Where additional related information is obtained after an operator submits a report under paragraph (a), (b), or (c) of this section, the operator must make a supplemental report as soon as practicable, with a clear reference by date to the original report.</P>
+<CITA TYPE="N">[75 FR 72905, Nov. 26, 2010; as amended by Amdt. 191-24, 81 FR 91871, Dec. 19, 2016; Amdt. 191-27, 85 FR 8125, Feb. 12, 2020; Amdt. 191-30, 86 FR 63295, Nov. 15, 2021; 87 FR 35677, June 13, 2022]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.17" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.17&quot;,&quot;citation&quot;:&quot;49 CFR 191.17&quot;}">
+<HEAD>&#xA7; 191.17 Transmission systems; gathering systems; liquefied natural gas facilities; and underground natural gas storage facilities: Annual report.</HEAD>
+<P>(a) <I>Pipeline systems</I>&#x2014;(1) <I>Transmission, offshore gathering, or regulated onshore gathering.</I> Each operator of a transmission, offshore gathering, or regulated onshore gathering pipeline system must submit an annual report for that system on DOT Form PHMSA F 7100.2-1. This report must be submitted each year, not later than March 15, for the preceding calendar year.</P>
+<P>(2) <I>Type R gathering.</I> Beginning with an initial annual report submitted in March 2023 for the 2022 calendar year, each operator of a reporting-regulated gas gathering pipeline system must submit an annual report for that system on DOT Form PHMSA F 7100.2-3. This report must be submitted each year, not later than March 15, for the preceding calendar year.</P>
+<P>(b) <I>LNG.</I> Each operator of a liquefied natural gas facility must submit an annual report for that system on DOT Form PHMSA 7100.3-1 This report must be submitted each year, not later than March 15, for the preceding calendar year, except that for the 2010 reporting year the report must be submitted by June 15, 2011.</P>
+<P>(c) <I>Underground natural gas storage facility.</I> Each operator of a UNGSF must submit an annual report through DOT Form PHMSA 7100.4-1. This report must be submitted each year, no later than March 15, for the preceding calendar year.</P>
+<CITA TYPE="N">[75 FR 72905, Nov. 26, 2010, as amended by Amdt. 191-24, 81 FR 91871, Dec. 19, 2016; Amdt. 191-27, 85 FR 8125, Feb. 12, 2020; Amdt. 191-30, 86 FR 63295, Nov. 15, 2021; 87 FR 35677. June 13, 2022]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.21" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.21&quot;,&quot;citation&quot;:&quot;49 CFR 191.21&quot;}">
+<HEAD>&#xA7; 191.21 OMB control number assigned to information collection.</HEAD>
+<P>This section displays the control number assigned by the Office of Management and Budget (OMB) to the information collection requirements in this part. The Paperwork Reduction Act requires agencies to display a current control number assigned by the Director of OMB for each agency information collection requirement.</P>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="title">OMB Control Number 2137-0522</P></CAPTION>
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">Section of 49 CFR part 191 where identified</TH>
+<TH class="center border-top-single border-bottom-single">Form No.</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">191.5</TD>
+<TD class="left">Telephonic.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">191.9</TD>
+<TD class="left">PHMSA 7100.1, PHMSA 7100.3.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">191.11</TD>
+<TD class="left">PHMSA 7100.1-1, PHMSA 7100.3-1.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">191.12</TD>
+<TD class="left">PHMSA 7100.1-2.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">191.15</TD>
+<TD class="left">PHMSA 7100.2, PHMSA 7100.3.</TD>
+</TR>
+<TR>
+<TD class="left border-right-single">191.17</TD>
+<TD class="left">PHMSA 7100.2-1, PHMSA 7100.3-1.PHMSA 7100.4-1.</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">191.22</TD>
+<TD class="left border-bottom-single">PHMSA 1000.1, PHMSA 1000.2.</TD>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+<CITA TYPE="N">[75 FR 72905, Nov. 26, 2010, as amended by Amdt. 191-24, 81 FR 91871, Dec. 19, 2016]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.22" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.22&quot;,&quot;citation&quot;:&quot;49 CFR 191.22&quot;}">
+<HEAD>&#xA7; 191.22 National Registry of Operators.</HEAD>
+<P>(a) <I>OPID request.</I> Effective January 1, 2012, each operator of a gas pipeline, gas pipeline facility, UNGSF, LNG plant, or LNG facility must obtain from PHMSA an Operator Identification Number (OPID). An OPID is assigned to an operator for the pipeline, pipeline facility, or pipeline system for which the operator has primary responsibility. To obtain an OPID, an operator must submit an OPID Assignment Request DOT Form PHMSA F 1000.1 through the National Registry of Operators in accordance with &#xA7; 191.7.</P>
+<P>(b) <I>OPID validation.</I> An operator who has already been assigned one or more OPIDs by January 1, 2011, must validate the information associated with each OPID through the National Registry of Operators at <I>https://portal.phmsa .dot.gov,</I> and correct that information as necessary, no later than June 30, 2012.</P>
+<P>(c) <I>Changes.</I> Each operator of a gas pipeline, gas pipeline facility, UNGSF, LNG plant, or LNG facility must notify PHMSA electronically through the National Registry of Operators at <I>https://portal.phmsa.dot.gov</I> of certain events.</P>
+<P>(1) An operator must notify PHMSA of any of the following events not later than 60 days before the event occurs:</P>
+<P>(i) Construction or any planned rehabilitation, replacement, modification, upgrade, uprate, or update of a facility, other than a section of line pipe, that costs $10 million or more. If 60-day notice is not feasible because of an emergency, an operator must notify PHMSA as soon as practicable;</P>
+<P>(ii) Construction of 10 or more miles of a new pipeline;</P>
+<P>(iii) Construction of a new LNG plant, LNG facility, or UNGSF;</P>
+<P>(iv) Maintenance of a UNGSF that involves the plugging or abandonment of a well, or that requires a workover rig and costs $200,000 or more for an individual well, including its wellhead. If 60-days' notice is not feasible due to an emergency, an operator must promptly respond to the emergency and notify PHMSA as soon as practicable;</P>
+<P>(v) Reversal of product flow direction when the reversal is expected to last more than 30 days. This notification is not required for pipeline systems already designed for bi-directional flow; or</P>
+<P>(vi) A pipeline converted for service under &#xA7; 192.14 of this chapter, or a change in commodity as reported on the annual report as required by &#xA7; 191.17.</P>
+<P>(2) An operator must notify PHMSA of any of the following events not later than 60 days after the event occurs:</P>
+<P>(i) A change in the primary entity responsible (<I>i.e.,</I> with an assigned OPID) for managing or administering a safety program required by this part covering pipeline facilities operated under multiple OPIDs;</P>
+<P>(ii) A change in the name of the operator;</P>
+<P>(iii) A change in the entity (<I>e.g.,</I> company, municipality) responsible for an existing pipeline, pipeline segment, pipeline facility, UNGSF, or LNG facility;</P>
+<P>(iv) The acquisition or divestiture of 50 or more miles of a pipeline or pipeline system subject to part 192 of this subchapter; or</P>
+<P>(v) The acquisition or divestiture of an existing UNGSF, or an LNG plant or LNG facility subject to part 193 of this subchapter.</P>
+<P>(d) <I>Reporting.</I> An operator must use the OPID issued by PHMSA for all reporting requirements covered under this subchapter and for submissions to the National Pipeline Mapping System.</P>
+<CITA TYPE="N">[Amdt. 191-27, 85 FR 8125, Feb. 12, 2020, as amended by Amdt. 191-28, 85 FR 44478, July 23, 2020; Amdt. 191-37, 90 FR 40760, Aug. 21, 2025]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.23" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.23&quot;,&quot;citation&quot;:&quot;49 CFR 191.23&quot;}">
+<HEAD>&#xA7; 191.23 Reporting safety-related conditions.</HEAD>
+<P>(a) Except as provided in paragraph (b) of this section, each operator shall report in accordance with &#xA7; 191.25 the existence of any of the following safety-related conditions involving facilities in service:</P>
+<P>(1) In the case of a pipeline (other than an LNG facility) that operates at a hoop stress of 20% or more of its specified minimum yield strength, general corrosion that has reduced the wall thickness to less than that required for the maximum allowable operating pressure, and localized corrosion pitting to a degree where leakage might result.</P>
+<P>(2) In the case of a UNGSF, general corrosion that has reduced the wall thickness of any metal component to less than that required for the well's maximum operating pressure, or localized corrosion pitting to a degree where leakage might result.</P>
+<P>(3) Unintended movement or abnormal loading by environmental causes, such as an earthquake, landslide, or flood, that impairs the serviceability of a pipeline or the structural integrity or reliability of a UNGSF or LNG facility that contains, controls, or processes gas or LNG.</P>
+<P>(4) Any crack or other material defect that impairs the structural integrity or reliability of a UNGSF or an LNG facility that contains, controls, or processes gas or LNG.</P>
+<P>(5) Any material defect or physical damage that impairs the serviceability of a pipeline that operates at a hoop stress of 20% or more of its specified minimum yield strength, or the serviceability or the structural integrity of a UNGSF.</P>
+<P>(6) Any malfunction or operating error that causes the pressure&#x2014;plus the margin (build-up) allowed for operation of pressure limiting or control devices&#x2014;to exceed either the maximum allowable operating pressure of a distribution or gathering line, the maximum well allowable operating pressure of an underground natural gas storage facility, or the maximum allowable working pressure of an LNG facility that contains or processes gas or LNG.</P>
+<P>(7) A leak in a pipeline, UNGSF, or LNG facility containing or processing gas or LNG that constitutes an emergency.</P>
+<P>(8) Inner tank leakage, ineffective insulation, or frost heave that impairs the structural integrity of an LNG storage tank.</P>
+<P>(9) Any safety-related condition that could lead to an imminent hazard and causes (either directly or indirectly by remedial action of the operator), for purposes other than abandonment, a 20% or more reduction in operating pressure or shutdown of operation of a pipeline, UNGSF, or an LNG facility that contains or processes gas or LNG.</P>
+<P>(10) For transmission pipelines only, each exceedance of the maximum allowable operating pressure that exceeds the margin (build-up) allowed for operation of pressure-limiting or control devices as specified in the applicable requirements of &#xA7;&#xA7; 192.201, 192.620(e), and 192.739. The reporting requirement of this paragraph (a)(10) is not applicable to gathering lines, distribution lines, LNG facilities, or underground natural gas storage facilities (<I>See</I> paragraph (a)(6) of this section).</P>
+<P>(11) Any malfunction or operating error that causes the pressure of a UNGSF using a salt cavern for natural gas storage to fall below its minimum allowable operating pressure, as defined by the facility's State or Federal operating permit or certificate, whichever pressure is higher.</P>
+<P>(b) A report is not required for any safety-related condition that&#x2014;</P>
+<P>(1) Exists on a master meter system, a reporting-regulated gathering pipeline, a Type C gas gathering pipeline with an outside diameter of 12.75 inches or less, a Type C gas gathering pipeline covered by the exception in &#xA7; 192.9(f)(1) of this subchapter and therefore not required to comply with &#xA7; 192.9(e)(2)(ii), or a customer-owned service line;</P>
+<P>(2) Is an incident or results in an incident before the deadline for filing the safety-related condition report;</P>
+<P>(3) Exists on a pipeline (other than an UNGSF or an LNG facility) that is more than 220 yards (200 meters) from any building intended for human occupancy or outdoor place of assembly, except that reports are required for conditions within the right-of-way of an active railroad, paved road, street, or highway; or</P>
+<P>(4) Is corrected by repair or replacement in accordance with applicable safety standards before the deadline for filing the safety-related condition report. Notwithstanding this exception, a report must be filed for:</P>
+<P>(i) Conditions under paragraph (a)(1) of this section, unless the condition is localized corrosion pitting on an effectively coated and cathodically protected pipeline; and</P>
+<P>(ii) Any condition under paragraph (a)(10) of this section.</P>
+<P>(5) Exists on an UNGSF, where a well or wellhead is isolated, allowing the reservoir or cavern and all other components of the facility to continue to operate normally and without pressure restriction.</P>
+<CITA TYPE="N">[Amdt. 191-26, 84 FR 52242, Oct. 1, 2019; Amdt. 191-27, 85 FR 8125, Feb. 12, 2020; Amdt. 191-31, 192-131, 87 FR 26299, May 4, 2022]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.25" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.25&quot;,&quot;citation&quot;:&quot;49 CFR 191.25&quot;}">
+<HEAD>&#xA7; 191.25 Filing safety-related condition reports.</HEAD>
+<P>(a) Each report of a safety-related condition under &#xA7; 191.23(a)(1) through (9) must be filed (received by the Associate Administrator) in writing within 5 working days (not including Saturday, Sunday, or Federal holidays) after the day a representative of an operator first determines that the condition exists, but not later than 10 working days after the day a representative of an operator discovers the condition. Separate conditions may be described in a single report if they are closely related. Reporting methods and report requirements are described in paragraph (c) of this section.</P>
+<P>(b) Each report of a maximum allowable operating pressure exceedance meeting the requirements of criteria in &#xA7; 191.23(a)(10) for a gas transmission pipeline must be filed (received by the Associate Administrator) in writing within 5 calendar days of the exceedance using the reporting methods and report requirements described in paragraph (c) of this section.</P>
+<P>(c) Reports must be filed by email to <I>InformationResourcesManager@dot.gov.</I> For a report made pursuant to &#xA7; 191.23(a)(1) through (9), the report must be headed &#x201C;Safety-Related Condition Report.&#x201D; For a report made pursuant to &#xA7; 191.23(a)(10), the report must be headed &#x201C;Maximum Allowable Operating Pressure Exceedances.&#x201D; All reports must provide the following information:</P>
+<P>(1) Name, principal address, and operator identification number (OPID) of the operator.</P>
+<P>(2) Date of report.</P>
+<P>(3) Name, job title, and business telephone number of person submitting the report.</P>
+<P>(4) Name, job title, and business telephone number of person who determined that the condition exists.</P>
+<P>(5) Date condition was discovered and date condition was first determined to exist.</P>
+<P>(6) Location of condition, with reference to the State (and town, city, or county) or offshore site, and as appropriate, nearest street address, offshore platform, survey station number, milepost, landmark, or name of pipeline.</P>
+<P>(7) Description of the condition, including circumstances leading to its discovery, any significant effects of the condition on safety, and the name of the commodity transported or stored.</P>
+<P>(8) The corrective action taken (including reduction of pressure or shutdown) before the report is submitted and the planned follow-up or future corrective action, including the anticipated schedule for starting and concluding such action.</P>
+<CITA TYPE="N">[Amdt. 191-26, 84 FR 52242, Oct. 1, 2019, as amended by Amdt. 191-39, 91 FR 21984, Apr. 24, 2026]
+</CITA>
+</DIV8>
+
+<DIV8 N="191.29" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-191.29&quot;,&quot;citation&quot;:&quot;49 CFR 191.29&quot;}">
+<HEAD>&#xA7; 191.29 National Pipeline Mapping System.</HEAD>
+<P>(a) Each operator of a gas transmission pipeline or liquefied natural gas facility must provide the following geospatial data to PHMSA for that pipeline or facility:</P>
+<P>(1) Geospatial data, attributes, metadata and transmittal letter appropriate for use in the National Pipeline Mapping System. Acceptable formats and additional information are specified in the NPMS Operator Standards Manual available at <I>www.npms.phmsa.dot.gov</I> or by contacting the PHMSA Geographic Information Systems Manager at (202) 366-4595.</P>
+<P>(2) The name of and address for the operator.</P>
+<P>(3) The name and contact information of a pipeline company employee, to be displayed on a public Web site, who will serve as a contact for questions from the general public about the operator's NPMS data.</P>
+<P>(b) The information required in paragraph (a) of this section must be submitted each year, on or before March 15, representing assets as of December 31 of the previous year. If no changes have occurred since the previous year's submission, the operator must comply with the guidance provided in the NPMS Operator Standards manual available at <I>www.npms.phmsa.dot.gov</I> or contact the PHMSA Geographic Information Systems Manager at (202) 366-4595.</P>
+<P>(c) This section does not apply to gathering pipelines.</P>
+<CITA TYPE="N">[Amdt. 191-23, 80 FR 12777, Mar. 11, 2015, as amended by Amdt. 191-30, 86 FR 63295, Nov. 15, 2021]
+</CITA>
+</DIV8>
+
+<DIV9 N="Appendix A to Part 191" TYPE="APPENDIX" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/part-191/appendix-Appendix A to Part 191&quot;,&quot;citation&quot;:&quot;Appendix A to Part 191, Title 49&quot;}">
+<HEAD>Appendix A to Part 191&#x2014;Procedure for Determining Reporting Threshold
+</HEAD>
+<HD2>I. Property Damage Threshold Formula
+</HD2>
+<P>Each year after calendar year 2021, the Administrator will publish a notice on PHMSA's website announcing the updates to the property damage threshold criterion that will take effect on July 1 of that year and will remain in effect until the June 30 of the next year. The property damage threshold used in the definition of an <I>Incident</I> at &#xA7; 191.3 shall be determined in accordance with the following formula:</P>
+<img src="/graphics/er11ja21.019.gif"/>
+<FP-2>Where:
+</FP-2>
+<FP-2><I>T</I><E T="54">r</E> is the revised damage threshold,
+</FP-2>
+<FP-2><I>T</I><E T="54">p</E> is the previous damage threshold,
+</FP-2>
+<FP-2><I>CPI</I><E T="54">r</E> is the average Consumer Price Indices for all Urban Consumers (CPI-U) published by the Bureau of Labor Statistics each month during the most recent complete calendar year, and
+</FP-2>
+<FP-2><I>CPI</I><E T="54">p</E> is the average CPI-U for the calendar year used to establish the previous property damage criteria.
+</FP-2>
+<CITA TYPE="N">[86 FR 2237, Jan. 11, 2021]
+</CITA>
+</DIV9>
+
+</DIV5>

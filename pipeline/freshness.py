@@ -53,9 +53,47 @@ ECFR_FULL_URL_TMPL = (
     "?part={part}&subpart={subpart}"
 )
 
+# Browser-like headers for the CDPHE general-permits page only -- the CDPHE
+# site returns HTTP 403 to USER_AGENT (a plain bot UA) from the GitHub
+# Actions runner. SOS and eCFR keep using USER_AGENT; this is deliberately
+# separate so their fetches are byte-for-byte unaffected.
+CDPHE_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
+def ecfr_versions_url(title: str, part: str, subpart: Optional[str] = None) -> str:
+    """The eCFR versioner /versions/ URL for a title/part, with &subpart=
+    included only when subpart is truthy -- a whole-PART reg (p191/p192,
+    subpart null/absent) has no subpart to filter on and must not send an
+    empty '&subpart=' query param."""
+    url = f"https://www.ecfr.gov/api/versioner/v1/versions/title-{title}.json?part={part}"
+    if subpart:
+        url += f"&subpart={subpart}"
+    return url
+
+
+def ecfr_full_url(today: str, title: str, part: str, subpart: Optional[str] = None) -> str:
+    """Same &subpart= rule as ecfr_versions_url, for the /full/ XML fallback."""
+    url = f"https://www.ecfr.gov/api/versioner/v1/full/{today}/title-{title}.xml?part={part}"
+    if subpart:
+        url += f"&subpart={subpart}"
+    return url
+
+
 STATUS_OK = "✅"       # unchanged
 STATUS_CHANGED = "\U0001F514"  # bell -- upstream update detected
 STATUS_ERROR = "⚠️"  # warning -- couldn't check
+STATUS_BLOCKED = "⛔"  # distinct from STATUS_ERROR -- upstream returned HTTP
+                        # 403 to the runner (e.g. CDPHE); neither "unchanged"
+                        # nor "couldn't parse/reach", so it gets its own
+                        # bucket in the summary heading instead of inflating
+                        # the error count on an otherwise-clean run.
 
 
 @dataclass
@@ -74,11 +112,21 @@ class Fetcher:
 
     fixtures_dir: Optional[Path] = None
     _fixture_map: dict = field(default_factory=dict)
+    _error_map: dict = field(default_factory=dict)
 
     def register_fixture(self, url_or_label: str, path: Path) -> None:
         self._fixture_map[url_or_label] = path
 
-    def get_text(self, url: str, fixture_name: Optional[str] = None) -> str:
+    def register_error(self, url_or_label: str, exc: BaseException) -> None:
+        """Test hook: make get_text(url_or_label) raise `exc` instead of
+        reading a fixture or hitting the network -- e.g. a 403 HTTPError,
+        to prove STATUS_BLOCKED handling without a live CDPHE fetch."""
+        self._error_map[url_or_label] = exc
+
+    def get_text(self, url: str, fixture_name: Optional[str] = None,
+                 headers: Optional[dict] = None) -> str:
+        if url in self._error_map:
+            raise self._error_map[url]
         if self.fixtures_dir is not None:
             # A URL registered explicitly (register_fixture) wins over the
             # caller's default fixture_name, so tests can point a specific
@@ -91,7 +139,7 @@ class Fetcher:
                 )
             path = self.fixtures_dir / name if isinstance(name, str) else name
             return Path(path).read_text(encoding="utf-8")
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        req = urllib.request.Request(url, headers=headers or {"User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as resp:
             return resp.read().decode("utf-8", errors="replace")
 
@@ -166,10 +214,13 @@ def check_sos(key: str, entry: dict, fetcher: Fetcher) -> CheckResult:
 def check_ecfr(key: str, entry: dict, fetcher: Fetcher) -> CheckResult:
     title = entry["title"]
     part = entry["part"]
-    subpart = entry["subpart"]
+    subpart = entry.get("subpart")
     as_of = entry["as_of"]
-    source_label = f"eCFR {title} CFR {part} subpart {subpart}"
-    url = ECFR_VERSIONS_URL_TMPL.format(title=title, part=part, subpart=subpart)
+    source_label = (
+        f"eCFR {title} CFR {part} subpart {subpart}" if subpart
+        else f"eCFR {title} CFR Part {part}"
+    )
+    url = ecfr_versions_url(title, part, subpart)
 
     try:
         raw = fetcher.get_text(url, fixture_name=f"ecfr_{key}.json")
@@ -240,7 +291,19 @@ def check_cdphe_gp(key: str, entry: dict, fetcher: Fetcher) -> list[CheckResult]
     source_label = "CDPHE general air permits page"
 
     try:
-        html = fetcher.get_text(url, fixture_name="cdphe_gp.html")
+        html = fetcher.get_text(url, fixture_name="cdphe_gp.html", headers=CDPHE_BROWSER_HEADERS)
+    except urllib.error.HTTPError as exc:
+        if exc.code == 403:
+            # One line for the whole page fetch, not one per permit -- a
+            # blocked run should not read as 11 separate failures.
+            return [
+                CheckResult(key, source_label, f"{len(permits)} permits", "?", STATUS_BLOCKED,
+                             "not checked (CDPHE blocked the runner, HTTP 403)")
+            ]
+        return [
+            CheckResult(f"{key}:{gp}", source_label, p["docid"], "?", STATUS_ERROR, f"fetch error: {exc}")
+            for gp, p in permits.items()
+        ]
     except Exception as exc:  # noqa: BLE001
         return [
             CheckResult(f"{key}:{gp}", source_label, p["docid"], "?", STATUS_ERROR, f"fetch error: {exc}")
@@ -308,15 +371,26 @@ def render_report(results: list[CheckResult]) -> str:
         detail = f" ({r.detail})" if r.detail else ""
         lines.append(f"| {r.key} | {r.source} | {r.ours} | {r.theirs}{detail} | {r.status} |")
 
+    ok = [r for r in results if r.status == STATUS_OK]
     changed = [r for r in results if r.status == STATUS_CHANGED]
     errored = [r for r in results if r.status == STATUS_ERROR]
+    blocked = [r for r in results if r.status == STATUS_BLOCKED]
     lines.append("")
     if changed:
         lines.append(f"**{len(changed)} source(s) changed:** " + ", ".join(r.key for r in changed))
+    elif blocked:
+        # Neither "changed" nor "error" -- a run that is otherwise clean
+        # should read as clean, not as a failure, when the only thing to
+        # report is a known, expected block (e.g. CDPHE's runner 403).
+        lines.append(f"{len(ok)} unchanged · {len(blocked)} not checked (blocked).")
     else:
         lines.append("No changes detected.")
     if errored:
         lines.append(f"**{len(errored)} source(s) could not be checked:** " + ", ".join(r.key for r in errored))
+    if blocked:
+        lines.append(
+            f"**{len(blocked)} source(s) not checked (blocked):** " + ", ".join(r.key for r in blocked)
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -365,7 +439,7 @@ def cmd_update_manifest(args: argparse.Namespace) -> int:
         print(f"{key}: ruleVersionId -> {rvid}" + (f", effective_date -> {entry['effective_date']}" if eff else ""))
 
     elif kind == "ecfr":
-        url = ECFR_VERSIONS_URL_TMPL.format(title=entry["title"], part=entry["part"], subpart=entry["subpart"])
+        url = ecfr_versions_url(entry["title"], entry["part"], entry.get("subpart"))
         raw = fetcher.get_text(url, fixture_name=f"ecfr_{key}.json")
         data = json.loads(raw)
         versions = data.get("content_versions") or []

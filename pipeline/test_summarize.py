@@ -481,7 +481,7 @@ def test_zzzz_hint_covers_required_points():
         assert marker in hint, f"missing {marker!r} from zzzz hint"
 
 
-@pytest.mark.parametrize("key", ["gp01", "jjjj", "iiii", "zzzz"])
+@pytest.mark.parametrize("key", ["gp01", "jjjj", "iiii", "zzzz", "p191", "p192"])
 def test_batch4_hints_reasonably_short(key):
     assert len(REG_PROMPT_HINTS[key].split()) <= 190
 
@@ -516,6 +516,54 @@ def test_batch4_build_prompt_system_matches_row_reg(provision_id, key):
     result = build_prompt(_row(provision_id), meta={})
     assert result.system == f"{SYSTEM_PROMPT}\n\n{REG_PROMPT_HINTS[key]}"
     assert REG_PROMPT_HINTS[key] not in result.prompt
+
+
+# --------------------------------------------------------------------------
+# p191 / p192 (PHMSA, 49 CFR gas pipeline safety) hints
+# --------------------------------------------------------------------------
+
+def test_p191_p192_hints_are_registered():
+    assert "p191" in REG_PROMPT_HINTS
+    assert "p192" in REG_PROMPT_HINTS
+
+
+@pytest.mark.parametrize("provision_id, key", [
+    ("sec-p191-191.3-incident", "p191"),
+    ("sec-p192-192.605-(b)", "p192"),
+])
+def test_p19x_build_prompt_system_matches_row_reg(provision_id, key):
+    result = build_prompt(_row(provision_id), meta={})
+    assert result.system == system_prompt_for(provision_id)
+    assert result.system.endswith(REG_PROMPT_HINTS[key])
+    assert REG_PROMPT_HINTS[key] not in result.prompt
+
+
+def test_system_prompt_for_p192_says_phmsa_not_epa():
+    system = system_prompt_for("sec-p192-192.605-(b)")
+    assert "PHMSA" in system
+    assert "EPA Administrator" not in system
+
+
+def test_system_prompt_for_p191_says_phmsa_not_epa():
+    system = system_prompt_for("sec-p191-191.3-incident")
+    assert "PHMSA" in system
+    assert "EPA Administrator" not in system
+
+
+def test_reg7_prompt_has_no_p19x_specific_text():
+    system = system_prompt_for("sec-7-B-I-C-1")
+    for key in ("p191", "p192"):
+        assert REG_PROMPT_HINTS[key] not in system
+    for p19x_only in ("PHMSA", "MAOP", "SMYS", "gathering", "UNGSF"):
+        assert p19x_only not in system
+
+
+def test_p19x_hints_do_not_conflate_each_other():
+    # p192-only vocabulary (class locations, the acronym list) shouldn't
+    # leak into the p191 hint, which covers a much smaller reporting-only
+    # part with no subparts.
+    assert "Class locations" not in REG_PROMPT_HINTS["p191"]
+    assert "MAOP" not in REG_PROMPT_HINTS["p191"]
 
 
 # --------------------------------------------------------------------------

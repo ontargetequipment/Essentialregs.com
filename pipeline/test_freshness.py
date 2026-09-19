@@ -349,5 +349,182 @@ def test_update_manifest_unknown_key_errors(tmp_path):
     assert exit_code == 2
 
 
+# ---------------------------------------------------------------------------
+# p191/p192 (subpart: null) -- URL and source label built without &subpart=
+# ---------------------------------------------------------------------------
+
+
+def test_ecfr_versions_url_omits_subpart_when_absent():
+    assert fr.ecfr_versions_url("49", "192") == (
+        "https://www.ecfr.gov/api/versioner/v1/versions/title-49.json?part=192"
+    )
+    assert fr.ecfr_versions_url("49", "192", None) == (
+        "https://www.ecfr.gov/api/versioner/v1/versions/title-49.json?part=192"
+    )
+
+
+def test_ecfr_versions_url_includes_subpart_when_present():
+    assert fr.ecfr_versions_url("40", "60", "OOOOa") == (
+        "https://www.ecfr.gov/api/versioner/v1/versions/title-40.json?part=60&subpart=OOOOa"
+    )
+
+
+def test_ecfr_full_url_omits_subpart_when_absent():
+    assert fr.ecfr_full_url("2026-09-19", "49", "192") == (
+        "https://www.ecfr.gov/api/versioner/v1/full/2026-09-19/title-49.xml?part=192"
+    )
+
+
+def test_check_ecfr_p192_url_has_no_subpart_param(tmp_path):
+    entry = {"title": "49", "part": "192", "subpart": None, "as_of": "2026-09-17"}
+    url = fr.ecfr_versions_url("49", "192", None)
+    fixture = tmp_path / "ecfr_p192.json"
+    fixture.write_text(json.dumps({"content_versions": [{"date": "2026-09-17"}]}))
+    fetcher = fr.Fetcher(fixtures_dir=tmp_path)
+    fetcher.register_fixture(url, "ecfr_p192.json")
+    result = fr.check_ecfr("p192", entry, fetcher)
+    assert result.status == fr.STATUS_OK
+    assert "&subpart=" not in url
+
+
+def test_check_ecfr_p192_source_label_has_no_subpart():
+    entry = {"title": "49", "part": "192", "subpart": None, "as_of": "2026-09-17"}
+    fetcher = fr.Fetcher(fixtures_dir=Path("/does/not/exist"))
+    result = fr.check_ecfr("p192", entry, fetcher)
+    # Fetch fails (no fixture registered), but the label is built before the
+    # fetch and is asserted on the ERROR result regardless.
+    assert result.source == "eCFR 49 CFR Part 192"
+    assert result.status == fr.STATUS_ERROR
+
+
+def test_check_ecfr_subpart_source_label_unchanged():
+    entry = {"title": "40", "part": "60", "subpart": "OOOOa", "as_of": "2026-09-11"}
+    fetcher = fr.Fetcher(fixtures_dir=FIXTURES)
+    result = fr.check_ecfr("ooooa_unchanged", entry, fetcher)
+    assert result.source == "eCFR 40 CFR 60 subpart OOOOa"
+
+
+# ---------------------------------------------------------------------------
+# CDPHE HTTP 403 -> STATUS_BLOCKED (distinct from STATUS_ERROR)
+# ---------------------------------------------------------------------------
+
+
+def _cdphe_entry():
+    return {
+        "page_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "permits": {
+            "gp01": {"docid": "11306933", "issuance": "6", "date": "2025-07-23"},
+            "gp02": {"docid": "11306935", "issuance": "4", "date": "2025-07-23"},
+        },
+    }
+
+
+def test_check_cdphe_gp_403_is_status_blocked_not_error():
+    import urllib.error
+
+    entry = _cdphe_entry()
+    fetcher = fr.Fetcher()
+    fetcher.register_error(entry["page_url"], urllib.error.HTTPError(entry["page_url"], 403, "Forbidden", None, None))
+    results = fr.check_cdphe_gp("cdphe_gp", entry, fetcher)
+    # One line for the whole page, not one per permit.
+    assert len(results) == 1
+    assert results[0].status == fr.STATUS_BLOCKED
+    assert results[0].status != fr.STATUS_ERROR
+    assert "CDPHE blocked the runner, HTTP 403" in results[0].detail
+
+
+def test_check_cdphe_gp_non_403_http_error_is_still_status_error():
+    import urllib.error
+
+    entry = _cdphe_entry()
+    fetcher = fr.Fetcher()
+    fetcher.register_error(entry["page_url"], urllib.error.HTTPError(entry["page_url"], 500, "Server Error", None, None))
+    results = fr.check_cdphe_gp("cdphe_gp", entry, fetcher)
+    # A non-403 error is reported per-permit, as before.
+    assert len(results) == 2
+    assert all(r.status == fr.STATUS_ERROR for r in results)
+    assert all(r.status != fr.STATUS_BLOCKED for r in results)
+
+
+def test_check_cdphe_gp_other_exception_is_still_status_error():
+    entry = _cdphe_entry()
+    fetcher = fr.Fetcher()
+    fetcher.register_error(entry["page_url"], ConnectionError("boom"))
+    results = fr.check_cdphe_gp("cdphe_gp", entry, fetcher)
+    assert len(results) == 2
+    assert all(r.status == fr.STATUS_ERROR for r in results)
+
+
+def test_check_cdphe_gp_uses_browser_like_headers_not_bot_ua():
+    calls = []
+
+    class RecordingFetcher(fr.Fetcher):
+        def get_text(self, url, fixture_name=None, headers=None):
+            calls.append(headers)
+            raise FileNotFoundError("no fixture")
+
+    entry = _cdphe_entry()
+    fetcher = RecordingFetcher()
+    fr.check_cdphe_gp("cdphe_gp", entry, fetcher)
+    assert len(calls) == 1
+    assert calls[0] == fr.CDPHE_BROWSER_HEADERS
+    assert calls[0]["User-Agent"] != fr.USER_AGENT
+    assert "Chrome" in calls[0]["User-Agent"]
+    assert "Accept-Language" in calls[0]
+
+
+def test_check_sos_and_ecfr_still_use_bot_user_agent():
+    # SOS/eCFR fetches must be unaffected by the CDPHE browser-header change.
+    assert fr.USER_AGENT.startswith("EssentialRegsFreshnessBot")
+
+
+# ---------------------------------------------------------------------------
+# render_report -- "N unchanged · M not checked (blocked)" reads clean
+# ---------------------------------------------------------------------------
+
+
+def test_render_report_blocked_only_reads_clean_not_as_error():
+    results = [
+        fr.CheckResult("3", "sos", "12619", "12619", fr.STATUS_OK),
+        fr.CheckResult("7", "sos", "12621", "12621", fr.STATUS_OK),
+        fr.CheckResult("cdphe_gp", "CDPHE general air permits page", "11 permits", "?",
+                       fr.STATUS_BLOCKED, "not checked (CDPHE blocked the runner, HTTP 403)"),
+    ]
+    report = fr.render_report(results)
+    assert "2 unchanged · 1 not checked (blocked)." in report
+    assert "No changes detected." not in report
+    assert "could not be checked" not in report  # that phrasing is for STATUS_ERROR only
+
+
+def test_render_report_all_ok_still_says_no_changes_detected_when_nothing_blocked():
+    results = [fr.CheckResult("3", "sos", "12619", "12619", fr.STATUS_OK)]
+    report = fr.render_report(results)
+    assert "No changes detected." in report
+
+
+def test_render_report_blocked_does_not_affect_exit_code(tmp_path):
+    manifest = {
+        "sources": {
+            "cdphe_gp": {
+                "kind": "cdphe_gp",
+                "page_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+                "permits": {"gp01": {"docid": "1", "issuance": "1", "date": "2020-01-01"}},
+            }
+        }
+    }
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest))
+
+    class BlockedFetcher(fr.Fetcher):
+        def get_text(self, url, fixture_name=None, headers=None):
+            import urllib.error
+            raise urllib.error.HTTPError(url, 403, "Forbidden", None, None)
+
+    manifest_loaded = fr.load_manifest(manifest_path)
+    results = fr.run_check(manifest_loaded, BlockedFetcher())
+    assert results[0].status == fr.STATUS_BLOCKED
+    assert not any(r.status == fr.STATUS_CHANGED for r in results)
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

@@ -1413,6 +1413,10 @@ CORPUS_REGS = {
     # (stationary engine rules) -- parsed by import_ecfr.py alongside
     # OOOOa/b/c; see ECFR_REGS below and IMPORTER_SPEC.md.
     "jjjj": "jjjj", "iiii": "iiii", "zzzz": "zzzz",
+    # 49 CFR Parts 191 and 192 (PHMSA gas pipeline safety) -- whole-PART
+    # documents parsed from the eCFR versioner XML by import_ecfr.py's
+    # parse_ecfr_part(); see PHMSA_BRIEF.md / IMPORTER_SPEC.md.
+    "p191": "p191", "p192": "p192",
     "ecmc": "ecmc", "cp": "cp",
     **{k: k for k in GP_KEYS},
 }
@@ -1423,7 +1427,10 @@ CORPUS_REGS = {
 # "jjjj"/"iiii"/"zzzz". Kept as a plain set literal (not imported from
 # import_ecfr.SUBPART_META) so this module has no import-time dependency on
 # import_ecfr beyond the existing lazy `import import_ecfr` inside cmd_parse.
-ECFR_REGS = {"ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz"}
+# "p191"/"p192" are eCFR-sourced too, but whole PARTS read from the eCFR
+# XML rather than subparts read from a PDF print -- import_ecfr.cmd_parse
+# dispatches on SUBPART_META[reg]["document"] == "part" and expects --xml.
+ECFR_REGS = {"ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz", "p191", "p192"}
 
 # Regulation Number 27 and 40 CFR Part 60 Subpart OOOO (the un-suffixed,
 # pre-2022 version) are deliberately NOT in CORPUS_REGS: citations to them
@@ -1455,6 +1462,46 @@ CFR_SUBPART_TO_REGKEY = {
     "JJJJ": "jjjj", "IIII": "iiii", "ZZZZ": "zzzz",
 }
 
+# (CFR title, CFR part) -> reg key, for corpora whose unit of import is a
+# whole CFR PART rather than a subpart. 49 CFR 191/192 are the first (and
+# so far only) entries: a Colorado regulation that cites "49 CFR Part 192"
+# or "49 CFR 192.605" should link to the pipeline part once it is in the
+# corpus, and a bare section number resolves by its PART prefix (192.x ->
+# p192) -- NOT by the 40 CFR section-range trick, which exists only because
+# OOOOa/b/c share one numeric range.
+#
+# Deliberately a SEPARATE dict from CFR_SUBPART_TO_REGKEY, and consulted by
+# a separate step (1.1 below) that only ever fires on a "49 CFR ..."
+# citation: every 40 CFR mapping and every 40 CFR citation's behaviour is
+# untouched. The step is additionally gated on corpus membership, so it is
+# a strict no-op until p191/p192 are actually imported.
+CFR_TITLE_PART_TO_REGKEY: dict[tuple[str, str], str] = {
+    ("49", "191"): "p191",
+    ("49", "192"): "p192",
+}
+# "49 CFR Part 192", "49 CFR part 191", "49 CFR 192.605", "49 CFR 191.5(b)"
+# -- plus the forms ECMC actually writes 49 CFR citations in (the only
+# Colorado document that cites 49 CFR at all; see sources/ECMC.txt):
+# "49 C.F.R. § 192.243" (dotted abbreviation, optional leading section
+# sign), "49 C.F.R. §§ 195.2 or 192.8" (a two-item list under one shared
+# "§§ ... or ..." -- each item resolves independently: see the "or"
+# handling in link_citations, below), and "49 C.F.R. § 195 Subpart A" (a
+# bare part + subpart LETTER with no section number at all -- ECMC's way
+# of naming a part it doesn't cite a specific section of). The dotted/
+# spaced "C.F.R."/"C. F. R." acceptance mirrors CFR_RE_DOTTED's own
+# "C\.?\s?F\.?\s?R\.?" pattern for the existing 40 CFR path, applied
+# unconditionally here (not gated to a CFR_DOTTED_REGS-style set) since
+# "49" + this exact letter sequence is specific enough not to false-positive.
+CFR_TITLE_PART_RE = re.compile(
+    r"\b(?P<title>49)\s+C\.?\s?F\.?\s?R\.?\s+"
+    r"(?:"
+    r"[Pp]art\s+(?P<part>\d{1,3})\b"
+    r"|(?:§§?\s*)?(?P<barepart>\d{1,3})\s+Subpart\s+[A-Za-z0-9]+\b"
+    r"|(?:§§?\s*)?(?P<secpart>\d{1,3})\.(?P<secnum>\d{1,4})(?P<par>(?:\([a-zA-Z0-9]{1,7}\))*)"
+    r"(?:\s+or\s+(?P<orsecpart>\d{1,3})\.(?P<orsecnum>\d{1,4}))?"
+    r")"
+)
+
 # --------------------------------------------------------------------------
 # Per-regulation metadata for the root row + apply-time provisions columns
 # (jurisdiction_level, issuing_body, source_url) and the root row's own
@@ -1466,6 +1513,23 @@ CFR_SUBPART_TO_REGKEY = {
 # --------------------------------------------------------------------------
 
 REG_META: dict[str, dict] = {
+    # -- 49 CFR Parts 191 / 192 (PHMSA gas pipeline safety) ---------------
+    # Federal, PHMSA-issued, eCFR-sourced. Unlike the 40 CFR subparts these
+    # are WHOLE PARTS: the root row's citation is the part itself and the
+    # sidebar's top level is the part's 16 subparts (p192) or its sections
+    # (p191, which has no subparts).
+    "p191": {
+        "jurisdiction_level": "federal", "issuing_body": "PHMSA",
+        "source_url": "https://www.ecfr.gov/current/title-49/part-191",
+        "root_citation": "49 CFR Part 191",
+        "root_title": "49 CFR Part 191 \u2014 Transportation of Natural and Other Gas by Pipeline; Annual, Incident, and Other Reporting",
+    },
+    "p192": {
+        "jurisdiction_level": "federal", "issuing_body": "PHMSA",
+        "source_url": "https://www.ecfr.gov/current/title-49/part-192",
+        "root_citation": "49 CFR Part 192",
+        "root_title": "49 CFR Part 192 \u2014 Transportation of Natural and Other Gas by Pipeline: Minimum Federal Safety Standards",
+    },
     # -- APCD General Permits GP01-GP12 (5 CCR-adjacent Division-issued
     # general construction permits, not AQCC-numbered regulations) --------
     # All eleven share the Common Provisions/Reg 1 shape: `no_parts: True`,
@@ -2257,6 +2321,80 @@ def _link_part_clause(html_text: str, letter_start: int, letter_end: int, letter
     _emit_section_list(html_text, kw_start, keyword, seclist_start, seclist_text, [letter], pieces, buckets, reg, known_ids)
 
 
+def _link_cfr49_citations(
+    text: str,
+    corpus_regs: set[str],
+    pieces: list[tuple[int, int, str]],
+    buckets: dict[str, Counter],
+    try_claim,
+) -> None:
+    """"49 CFR Part 192" / "49 CFR 192.605(b)" / ECMC's dotted "49 C.F.R. §
+    192.243" / "49 C.F.R. §§ 195.2 or 192.8" / "49 C.F.R. § 195 Subpart A"
+    — a whole-CFR-part corpus regulation (see CFR_TITLE_PART_TO_REGKEY).
+
+    Shared between `link_citations` (the AQCC Part/roman linker used by the
+    numbered CCR regs, Reg 26, Reg 30, ...) and `link_citations_ecmc` (its
+    own, otherwise-independent linker) because ECMC is the only Colorado
+    document that currently cites 49 CFR at all (see sources/ECMC.txt) --
+    both callers need this exact same 49-CFR-title handling, not a
+    reimplementation of it.
+
+    `try_claim(start, end) -> bool` is the caller's own claimed-span
+    tracker: True and the span is now claimed, False if some earlier match
+    already owns it (in which case this citation is left untouched). A 49
+    CFR part that is not in the corpus (190, 193, 195, 196, 199) falls
+    through to the cfr bucket exactly as before this step existed; it never
+    competes with a "40 CFR ..." citation, which this pattern never matches.
+    """
+    for m in CFR_TITLE_PART_RE.finditer(text):
+        if not try_claim(m.start(), m.end()):
+            continue
+        title = m.group("title")
+
+        if m.group("orsecpart"):
+            # "49 C.F.R. §§ 195.2 or 192.8" -- a two-item list sharing one
+            # "§§ ... or ..." prefix. Each item is its own citation into
+            # its own part and resolves independently (195.2 stays in the
+            # cfr bucket, 192.8 links, say), so only the two section-number
+            # spans themselves become pieces/bucket entries -- the shared
+            # "49 C.F.R. §§ " prefix and the " or " connective are left as
+            # plain text, same as the untouched words around any other
+            # xref span.
+            for part_num, sec_num, g_start, g_end in (
+                (m.group("secpart"), m.group("secnum"), m.start("secpart"),
+                 m.end("par") if m.group("par") else m.end("secnum")),
+                (m.group("orsecpart"), m.group("orsecnum"),
+                 m.start("orsecpart"), m.end("orsecnum")),
+            ):
+                sub_text = text[g_start:g_end]
+                regkey = CFR_TITLE_PART_TO_REGKEY.get((title, part_num))
+                if regkey and regkey in corpus_regs:
+                    deep = f' data-provision-id="sec-{regkey}-{part_num}.{sec_num}"'
+                    pieces.append((g_start, g_end,
+                                   f'<a class="xref-external-reg" href="/regulations/{regkey}"{deep}>{sub_text}</a>'))
+                else:
+                    buckets[BUCKET_CFR][sub_text] += 1
+            continue
+
+        part_num = m.group("part") or m.group("barepart") or m.group("secpart")
+        regkey = CFR_TITLE_PART_TO_REGKEY.get((title, part_num))
+        if regkey and regkey in corpus_regs:
+            # When a SECTION was named ("49 CFR 192.605"), carry the target
+            # row's id as data-provision-id alongside the reg-page href, so
+            # the app can deep-link into the other regulation while the
+            # plain href keeps working. A bare part cite ("49 CFR Part 192",
+            # or ECMC's "49 C.F.R. § 195 Subpart A" once 195 is ever in the
+            # corpus) just links to the reg page, as every other cross-reg
+            # link does.
+            deep = ""
+            if m.group("secnum"):
+                deep = f' data-provision-id="sec-{regkey}-{part_num}.{m.group("secnum")}"'
+            pieces.append((m.start(), m.end(),
+                           f'<a class="xref-external-reg" href="/regulations/{regkey}"{deep}>{m.group(0)}</a>'))
+        else:
+            buckets[BUCKET_CFR][m.group(0)] += 1
+
+
 def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: set[str],
                     own_part: str | None = None, own_id: str | None = None) -> tuple[str, dict[str, Counter]]:
     """Find cross-references in `html_text` (plain text at this point — call
@@ -2322,6 +2460,22 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
             pieces.append((m.start(), m.end(), f'<span class="xref" data-target="{flat_target}">{m.group(0)}</span>'))
         else:
             buckets[BUCKET_CFR][m.group(0)] += 1
+
+    # 1.1) "49 CFR Part 192" / "49 CFR 192.605(b)" / ECMC's dotted "49
+    # C.F.R. § 192.243" / "49 C.F.R. § 195 Subpart A" — a whole-CFR-part
+    # corpus regulation (see CFR_TITLE_PART_TO_REGKEY and
+    # _link_cfr49_citations, shared with link_citations_ecmc). Runs after
+    # step 1, which only ever matches "40 CFR ...", so the two never
+    # compete; a 49 CFR part that is not in the corpus (190, 193, 195, 196,
+    # 199) falls through to the cfr bucket exactly as before this step
+    # existed.
+    def _try_claim(s: int, e: int) -> bool:
+        if is_claimed(s, e):
+            return False
+        claim(s, e)
+        return True
+
+    _link_cfr49_citations(html_text, corpus_regs, pieces, buckets, _try_claim)
 
     # 1.2) "NSPS Subpart IIII" / "NESHAP Subpart ZZZZ" / "MACT Subpart ZZZZ" —
     # the general permits and Reg 26/30 name the federal engine rules by
@@ -5124,6 +5278,19 @@ def link_citations_ecmc(text: str, known_ids: set[str], corpus_regs: set[str],
         claimed.append((start, end))
         return True
 
+    # 0) "49 C.F.R. § 192.243" / "49 C.F.R. §§ 195.2 or 192.8" / "49 C.F.R.
+    # § 195 Subpart A" — ECMC is the only Colorado document that cites 49
+    # CFR at all (see sources/ECMC.txt), and it does so only in this dotted
+    # "C.F.R." + "§"/"§§" form, never the plain "49 CFR ..." AQCC regs use.
+    # Shared with link_citations() (see _link_cfr49_citations) rather than
+    # reimplemented here, since the corpus-membership/part-resolution logic
+    # is identical either way. Runs first so an ECMC-specific pattern below
+    # (e.g. "§ ..., C.R.S.") never has a chance to claim a 49 C.F.R. span
+    # first -- there is no overlap risk in practice (a 49 CFR cite never
+    # looks like a Colorado "Rule N"/"C.R.S." citation), but running it
+    # first keeps that guarantee explicit rather than incidental.
+    _link_cfr49_citations(text, corpus_regs, pieces, buckets, _claim)
+
     # 1) "Rules N through M" — link the two endpoints, leave "through" as text.
     for m in _ECMC_RULE_THROUGH_RE.finditer(text):
         for grp in (1, 2):
@@ -5705,6 +5872,8 @@ def cmd_parse(args):
         import import_ecfr
 
         return import_ecfr.cmd_parse(args)
+    if not args.pdf:
+        raise SystemExit("--pdf is required for CCR regulations (only p191/p192 use --xml)")
     (result, unresolved, table_hits, n_tables_found, duplicate_ids,
      label_fixes_applied, anomalies, marker_audit) = parse_reg(args.reg, args.txt, args.pdf)
     out_path = Path(args.out)
@@ -6399,8 +6568,13 @@ def _ws_collapse(text: str) -> str:
 def _visible_text(text: str) -> str:
     """Tags stripped + whitespace collapsed — used only to detect the
     'markup-only' subset of `changed` rows (visible text identical, only the
-    HTML differs) so those can be excluded from the summary-regen list."""
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text or "")).strip()
+    HTML differs) so those can be excluded from the summary-regen list and
+    keep their review state. Tags are removed outright (not replaced by a
+    space): an xref span/anchor inserted flush against punctuation
+    ("Regulation</a>." vs "Regulation.") must read as the same visible text
+    -- replacing the tag with a space turned every such new link into a false
+    "visible text changed" (Reg 6 IX.C on the batch-4 re-import)."""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", text or "")).strip()
 
 
 def classify_apply(parsed: list[dict], db: list[dict]) -> dict:
@@ -7157,8 +7331,9 @@ def main():
 
     p_parse = sub.add_parser("parse", help="Parse a regulation's pdftotext output into provisions JSON.")
     p_parse.add_argument("--reg", required=True)
-    p_parse.add_argument("--pdf", required=True, help="Path to the source .pdf (for pdfplumber table extraction).")
+    p_parse.add_argument("--pdf", default=None, help="Path to the source .pdf (for pdfplumber table extraction). Not used by the whole-PART eCFR regs (p191/p192), which read --xml.")
     p_parse.add_argument("--txt", default=None, help="Path to pdftotext -layout output (defaults to sources/REG_<reg>.txt).")
+    p_parse.add_argument("--xml", default=None, help="Path to the eCFR versioner XML; required for the whole-PART eCFR regs (p191/p192).")
     p_parse.add_argument("--out", required=True)
     p_parse.set_defaults(func=cmd_parse)
 

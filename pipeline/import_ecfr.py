@@ -95,6 +95,61 @@ SUBPART_META: dict[str, dict] = {
     ),
 }
 
+# --------------------------------------------------------------------------
+# Whole-PART documents (49 CFR Parts 191 / 192), parsed from the eCFR
+# versioner XML rather than from the PDF print.
+# --------------------------------------------------------------------------
+#
+# These are a different KIND of document from the six subparts above: the
+# unit of import is a whole CFR part (a <DIV5 TYPE="PART">), the structure
+# comes from the XML's own DIV6/DIV8/DIV9 nesting instead of from
+# pdftotext -layout indentation, and the CFR title is 49, not 40. Rather
+# than fork the module, they are registered in the SAME SUBPART_META dict
+# with two extra keys:
+#
+#   document="part"  -> parse_ecfr() is not used; parse_ecfr_part() is, and
+#                       link_citations() switches to its 49-CFR rule set.
+#   source="xml"     -> the primary source file is the .xml, not the .txt.
+#
+# Everything downstream (row shape, id scheme, resolve_chain_list, the CFR
+# paragraph-label cycle, render_xml_table_html, the diff/apply machinery)
+# is shared with the subpart path. Every key the subpart code reads
+# (`part`, `code`, `suffix`, `sections`, `url`, `enable_table_ref_links`,
+# `table_algorithm`) is present here too, so no existing lookup needs a
+# `.get(...)` default -- and `document`/`title` are read only through
+# `.get(...)`, so the six subpart entries need no new keys at all and their
+# byte-identical baselines are untouched.
+PART_META: dict[str, dict] = {
+    "p191": dict(
+        title=49, part=191, code="", suffix="", sections=(1, 99),
+        url="https://www.ecfr.gov/current/title-49/part-191",
+        enable_table_ref_links=False, table_algorithm="xml",
+        document="part", source="xml", has_subparts=False,
+        root_citation="49 CFR Part 191",
+        root_title=(
+            "49 CFR Part 191 — Transportation of Natural and Other Gas by Pipeline; "
+            "Annual, Incident, and Other Reporting"
+        ),
+    ),
+    "p192": dict(
+        title=49, part=192, code="", suffix="", sections=(1, 1099),
+        url="https://www.ecfr.gov/current/title-49/part-192",
+        enable_table_ref_links=False, table_algorithm="xml",
+        document="part", source="xml", has_subparts=True,
+        root_citation="49 CFR Part 192",
+        root_title=(
+            "49 CFR Part 192 — Transportation of Natural and Other Gas by Pipeline: "
+            "Minimum Federal Safety Standards"
+        ),
+    ),
+}
+SUBPART_META.update(PART_META)
+
+# A 49 CFR section number resolves to a reg by its PART prefix (191.x ->
+# p191, 192.x -> p192) -- not by the 40 CFR section-number-range trick,
+# which exists only because three subparts share one numeric range.
+CFR_PART_TO_REGKEY: dict[str, str] = {"49-191": "p191", "49-192": "p192"}
+
 # Derived, backward-compatible views used throughout the module (kept as
 # plain module-level dicts -- as before -- so nothing downstream needs to
 # know about SUBPART_META directly).
@@ -132,11 +187,27 @@ def _resolve_target_reg(part: str, num: str, suf: str) -> str | None:
         return LETTER_TO_REG[suf]
     if suf == "":
         for key, meta in SUBPART_META.items():
+            # Whole-PART documents (49 CFR 191/192) are resolved by
+            # `_resolve_target_reg_49` instead -- they must never be reachable
+            # from a 40 CFR subpart's citation scan, or a stray "§ 192.605" in
+            # a Part 60/63 document would silently link to the pipeline part.
+            if meta.get("document") == "part":
+                continue
             if meta["suffix"] == "" and str(meta["part"]) == part:
                 lo, hi = meta["sections"]
                 if lo <= n <= hi:
                     return key
     return None
+
+
+def _resolve_target_reg_49(part: str, num: str) -> str | None:
+    """Title-49 counterpart of `_resolve_target_reg`: a section number in a
+    whole-part document resolves purely by its part prefix (191.5 -> p191,
+    192.605 -> p192), because each part IS one document. Returns None for
+    every other 49 CFR part (190, 193, 195, 196, 199, 1.97, ...)."""
+    if not num.isdigit():
+        return None
+    return CFR_PART_TO_REGKEY.get(f"49-{part}")
 
 
 # --------------------------------------------------------------------------
@@ -1090,8 +1161,20 @@ def _pdfplumber_rows_are_soup(rows: list[list[str]]) -> bool:
 
 _XML_INLINE_TAGS = {"sup", "sub", "br"}
 
+# Emphasis mapping used ONLY by the whole-part (49 CFR 191/192) path, which
+# passes emphasis=True. The six 40 CFR subparts keep the original behaviour
+# (every non-sup/sub/br tag dropped, its text kept) so their byte-identical
+# table HTML is untouched -- see the `emphasis` parameter below.
+#   <I>            italic (defined terms, "see", math variables)
+#   <E T="nn">     GPO typographic code: 01/03/04/7462 italic, 52 superscript
+#                  (footnote reference), 54 subscript (variable subscript)
+#   <SU>           superscript (ft<SU>3</SU>)
+#   <FR>           printed fraction ("10 <FR>3/4</FR> inches") -- plain text
+_XML_EMPHASIS_TAGS = {"I": "i", "SU": "sup", "SUB": "sub"}
+_XML_E_TYPE_TO_TAG = {"01": "i", "03": "i", "04": "i", "7462": "i", "52": "sup", "54": "sub"}
 
-def _xml_inline_html(el) -> str:
+
+def _xml_inline_html(el, emphasis: bool = False) -> str:
     """Serializes an XML element's mixed content (its own text, children's
     text, and tail text) to a safe inline HTML fragment: `<sup>`/`<sub>`/
     `<br>` are kept (recursively, so nested markup inside them survives
@@ -1103,13 +1186,21 @@ def _xml_inline_html(el) -> str:
         out.append(escape_html_text(el.text))
     for child in el:
         tag = child.tag.lower()
+        emph_tag = None
+        if emphasis:
+            if child.tag == "E":
+                emph_tag = _XML_E_TYPE_TO_TAG.get(child.get("T") or "")
+            else:
+                emph_tag = _XML_EMPHASIS_TAGS.get(child.tag)
         if tag in _XML_INLINE_TAGS:
             if tag == "br":
                 out.append("<br/>")
             else:
-                out.append(f"<{tag}>{_xml_inline_html(child)}</{tag}>")
+                out.append(f"<{tag}>{_xml_inline_html(child, emphasis)}</{tag}>")
+        elif emph_tag:
+            out.append(f"<{emph_tag}>{_xml_inline_html(child, emphasis)}</{emph_tag}>")
         else:
-            out.append(_xml_inline_html(child))
+            out.append(_xml_inline_html(child, emphasis))
         if child.tail:
             out.append(escape_html_text(child.tail))
     return "".join(out)
@@ -1151,7 +1242,7 @@ def load_xml_tables(xml_path: str) -> dict[str, dict]:
     return out
 
 
-def _xml_extract_section_rows(table_el, section_tag: str, cell_tag: str) -> list[list[dict]]:
+def _xml_extract_section_rows(table_el, section_tag: str, cell_tag: str, emphasis: bool = False) -> list[list[dict]]:
     rows: list[list[dict]] = []
     section = table_el.find(section_tag)
     if section is None:
@@ -1164,7 +1255,7 @@ def _xml_extract_section_rows(table_el, section_tag: str, cell_tag: str) -> list
             cells.append(
                 {
                     "text": _xml_cell_text(cell),
-                    "html": _xml_inline_html(cell),
+                    "html": _xml_inline_html(cell, emphasis),
                     "colspan": cell.get("colspan") or cell.get("COLSPAN"),
                     "rowspan": cell.get("rowspan") or cell.get("ROWSPAN"),
                 }
@@ -1193,8 +1284,13 @@ def rows_from_xml_tables(table_elems: list) -> list[list[str]]:
     return rows
 
 
-def render_xml_table_html(caption: str, lead_in: str | None, table_elems: list) -> str:
+def render_xml_table_html(caption: str, lead_in: str | None, table_elems: list, emphasis: bool = False) -> str:
     cap = escape_html_text(caption)
+    # Most 49 CFR 192 inline tables carry no <CAPTION> at all (their title is
+    # the first header row); an empty caption div would render as a stray
+    # blank line, so it is omitted. Every 40 CFR subpart table has a caption,
+    # so this branch is never taken on the byte-identical baselines.
+    cap_html = f'<div class="doc-table-caption">{cap}</div>' if cap else ""
     lead_html = f'<p class="doc-table-lead-in">{escape_html_text(lead_in)}</p>' if lead_in else ""
 
     def cell_attrs(cell: dict) -> str:
@@ -1212,9 +1308,9 @@ def render_xml_table_html(caption: str, lead_in: str | None, table_elems: list) 
     tbody_html_parts: list[str] = []
     footnote_parts: list[str] = []
     for i, table_el in enumerate(table_elems):
-        thead = _xml_extract_section_rows(table_el, "THEAD", "TH")
-        tbody = _xml_extract_section_rows(table_el, "TBODY", "TD")
-        tfoot = _xml_extract_section_rows(table_el, "TFOOT", "TD")
+        thead = _xml_extract_section_rows(table_el, "THEAD", "TH", emphasis)
+        tbody = _xml_extract_section_rows(table_el, "TBODY", "TD", emphasis)
+        tfoot = _xml_extract_section_rows(table_el, "TFOOT", "TD", emphasis)
         if i == 0:
             thead_html = "".join(row_html(r, "th") for r in thead)
         tbody_html_parts.extend(row_html(r, "td") for r in tbody)
@@ -1223,10 +1319,10 @@ def render_xml_table_html(caption: str, lead_in: str | None, table_elems: list) 
                 if c["html"].strip():
                     footnote_parts.append(f'<p class="table-footnote">{c["html"]}</p>')
     if not thead_html and not tbody_html_parts:
-        return f'<div class="doc-table-wrap"><div class="doc-table-caption">{cap}</div></div>'
+        return f'<div class="doc-table-wrap">{cap_html}</div>'
     return (
         '<div class="doc-table-wrap">'
-        f'<div class="doc-table-caption">{cap}</div>'
+        f"{cap_html}"
         f"{lead_html}"
         f'<table class="doc-table"><thead>{thead_html}</thead><tbody>{"".join(tbody_html_parts)}</tbody></table>'
         f'{"".join(footnote_parts)}'
@@ -1291,8 +1387,62 @@ TABLE_REF_RE = re.compile(r"[Tt]able\s+(?P<tblnum>[0-9]+[a-zA-Z]?)\s+to\s+this\s
 
 CHAIN_TOKEN_RE = re.compile(r"(?:\([a-zA-Z0-9]{1,4}\))+")
 
+# --------------------------------------------------------------------------
+# Cross-reference patterns for whole-PART (49 CFR) documents
+# --------------------------------------------------------------------------
+# Deliberately a SEPARATE pattern set from the 40 CFR one above: widening
+# NUMREF_RE to accept a "49 CFR" prefix would change which mentions land in
+# the report buckets for the six existing subparts, and their baseline
+# report JSON must stay byte-identical too.
+BUCKET_STATUTE = "statute"                 # 49 U.S.C. 60101 et seq., 43 U.S.C. 1331, ...
+BUCKET_STANDARD = "standard_not_in_corpus"  # API 5L, ASME B31.8S, NACE SP0169, GPTC guide, ...
+PART_BUCKETS = [BUCKET_CFR, BUCKET_OTHER_SUBPART, BUCKET_UNPARSEABLE, BUCKET_STATUTE, BUCKET_STANDARD]
 
-def resolve_chain_list(list_str: str, base_id: str, known_ids: set) -> list[tuple[int, int, str, str | None]]:
+# "§ 192.605(b)(1)", "§§ 191.15", "49 CFR 191.5", and the bare trailing
+# member of a range ("§§ 192.243 through 192.245"). The bare alternative is
+# anchored to 19[12] so it can only ever fire on this corpus's own two parts.
+PART_NUMREF_RE = re.compile(
+    r"(?P<sym1>§§?\s*)(?:49\s*CFR\s+)?(?P<part1>\d{1,3})\.(?P<num1>\d{1,4})(?P<par1>(?:\([a-zA-Z0-9]{1,7}\))*)"
+    r"|(?:49\s*CFR\s+)(?P<part2>\d{1,3})\.(?P<num2>\d{1,4})(?P<par2>(?:\([a-zA-Z0-9]{1,7}\))*)"
+    # The bare (no "§", no "49 CFR") alternative is anchored to this
+    # corpus's own two part numbers AND refuses to fire after "-" or "/", so
+    # the section number inside the importer's own figure-placeholder URL
+    # (".../title-49/section-192.121") is not turned into a link.
+    r"|(?<![-/\w])(?P<part3>19[12])\.(?P<num3>\d{1,4})(?P<par3>(?:\([a-zA-Z0-9]{1,7}\))*)"
+)
+_PART_PAREN = r"\([a-zA-Z0-9]{1,7}\)"
+_PART_CHAIN = rf"(?:{_PART_PAREN})+"
+PART_CHAIN_TOKEN_RE = re.compile(_PART_CHAIN)
+PART_RELREF_RE = re.compile(
+    r"(?P<relword>paragraphs?)\s+(?P<rellist>"
+    + _PART_CHAIN + r"(?:" + _REL_LIST_SEP + _PART_CHAIN + r")*"
+    + r")\s+of\s+this\s+(?P<relscope>section|paragraph)"
+)
+# "subpart L of this part" / "subparts I and O of this part"
+PART_SUBPART_REF_RE = re.compile(
+    r"\bsubparts?\s+(?P<splist>[A-Z](?:\s*(?:,|and|or|through)\s*[A-Z])*)\s+of\s+this\s+part\b"
+)
+# "appendix B to this part" / "Appendix E of this part"
+PART_APPENDIX_REF_RE = re.compile(r"\b(?P<apxword>[Aa]ppendix)\s+(?P<apx>[A-Z])\s+(?:to|of|in)\s+this\s+part\b")
+# "part 191 of this chapter", "parts 190 and 192 of this chapter", "part 195"
+PART_OTHERPART_REF_RE = re.compile(r"\bparts?\s+(?P<pnum>\d{1,3})\b(?:\s+of\s+this\s+chapter)?")
+# bare "this part" -> the document root
+PART_THIS_PART_RE = re.compile(r"\bthis\s+part\b")
+# "49 U.S.C. 60101", "43 U.S.C. 1331"
+PART_USC_RE = re.compile(r"\b\d{1,2}\s+U\.S\.C\.\s+\d+[0-9A-Za-z\-]*")
+# Incorporated-by-reference standards: the standard's NAME never links (it
+# is not in the corpus); the "see § 192.7" that always accompanies it does,
+# via PART_NUMREF_RE, because § 192.7 is a real row.
+PART_STANDARD_RE = re.compile(
+    r"\b(?:API|AGA|AMPP|ANSI|ASME|ASTM|AWS|CSA|GPTC|GRI|ISO|MSS|NACE|NFPA|PPI|UL|AWWA|NAPSR|PRCI)"
+    r"(?:\s+(?:Spec|Std|Standard|RP|TR|SP|B|Guide|Publication))?"
+    r"\s+[A-Z0-9][0-9A-Za-z./\-]*"
+)
+
+
+def resolve_chain_list(
+    list_str: str, base_id: str, known_ids: set, token_re: re.Pattern | None = None
+) -> list[tuple[int, int, str, str | None]]:
     """Tokenizes a run like "(b)(1) through (3)" (already stripped of the
     leading 'paragraph(s)'/trailing 'of this section') and resolves each
     token to a full id, reusing the previous full chain's leading segments
@@ -1300,9 +1450,9 @@ def resolve_chain_list(list_str: str, base_id: str, known_ids: set) -> list[tupl
     """
     last_full: list[str] | None = None
     out = []
-    for m in CHAIN_TOKEN_RE.finditer(list_str):
+    for m in (token_re or CHAIN_TOKEN_RE).finditer(list_str):
         token = m.group(0)
-        parens = re.findall(r"\([a-zA-Z0-9]{1,4}\)", token)
+        parens = re.findall(r"\([a-zA-Z0-9]{1,7}\)", token)
         if len(parens) < (len(last_full) if last_full else 0) and last_full:
             chain = last_full[: len(last_full) - len(parens)] + parens
         else:
@@ -1320,6 +1470,171 @@ def resolve_chain_list(list_str: str, base_id: str, known_ids: set) -> list[tupl
     return out
 
 
+def _link_citations_part(
+    text: str,
+    own_reg: str,
+    own_section_id: str,
+    own_paragraph_id: str,
+    known_ids: set,
+    corpus_regs: set,
+    unresolved: dict,
+) -> str:
+    """The 49 CFR whole-part rule set (see `link_citations`, which dispatches
+    here for any reg whose SUBPART_META carries document="part").
+
+    Everything the 40 CFR path does is done here too -- absolute section
+    cites, "paragraph (b)(1) of this section" (shared RELREF_RE /
+    resolve_chain_list), cross-document links to the other part in the
+    corpus, and a counted bucket for anything out of corpus -- plus the
+    three reference shapes a whole part has that a subpart does not:
+    "subpart L of this part", "appendix B to this part", and bare "this
+    part" (the document root)."""
+    root_id = f"sec-{own_reg}-top-REG-{own_reg}"
+
+    def span(tid: str, inner: str) -> str:
+        """A row must never link to itself: "paragraph (c)(2)(ii) of this
+        section", read from inside § 192.167(c)(2)(ii), resolves back to the
+        citing row. Emit the text unwrapped instead -- it is not an
+        unresolved reference (the target exists), it is the reader's own
+        position, so it is not bucketed either."""
+        if tid == own_paragraph_id:
+            return inner
+        return f'<span class="xref" data-target="{tid}">{inner}</span>'
+
+    pattern = "|".join(
+        p.pattern
+        for p in (
+            PART_NUMREF_RE,
+            PART_RELREF_RE,
+            PART_SUBPART_REF_RE,
+            PART_APPENDIX_REF_RE,
+            PART_OTHERPART_REF_RE,
+            PART_THIS_PART_RE,
+            PART_USC_RE,
+            PART_STANDARD_RE,
+        )
+    )
+    out: list[str] = []
+    last = 0
+    for m in re.finditer(pattern, text):
+        out.append(text[last : m.start()])
+        last = m.end()
+        gd = m.groupdict()
+        matched_text = m.group(0)
+
+        # -- absolute CFR section cite ------------------------------------
+        if gd.get("num1") or gd.get("num2") or gd.get("num3"):
+            part = gd.get("part1") or gd.get("part2") or gd.get("part3")
+            num = gd.get("num1") or gd.get("num2") or gd.get("num3")
+            parens = gd.get("par1") or gd.get("par2") or gd.get("par3") or ""
+            target_reg = _resolve_target_reg_49(part, num)
+            if target_reg == own_reg:
+                base_id = f"sec-{own_reg}-{part}.{num}"
+                chain = re.findall(r"\([a-zA-Z0-9]{1,4}\)", parens)
+                tid = None
+                cand = list(chain)
+                while True:
+                    candidate = base_id + "".join(f"-{p}" for p in cand)
+                    if candidate in known_ids:
+                        tid = candidate
+                        break
+                    if not cand:
+                        break
+                    cand = cand[:-1]
+                if tid:
+                    out.append(span(tid, matched_text))
+                else:
+                    out.append(matched_text)
+                    unresolved[BUCKET_UNPARSEABLE][matched_text.strip()] += 1
+            elif target_reg in corpus_regs:
+                out.append(
+                    f'<a class="xref-external-reg" href="/regulations/{target_reg}">{matched_text}</a>'
+                )
+            else:
+                out.append(matched_text)
+                unresolved[BUCKET_CFR][matched_text.strip()] += 1
+            continue
+
+        # -- "paragraph(s) ... of this section/paragraph" -------------------
+        if gd.get("rellist"):
+            scope = gd["relscope"]
+            base_id = own_section_id if scope == "section" else own_paragraph_id
+            rellist_text = gd["rellist"]
+            tokens = resolve_chain_list(rellist_text, base_id, known_ids, PART_CHAIN_TOKEN_RE)
+            pieces = []
+            pos = 0
+            for s, e, token, target in tokens:
+                pieces.append(rellist_text[pos:s])
+                if target:
+                    pieces.append(span(target, token))
+                else:
+                    pieces.append(token)
+                    unresolved[BUCKET_UNPARSEABLE][f"paragraph {token} of this {scope}"] += 1
+                pos = e
+            pieces.append(rellist_text[pos:])
+            out.append(f"{gd['relword']} {''.join(pieces)} of this {scope}")
+            continue
+
+        # -- "subpart L of this part" --------------------------------------
+        if gd.get("splist") is not None:
+            rendered = matched_text
+            for letter in sorted(set(re.findall(r"\b[A-Z]\b", gd["splist"])), reverse=True):
+                tid = f"sec-{own_reg}-PART-{letter}"
+                if tid in known_ids:
+                    replacement = span(tid, letter)
+                    rendered = re.sub(
+                        rf"(?<![\w>]){re.escape(letter)}(?![\w<])",
+                        lambda _m, _r=replacement: _r,   # literal: no \g escapes
+                        rendered,
+                        count=1,
+                    )
+                else:
+                    unresolved[BUCKET_OTHER_SUBPART][f"subpart {letter} of this part"] += 1
+            out.append(rendered)
+            continue
+
+        # -- "appendix B to this part" -------------------------------------
+        if gd.get("apx"):
+            tid = f"sec-{own_reg}-APPENDIX-{gd['apx']}"
+            if tid in known_ids:
+                out.append(
+                    span(tid, f'{gd["apxword"]} {gd["apx"]}')
+                    + matched_text[len(gd["apxword"]) + 1 + len(gd["apx"]) :]
+                )
+            else:
+                out.append(matched_text)
+                unresolved[BUCKET_UNPARSEABLE][matched_text.strip()] += 1
+            continue
+
+        # -- "part 191 of this chapter" / "part 195" ------------------------
+        if gd.get("pnum"):
+            target_reg = CFR_PART_TO_REGKEY.get(f"49-{gd['pnum']}")
+            if target_reg == own_reg:
+                out.append(span(root_id, matched_text))
+            elif target_reg in corpus_regs:
+                out.append(
+                    f'<a class="xref-external-reg" href="/regulations/{target_reg}">{matched_text}</a>'
+                )
+            else:
+                out.append(matched_text)
+                unresolved[BUCKET_CFR][matched_text.strip()] += 1
+            continue
+
+        # -- bare "this part" ----------------------------------------------
+        if matched_text.lower() == "this part":
+            out.append(span(root_id, matched_text))
+            continue
+
+        # -- statutes and incorporated standards: counted, never linked -----
+        if "U.S.C." in matched_text:
+            unresolved[BUCKET_STATUTE][matched_text.strip()] += 1
+        else:
+            unresolved[BUCKET_STANDARD][matched_text.strip()] += 1
+        out.append(matched_text)
+    out.append(text[last:])
+    return "".join(out)
+
+
 def link_citations(
     text: str,
     own_reg: str,
@@ -1329,6 +1644,10 @@ def link_citations(
     corpus_regs: set,
     unresolved: dict,
 ) -> str:
+    if SUBPART_META[own_reg].get("document") == "part":
+        return _link_citations_part(
+            text, own_reg, own_section_id, own_paragraph_id, known_ids, corpus_regs, unresolved
+        )
     own_part = str(SUBPART_META[own_reg]["part"])
     enable_table_refs = SUBPART_META[own_reg]["enable_table_ref_links"]
     pattern = f"{NUMREF_RE.pattern}|{RELREF_RE.pattern}|{SUBPART_REF_RE.pattern}|{PART_REF_RE.pattern}"
@@ -2138,11 +2457,831 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
 
 
 # --------------------------------------------------------------------------
+# Whole-PART (49 CFR 191 / 192) parse, from the eCFR versioner XML
+# --------------------------------------------------------------------------
+#
+# Why the XML and not the PDF print: for a whole part the eCFR XML is a
+# complete, already-correct structural description --
+#
+#   <DIV5 TYPE="PART">
+#     <DIV6 TYPE="SUBPART" N="L"><HEAD>Subpart L—Operations</HEAD>
+#       <DIV8 TYPE="SECTION" N="192.605"><HEAD>§ 192.605 ...</HEAD>
+#         <P>(a) ...</P> <DIV><TABLE>...</TABLE></DIV> <CITA>[...]</CITA>
+#     <DIV9 TYPE="APPENDIX" N="Appendix B to Part 192">
+#
+# -- so the indentation heuristics the PDF path needs (parse_section_body,
+# rows_from_layout_block*) have nothing to reconstruct. What IS still
+# needed, and is shared verbatim with the PDF path, is the CFR
+# paragraph-label CYCLE ((a) -> (1) -> (i) -> (A) -> (1) -> (i) ...): the
+# XML flattens every paragraph of a section into sibling <P> elements and
+# encodes their nesting only in the printed label, so the tree is rebuilt
+# from the label sequence by `_advance_part_label_stack` below.
+
+# Up to SEVEN characters, not the subpart path's four: 49 CFR 192.917(b)(1)
+# runs its roman sub-list out to (xxxv), and a CFR roman label can reach
+# (xxxviii). This regex is used only by the whole-part path.
+_PART_LEAD_LABEL_RE = re.compile(r"^\((?P<lab>[a-zA-Z0-9]{1,7})\)\s*")
+# "(b) This section does not apply to: (1) Manifolds;" -- a chapeau and its
+# first child item printed on one line with no italic heading. Only a
+# first-of-family label counts, so an ordinary parenthetical cannot split a
+# paragraph in half.
+_PART_LEAD_INTRO_RE = re.compile(r"^(?P<lead>.{0,160}?[:\u2014])\s+(?=\((?:1|i|A|a)\)\s)")
+# A heading run at the head of a paragraph: an italic phrase, optionally
+# closed by a period or by the em-dash the eCFR uses when the heading and
+# its first child item share a line ("(a) <i>Pipeline systems</i>—(1) ...").
+_PART_LEAD_ITALIC_RE = re.compile(r"^<i>.*?</i>[.,:;\u2013\u2014-]?\s*")
+_PART_DEF_TERM_STRIP_RE = re.compile(r"[\s.,;:]+$")
+# Appendix ladder labels, outermost shape first. A whole-part appendix is
+# numbered in printer's style (I. / A. / 1. / (1)), not in the CFR
+# paragraph cycle, so it gets its own shallow ladder.
+_APX_ROMAN_RE = re.compile(r"^(?P<lab>[IVXL]{1,6})\.\s+(?=\S)")
+_APX_ALPHA_RE = re.compile(r"^(?P<lab>[A-Z])\.\s+(?=\S)")
+_APX_PAREN_ALPHA_RE = re.compile(r"^\((?P<lab>[a-z])\)\s+(?=\S)")
+_APX_PAREN_DIGIT_RE = re.compile(r"^\((?P<lab>\d{1,2})\)\s+(?=\S)")
+_APX_LADDER = [
+    ("ROMAN", _APX_ROMAN_RE),
+    ("ALPHA", _APX_ALPHA_RE),
+    ("PAREN_ALPHA", _APX_PAREN_ALPHA_RE),
+    ("PAREN_DIGIT", _APX_PAREN_DIGIT_RE),
+]
+_APX_NEXT = {
+    "ROMAN": lambda v: _int_to_roman(_roman_to_int(v) + 1).upper(),
+    "ALPHA": lambda v: _next_base26(v).upper(),
+    "PAREN_ALPHA": lambda v: _next_base26(v),
+    "PAREN_DIGIT": lambda v: str(int(v) + 1),
+}
+_APX_FIRST = {"ROMAN": "I", "ALPHA": "A", "PAREN_ALPHA": "a", "PAREN_DIGIT": "1"}
+
+# Appendices whose printed ladder is NOT unambiguous, so the appendix stays
+# one row (see REPORT.md gate A). Appendix D to Part 192 fuses up to three
+# ladder levels onto one printed line ("I. Criteria for cathodic
+# protection— A. Steel, cast iron, and ductile iron structures. (1) A
+# negative ..."), so its (1)-(5) items cannot be attached to the right
+# parent without guessing; it is kept whole rather than mis-nested.
+PART_FLAT_APPENDICES: dict[str, set[str]] = {"p192": {"D"}}
+
+
+def _xml_text(el) -> str:
+    """Collapsed plain text of an element and everything under it."""
+    return re.sub(r"\s+", " ", "".join(el.itertext())).strip()
+
+
+def _part_inline_html(el) -> str:
+    """Inline HTML for one <P>/<FP-*>/<HD*> element of a whole-part
+    document: emphasis preserved (see `_xml_inline_html(..., emphasis=True)`),
+    whitespace collapsed, and the newline the eCFR XML puts before a
+    superscript ("100 ft\\n<SU>3</SU>") removed so it renders as ft<sup>3</sup>."""
+    html = _xml_inline_html(el, emphasis=True)
+    html = re.sub(r"\s+", " ", html).strip()
+    html = re.sub(r"\s+(<sup>|<sub>)", r"\1", html)
+    return html
+
+
+class _PartLevel:
+    __slots__ = ("family", "value", "row_id")
+
+    def __init__(self, family, value, row_id):
+        self.family = family
+        self.value = value
+        self.row_id = row_id
+
+
+def _advance_part_label_stack(
+    stack: list[_PartLevel], label: str, future: tuple[str, ...] = ()
+) -> str | None:
+    """Decides where a printed paragraph label belongs, given the open label
+    stack and the labels still to come in this section. Returns
+    "sibling"/"push"/"pop:<n>"/None (None = the label fits nowhere).
+
+    Tests, in order:
+      1. successor of the CURRENT level -- "(h)" then "(i)" is the next
+         alpha sibling, not a new roman sub-level;
+      2. otherwise the FIRST label of the next deeper level -- "(h)(2)"
+         then "(i)" is roman (h)(2)(i);
+      3. otherwise the successor of some shallower open level (close every
+         level below it).
+
+    Tests 2 and 3 genuinely collide in exactly one place in the CFR label
+    cycle: a lone "(i)" after a level-1 "(h)" that has open children is
+    BOTH the first lower-case roman of a new sub-level AND the next
+    top-level alpha sibling. The printed indentation the PDF path uses to
+    tell them apart does not exist in the XML, so the surrounding label
+    stream decides instead: if the alpha successor ("(j)") shows up later
+    in the section, or the very next label is not one a roman "(i)" could
+    have ("(ii)" or its own first child), the shallower reading wins.
+    Without this, § 192.7(i), § 192.321(i) and § 192.631(i) all nest
+    themselves under (h) and drag their children with them.
+    """
+    if stack:
+        top = stack[-1]
+        if shape_matches(top.family, label) and label == next_of_family(top.family, top.value):
+            return "sibling"
+    fam = family_for_depth(len(stack) + 1)
+    push_ok = shape_matches(fam, label) and label == first_of_family(fam)
+    shallow = None
+    for k in range(len(stack) - 2, -1, -1):
+        lvl = stack[k]
+        if shape_matches(lvl.family, label) and label == next_of_family(lvl.family, lvl.value):
+            shallow = k
+            break
+    if push_ok and shallow is not None:
+        succ = next_of_family(stack[shallow].family, label)
+        nxt = future[0] if future else None
+        allowed_after_push = {
+            next_of_family(fam, label),
+            first_of_family(family_for_depth(len(stack) + 2)),
+        }
+        if succ in future or nxt is None or nxt not in allowed_after_push:
+            return f"pop:{shallow}"
+        return "push"
+    if push_ok:
+        return "push"
+    if shallow is not None:
+        return f"pop:{shallow}"
+    return None
+
+
+def _split_part_paragraph(html: str) -> list[tuple[list[str], str]]:
+    """Splits one <P>'s inline HTML into (new_labels, text) segments.
+
+    Three printed shapes occur in 49 CFR 191/192:
+      "(a) text"                      -> [(["a"], "text")]
+      "(1)(i) text"                   -> [(["1","i"], "text")]   (§ 192.3 UNGSF)
+      "(b) <i>Heading.</i> (1) text"  -> [(["b"], "<i>Heading.</i>"),
+                                          (["1"], "text")]       (§ 192.121(b))
+    A paragraph with no leading label returns [([], html)] -- it is the
+    continuation text of whatever row is currently open.
+    """
+    segs: list[tuple[list[str], str]] = []
+    rest = html
+    while True:
+        labels: list[str] = []
+        while True:
+            m = _PART_LEAD_LABEL_RE.match(rest)
+            if not m:
+                break
+            labels.append(m.group("lab"))
+            rest = rest[m.end() :]
+        if not labels:
+            if not segs:
+                return [([], html)]
+            if rest.strip():
+                segs.append(([], rest.strip()))
+            return segs
+        mi = _PART_LEAD_ITALIC_RE.match(rest)
+        if mi and _PART_LEAD_LABEL_RE.match(rest[mi.end() :]):
+            segs.append((labels, rest[: mi.end()].strip().rstrip("\u2014\u2013-").strip()))
+            rest = rest[mi.end() :]
+            continue
+        mc = _PART_LEAD_INTRO_RE.match(rest)
+        if mc:
+            segs.append((labels, rest[: mc.end()].strip()))
+            rest = rest[mc.end() :]
+            continue
+        segs.append((labels, rest.strip()))
+        return segs
+
+
+def _definition_slug(term: str, used: set) -> str:
+    base = re.sub(r"[^a-z0-9]+", "-", term.lower()).strip("-") or "term"
+    slug = base
+    n = 1
+    while slug in used:
+        n += 1
+        slug = f"{base}-{n}"
+    used.add(slug)
+    return slug
+
+
+def _part_image_placeholder(url: str) -> str:
+    return (
+        '<p class="figure-omitted">[Figure/equation not reproduced — see the eCFR: '
+        f"{escape_html_text(url)}]</p>"
+    )
+
+
+def _part_tables_in(div_el) -> list:
+    return div_el.findall(".//TABLE")
+
+
+def _part_table_caption(table_el) -> str:
+    cap = table_el.find("CAPTION")
+    if cap is None:
+        return ""
+    return _xml_text(cap)
+
+
+def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
+    """Parses a whole 49 CFR part's eCFR versioner XML into the same
+    provisions row shape the subpart path produces."""
+    import xml.etree.ElementTree as ET
+
+    reg = _norm_reg(reg)
+    meta = SUBPART_META[reg]
+    if meta.get("document") != "part":
+        raise ValueError(f"{reg} is not a whole-part document; use parse_ecfr()")
+    part = meta["part"]
+    title = meta["title"]
+    base_url = meta["url"]
+
+    root_el = ET.parse(xml_path).getroot()
+    rows: list[dict] = []
+    sort_order = 0
+
+    def next_sort():
+        nonlocal sort_order
+        v = sort_order
+        sort_order += 10
+        return v
+
+    root_id = f"sec-{reg}-top-REG-{reg}"
+    rows.append(
+        {
+            "id": root_id,
+            "citation": meta["root_citation"],
+            "title": meta["root_title"],
+            "parent_id": None,
+            "sort_order": next_sort(),
+            "full_text": meta["root_title"],
+            "kind": "root",
+        }
+    )
+
+    by_id: dict[str, dict] = {r["id"]: r for r in rows}
+    duplicate_ids: list[str] = []
+    label_anomalies: list[dict] = []
+    stripped_counts = Counter()
+    images: list[dict] = []
+    tables: list[dict] = []
+    reserved: list[str] = []
+    definitions: list[dict] = []
+    appendix_modes: dict[str, str] = {}
+    section_index: dict[str, list[str]] = {}
+
+    def add_row(row: dict):
+        if row["id"] in by_id:
+            duplicate_ids.append(row["id"])
+            existing = by_id[row["id"]]
+            if _norm_text(existing["full_text"]) != _norm_text(row["full_text"]):
+                existing["full_text"] += row["full_text"]
+            return by_id[row["id"]]
+        by_id[row["id"]] = row
+        rows.append(row)
+        return row
+
+    # ---- one section (DIV8) -------------------------------------------
+    def parse_section(div8, parent_id: str, subpart_letter: str | None):
+        n = div8.get("N") or ""
+        head_el = div8.find("HEAD")
+        head_text = _xml_text(head_el) if head_el is not None else f"§ {n}"
+        sec_id = f"sec-{reg}-{n}"
+        is_range = "-" in n
+        citation = ("§§ " if is_range else "§ ") + n
+        sec_url = f"{base_url.rsplit('/part-', 1)[0]}/section-{n}"
+        kids = [k for k in div8 if k.tag != "HEAD"]
+        body_kids = [k for k in kids if k.tag not in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH")]
+        for k in kids:
+            if k.tag in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH"):
+                stripped_counts[k.tag] += 1
+        if not body_kids or head_text.endswith("[Reserved]"):
+            reserved.append(citation)
+            add_row(
+                {
+                    "id": sec_id,
+                    "citation": citation,
+                    "title": head_text,
+                    "parent_id": parent_id,
+                    "sort_order": next_sort(),
+                    "full_text": "<p>[Reserved]</p>",
+                    "kind": "section",
+                }
+            )
+            section_index.setdefault(subpart_letter or "", []).append(n)
+            return
+        section_index.setdefault(subpart_letter or "", []).append(n)
+
+        # "§ 192.3 Definitions." and "§ 192.903 What definitions apply to
+        # this subpart?" are both definition sections.
+        is_definitions = bool(re.search(r"\bdefinitions?\b", head_text, re.I))
+        sec_row = add_row(
+            {
+                "id": sec_id,
+                "citation": citation,
+                "title": head_text,
+                "parent_id": parent_id,
+                "sort_order": next_sort(),
+                "full_text": "",
+                "kind": "section",
+                "_own_section_id": sec_id,
+            }
+        )
+
+        # Every paragraph label this section will print, in order -- the
+        # lookahead `_advance_part_label_stack` needs to tell a top-level
+        # "(i)" from a roman sub-item (see its docstring).
+        flat_labels: list[str] = []
+        if not is_definitions:
+            for el in body_kids:
+                if el.tag != "P":
+                    continue
+                probe_html = _part_inline_html(el)
+                if not probe_html:
+                    continue
+                for chain, _t in _split_part_paragraph(probe_html):
+                    flat_labels.extend(chain)
+        label_cursor = 0
+
+        # `open_row` is the row that free text / tables / images attach to.
+        open_row = sec_row
+        stack: list[_PartLevel] = []
+        used_slugs: set = set()
+        pending_rows: list[dict] = []
+
+        def emit_item(new_id: str, parent: str, text_html: str, chain: list[str]):
+            item_citation = citation + "".join(f"({c})" for c in chain)
+            heading_word = None
+            plain = _norm_text(text_html)
+            if plain:
+                # A paragraph whose whole text is the italic heading run --
+                # "(b) <i>General requirements for plastic pipe and
+                # components.</i> (1) ..." leaves (b) holding just the
+                # heading -- has no trailing sentence for
+                # split_heading_from_text to key on, so take it directly.
+                if re.fullmatch(r"<i>[^<]{1,120}</i>", text_html):
+                    heading_word = plain.rstrip(".")
+                else:
+                    heading_word, _ = split_heading_from_text(plain)
+            row = add_row(
+                {
+                    "id": new_id,
+                    "citation": item_citation,
+                    "title": f"{item_citation} {heading_word}" if heading_word else item_citation,
+                    "parent_id": parent,
+                    "sort_order": next_sort(),
+                    "full_text": f"<p>{text_html}</p>" if text_html else "",
+                    "kind": "item",
+                    "_own_section_id": sec_id,
+                }
+            )
+            pending_rows.append(row)
+            return row
+
+        def append_html(row, html: str):
+            row["full_text"] = (row["full_text"] or "") + html
+
+        for el in body_kids:
+            tag = el.tag
+            if tag == "P":
+                html = _part_inline_html(el)
+                if not html:
+                    continue
+                if is_definitions:
+                    first = list(el)
+                    if (not (el.text or "").strip()) and first and first[0].tag == "I":
+                        term = _PART_DEF_TERM_STRIP_RE.sub("", _xml_text(first[0]))
+                        slug = _definition_slug(term, used_slugs)
+                        did = f"{sec_id}-{slug}"
+                        open_row = add_row(
+                            {
+                                "id": did,
+                                "citation": f"{citation} “{term}”",
+                                "title": f"{citation} “{term}”",
+                                "parent_id": sec_id,
+                                "sort_order": next_sort(),
+                                "full_text": f"<p>{html}</p>",
+                                "kind": "definition",
+                                "_own_section_id": sec_id,
+                            }
+                        )
+                        definitions.append({"id": did, "term": term})
+                        continue
+                    # A numbered sub-paragraph of the definition just above
+                    # (§ 191.3 "Incident" (1)(i)...): folded into that term's
+                    # own row -- one row per term, as specified.
+                    append_html(open_row, f"<p>{html}</p>")
+                    continue
+                for chain, text_html in _split_part_paragraph(html):
+                    if not chain:
+                        append_html(open_row, f"<p>{text_html}</p>")
+                        continue
+                    for i, label in enumerate(chain):
+                        label_cursor += 1
+                        move = _advance_part_label_stack(
+                            stack, label, tuple(flat_labels[label_cursor:])
+                        )
+                        if move is None:
+                            label_anomalies.append(
+                                {
+                                    "section": n,
+                                    "label": label,
+                                    "open_stack": "".join(f"({lv.value})" for lv in stack),
+                                    "text": _norm_text(text_html)[:80],
+                                }
+                            )
+                            append_html(open_row, f"<p>({label}) {text_html}</p>")
+                            break
+                        if move == "sibling":
+                            stack.pop()
+                        elif move.startswith("pop:"):
+                            del stack[int(move.split(":")[1]) :]
+                        parent = stack[-1].row_id if stack else sec_id
+                        new_id = f"{parent}-({label})"
+                        fam = family_for_depth(len(stack) + 1)
+                        stack.append(_PartLevel(fam, label, new_id))
+                        is_last = i == len(chain) - 1
+                        open_row = emit_item(
+                            new_id,
+                            parent,
+                            text_html if is_last else "",
+                            [lv.value for lv in stack],
+                        )
+            elif tag in ("FP", "FP-1", "FP-2"):
+                html = _part_inline_html(el)
+                if html:
+                    append_html(open_row, f"<p>{html}</p>")
+            elif tag == "EXTRACT":
+                for sub in el:
+                    html = _part_inline_html(sub)
+                    if html:
+                        append_html(open_row, f"<p>{html}</p>")
+                stripped_counts["EXTRACT"] += 1
+            elif tag == "NOTE":
+                hed = el.find("HED")
+                lead = _xml_text(hed) if hed is not None else "Note:"
+                for sub in el:
+                    if sub.tag == "HED":
+                        continue
+                    html = _part_inline_html(sub)
+                    if html:
+                        append_html(open_row, f"<p>{escape_html_text(lead)} {html}</p>")
+            elif tag == "img":
+                append_html(open_row, _part_image_placeholder(sec_url))
+                images.append({"row": open_row["id"], "src": el.get("src"), "url": sec_url})
+            elif tag == "DIV":
+                for t in _part_tables_in(el):
+                    cap = _part_table_caption(t)
+                    html = render_xml_table_html(cap, None, [t], emphasis=True)
+                    append_html(open_row, html)
+                    trows = rows_from_xml_tables([t])
+                    tables.append(
+                        {
+                            "row": open_row["id"],
+                            "caption": cap,
+                            "rows": len(trows),
+                            "cols": max((len(r) for r in trows), default=0),
+                            "cells": trows,
+                        }
+                    )
+            else:
+                stripped_counts[tag] += 1
+
+        # A section row with no chapeau text (everything lives in its (a)/(b)
+        # children) still renders as a section in the app -- per the row-shape
+        # spec, EVERY section row keeps kind "section". Only a text-less
+        # PARAGRAPH row (a label printed with its first child on one line,
+        # e.g. "(1)(i) ...") becomes heading-only.
+        for r in [sec_row] + pending_rows:
+            if not r["full_text"]:
+                r["full_text"] = r["title"] if r is sec_row else r["citation"]
+                if r is sec_row:
+                    # A section whose whole body lives in its (a)/(b) children
+                    # keeps kind "section" (the row-shape spec) but is a
+                    # HEADING row: its full_text is the printed heading as
+                    # plain text, with no <p> and no markup, exactly as the
+                    # JJJJ/ZZZZ path emits "§ 60.4230 Am I subject to this
+                    # subpart?". _heading_only keeps it out of the
+                    # cross-reference pass below, so the heading's own
+                    # section number is never turned into a link.
+                    r["_heading_only"] = True
+                else:
+                    r["kind"] = "heading"
+
+    # ---- one appendix (DIV9) -------------------------------------------
+    def parse_appendix(div9):
+        n = div9.get("N") or ""
+        letter_m = re.search(r"Appendix\s+([A-Z])\b", n)
+        letter = letter_m.group(1) if letter_m else n
+        head_el = div9.find("HEAD")
+        head_text = _xml_text(head_el) if head_el is not None else n
+        aid = f"sec-{reg}-APPENDIX-{letter}"
+        apx_url = f"{base_url}/appendix-{n.replace(' ', '%20')}"
+        kids = [k for k in div9 if k.tag != "HEAD"]
+        body_kids = []
+        for k in kids:
+            if k.tag in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH"):
+                stripped_counts[k.tag] += 1
+            else:
+                body_kids.append(k)
+        apx_row = add_row(
+            {
+                "id": aid,
+                "citation": f"Appendix {letter} to Part {part}",
+                "title": head_text,
+                "parent_id": root_id,
+                "sort_order": next_sort(),
+                "full_text": "",
+                "kind": "appendix",
+                "_own_section_id": aid,
+            }
+        )
+        if not body_kids or head_text.endswith("[Reserved]"):
+            apx_row["full_text"] = "<p>[Reserved]</p>"
+            reserved.append(f"Appendix {letter} to Part {part}")
+            appendix_modes[letter] = "reserved (one row)"
+            return
+
+        flat = letter in PART_FLAT_APPENDICES.get(reg, set())
+        # Dry run: does every ladder label sit in an unambiguous, contiguous
+        # sequence? If not, the whole appendix stays one row.
+        def ladder_label(el):
+            """The printed ladder label at the head of an appendix element,
+            recognised by SHAPE, not by tag depth: the eCFR marks some
+            appendix headings with <HD1>/<HD2> and leaves others as ordinary
+            <P>s, and the HD level does not reliably track the label family
+            (Appendix A to Part 191 prints its roman "I." inside an <HD2>)."""
+            if el.tag not in ("HD1", "HD2", "P"):
+                return None, None
+            txt = _xml_text(el)
+            for fam, rx in _APX_LADDER:
+                m = rx.match(txt)
+                if m:
+                    return m, fam
+            return None, None
+
+        if not flat:
+            probe: list[tuple[str, str]] = []
+            for el in body_kids:
+                m, fam = ladder_label(el)
+                if m:
+                    probe.append((fam, m.group("lab")))
+            seen_fams: dict[str, str] = {}
+            order = [f for f, _ in _APX_LADDER]
+            for fam, lab in probe:
+                prev = seen_fams.get(fam)
+                ok = (lab == _APX_FIRST[fam]) if prev is None else (lab == _APX_NEXT[fam](prev))
+                if not ok and prev is not None and lab == _APX_FIRST[fam]:
+                    ok = True  # a deeper family legitimately restarts
+                if not ok:
+                    flat = True
+                    appendix_modes[letter] = (
+                        f"one row (ladder label {fam} {lab!r} does not follow {prev!r})"
+                    )
+                    break
+                seen_fams[fam] = lab
+                # a shallower label resets everything deeper
+                for deeper in order[order.index(fam) + 1 :]:
+                    seen_fams.pop(deeper, None)
+            if not probe:
+                flat = True
+                appendix_modes[letter] = "one row (no ladder labels printed)"
+
+        open_row = apx_row
+        stack: list[tuple[str, str, str]] = []  # (family, value, row_id)
+        order = [f for f, _ in _APX_LADDER]
+        child_rows: list[dict] = []
+
+        def append_html(row, html):
+            row["full_text"] = (row["full_text"] or "") + html
+
+        for el in body_kids:
+            tag = el.tag
+            if tag == "img":
+                append_html(open_row, _part_image_placeholder(apx_url))
+                images.append({"row": open_row["id"], "src": el.get("src"), "url": apx_url})
+                continue
+            if tag == "DIV":
+                for t in _part_tables_in(el):
+                    cap = _part_table_caption(t)
+                    append_html(open_row, render_xml_table_html(cap, None, [t], emphasis=True))
+                    trows = rows_from_xml_tables([t])
+                    tables.append(
+                        {
+                            "row": open_row["id"],
+                            "caption": cap or head_text,
+                            "rows": len(trows),
+                            "cols": max((len(r) for r in trows), default=0),
+                            "cells": trows,
+                        }
+                    )
+                continue
+            if tag == "EXTRACT":
+                for sub in el:
+                    html = _part_inline_html(sub)
+                    if html:
+                        append_html(open_row, f"<p>{html}</p>")
+                continue
+            html = _part_inline_html(el)
+            if not html:
+                continue
+            m, fam = (None, None) if flat else ladder_label(el)
+            if m is None:
+                append_html(open_row, f"<p>{html}</p>")
+                continue
+            lab = m.group("lab")
+            depth = order.index(fam)
+            while stack and order.index(stack[-1][0]) >= depth:
+                stack.pop()
+            parent = stack[-1][2] if stack else aid
+            new_id = f"{parent}-{lab}"
+            stack.append((fam, lab, new_id))
+            rest = html[m.end() :].strip() if html.startswith(m.group(0).strip()[:1]) else html
+            # `m` matched the plain-text rendering; re-strip the same label
+            # off the HTML rendering (identical prefix -- labels are never
+            # emphasised in these appendices).
+            rest = re.sub(r"^" + re.escape(m.group(0).strip()) + r"\s*", "", html).strip()
+            cite_path = "".join(
+                (f".{v}" if i else f" {v}") for i, (f2, v, _rid) in enumerate(stack)
+            )
+            item_citation = f"Appendix {letter} to Part {part}{cite_path}"
+            heading_word, _ = split_heading_from_text(_norm_text(rest)) if rest else (None, None)
+            open_row = add_row(
+                {
+                    "id": new_id,
+                    "citation": item_citation,
+                    "title": f"{item_citation} {heading_word}" if heading_word else item_citation,
+                    "parent_id": parent,
+                    "sort_order": next_sort(),
+                    "full_text": f"<p>{rest}</p>" if rest else "",
+                    "kind": "item",
+                    "_own_section_id": aid,
+                }
+            )
+            child_rows.append(open_row)
+
+        appendix_modes.setdefault(
+            letter, "one row" if flat else f"{len(child_rows)} child rows from its printed ladder"
+        )
+        for r in [apx_row] + child_rows:
+            if not r["full_text"]:
+                r["full_text"] = r["title"] if r is apx_row else r["citation"]
+                if r is apx_row:
+                    r["_heading_only"] = True
+                else:
+                    r["kind"] = "heading"
+
+    # ---- walk the part ---------------------------------------------------
+    for child in root_el:
+        if child.tag == "DIV6" and (child.get("TYPE") or "").upper() == "SUBPART":
+            letter = child.get("N") or ""
+            head_el = child.find("HEAD")
+            head_text = _xml_text(head_el) if head_el is not None else f"Subpart {letter}"
+            head_text = head_text.replace(f"Subpart {letter}—", f"Subpart {letter} — ")
+            pid = f"sec-{reg}-PART-{letter}"
+            add_row(
+                {
+                    "id": pid,
+                    "citation": f"Subpart {letter}",
+                    "title": head_text,
+                    "parent_id": root_id,
+                    "sort_order": next_sort(),
+                    "full_text": head_text,
+                    "kind": "part",
+                }
+            )
+            for sub in child:
+                if sub.tag == "DIV8":
+                    parse_section(sub, pid, letter)
+                elif sub.tag in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH"):
+                    stripped_counts[sub.tag] += 1
+        elif child.tag == "DIV8":
+            parse_section(child, root_id, None)
+        elif child.tag == "DIV9" and (child.get("TYPE") or "").upper() == "APPENDIX":
+            parse_appendix(child)
+        elif child.tag in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH", "HEAD"):
+            if child.tag != "HEAD":
+                stripped_counts[child.tag] += 1
+
+    # ---- cross-reference linking ----------------------------------------
+    known_ids = {r["id"] for r in rows}
+    unresolved: dict = defaultdict(Counter)
+    for b in PART_BUCKETS:
+        unresolved[b]
+    link_counts = Counter()
+    for row in rows:
+        own_section_id = row.pop("_own_section_id", row["id"])
+        heading_only = row.pop("_heading_only", False)
+        if heading_only or row["kind"] not in ("section", "item", "definition", "appendix"):
+            continue
+        before = row["full_text"]
+        row["full_text"] = link_citations(
+            before, reg, own_section_id, row["id"], known_ids, CORPUS_REGS, unresolved
+        )
+        link_counts["same_doc"] += row["full_text"].count('<span class="xref"')
+        link_counts["cross_doc"] += row["full_text"].count('class="xref-external-reg"')
+
+    dead_targets = [
+        t for t in re.findall(r'data-target="([^"]+)"', "".join(r["full_text"] for r in rows))
+        if t not in known_ids
+    ]
+
+    report = {
+        "reg": reg,
+        "document": "part",
+        "title": title,
+        "part": part,
+        "source_xml": xml_path,
+        "n_rows": len(rows),
+        "kinds": dict(Counter(r["kind"] for r in rows)),
+        "subparts": [r["citation"] for r in rows if r["kind"] == "part"],
+        "sections_by_subpart": section_index,
+        "n_sections": sum(len(v) for v in section_index.values()),
+        "reserved": reserved,
+        "appendix_modes": appendix_modes,
+        "n_definitions": len(definitions),
+        "definitions": definitions,
+        "tables": [{k: v for k, v in t.items() if k != "cells"} for t in tables],
+        "table_cells": {str(i): t["cells"] for i, t in enumerate(tables)},
+        "images": images,
+        "stripped": dict(stripped_counts),
+        "duplicate_ids": duplicate_ids,
+        "label_anomalies": label_anomalies,
+        "link_counts": dict(link_counts),
+        "dead_targets": dead_targets,
+        "unresolved": {b: unresolved[b] for b in sorted(unresolved)},
+    }
+    return rows, report
+
+
+# --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
 
 
+def _write_report(out_path: Path, report: dict):
+    report_path = out_path.with_name(out_path.stem + "_report.json")
+    serializable_report = dict(report)
+    serializable_report["unresolved"] = {
+        b: sorted(c.items(), key=lambda kv: -kv[1]) for b, c in report["unresolved"].items()
+    }
+    report_path.write_text(
+        json.dumps(serializable_report, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
+
+
+def part_xml_path(args) -> str | None:
+    """The XML source for a whole-PART reg. `--xml` wins when given; otherwise
+    it is derived from `--pdf` by swapping the extension
+    (`sources/P192.pdf` -> `sources/P192.xml`), because the Import workflow
+    always passes `--pdf <BASENAME>.pdf --txt <BASENAME>.txt` for every reg.
+    Neither the .pdf nor the .txt has to exist -- a whole-part reg reads only
+    the XML, and P192.pdf may never be in the repo at all."""
+    if args.xml:
+        return args.xml
+    pdf = getattr(args, "pdf", None)
+    if pdf:
+        return str(Path(pdf).with_suffix(".xml"))
+    txt = getattr(args, "txt", None)
+    if txt:
+        return str(Path(txt).with_suffix(".xml"))
+    return None
+
+
+def cmd_parse_part(args):
+    """parse for a whole-PART document (49 CFR 191/192): XML in, same row
+    JSON out. Shares the writer and the report file naming with cmd_parse."""
+    meta = SUBPART_META[_norm_reg(args.reg)]
+    xml_path = part_xml_path(args)
+    if not xml_path:
+        raise SystemExit(
+            f"{args.reg} is a whole-part document: pass --xml (or --pdf/--txt, "
+            "from which the .xml path is derived)"
+        )
+    if not Path(xml_path).exists():
+        raise SystemExit(f"XML source not found for {args.reg}: {xml_path}")
+    rows, report = parse_ecfr_part(args.reg, xml_path)
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    print(f"Parsed {len(rows)} provisions for {args.reg} ({meta['root_citation']}) -> {out_path}")
+    print(f"  by kind: {report['kinds']}")
+    print(f"  subparts: {len(report['subparts'])}, sections: {report['n_sections']}, "
+          f"definitions: {report['n_definitions']}, tables: {len(report['tables'])}, "
+          f"images: {len(report['images'])}")
+    print(f"  reserved: {len(report['reserved'])} -> {report['reserved']}")
+    for letter, mode in sorted(report["appendix_modes"].items()):
+        print(f"  appendix {letter}: {mode}")
+    print(f"  stripped editorial elements: {report['stripped']}")
+    if report["duplicate_ids"]:
+        print(f"  WARNING: duplicate ids: {report['duplicate_ids']}")
+    if report["label_anomalies"]:
+        print(f"  WARNING: {len(report['label_anomalies'])} label anomalies:")
+        for a in report["label_anomalies"][:20]:
+            print(f"    § {a['section']} ({a['label']}) after {a['open_stack']}: {a['text']}")
+    print(f"  links: {report['link_counts']}; dead targets: {len(report['dead_targets'])}")
+    for bucket in PART_BUCKETS:
+        ctr = report["unresolved"].get(bucket)
+        if not ctr:
+            continue
+        print(f"  bucket '{bucket}': {len(ctr)} distinct, {sum(ctr.values())} mentions; top 5:")
+        for text, cnt in ctr.most_common(5):
+            print(f"    {cnt:4d}  {text}")
+    _write_report(out_path, report)
+
+
 def cmd_parse(args):
+    if SUBPART_META[_norm_reg(args.reg)].get("document") == "part":
+        return cmd_parse_part(args)
     txt_path = args.txt or str(Path(args.pdf).with_suffix(".txt"))
     rows, report = parse_ecfr(args.reg, args.pdf, txt_path)
     out_path = Path(args.out)
@@ -2200,12 +3339,7 @@ def cmd_parse(args):
         for text, cnt in ctr.most_common(5):
             print(f"    {cnt:4d}  {text}")
 
-    report_path = out_path.with_name(out_path.stem + "_report.json")
-    serializable_report = dict(report)
-    serializable_report["unresolved"] = {
-        b: sorted(c.items(), key=lambda kv: -kv[1]) for b, c in report["unresolved"].items()
-    }
-    report_path.write_text(json.dumps(serializable_report, ensure_ascii=False, indent=1), encoding="utf-8")
+    _write_report(out_path, report)
 
 
 def main():
@@ -2213,9 +3347,10 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p_parse = sub.add_parser("parse", help="Parse an eCFR subpart's pdftotext output into provisions JSON.")
-    p_parse.add_argument("--reg", required=True, help="oooob / ooooa / ooooc")
-    p_parse.add_argument("--pdf", required=True)
+    p_parse.add_argument("--reg", required=True, help="ooooa/oooob/ooooc/jjjj/iiii/zzzz (PDF path) or p191/p192 (XML path)")
+    p_parse.add_argument("--pdf", default=None)
     p_parse.add_argument("--txt", default=None, help="Defaults to --pdf with .txt extension.")
+    p_parse.add_argument("--xml", default=None, help="Primary source for a whole-PART reg (p191/p192).")
     p_parse.add_argument("--out", required=True)
     p_parse.set_defaults(func=cmd_parse)
 

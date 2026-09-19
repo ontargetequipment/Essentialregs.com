@@ -2220,7 +2220,8 @@ class CrossRefNoOpProofTests(unittest.TestCase):
     # plus the general permits and the federal engine subparts) -- their
     # only permitted effect on Reg 1/2/26 output is new links to themselves.
     NEW_REGS = ("cp", "9", "24", "30", "jjjj", "iiii", "zzzz",
-                "gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12")
+                "gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12",
+                "p191", "p192")
 
     BASELINE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
     SOURCES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources")
@@ -2257,8 +2258,8 @@ class CrossRefNoOpProofTests(unittest.TestCase):
         import json as _json
         import re as _re
         tag_re = _re.compile(
-            r'<a class="xref-external-reg"(?: data-provision-id="sec-cp-[^"]*")?'
-            r' href="/regulations/(?:cp|9|24|30|jjjj|iiii|zzzz|gp\d\d)">(.*?)</a>'
+            r'<a class="xref-external-reg"(?: data-provision-id="sec-(?:cp|p191|p192)-[^"]*")?'
+            r' href="/regulations/(?:cp|9|24|30|jjjj|iiii|zzzz|gp\d\d|p191|p192)">(.*?)</a>'
         )
         new_link_counts = {reg: 0 for reg in ("1", "2", "26")}
         for reg in ("1", "2", "26"):
@@ -2282,6 +2283,187 @@ class CrossRefNoOpProofTests(unittest.TestCase):
         # reported (cp: 24, 9: 11, 24: 2, 30: 0 links into reg1/2/26): the
         # union total should be in that neighborhood, not wildly off.
         self.assertGreater(sum(new_link_counts.values()), 0, new_link_counts)
+
+
+class Step1Point1CorpusGateTests(unittest.TestCase):
+    """PHMSA_BRIEF.md step 1: prove step 1.1 ("49 CFR Part 192" / "49 CFR
+    192.605(b)") in link_citations() is gated on corpus membership, and that
+    it never competes with step 1 (which only ever matches "40 CFR ..."). No
+    new parsing of p191/p192 themselves -- this only exercises the citing
+    side, against text a Colorado regulation (Reg 7) might contain."""
+
+    TEXT = "See 49 CFR Part 192 and 49 CFR 192.605(b) for the federal minimum standard, and 40 CFR Part 60 too."
+
+    def test_49_cfr_part_192_is_a_plain_cfr_bucket_hit_when_p192_not_in_corpus(self):
+        corpus_without_p19x = set(ic.CORPUS_REGS) - {"p191", "p192"}
+        html, buckets = ic.link_citations(self.TEXT, "7", {"sec-7-top-REG-7"}, corpus_without_p19x)
+        self.assertNotIn("xref-external-reg", html)
+        self.assertIn("49 CFR Part 192", buckets[ic.BUCKET_CFR])
+        self.assertIn("49 CFR 192.605(b)", buckets[ic.BUCKET_CFR])
+
+    def test_49_cfr_part_192_links_to_p192_once_it_is_in_corpus(self):
+        html, buckets = ic.link_citations(self.TEXT, "7", {"sec-7-top-REG-7"}, set(ic.CORPUS_REGS))
+        self.assertIn('<a class="xref-external-reg" href="/regulations/p192">49 CFR Part 192</a>', html)
+        self.assertIn('data-provision-id="sec-p192-192.605"', html)
+        self.assertNotIn("49 CFR Part 192", buckets[ic.BUCKET_CFR])
+        self.assertNotIn("49 CFR 192.605(b)", buckets[ic.BUCKET_CFR])
+
+    def test_40_cfr_part_60_is_unaffected_by_step_1_1(self):
+        # Step 1 (40 CFR) and step 1.1 (49 CFR) must never compete for the
+        # same span; "40 CFR Part 60" gets the exact same treatment (same
+        # bucket membership, same count) whether or not p191/p192 are in
+        # the corpus -- step 1.1 only ever fires on "49 CFR ...".
+        html_with, buckets_with = ic.link_citations(self.TEXT, "7", {"sec-7-top-REG-7"}, set(ic.CORPUS_REGS))
+        html_without, buckets_without = ic.link_citations(
+            self.TEXT, "7", {"sec-7-top-REG-7"}, set(ic.CORPUS_REGS) - {"p191", "p192"})
+        self.assertEqual(html_with.count("40 CFR Part 60"), html_without.count("40 CFR Part 60"))
+        self.assertEqual(dict(buckets_with[ic.BUCKET_CFR]).get("40 CFR Part 60"),
+                          dict(buckets_without[ic.BUCKET_CFR]).get("40 CFR Part 60"))
+
+
+class Cfr49DottedFormsTests(unittest.TestCase):
+    """ECMC (sources/ECMC.txt) is the only Colorado document that cites 49
+    CFR, and it never writes the plain "49 CFR" form CFR_TITLE_PART_RE
+    originally accepted -- always dotted/spaced "C.F.R."/"C. F. R.", with a
+    "§"/"§§" before the section number, including a "§§ X or Y" two-item
+    list (each item resolving on its own) and a bare "§ 195 Subpart A"
+    part+subpart-letter cite with no section number at all. See lines
+    399-406, 848-853 and 26141-26147 of sources/ECMC.txt for the real text
+    these are drawn from."""
+
+    def _corpus(self):
+        return set(ic.CORPUS_REGS)
+
+    def test_dotted_single_section_links_when_in_corpus(self):
+        text = "pursuant to 49 C.F.R. § 192.243 and 49 C.F.R. § 195.234, in existence"
+        html, buckets = ic.link_citations(text, "ecmc", {"sec-ecmc-top-REG-ecmc"}, self._corpus())
+        self.assertIn(
+            '<a class="xref-external-reg" href="/regulations/p192" '
+            'data-provision-id="sec-p192-192.243">49 C.F.R. § 192.243</a>',
+            html,
+        )
+        # 195 is not in the corpus -- stays a plain-text cfr bucket hit,
+        # whole match (title + dotted CFR + section) same as before, and
+        # only one anchor (192.243's) appears in the output.
+        self.assertIn("49 C.F.R. § 195.234", buckets[ic.BUCKET_CFR])
+        self.assertEqual(html.count("xref-external-reg"), 1)
+
+    def test_dotted_single_section_bucketed_when_not_in_corpus(self):
+        text = "pursuant to 49 C.F.R. § 192.243, in existence"
+        corpus_without_p19x = self._corpus() - {"p191", "p192"}
+        html, buckets = ic.link_citations(text, "ecmc", {"sec-ecmc-top-REG-ecmc"}, corpus_without_p19x)
+        self.assertNotIn("xref-external-reg", html)
+        self.assertIn("49 C.F.R. § 192.243", buckets[ic.BUCKET_CFR])
+
+    def test_spaced_dotted_c_f_r_form(self):
+        # "49 C. F. R." (space after every dot) -- the CFR_RE_DOTTED
+        # comment's own example of a print variant this style of regex has
+        # to tolerate.
+        text = "as required by 49 C. F. R. Part 192."
+        html, buckets = ic.link_citations(text, "ecmc", {"sec-ecmc-top-REG-ecmc"}, self._corpus())
+        self.assertIn('<a class="xref-external-reg" href="/regulations/p192">49 C. F. R. Part 192</a>', html)
+
+    def test_double_section_sign_list_each_resolves_independently(self):
+        # "49 C.F.R. §§ 195.2 or 192.8" -- 195 is never in the corpus, 192
+        # is. Only the 192.8 half should link; the 195.2 half stays plain
+        # text and lands in the cfr bucket; the shared "49 C.F.R. §§ " and
+        # " or " connective text is untouched either way.
+        text = "pursuant to 49 C.F.R. §§ 195.2 or 192.8. 49 C.F.R. §§ 195.2 or 192.8 and 4 C.C.R."
+        html, buckets = ic.link_citations(text, "ecmc", {"sec-ecmc-top-REG-ecmc"}, self._corpus())
+        self.assertIn(
+            '<a class="xref-external-reg" href="/regulations/p192" '
+            'data-provision-id="sec-p192-192.8">192.8</a>',
+            html,
+        )
+        self.assertIn("49 C.F.R. §§ ", html)  # prefix left as plain text
+        self.assertIn(" or ", html)  # connective left as plain text
+        self.assertIn("195.2", buckets[ic.BUCKET_CFR])
+        self.assertNotIn("192.8", buckets[ic.BUCKET_CFR])
+
+    def test_double_section_sign_list_both_out_of_corpus(self):
+        text = "pursuant to 49 C.F.R. §§ 195.2 or 196.8."
+        html, buckets = ic.link_citations(text, "ecmc", {"sec-ecmc-top-REG-ecmc"}, self._corpus())
+        self.assertNotIn("xref-external-reg", html)
+        self.assertIn("195.2", buckets[ic.BUCKET_CFR])
+        self.assertIn("196.8", buckets[ic.BUCKET_CFR])
+
+    def test_bare_part_subpart_letter_with_no_section_stays_bucketed(self):
+        # "49 C.F.R. § 195 Subpart A" -- 195 is not in the corpus, and there
+        # is no section number at all (nothing to deep-link into even if it
+        # were), so this always stays a plain cfr-bucket hit today.
+        text = (
+            "pursuant to 49 C.F.R. § 195 Subpart A, and that transfers crude oil"
+        )
+        html, buckets = ic.link_citations(text, "ecmc", {"sec-ecmc-top-REG-ecmc"}, self._corpus())
+        self.assertNotIn("xref-external-reg", html)
+        self.assertIn("49 C.F.R. § 195 Subpart A", buckets[ic.BUCKET_CFR])
+
+    def test_bare_part_subpart_letter_links_if_that_part_were_ever_in_corpus(self):
+        # Same shape, but naming a part that IS in the corpus -- proves the
+        # bare part+subpart-letter form links like any other bare "Part N"
+        # cite once its part is imported (it just never fires for real in
+        # this corpus today, since 191/192 are never printed with a bare
+        # "Subpart" letter in ECMC).
+        text = "pursuant to 49 C.F.R. § 192 Subpart A, and that transfers crude oil"
+        html, buckets = ic.link_citations(text, "ecmc", {"sec-ecmc-top-REG-ecmc"}, self._corpus())
+        self.assertIn('<a class="xref-external-reg" href="/regulations/p192">49 C.F.R. § 192 Subpart A</a>', html)
+
+    def test_undotted_49_cfr_forms_still_work(self):
+        # Regression: the original plain "49 CFR Part 192" / "49 CFR
+        # 192.605(b)" forms (no dots, no §) must still work exactly as
+        # before this change.
+        text = "See 49 CFR Part 192 and 49 CFR 192.605(b) for the standard."
+        html, buckets = ic.link_citations(text, "7", {"sec-7-top-REG-7"}, self._corpus())
+        self.assertIn('<a class="xref-external-reg" href="/regulations/p192">49 CFR Part 192</a>', html)
+        self.assertIn('data-provision-id="sec-p192-192.605"', html)
+
+
+class Cfr49EcmcOwnLinkerTests(unittest.TestCase):
+    """ECMC uses its own independent linker, link_citations_ecmc() (a
+    different function from link_citations, used by every numbered CCR
+    reg) -- so the 49 CFR handling has to be proven through THAT function
+    too, not just link_citations, or it would never actually fire for the
+    one document that needs it. See sources/ECMC.txt lines 399-406,
+    848-853 and 26141-26147 for the real printed text these mirror."""
+
+    def _corpus(self):
+        return set(ic.CORPUS_REGS)
+
+    def test_ecmc_dotted_section_links_via_its_own_linker(self):
+        text = (
+            "Administration pursuant to 49 C.F.R. § 192.243 and 49 C.F.R. § "
+            "195.234, in existence as of the date of this regulation"
+        )
+        html, buckets = ic.link_citations_ecmc(text, {"sec-ecmc-top-REG-ecmc"}, self._corpus(), {})
+        self.assertIn(
+            '<a class="xref-external-reg" href="/regulations/p192" '
+            'data-provision-id="sec-p192-192.243">49 C.F.R. § 192.243</a>',
+            html,
+        )
+        self.assertIn("49 C.F.R. § 195.234", buckets[ic.BUCKET_CFR])
+
+    def test_ecmc_double_section_list_via_its_own_linker(self):
+        text = "pursuant to 49 C.F.R. §§ 195.2 or 192.8. 49 C.F.R. §§ 195.2 or 192.8 and"
+        html, buckets = ic.link_citations_ecmc(text, {"sec-ecmc-top-REG-ecmc"}, self._corpus(), {})
+        self.assertIn(
+            '<a class="xref-external-reg" href="/regulations/p192" '
+            'data-provision-id="sec-p192-192.8">192.8</a>',
+            html,
+        )
+        self.assertIn("195.2", buckets[ic.BUCKET_CFR])
+
+    def test_ecmc_bare_part_subpart_via_its_own_linker(self):
+        text = "pursuant to 49 C.F.R. § 195 Subpart A, and that transfers crude oil"
+        html, buckets = ic.link_citations_ecmc(text, {"sec-ecmc-top-REG-ecmc"}, self._corpus(), {})
+        self.assertNotIn("xref-external-reg", html)
+        self.assertIn("49 C.F.R. § 195 Subpart A", buckets[ic.BUCKET_CFR])
+
+    def test_ecmc_49_cfr_not_in_corpus_stays_bucketed_via_its_own_linker(self):
+        text = "pursuant to 49 C.F.R. § 192.243, in existence"
+        corpus_without_p19x = self._corpus() - {"p191", "p192"}
+        html, buckets = ic.link_citations_ecmc(text, {"sec-ecmc-top-REG-ecmc"}, corpus_without_p19x, {})
+        self.assertNotIn("xref-external-reg", html)
+        self.assertIn("49 C.F.R. § 192.243", buckets[ic.BUCKET_CFR])
 
 
 # ---------------------------------------------------------------------------
@@ -3416,3 +3598,15 @@ class MarkupOnlyChangedKeepsReviewStateTests(unittest.TestCase):
         self.assertNotIn("reviewed_by = NULL", markup_stmt)
         self.assertIn("summary_status = 'pending'", full_stmt)
         self.assertIn("reviewed_by = NULL", full_stmt)
+
+
+    def test_link_inserted_flush_against_punctuation_is_markup_only(self):
+        # Reg 6 IX.C on the batch-4 re-import: the new Common Provisions link
+        # sits flush against the following period. Stripping tags to a space
+        # produced "Regulation ." != "Regulation." and a false visible change.
+        parsed = [_prow(f"sec-{REG}-A-I", PART_A, 20,
+                        '<p>consistent with the <a class="xref-external-reg" href="/regulations/cp">Common Provisions Regulation</a>. The Division</p>')]
+        db = [_prow(f"sec-{REG}-A-I", PART_A, 20, "<p>consistent with the Common Provisions Regulation. The Division</p>")]
+        c = ic.classify_apply(parsed, db)
+        self.assertEqual(c["changed"], [f"sec-{REG}-A-I"])
+        self.assertTrue(c["markup_only"][f"sec-{REG}-A-I"])

@@ -370,31 +370,57 @@ const CFR_PART_HEADINGS: Record<string, string> = {
   "63": "EPA — 40 CFR Part 63 (NESHAP)",
 };
 
+// PHMSA (49 CFR) rows share ONE heading regardless of which part they're
+// from -- unlike the 40 CFR EPA groups (one heading per part), 191 and 192
+// are the same issuing body, the same subject (pipeline safety) and small
+// enough in count that a separate "Part 191" / "Part 192" split would just
+// be two near-empty sections. See groupFederalRegulations below.
+const PHMSA_GROUP_KEY = "49";
+const PHMSA_HEADING = "PHMSA — 49 CFR Pipeline Safety";
+
 /**
  * Groups the federal (/federal) index by CFR part, parsed out of each row's
- * citation ("40 CFR Part 60 Subpart JJJJ" -> part "60"). Was grouped by
- * issuing_body alone back when every federal row was a Part 60 NSPS subpart
- * and "EPA" and "Part 60" were the same group; Part 63 NESHAP subparts
- * (zzzz) share issuing_body "EPA" but belong in their own section, so the
- * grouping key has to come from the citation instead. Groups are ordered by
- * part number; anything whose citation doesn't parse as "40 CFR Part N"
- * falls back to its raw issuing_body, same fallback as before.
+ * citation ("40 CFR Part 60 Subpart JJJJ" -> part "60", "49 CFR Part 192" ->
+ * PHMSA_GROUP_KEY). Was grouped by issuing_body alone back when every
+ * federal row was a Part 60 NSPS subpart and "EPA" and "Part 60" were the
+ * same group; Part 63 NESHAP subparts (zzzz) share issuing_body "EPA" but
+ * belong in their own section, so the grouping key has to come from the
+ * citation instead.
+ *
+ * 40 CFR parts each get their own group (one per part number, as before).
+ * 49 CFR parts (PHMSA, p191/p192) are different: every "49 CFR Part N" row,
+ * whichever N, collapses into a single PHMSA_GROUP_KEY group under one
+ * "PHMSA — 49 CFR Pipeline Safety" heading -- one shared section, not one
+ * per part -- and that group sorts after every 40 CFR (EPA) group. Anything
+ * whose citation doesn't parse as "40 CFR Part N" or "49 CFR Part N" falls
+ * back to its raw issuing_body, same fallback as before.
  */
 export function groupFederalRegulations<T extends Pick<Provision, "id" | "issuing_body" | "citation">>(
   regs: T[]
 ): RegulationGroup<T>[] {
   const byPart = new Map<string, T[]>();
   for (const r of regs) {
-    const key = r.citation.match(/^40 CFR Part (\d+)/)?.[1] ?? r.issuing_body ?? OTHER_HEADING;
+    const cfr40 = r.citation.match(/^40 CFR Part (\d+)/)?.[1];
+    const isCfr49 = /^49 CFR Part \d+/.test(r.citation);
+    const key = cfr40 ?? (isCfr49 ? PHMSA_GROUP_KEY : r.issuing_body ?? OTHER_HEADING);
     const arr = byPart.get(key);
     if (arr) arr.push(r);
     else byPart.set(key, [r]);
   }
   return Array.from(byPart.entries())
-    .sort(([a], [b]) => (Number(a) || 0) - (Number(b) || 0))
+    .sort(([a], [b]) => {
+      // The PHMSA group always sorts last, after every numbered 40 CFR
+      // (EPA) part; everything else keeps the existing numeric-part order.
+      if (a === PHMSA_GROUP_KEY) return b === PHMSA_GROUP_KEY ? 0 : 1;
+      if (b === PHMSA_GROUP_KEY) return -1;
+      return (Number(a) || 0) - (Number(b) || 0);
+    })
     .map(([part, list]) => ({
       key: part,
-      heading: CFR_PART_HEADINGS[part] ?? (/^\d+$/.test(part) ? `EPA — 40 CFR Part ${part}` : part),
+      heading:
+        part === PHMSA_GROUP_KEY
+          ? PHMSA_HEADING
+          : CFR_PART_HEADINGS[part] ?? (/^\d+$/.test(part) ? `EPA — 40 CFR Part ${part}` : part),
       regs: list,
     }));
 }
