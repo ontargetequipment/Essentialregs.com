@@ -1,8 +1,8 @@
 # Claude Code prompt — PHMSA Batch A import (49 CFR Parts 191 and 192)
 
-Pull `origin/main` (commit "PHMSA Batch A: 49 CFR 191/192 importer, hints, freshness, site grouping"). Do these in order; stop and report if any step fails. **Owner-approved spend for this prompt: summaries for p191 + p192 (dry-run quote ≈ $4.00 — 1,331 summary-eligible rows at ≈ $0.30/100) plus embeddings (pennies). Nothing else.**
+Pull `origin/main` (latest; the PHMSA Batch A files landed in the "PHMSA Batch A…" and "Duplicate-marker fix…" commits). Do these in order; stop and report if any step fails. **Owner-approved spend for this prompt: summaries for p191 + p192 (dry-run quote ≈ $4.00 — 1,331 summary-eligible rows at ≈ $0.30/100) plus embeddings (pennies). Nothing else.**
 
-1. **Tests.** `python -m pytest -q pipeline/test_import_ccr.py pipeline/test_import_ecfr.py pipeline/test_summarize.py pipeline/test_freshness.py`. Expect about 216 + 143 + 110 + 36 passed (a few file-gated skips). Report counts.
+1. **Tests.** `python -m pytest -q pipeline/test_import_ccr.py pipeline/test_import_ecfr.py pipeline/test_summarize.py pipeline/test_freshness.py`. Expect about 225 + 188 + 123 + 43 passed (a few file-gated skips). Report counts.
 
 2. **Workflow.** Copy `docs/imports/2026-09-19/import.yml.new` over `.github/workflows/import.yml` (it adds the `p191`/`p192` → `P191`/`P192` basename mapping and skips the pdftotext step for those two keys, checking that `pipeline/sources/P19x.xml` exists instead). Diff it against the current file so only those hunks change; commit and push.
 
