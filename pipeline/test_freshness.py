@@ -138,6 +138,23 @@ def test_parse_cdphe_page_extracts_all_docids():
     assert len(live) == 11
 
 
+def test_parse_cdphe_page_reads_docid_from_the_labelled_anchor_not_the_next_link():
+    # The live page lists each permit as <a href="...docid=N">General Permit
+    # GPnn</a>, so the docid comes BEFORE the label. A forward scan from the
+    # label returned the next link's docid (GP01 -> GP02's document, GP02 -> a
+    # form) and reported every permit as changed on every run.
+    html = (
+        '<li><a href="https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306933">'
+        "General Permit GP01</a>: Condensate Storage Tank Batteries.</li>"
+        '<li><a href="https://oitco.hylandcloud.com/POP/DocPop/DocPop.aspx?docid=5309717">'
+        "Facility-wide Emissions Inventory (Form APCD-102)</a></li>"
+        '<li><a href="https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306935">'
+        "GP02: Natural Gas Fired Engines.</a></li>"
+        "<p>The GP12 replaces GP09 and GP10.</p>"
+    )
+    assert fr.parse_cdphe_page(html) == {"gp01": "11306933", "gp02": "11306935"}
+
+
 def test_check_cdphe_gp_unchanged():
     manifest = make_manifest()
     entry = manifest["sources"]["cdphe_gp"]

@@ -265,23 +265,29 @@ def ecfr_xml_sha256(xml_text: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+_CDPHE_DOCID_ANCHOR_RE = re.compile(
+    r"""<a\b[^>]*\bhref=["'][^"']*docid=(\d+)[^"']*["'][^>]*>(.*?)</a>""",
+    re.IGNORECASE | re.DOTALL,
+)
+_CDPHE_GP_LABEL_RE = re.compile(r"\bGP\s*-?\s*0*(\d{1,2})\b", re.IGNORECASE)
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
 def parse_cdphe_page(html: str) -> dict[str, str]:
-    """Return {GPnn (lowercase, e.g. 'gp01'): docid} for every GP row found
-    on the general-air-permits page, by scanning for OnBase docid links near
-    a 'GP##' label. Best-effort regex parse -- the page is not a clean API."""
+    """Return {GPnn (lowercase, e.g. 'gp01'): docid} for every general permit
+    linked on the general-air-permits page: each permit's own OnBase docid,
+    read from the href of the anchor whose link text names the permit
+    ("General Permit GP01", "GP01: ..."). The docid must come from the same
+    anchor as the label -- the page puts the docid (in the href) *before* the
+    GP label (in the link text), so scanning forward from a label for the
+    nearest docid returns the *next* link's document instead (GP01 -> GP02's,
+    GP07 -> an unrelated memo) and flags every permit as changed."""
     found: dict[str, str] = {}
-    # Look for patterns like GP01 ... docid=11306933 (order/spacing between
-    # the label and the docid is not guaranteed, so scan windows around each
-    # GP label rather than requiring an exact adjacency).
-    for m in re.finditer(r"GP\s*-?\s*0*?(\d{1,2})\b", html, re.IGNORECASE):
-        num = int(m.group(1))
-        gp_key = f"gp{num:02d}"
-        if gp_key in found:
-            continue
-        window = html[m.start(): m.start() + 400]
-        dm = re.search(r"docid=(\d+)", window, re.IGNORECASE)
-        if dm:
-            found[gp_key] = dm.group(1)
+    for m in _CDPHE_DOCID_ANCHOR_RE.finditer(html):
+        docid, text = m.group(1), _HTML_TAG_RE.sub(" ", m.group(2))
+        lm = _CDPHE_GP_LABEL_RE.search(text)
+        if lm:
+            found.setdefault(f"gp{int(lm.group(1)):02d}", docid)
     return found
 
 
