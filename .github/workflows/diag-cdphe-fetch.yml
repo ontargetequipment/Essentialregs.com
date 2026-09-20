@@ -1,0 +1,39 @@
+name: Diag - dump CDPHE general-permits page
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Fetch page exactly as freshness.py does and dump it
+        run: |
+          python - <<'EOF'
+          import base64, gzip, re, sys, urllib.request
+          sys.path.insert(0, "pipeline")
+          import freshness as fr
+          url = "https://cdphe.colorado.gov/apcd/general-air-permits"
+          req = urllib.request.Request(url, headers=fr.CDPHE_BROWSER_HEADERS)
+          with urllib.request.urlopen(req, timeout=fr.TIMEOUT_SECONDS) as resp:
+              status = resp.status
+              html = resp.read().decode("utf-8", errors="replace")
+          print(f"HTTP {status}, {len(html)} chars")
+          print("=== current parse_cdphe_page() result ===")
+          for k, v in sorted(fr.parse_cdphe_page(html).items()):
+              print(f"  {k}: {v}")
+          print("=== every docid= anchor with 200 chars of preceding text ===")
+          for m in re.finditer(r"docid=(\d+)", html, re.IGNORECASE):
+              ctx = re.sub(r"\s+", " ", html[max(0, m.start()-200):m.end()+80])
+              print(f"[{m.group(1)}] ...{ctx}")
+          b64 = base64.b64encode(gzip.compress(html.encode("utf-8"))).decode("ascii")
+          print("=== GZB64 START ===")
+          for i in range(0, len(b64), 4000):
+              print(b64[i:i+4000])
+          print("=== GZB64 END ===")
+          EOF
