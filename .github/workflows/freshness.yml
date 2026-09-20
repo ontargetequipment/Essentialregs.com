@@ -30,7 +30,15 @@ jobs:
         id: freshness
         continue-on-error: true
         run: |
-          python pipeline/freshness.py check --step-summary "$GITHUB_STEP_SUMMARY"
+          # Write the report to a file in the workspace as well as the step
+          # summary: each step gets its OWN $GITHUB_STEP_SUMMARY file, so the
+          # github-script step below cannot read this step's summary (that is
+          # why issue #1 was titled "Source update detected: unknown").
+          set +e
+          python pipeline/freshness.py check --step-summary freshness_report.md
+          rc=$?
+          cat freshness_report.md >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
 
       - name: Open or update issue on change
         if: steps.freshness.outcome == 'failure'
@@ -38,8 +46,8 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const summary = fs.existsSync(process.env.GITHUB_STEP_SUMMARY)
-              ? fs.readFileSync(process.env.GITHUB_STEP_SUMMARY, 'utf8')
+            const summary = fs.existsSync('freshness_report.md')
+              ? fs.readFileSync('freshness_report.md', 'utf8')
               : '(no report captured)';
 
             // Pull the "N source(s) changed: key, key, ..." line out of the
