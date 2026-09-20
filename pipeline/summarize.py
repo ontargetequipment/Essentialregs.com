@@ -168,7 +168,7 @@ SYSTEM_PROMPT_TEMPLATE = (
 # Administrator" -- scoped to 40 CFR text ONLY in its own wording, but
 # system_prompt_for() strips it entirely (rather than relying on the reader
 # to honor the parenthetical) for regs from a different CFR title, i.e.
-# 49 CFR Parts 191/192/194/195/199 (PHMSA) -- see _REG_49_CFR_KEYS below. Every other
+# 49 CFR Parts 190-196/199 (PHMSA) -- see _REG_49_CFR_KEYS below. Every other
 # reg (Colorado and the existing 40 CFR subparts alike) keeps it, so
 # SYSTEM_PROMPT itself, and every hint/test built on it, is unchanged.
 _EPA_ADMINISTRATOR_SENTENCE = (
@@ -185,7 +185,7 @@ _EPA_ADMINISTRATOR_SENTENCE = (
 # row's summary is never told, even conditionally, that "the Administrator"
 # might be the EPA Administrator; their own REG_PROMPT_HINTS entry supplies
 # the correct (PHMSA) meaning instead.
-_REG_49_CFR_KEYS = frozenset({"p191", "p192", "p194", "p195", "p199"})
+_REG_49_CFR_KEYS = frozenset({"p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"})
 
 # The rendered prompt for the default (oil & gas) audience -- every existing
 # call site and test refers to this literal string, so it must stay
@@ -509,45 +509,44 @@ REG_PROMPT_HINTS["p191"] = (
 REG_PROMPT_HINTS["p192"] = (
     "This row is from 49 CFR Part 192 (PHMSA, US DOT) -- gas pipeline "
     "safety standards. \"Administrator\" means the PHMSA Administrator -- "
-    "NEVER EPA, never \"the Division\" or a Colorado agency. \"Operator\" "
-    "is the pipeline operator, not an equipment or well-site operator. "
-    "\"This part\" means Part 192, never 40 CFR. "
-    "Gathering (Type A/B/C/R), transmission, and distribution are legally "
-    "distinct -- never generalize a requirement across them. Class "
-    "locations 1-4 are population-density design classes, not hazard "
-    "classes. Expand MAOP, SMYS, HCA, MCA, IM, DIMP, OQ, ILI, ECDA, GWUT, "
-    "PIR, or UNGSF only as the text defines them, only where used. "
-    "Incorporated standards (API, ASME, NACE/AMPP, PPI, ASTM) are named, "
-    "never described. Describe a table by its purpose, not cell by cell; a "
-    "figure-omitted row has no formula -- never reconstruct one. "
-    "\"[Reserved]\" summarizes as \"[Reserved] -- no requirements,\" "
-    "nothing more. A definition row states what a term means, scoped to "
-    "its own section -- \"high\" vs. \"moderate\" consequence area must "
-    "not be conflated. Say nothing about Colorado, CDPHE, AQCC, or ECMC "
-    "unless the text does. An effective date in the text is a real "
-    "requirement."
+    "NEVER EPA, never a Colorado agency. \"Operator\" is the pipeline "
+    "operator. \"This part\" means Part 192, never 40 CFR. Gathering (Type "
+    "A/B/C/R), transmission, and distribution are legally distinct -- never "
+    "generalize across them. Class locations 1-4 are population-density "
+    "design classes, not hazard classes. Expand MAOP, SMYS, HCA, MCA, IM, "
+    "DIMP, OQ, ILI, ECDA, GWUT, PIR, or UNGSF only as the text defines "
+    "them. RMV means rupture-mitigation valve, RCV remote-control valve, "
+    "ASV automatic shutoff valve -- expand only as the text does; name "
+    "repair-schedule categories (immediate, one-year, two-year, monitored) "
+    "only as the section names them. Incorporated standards (API, ASME, "
+    "NACE/AMPP, PPI, ASTM) are named, never described. Describe a table by "
+    "its purpose; a figure-omitted row has no formula. \"[Reserved]\" "
+    "summarizes as \"[Reserved] -- no requirements.\" A definition row is "
+    "scoped to its own section -- \"high\" vs. \"moderate\" consequence area "
+    "must not be conflated. Say nothing about Colorado, CDPHE, AQCC, or "
+    "ECMC unless the text does. An effective date is a real requirement."
 )
 
 
 REG_PROMPT_HINTS["p195"] = (
     "This row is from 49 CFR Part 195 (PHMSA, US DOT) -- Transportation of "
-    "Hazardous Liquids by Pipeline. It covers hazardous liquid and carbon "
-    "dioxide pipelines, not gas. \"Administrator\" means the PHMSA "
-    "Administrator (or the Associate Administrator for Pipeline Safety) -- "
-    "NEVER EPA, never \"the Division\" or any Colorado agency. "
-    "\"Operator\" is the pipeline operator, not a well-site or equipment "
-    "operator. \"This part\" means Part 195. Highly volatile liquid (HVL), "
-    "rural gathering line, low-stress line and breakout tank are distinct "
-    "defined categories -- never generalize across them. Integrity "
-    "management lives in Sec. 195.452 and high consequence "
-    "area is defined by Sec. 195.450; cite them only where the text does, "
-    "and never conflate HCA with an unusually sensitive area. Expand HVL, "
-    "HCA, IM, MOP, ILI or EFRD only as this text defines them. Incorporated "
-    "standards (API 653, API 650, ASME, NACE/AMPP) are named, never "
-    "described. Describe a table by its purpose, not cell by cell. "
-    "\"[Reserved]\" summarizes as \"[Reserved] -- no requirements,\" "
-    "nothing more. A definition row is scoped to its own section. Say "
-    "nothing about Colorado, CDPHE, AQCC, or ECMC unless the text does."
+    "Hazardous Liquids by Pipeline: hazardous liquid and carbon dioxide "
+    "pipelines, not gas. \"Administrator\" means the PHMSA Administrator (or "
+    "the Associate Administrator for Pipeline Safety) -- NEVER EPA, never a "
+    "Colorado agency. \"Operator\" is the pipeline operator. \"This part\" "
+    "means Part 195. Highly volatile liquid (HVL), rural gathering line, "
+    "low-stress line and breakout tank are distinct defined categories -- "
+    "never generalize across them. Integrity management is Sec. 195.452 and "
+    "high consequence area is defined by Sec. 195.450; cite them only where "
+    "the text does; never conflate HCA with an unusually sensitive area. "
+    "Expand HVL, HCA, IM, MOP, ILI or EFRD only as the text defines them. "
+    "RMV means rupture-mitigation valve, RCV remote-control valve, ASV "
+    "automatic shutoff valve -- expand only as the text does; name "
+    "repair-schedule categories (immediate, one-year, two-year, monitored) "
+    "only as the section names them. Incorporated standards (API 653, API "
+    "650, ASME, NACE/AMPP) are named, never described. \"[Reserved]\" "
+    "summarizes as \"[Reserved] -- no requirements.\" Say nothing about "
+    "Colorado, CDPHE, AQCC, or ECMC unless the text does."
 )
 
 REG_PROMPT_HINTS["p199"] = (
@@ -586,6 +585,75 @@ REG_PROMPT_HINTS["p194"] = (
     "resource standards named in the text (NFPA 30, API RP 2350, 33 CFR "
     "154) are named, never described. Say nothing about Colorado, CDPHE, "
     "AQCC, or ECMC unless the text does."
+)
+
+
+# --------------------------------------------------------------------------
+# Batch C: 49 CFR Parts 190 / 193 / 196 (PHMSA)
+# --------------------------------------------------------------------------
+
+REG_PROMPT_HINTS["p190"] = (
+    "This row is from 49 CFR Part 190 (PHMSA, US DOT) -- Pipeline Safety "
+    "Enforcement and Regulatory Procedures: how PHMSA inspects, enforces, "
+    "holds hearings, and makes rules. It sets no pipeline design or "
+    "operating standard itself. \"Administrator\" means the PHMSA "
+    "Administrator and \"Associate Administrator\" the Associate "
+    "Administrator for Pipeline Safety -- NEVER EPA, never \"the Division\" "
+    "or any Colorado agency. \"Respondent\" is the person a proceeding is "
+    "brought against; \"operator\" is the pipeline operator. \"This part\" "
+    "means Part 190. Notice of probable violation, notice of amendment, "
+    "compliance order, corrective action order, safety order, emergency "
+    "order, consent order and final order are distinct instruments -- name "
+    "the one the text names, never substitute another. State a "
+    "civil-penalty amount, day count, or deadline ONLY as this row prints "
+    "it, with any date the text attaches -- never a remembered or "
+    "inflation-adjusted maximum, never a figure from another section. A "
+    "hearing is the informal Sec. 190.211 hearing unless the text says "
+    "\"formal\". \"[Reserved]\" summarizes as \"[Reserved] -- no requirements.\" "
+    "Say nothing about Colorado, CDPHE, AQCC, or ECMC unless the text does."
+)
+
+REG_PROMPT_HINTS["p193"] = (
+    "This row is from 49 CFR Part 193 (PHMSA, US DOT) -- Liquefied Natural "
+    "Gas Facilities: Federal Safety Standards. It covers LNG facilities "
+    "(siting, design, construction, equipment, operations, maintenance, "
+    "personnel, fire protection, security), not gas pipelines generally. "
+    "\"Administrator\" means the PHMSA Administrator -- NEVER EPA, never a "
+    "Colorado agency. \"Operator\" is the LNG facility operator. \"This "
+    "part\" means Part 193. \"LNG\", \"LNG facility\", \"LNG plant\", "
+    "\"impoundment\" / \"impounding system\", \"vaporizer\" (ambient vs. "
+    "heated), \"container\", \"design spill\", \"exclusion zone\", "
+    "\"thermal radiation\" and \"vapor-gas dispersion\" are defined or "
+    "siting terms -- use them only as Sec. 193.2007 and the section in front "
+    "of you define them, never as general engineering words. NFPA 59A (and "
+    "its edition), API Std 620, ASME BPVC, ASCE/SEI 7 and the GTI models are "
+    "incorporated by reference: name them exactly, never describe or "
+    "paraphrase what they require. A dimension, distance, time or pressure "
+    "is stated ONLY as the text prints it. Subpart J is plant security, not "
+    "cybersecurity. \"[Reserved]\" summarizes as \"[Reserved] -- no "
+    "requirements.\" Say nothing about Colorado, CDPHE, AQCC, or ECMC unless "
+    "the text does."
+)
+
+REG_PROMPT_HINTS["p196"] = (
+    "This row is from 49 CFR Part 196 (PHMSA, US DOT) -- Protection of "
+    "Underground Pipelines From Excavation Activity, the federal "
+    "excavation-damage-prevention rule. Its duties fall on the \"excavator\" "
+    "(the person doing the digging), not the pipeline operator, except "
+    "where the text names \"pipeline operator\" -- keep the two apart. "
+    "\"Administrator\" means the PHMSA Administrator -- NEVER EPA, never a "
+    "Colorado agency or the Colorado 811 program. \"One-call\" means the "
+    "notification system Sec. 196.3 defines; \"excavation damage\" and "
+    "\"excavation\" mean only what that section says. \"This part\" means Part "
+    "196. Subpart C is PHMSA's administrative enforcement process, which "
+    "runs through 49 CFR Part 190 (a separate document in this corpus) -- "
+    "name Part 190 when the text does and never describe its procedures "
+    "beyond what this row prints. A civil-penalty amount or statutory "
+    "citation (49 U.S.C. 60114, 60122) is stated ONLY as the text prints "
+    "it, never a remembered maximum. A question-style section (\"What must "
+    "an excavator do ...?\") is answered by its own text. \"[Reserved]\" "
+    "summarizes as \"[Reserved] -- no requirements.\" Say nothing about "
+    "Colorado, CDPHE, AQCC, or ECMC unless the text does."
 )
 
 

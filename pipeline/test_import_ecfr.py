@@ -870,6 +870,9 @@ P192_XML = os.path.join(SOURCES, "P192.xml")
 P194_XML = os.path.join(SOURCES, "P194.xml")
 P195_XML = os.path.join(SOURCES, "P195.xml")
 P199_XML = os.path.join(SOURCES, "P199.xml")
+P190_XML = os.path.join(SOURCES, "P190.xml")
+P193_XML = os.path.join(SOURCES, "P193.xml")
+P196_XML = os.path.join(SOURCES, "P196.xml")
 
 
 def _mini_part_xml(body: str, part: str = "192") -> str:
@@ -948,20 +951,30 @@ class CfrPartResolverTests(unittest.TestCase):
         self.assertEqual(ie._resolve_target_reg_49("195", "452"), "p195")
         self.assertEqual(ie._resolve_target_reg_49("199", "3"), "p199")
 
+    def test_190_193_196_resolve_by_part_prefix(self):
+        """Batch C: the pipeline corpus is eight whole parts."""
+        self.assertEqual(ie._resolve_target_reg_49("190", "9"), "p190")
+        self.assertEqual(ie._resolve_target_reg_49("190", "223"), "p190")
+        self.assertEqual(ie._resolve_target_reg_49("193", "2007"), "p193")
+        self.assertEqual(ie._resolve_target_reg_49("196", "1"), "p196")
+
     def test_other_49_cfr_parts_do_not_resolve(self):
-        # 190, 193, 196 and 198 are pipeline-safety parts that are NOT in the
-        # corpus; 1.97 is the DOT delegation section.
-        for part, num in (("190", "9"), ("193", "2007"), ("196", "1"), ("198", "37"), ("1", "97")):
+        # 198 (state grants) is the one pipeline-safety part NOT in the
+        # corpus; 1.97 is the DOT delegation section; 7 is DOT FOIA.
+        for part, num in (("198", "37"), ("1", "97"), ("7", "29")):
             self.assertIsNone(ie._resolve_target_reg_49(part, num))
 
     def test_cfr_part_to_regkey_mapping(self):
         self.assertEqual(
             ie.CFR_PART_TO_REGKEY,
             {
+                "49-190": "p190",
                 "49-191": "p191",
                 "49-192": "p192",
+                "49-193": "p193",
                 "49-194": "p194",
                 "49-195": "p195",
+                "49-196": "p196",
                 "49-199": "p199",
             },
         )
@@ -1287,14 +1300,13 @@ class PartCitationLinkingTests(unittest.TestCase):
         self.assertIn('href="/regulations/p192"', out)
 
     def test_out_of_corpus_cfr_parts_are_bucketed_not_linked(self):
-        # Batch B put 194/195/199 in the corpus; 190, 193, 196 and 198 stay
-        # out, and so does 49 CFR 1.97.
+        # Batch B put 194/195/199 in the corpus and Batch C 190/193/196; 198
+        # stays out, and so do 49 CFR 1.97 and 49 CFR 7.29 (DOT FOIA).
         for text in (
-            "under § 190.9 of this chapter",
-            "part 193 of this chapter",
-            "part 196 of this chapter",
+            "part 198 of this chapter",
             "§ 198.37 of this chapter",
             "49 CFR 1.97",
+            "49 CFR 7.29",
         ):
             out, unres = self._link(text)
             self.assertNotIn("xref", out)
@@ -1308,6 +1320,12 @@ class PartCitationLinkingTests(unittest.TestCase):
             ("part 195 of this chapter", "p195"),
             ("part 199 of this chapter", "p199"),
             ("§ 195.452 of this chapter", "p195"),
+            # Batch C
+            ("under § 190.9 of this chapter", "p190"),
+            ("49 CFR 190.206", "p190"),
+            ("part 193 of this chapter", "p193"),
+            ("§ 193.2007 of this chapter", "p193"),
+            ("part 196 of this chapter", "p196"),
         ):
             out, unres = self._link(text)
             self.assertIn(f'href="/regulations/{reg}"', out, text)
@@ -1963,6 +1981,455 @@ class AllSixByteIdenticalBaselineTests(unittest.TestCase):
                 expected,
                 f"{reg} report diverged from its baseline",
             )
+
+
+# ---------------------------------------------------------------------------
+# Batch C: 49 CFR Parts 190 / 193 / 196
+# ---------------------------------------------------------------------------
+
+
+class BatchCPartMetaTests(unittest.TestCase):
+    EXPECTED = {
+        "p190": (190, "49 CFR Part 190",
+                 "49 CFR Part 190 — Pipeline Safety Enforcement and Regulatory Procedures",
+                 "https://www.ecfr.gov/current/title-49/part-190"),
+        "p193": (193, "49 CFR Part 193",
+                 "49 CFR Part 193 — Liquefied Natural Gas Facilities: Federal Safety Standards",
+                 "https://www.ecfr.gov/current/title-49/part-193"),
+        "p196": (196, "49 CFR Part 196",
+                 "49 CFR Part 196 — Protection of Underground Pipelines From Excavation Activity",
+                 "https://www.ecfr.gov/current/title-49/part-196"),
+    }
+
+    def test_meta_shape(self):
+        for key, (part, cite, title, url) in self.EXPECTED.items():
+            meta = ie.SUBPART_META[key]
+            self.assertEqual(meta["title"], 49, key)
+            self.assertEqual(meta["part"], part, key)
+            self.assertEqual(meta["document"], "part", key)
+            self.assertEqual(meta["source"], "xml", key)
+            self.assertEqual(meta["table_algorithm"], "xml", key)
+            self.assertFalse(meta["enable_table_ref_links"], key)
+            self.assertEqual(meta["root_citation"], cite, key)
+            self.assertEqual(meta["root_title"], title, key)
+            self.assertEqual(meta["url"], url, key)
+            self.assertTrue(meta["has_subparts"], key)
+
+    def test_all_three_are_in_the_corpus_and_198_is_not(self):
+        for key in self.EXPECTED:
+            self.assertIn(key, ie.CORPUS_REGS)
+            self.assertEqual(ie.ECFR_URL[key], self.EXPECTED[key][3])
+            self.assertEqual(ie._norm_reg(key.upper()), key)
+        self.assertNotIn("p198", ie.SUBPART_META)
+        self.assertNotIn("49-198", ie.CFR_PART_TO_REGKEY)
+
+    def test_root_titles_match_the_printed_div5_head(self):
+        import xml.etree.ElementTree as ET
+
+        for key, xmlp in (("p190", P190_XML), ("p193", P193_XML), ("p196", P196_XML)):
+            if not os.path.exists(xmlp):
+                self.skipTest(f"{xmlp} not present")
+            root = ET.parse(xmlp).getroot()
+            div5 = [d for d in root.iter("DIV5") if d.get("TYPE") == "PART"][0]
+            head = re.sub(r"\s+", " ", "".join(div5.find("HEAD").itertext())).strip()
+            printed = head.split("—", 1)[1].lower()
+            stored = ie.SUBPART_META[key]["root_title"].split(" — ", 1)[1].lower()
+            self.assertEqual(stored, printed, key)
+
+    def test_no_per_part_quirk_tables_needed(self):
+        for key in self.EXPECTED:
+            self.assertEqual(ie.PART_FLAT_APPENDICES.get(key, set()), set())
+            self.assertEqual(ie.PART_INLINE_DEFINITION_SECTIONS.get(key, set()), set())
+
+    def test_the_six_subparts_are_still_untouched(self):
+        for key in ("ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz"):
+            self.assertNotIn("document", ie.SUBPART_META[key])
+
+
+class PartListCitationTests(unittest.TestCase):
+    """Batch C: "parts 192, 193, or 195 of this chapter" (Part 190/196/199)
+    and "49 CFR parts 190 through 199" link every printed member, not just
+    the first, and a bare trailing section number of a Batch C part
+    ("§§ 190.207 through 190.213") links too."""
+
+    KNOWN = {
+        "sec-p190-top-REG-p190", "sec-p190-190.207", "sec-p190-190.213",
+        "sec-p190-190.223", "sec-p190-190.311",
+    }
+
+    def _link(self, text, reg="p190", sec="sec-p190-190.223"):
+        unresolved = defaultdict(Counter)
+        out = ie.link_citations(text, reg, sec, sec, self.KNOWN, ie.CORPUS_REGS, unresolved)
+        return out, unresolved
+
+    def test_three_member_list_links_each_member(self):
+        out, unres = self._link("not addressed in 49 CFR parts 192, 193, or 195, due to")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/p192">parts 192</a>', out)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/p193">193</a>', out)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/p195">195</a>', out)
+        self.assertEqual(sum(unres[ie.BUCKET_CFR].values()), 0)
+        # separators and everything else are untouched
+        self.assertTrue(out.startswith("not addressed in 49 CFR "))
+        self.assertTrue(out.endswith("</a>, due to"))
+
+    def test_four_member_list_with_oxford_comma_and_subchapter_tail(self):
+        out, _ = self._link("under parts 192, 193, 195, and 199 of this subchapter are")
+        for reg, txt in (("p192", "parts 192"), ("p193", "193"), ("p195", "195"), ("p199", "199")):
+            self.assertIn(f'href="/regulations/{reg}">{txt}</a>', out)
+        self.assertIn("</a> of this subchapter are", out)
+
+    def test_through_range_links_both_printed_endpoints_only(self):
+        out, unres = self._link("any regulation in 49 CFR parts 190 through 199, or order")
+        self.assertIn('<span class="xref" data-target="sec-p190-top-REG-p190">parts 190</span>', out)
+        self.assertIn('href="/regulations/p199">199</a>', out)
+        self.assertNotIn("p191", out)   # nothing between the endpoints is invented
+        self.assertEqual(sum(unres[ie.BUCKET_CFR].values()), 0)
+
+    def test_dash_range(self):
+        out, _ = self._link("specified in 49 CFR parts 190-199 is available")
+        self.assertIn('data-target="sec-p190-top-REG-p190">parts 190</span>-<a', out)
+        self.assertIn('href="/regulations/p199">199</a> is available', out)
+
+    def test_single_member_keeps_the_whole_phrase_as_link_text(self):
+        out, _ = self._link("subject to part 191 of this chapter to")
+        self.assertIn('href="/regulations/p191">part 191 of this chapter</a>', out)
+        out2, _ = self._link("or 49 CFR part 190, is subject")
+        self.assertIn('data-target="sec-p190-top-REG-p190">part 190</span>', out2)
+
+    def test_out_of_corpus_member_is_bucketed_on_its_own(self):
+        out, unres = self._link("see parts 192 and 198 of this chapter")
+        self.assertIn('href="/regulations/p192">parts 192</a>', out)
+        self.assertNotIn("p198", out)
+        self.assertEqual(unres[ie.BUCKET_CFR]["part 198"], 1)
+
+    def test_a_comma_followed_by_a_number_is_not_a_list(self):
+        out, unres = self._link("as required by part 195, 30 days after")
+        self.assertIn('href="/regulations/p195">part 195</a>, 30 days after', out)
+        self.assertEqual(sum(unres[ie.BUCKET_CFR].values()), 0)
+
+    def test_lowercase_part_only(self):
+        """The capitalised form ("Part 192 of this chapter", § 193.2001) is
+        deliberately NOT matched -- widening it changes the Batch A/B parses
+        (see REPORT_batchC.md); a regression here means someone did."""
+        out, unres = self._link("subject to Part 191 of this chapter")
+        self.assertNotIn("xref", out)
+
+    def test_bare_trailing_section_of_a_batch_c_part_links(self):
+        out, _ = self._link("proceedings under §§ 190.207 through 190.213 to determine")
+        self.assertIn('data-target="sec-p190-190.207">§§ 190.207</span>', out)
+        self.assertIn('data-target="sec-p190-190.213">190.213</span>', out)
+
+    def test_bare_section_of_a_batch_b_part_is_still_emitted_verbatim(self):
+        """PART_BARE_LINK_PARTS keeps 194/195/199 exactly as Batch B shipped
+        them (their bare trailing members were never linked)."""
+        self.assertEqual(ie.PART_BARE_LINK_PARTS, frozenset({"190", "191", "192", "193", "196"}))
+        out, unres = self._link("specified in 49 CFR 192.614 and 195.442 and 49 U.S.C. 60114",
+                                reg="p196", sec="sec-p196-196.111")
+        self.assertIn('href="/regulations/p192">49 CFR 192.614</a> and 195.442 and', out)
+        self.assertNotIn(">195.442<", out)
+        self.assertEqual(sum(unres[ie.BUCKET_CFR].values()), 0)
+        self.assertEqual(sum(unres[ie.BUCKET_UNPARSEABLE].values()), 0)
+
+    def test_hyphen_range_trailing_member_stays_plain(self):
+        # "§§ 190.311-190.329": the bare alternative refuses to fire after "-"
+        # (figure-placeholder URL protection) -- documented, not linked
+        out, _ = self._link("in accordance with §§ 190.311-190.329.")
+        self.assertIn('data-target="sec-p190-190.311">§§ 190.311</span>-190.329.', out)
+
+
+class PartDefinitionSuperscriptTermTests(unittest.TestCase):
+    """§ 193.2007 prints "<I>m</I><SU>3</SU> means a volumetric unit": the
+    term is m³, not m."""
+
+    XML = """<DIV5 TYPE="PART" N="193"><HEAD>PART 193—X</HEAD>
+      <DIV6 TYPE="SUBPART" N="A"><HEAD>Subpart A—General</HEAD>
+        <DIV8 TYPE="SECTION" N="193.2007"><HEAD>§ 193.2007 Definitions.</HEAD>
+          <P>As used in this part:</P>
+          <P><I>g</I> means the standard acceleration of gravity of 9.806 meters per second
+<SU>2</SU> (32.17 feet per second
+<SU>2</SU>).</P>
+          <P><I>m</I>
+<SU>3</SU> means a volumetric unit which is one cubic metre, 35.3147 ft.
+<SU>3</SU>, or 264.1720 U.S. gallons.</P>
+          <P><I>Operator</I> means a person who owns or operates an LNG facility.</P>
+        </DIV8>
+      </DIV6></DIV5>"""
+
+    def setUp(self):
+        import tempfile
+
+        self.tmp = tempfile.NamedTemporaryFile("w", suffix=".xml", delete=False, encoding="utf-8")
+        self.tmp.write(self.XML)
+        self.tmp.close()
+        self.rows, self.rep = ie.parse_ecfr_part("p193", self.tmp.name)
+
+    def tearDown(self):
+        os.unlink(self.tmp.name)
+
+    def test_m3_term_carries_its_superscript(self):
+        byid = {r["id"]: r for r in self.rows}
+        self.assertIn("sec-p193-193.2007-m3", byid)
+        self.assertNotIn("sec-p193-193.2007-m", byid)
+        row = byid["sec-p193-193.2007-m3"]
+        self.assertEqual(row["citation"], "§ 193.2007 “m³”")
+        self.assertEqual(row["kind"], "definition")
+        self.assertIn("<i>m</i><sup>3</sup> means a volumetric unit", row["full_text"])
+
+    def test_a_superscript_later_in_the_paragraph_does_not_join_the_term(self):
+        byid = {r["id"]: r for r in self.rows}
+        self.assertIn("sec-p193-193.2007-g", byid)
+        self.assertEqual(byid["sec-p193-193.2007-g"]["citation"], "§ 193.2007 “g”")
+        self.assertIn("per second<sup>2</sup>", byid["sec-p193-193.2007-g"]["full_text"])
+        self.assertEqual(byid["sec-p193-193.2007-operator"]["citation"], "§ 193.2007 “Operator”")
+        self.assertEqual([d["term"] for d in self.rep["definitions"]], ["g", "m³", "Operator"])
+
+    def test_no_other_part_prints_the_shape(self):
+        for xmlp in (P190_XML, P191_XML, P192_XML, P194_XML, P195_XML, P196_XML, P199_XML):
+            if not os.path.exists(xmlp):
+                continue
+            with open(xmlp, encoding="utf-8") as f:
+                self.assertFalse(re.search(r"<P><I>[^<]*</I>\s*<SU>", f.read()), xmlp)
+
+
+class _BatchCFullParseMixin(_BatchBFullParseMixin):
+    def test_reserved_sections_are_heading_only_rows(self):
+        byid = {r["id"]: r for r in self.rows}
+        for cite in self.rep["reserved"]:
+            n = cite.split(" ", 1)[1]
+            self.assertIn(f"sec-{self.REG}-{n}", byid, cite)
+            self.assertEqual(byid[f"sec-{self.REG}-{n}"]["full_text"], "<p>[Reserved]</p>", cite)
+            self.assertEqual(byid[f"sec-{self.REG}-{n}"]["kind"], "section", cite)
+
+    def test_no_tables_no_images_no_appendices(self):
+        self.assertEqual(self.rep["tables"], [])
+        self.assertEqual(self.rep["images"], [])
+        self.assertFalse([r for r in self.rows if r["kind"] == "appendix"])
+        self.assertFalse([r for r in self.rows if "-TABLE-" in r["id"] or "-APPENDIX-" in r["id"]])
+
+    def test_citations_and_editorial_notes_are_stripped(self):
+        joined = " ".join(r["full_text"] for r in self.rows)
+        self.assertNotIn("Amdt. ", joined)
+        self.assertNotIn("Editorial Note", joined)
+        self.assertNotIn("unless otherwise noted", joined)
+
+
+class P190FullParseTests(_BatchCFullParseMixin, unittest.TestCase):
+    REG, XMLP, DEF_SECTION = "p190", P190_XML, "190.3"
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(P190_XML):
+            raise unittest.SkipTest("P190.xml not present")
+        cls.rows, cls.rep = ie.parse_ecfr_part("p190", P190_XML)
+
+    def test_five_subparts_and_nothing_else_at_top_level(self):
+        top = [r for r in self.rows if r["parent_id"] == "sec-p190-top-REG-p190"]
+        self.assertEqual([r["citation"] for r in top], [f"Subpart {c}" for c in "ABCDE"])
+        self.assertEqual([r["title"] for r in top][1], "Subpart B — Enforcement")
+
+    def test_counts(self):
+        self.assertEqual(len(self.rows), 517)
+        self.assertEqual(self.rep["n_sections"], 64)
+        self.assertEqual(self.rep["n_definitions"], 17)
+        self.assertEqual(self.rep["reserved"], ["§ 190.215", "§§ 190.229-190.231"])
+        self.assertEqual(
+            [g["heading"] for g in self.rep["subject_groups"]],
+            ["Compliance Orders", "Civil Penalties", "Specific Relief"],
+        )
+        self.assertEqual(self.rep["stripped"]["CITA"], 44)
+
+    def test_definition_rows(self):
+        byid = {r["id"]: r for r in self.rows}
+        for slug, term in (("respondent", "Respondent"), ("associate-administrator", "Associate Administrator"),
+                           ("phmsa", "PHMSA"), ("new-and-novel-technologies", "New and novel technologies")):
+            r = byid[f"sec-p190-190.3-{slug}"]
+            self.assertEqual(r["citation"], f"§ 190.3 “{term}”")
+            self.assertEqual(r["parent_id"], "sec-p190-190.3")
+
+    def test_civil_penalty_amounts_and_dates_survive_verbatim(self):
+        byid = {r["id"]: r for r in self.rows}
+        a = byid["sec-p190-190.223-(a)"]["full_text"]
+        self.assertIn("not to exceed $272,926 for each violation for each day", a)
+        self.assertIn("not to exceed $2,729,245 for any related series of violations", a)
+        self.assertIn("$99,704", byid["sec-p190-190.223-(c)"]["full_text"])
+        self.assertIn("$1,584", byid["sec-p190-190.223-(d)"]["full_text"])
+        self.assertIn("as adjusted by 40 CFR 19.4", byid["sec-p190-190.223-(b)"]["full_text"])
+        self.assertIn("less than $25,000", byid["sec-p190-190.211-(c)"]["full_text"])
+        self.assertIn("exceeding $10,000", byid["sec-p190-190.227-(a)"]["full_text"])
+
+    def test_cross_part_links_reach_all_four_cited_parts(self):
+        joined = " ".join(r["full_text"] for r in self.rows)
+        for reg in ("p192", "p193", "p195", "p199"):
+            self.assertIn(f'href="/regulations/{reg}"', joined, reg)
+        self.assertNotIn('href="/regulations/p198"', joined)
+        self.assertEqual(self.rep["link_counts"]["cross_doc"], 15)
+        # the 49 CFR parts that are not pipeline safety stay bucketed
+        self.assertEqual(dict(self.rep["unresolved"][ie.BUCKET_CFR]), {"part 7": 3, "part 89": 1, "49 CFR 7.29": 1})
+
+    def test_heading_plus_item_on_one_line_splits(self):
+        byid = {r["id"]: r for r in self.rows}
+        self.assertEqual(byid["sec-p190-190.237-(d)"]["full_text"],
+                         "<p><i>Associate Administrator's responsibilities.</i></p>")
+        self.assertEqual(byid["sec-p190-190.237-(d)-(1)"]["parent_id"], "sec-p190-190.237-(d)")
+        self.assertTrue(byid["sec-p190-190.237-(d)-(1)"]["full_text"].startswith(
+            "<p><i>Formal hearing requested.</i> Upon receipt of a petition"))
+
+
+class P193FullParseTests(_BatchCFullParseMixin, unittest.TestCase):
+    REG, XMLP, DEF_SECTION = "p193", P193_XML, "193.2007"
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(P193_XML):
+            raise unittest.SkipTest("P193.xml not present")
+        cls.rows, cls.rep = ie.parse_ecfr_part("p193", P193_XML)
+
+    def test_ten_subparts_in_order(self):
+        top = [r for r in self.rows if r["parent_id"] == "sec-p193-top-REG-p193"]
+        self.assertEqual([r["citation"] for r in top], [f"Subpart {c}" for c in "ABCDEFGHIJ"])
+        self.assertEqual(top[-1]["title"], "Subpart J — Security")
+
+    def test_counts(self):
+        self.assertEqual(len(self.rows), 436)
+        self.assertEqual(self.rep["n_sections"], 96)
+        self.assertEqual(self.rep["n_definitions"], 36)
+        self.assertEqual(len(self.rep["reserved"]), 18)
+        self.assertEqual(
+            [g["heading"] for g in self.rep["subject_groups"]],
+            ["Materials", "Design of Components and Buildings", "Impoundment Design and Capacity",
+             "LNG Storage Tanks", "Vaporization Equipment"],
+        )
+
+    def test_reserved_ranges_inside_subject_groups_are_rows(self):
+        byid = {r["id"]: r for r in self.rows}
+        for n in ("193.2103-193.2117", "193.2121-193.2153", "193.2189-193.2233", "193.2403-193.2439"):
+            self.assertEqual(byid[f"sec-p193-{n}"]["parent_id"], "sec-p193-PART-" + ("C" if n < "193.24" else "E"))
+            self.assertEqual(byid[f"sec-p193-{n}"]["citation"], f"§§ {n}")
+
+    def test_m3_definition_and_key_terms(self):
+        byid = {r["id"]: r for r in self.rows}
+        self.assertEqual(byid["sec-p193-193.2007-m3"]["citation"], "§ 193.2007 “m³”")
+        for slug in ("lng-facility", "impounding-system", "vaporizer", "operator", "waterfront-lng-plant"):
+            self.assertIn(f"sec-p193-193.2007-{slug}", byid)
+
+    def test_cross_part_links_and_standards_bucket(self):
+        joined = " ".join(r["full_text"] for r in self.rows)
+        self.assertIn('href="/regulations/p192">§ 192.461</a>', joined)
+        self.assertIn('href="/regulations/p191">§ 191.23</a>', joined)
+        self.assertIn('href="/regulations/p190">49 CFR 190.206</a>', joined)
+        self.assertEqual(self.rep["link_counts"]["cross_doc"], 5)
+        std = dict(self.rep["unresolved"][ie.BUCKET_STANDARD])
+        self.assertEqual(std["NFPA 59A"], 4)
+        self.assertIsNone(re.search(r"<(?:a|span) [^>]*>NFPA", joined))   # the name is never a link
+        # "incorporated by reference, see § 193.2013" links to the IBR section
+        self.assertGreaterEqual(joined.count('data-target="sec-p193-193.2013"'), 15)
+
+    def test_fp_paragraphs_are_kept(self):
+        # Part 193 prints two <FP> flush paragraphs (§ 193.2013); kept as <p>
+        import xml.etree.ElementTree as ET
+        root = ET.parse(P193_XML).getroot()
+        fps = [re.sub(r"\s+", " ", "".join(fp.itertext())).strip() for fp in root.iter("FP")]
+        self.assertEqual(len(fps), 2)
+        joined = " ".join(r["full_text"] for r in self.rows)
+        for t in fps:
+            self.assertIn(t[:40], re.sub(r"<[^>]+>", "", joined))
+
+
+class P196FullParseTests(_BatchCFullParseMixin, unittest.TestCase):
+    REG, XMLP, DEF_SECTION = "p196", P196_XML, "196.3"
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(P196_XML):
+            raise unittest.SkipTest("P196.xml not present")
+        cls.rows, cls.rep = ie.parse_ecfr_part("p196", P196_XML)
+
+    def test_definition_section_produced_definition_rows(self):
+        # five terms -- fewer than the mixin's >= 10 floor, so pinned exactly
+        own = [r for r in self.rows if r["kind"] == "definition"]
+        self.assertEqual([r["citation"] for r in own],
+                         ['§ 196.3 “Damage”', '§ 196.3 “Excavation”', '§ 196.3 “Excavator”',
+                          '§ 196.3 “One-call”', '§ 196.3 “Pipeline”'])
+        self.assertEqual({r["parent_id"] for r in own}, {"sec-p196-196.3"})
+
+    def test_three_subparts_fourteen_sections(self):
+        top = [r for r in self.rows if r["parent_id"] == "sec-p196-top-REG-p196"]
+        self.assertEqual([r["citation"] for r in top], ["Subpart A", "Subpart B", "Subpart C"])
+        self.assertEqual(len(self.rows), 27)
+        self.assertEqual(self.rep["n_sections"], 14)
+        self.assertEqual(self.rep["reserved"], ["§ 196.105"])
+        self.assertEqual(self.rep["subject_groups"], [])
+
+    def test_question_style_section_headings_are_heading_rows(self):
+        byid = {r["id"]: r for r in self.rows}
+        r = byid["sec-p196-196.1"]
+        self.assertEqual(r["title"], "§ 196.1 What is the purpose and scope of this part?")
+        self.assertEqual(r["kind"], "section")
+
+    def test_subpart_c_links_part_190_and_part_198_stays_out(self):
+        byid = {r["id"]: r for r in self.rows}
+        self.assertIn('href="/regulations/p190">part 190</a>', byid["sec-p196-196.203"]["full_text"])
+        joined = " ".join(r["full_text"] for r in self.rows)
+        self.assertNotIn("p198", joined)
+        self.assertEqual(dict(self.rep["unresolved"][ie.BUCKET_CFR]), {"part 198": 1})
+        self.assertEqual(self.rep["link_counts"], {"same_doc": 2, "cross_doc": 6})
+
+    def test_196_109_list_links_192_193_and_195(self):
+        byid = {r["id"]: r for r in self.rows}
+        t = byid["sec-p196-196.109"]["full_text"]
+        self.assertIn('href="/regulations/p192">part 192</a>, <a class="xref-external-reg" '
+                      'href="/regulations/p193">193</a>, or <a class="xref-external-reg" '
+                      'href="/regulations/p195">195</a> of this chapter', t)
+
+
+class AllEightPartsByteIdenticalTests(unittest.TestCase):
+    """Fixture-gated regression: every whole-part parse in the corpus must
+    re-parse byte-identical to out/<key>_parsed.json (rows AND report). The
+    files are the Batch C regeneration: 191/192/195/199 differ from what
+    Batch A/B shipped ONLY by new anchors to p190/p193 (and, for 199, the
+    five "part 192, 193, or 195" lists that now also link 195) -- proven by
+    prove_p19x_batchC.py; 194 is unchanged."""
+
+    KEYS = ("p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199")
+
+    def _paths(self, reg):
+        here = os.path.dirname(os.path.abspath(__file__))
+        xml = os.path.join(SOURCES, f"P{ie.SUBPART_META[reg]['part']}.xml")
+        rows = os.path.join(here, "out", f"{reg}_parsed.json")
+        rep = os.path.join(here, "out", f"{reg}_parsed_report.json")
+        return xml, rows, rep
+
+    def _check(self, reg):
+        import json
+
+        xml, rows_p, rep_p = self._paths(reg)
+        if not (os.path.exists(xml) and os.path.exists(rows_p) and os.path.exists(rep_p)):
+            self.skipTest(f"{reg} source or parsed baseline not present")
+        rows, report = ie.parse_ecfr_part(reg, xml)
+        got_rows = json.dumps(rows, ensure_ascii=False, indent=1)
+        with open(rows_p, encoding="utf-8") as f:
+            self.assertEqual(got_rows, f.read(), f"{reg} rows diverged from out/{reg}_parsed.json")
+        serializable = dict(report)
+        serializable["unresolved"] = {
+            b: sorted(c.items(), key=lambda kv: -kv[1]) for b, c in report["unresolved"].items()
+        }
+        got_rep = json.loads(json.dumps(serializable, ensure_ascii=False))
+        with open(rep_p, encoding="utf-8") as f:
+            expected = json.load(f)
+        # `source_xml` records the path exactly as the CLI was given it
+        # (relative in the workflow, absolute here) -- not part of the parse
+        got_rep.pop("source_xml", None)
+        expected.pop("source_xml", None)
+        self.assertEqual(got_rep, expected, f"{reg} report diverged from out/{reg}_parsed_report.json")
+
+    def test_p190(self): self._check("p190")
+    def test_p191(self): self._check("p191")
+    def test_p192(self): self._check("p192")
+    def test_p193(self): self._check("p193")
+    def test_p194(self): self._check("p194")
+    def test_p195(self): self._check("p195")
+    def test_p196(self): self._check("p196")
+    def test_p199(self): self._check("p199")
 
 
 if __name__ == "__main__":

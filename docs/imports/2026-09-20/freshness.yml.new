@@ -1,0 +1,100 @@
+name: Source freshness check
+
+on:
+  schedule:
+    # 13:00 UTC Monday = 7:00 AM Mountain (UTC-6, MDT) / 6:00 AM Mountain
+    # Standard Time in winter -- close enough for a weekly heads-up either way.
+    - cron: "0 13 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Run freshness check
+        id: freshness
+        continue-on-error: true
+        run: |
+          # Write the report to a file in the workspace as well as the step
+          # summary: each step gets its OWN $GITHUB_STEP_SUMMARY file, so the
+          # github-script step below cannot read this step's summary (that is
+          # why issue #1 was titled "Source update detected: unknown").
+          set +e
+          python pipeline/freshness.py check --step-summary freshness_report.md
+          rc=$?
+          cat freshness_report.md >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+
+      - name: Open or update issue on change
+        if: steps.freshness.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.existsSync('freshness_report.md')
+              ? fs.readFileSync('freshness_report.md', 'utf8')
+              : '(no report captured)';
+
+            // Pull the "N source(s) changed: key, key, ..." line out of the
+            // report to build a short, stable issue title.
+            const m = summary.match(/\*\*\d+ source\(s\) changed:\*\* (.+)/);
+            const keys = m ? m[1].trim() : 'unknown';
+            const title = `Source update detected: ${keys}`;
+
+            // Find any open issue this workflow previously filed, by title
+            // prefix (avoids depending on a pre-created label existing).
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+            });
+            const issues = openIssues.filter(i => i.title.startsWith('Source update detected:'));
+
+            const body = [
+              summary,
+              '',
+              `_Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}_`,
+            ].join('\n');
+
+            if (issues.length > 0) {
+              const issue = issues[0];
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                title,
+                body,
+              });
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `Re-checked on ${new Date().toISOString().slice(0, 10)} -- still open:\n\n${summary}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              });
+            }
+
+      - name: Fail the job so the run is flagged red
+        if: steps.freshness.outcome == 'failure'
+        run: exit 1

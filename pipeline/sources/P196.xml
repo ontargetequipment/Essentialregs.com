@@ -1,0 +1,97 @@
+<?xml version="1.0"?>
+<DIV5 N="196" TYPE="PART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-196&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 196&amp;quot;}">
+<HEAD>PART 196&#x2014;PROTECTION OF UNDERGROUND PIPELINES FROM EXCAVATION ACTIVITY
+</HEAD>
+<AUTH>
+<HED>Authority:</HED><PSPACE>49 U.S.C. 60101 <I>et seq.;</I> and 49 CFR 1.97.
+</PSPACE></AUTH>
+<SOURCE>
+<HED>Source:</HED><PSPACE>80 FR 43866, July 23, 2015, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV6 N="A" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-196/subpart-A&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 196 Subpart A&amp;quot;}">
+<HEAD>Subpart A&#x2014;General</HEAD>
+<DIV8 N="196.1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.1&quot;,&quot;citation&quot;:&quot;49 CFR 196.1&quot;}">
+<HEAD>&#xA7; 196.1 What is the purpose and scope of this part?</HEAD>
+<P>This part prescribes the minimum requirements that excavators must follow to protect underground pipelines from excavation-related damage. It also establishes an enforcement process for violations of these requirements.</P>
+</DIV8>
+
+<DIV8 N="196.3" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.3&quot;,&quot;citation&quot;:&quot;49 CFR 196.3&quot;}">
+<HEAD>&#xA7; 196.3 Definitions.</HEAD>
+<P><I>Damage</I> or <I>excavation damage</I> means any excavation activity that results in the need to repair or replace a pipeline due to a weakening, or the partial or complete destruction, of the pipeline, including, but not limited to, the pipe, appurtenances to the pipe, protective coatings, support, cathodic protection or the housing for the line device or facility.</P>
+<P><I>Excavation</I> refers to excavation activities as defined in &#xA7; 192.614, and covers all excavation activity involving both mechanized and non-mechanized equipment, including hand tools.</P>
+<P><I>Excavator</I> means any person or legal entity, public or private, proposing to or engaging in excavation.</P>
+<P><I>One-call</I> means a notification system through which a person can notify pipeline operators of planned excavation to facilitate the locating and marking of any pipelines in the excavation area.</P>
+<P><I>Pipeline</I> means all parts of those physical facilities through which gas, carbon dioxide, or a hazardous liquid moves in transportation, including, but not limited to, pipe, valves, and other appurtenances attached or connected to pipe (including, but not limited to, tracer wire, radio frequency identification or other electronic marking system devices), pumping units, compressor units, metering stations, regulator stations, delivery stations, holders, fabricated assemblies, and breakout tanks.</P>
+</DIV8>
+
+</DIV6>
+<DIV6 N="B" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-196/subpart-B&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 196 Subpart B&amp;quot;}">
+<HEAD>Subpart B&#x2014;Damage Prevention Requirements</HEAD>
+<DIV8 N="196.101" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.101&quot;,&quot;citation&quot;:&quot;49 CFR 196.101&quot;}">
+<HEAD>&#xA7; 196.101 What is the purpose and scope of this subpart?</HEAD>
+<P>This subpart prescribes the minimum requirements that excavators must follow to protect pipelines subject to PHMSA or State pipeline safety regulations from excavation-related damage.</P>
+</DIV8>
+
+<DIV8 N="196.103" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.103&quot;,&quot;citation&quot;:&quot;49 CFR 196.103&quot;}">
+<HEAD>&#xA7; 196.103 What must an excavator do to protect underground pipelines from excavation-related damage?</HEAD>
+<P>Prior to and during excavation activity, the excavator must:</P>
+<P>(a) Use an available one-call system before excavating to notify operators of underground pipeline facilities of the timing and location of the intended excavation;</P>
+<P>(b) If underground pipelines exist in the area, wait for the pipeline operator to arrive at the excavation site and establish and mark the location of its underground pipeline facilities before excavating;</P>
+<P>(c) Excavate with proper regard for the marked location of pipelines an operator has established by taking all practicable steps to prevent excavation damage to the pipeline;</P>
+<P>(d) Make additional use of one-call as necessary to obtain locating and marking before excavating to ensure that underground pipelines are not damaged by excavation.</P>
+</DIV8>
+
+<DIV8 N="196.105" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.105&quot;,&quot;citation&quot;:&quot;49 CFR 196.105&quot;}">
+<HEAD>&#xA7; 196.105 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="196.107" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.107&quot;,&quot;citation&quot;:&quot;49 CFR 196.107&quot;}">
+<HEAD>&#xA7; 196.107 What must an excavator do if a pipeline is damaged by excavation activity?</HEAD>
+<P>If a pipeline is damaged in any way by excavation activity, the excavator must promptly report such damage to the pipeline operator, whether or not a leak occurs, at the earliest practicable moment following discovery of the damage.</P>
+</DIV8>
+
+<DIV8 N="196.109" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.109&quot;,&quot;citation&quot;:&quot;49 CFR 196.109&quot;}">
+<HEAD>&#xA7; 196.109 What must an excavator do if damage to a pipeline from excavation activity causes a leak where product is released from the pipeline?</HEAD>
+<P>If damage to a pipeline from excavation activity causes the release of any PHMSA regulated natural and other gas or hazardous liquid as defined in part 192, 193, or 195 of this chapter from the pipeline, the excavator must promptly report the release to appropriate emergency response authorities by calling the 911 emergency telephone number.</P>
+</DIV8>
+
+<DIV8 N="196.111" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.111&quot;,&quot;citation&quot;:&quot;49 CFR 196.111&quot;}">
+<HEAD>&#xA7; 196.111 What if a pipeline operator fails to respond to a locate request or fails to accurately locate and mark its pipeline?</HEAD>
+<P>PHMSA may enforce existing requirements applicable to pipeline operators, including those specified in 49 CFR 192.614 and 195.442 and 49 U.S.C. 60114 if a pipeline operator fails to properly respond to a locate request or fails to accurately locate and mark its pipeline. The limitation in 49 U.S.C. 60114(f) does not apply to enforcement taken against pipeline operators and excavators working for pipeline operators.</P>
+</DIV8>
+
+</DIV6>
+<DIV6 N="C" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-196/subpart-C&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 196 Subpart C&amp;quot;}">
+<HEAD>Subpart C&#x2014;Administrative Enforcement Process</HEAD>
+<DIV8 N="196.201" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.201&quot;,&quot;citation&quot;:&quot;49 CFR 196.201&quot;}">
+<HEAD>&#xA7; 196.201 What is the purpose and scope of this subpart?</HEAD>
+<P>This subpart describes the enforcement authority and sanctions exercised by the Associate Administrator for Pipeline Safety for achieving and maintaining pipeline safety under this part. It also prescribes the procedures governing the exercise of that authority and the imposition of those sanctions.</P>
+</DIV8>
+
+<DIV8 N="196.203" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.203&quot;,&quot;citation&quot;:&quot;49 CFR 196.203&quot;}">
+<HEAD>&#xA7; 196.203 What is the administrative process PHMSA will use to conduct enforcement proceedings for alleged violations of excavation damage prevention requirements?</HEAD>
+<P>PHMSA will use the existing administrative adjudication process for alleged pipeline safety violations set forth in 49 CFR part 190, subpart B. This process provides for notification that a probable violation has been committed, a 30-day period to respond including the opportunity to request an administrative hearing, the issuance of a final order, and the opportunity to petition for reconsideration.</P>
+</DIV8>
+
+<DIV8 N="196.205" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.205&quot;,&quot;citation&quot;:&quot;49 CFR 196.205&quot;}">
+<HEAD>&#xA7; 196.205 Can PHMSA assess administrative civil penalties for violations?</HEAD>
+<P>Yes. When the Associate Administrator for Pipeline Safety has reason to believe that a person has violated any provision of the 49 U.S.C. 60101 <I>et seq.</I> or any regulation or order issued thereunder, including a violation of excavation damage prevention requirements under this part and 49 U.S.C. 60114(d) in a State with an excavation damage prevention law enforcement program PHMSA has deemed inadequate under 49 CFR part 198, subpart D, PHMSA may conduct a proceeding to determine the nature and extent of the violation and to assess a civil penalty.</P>
+</DIV8>
+
+<DIV8 N="196.207" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.207&quot;,&quot;citation&quot;:&quot;49 CFR 196.207&quot;}">
+<HEAD>&#xA7; 196.207 What are the maximum administrative civil penalties for violations?</HEAD>
+<P>The maximum administrative civil penalties that may be imposed are specified in 49 U.S.C. 60122.</P>
+</DIV8>
+
+<DIV8 N="196.209" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.209&quot;,&quot;citation&quot;:&quot;49 CFR 196.209&quot;}">
+<HEAD>&#xA7; 196.209 May other civil enforcement actions be taken?</HEAD>
+<P>Whenever the Associate Administrator has reason to believe that a person has engaged, is engaged, or is about to engage in any act or practice constituting a violation of any provision of 49 U.S.C. 60101 <I>et seq.,</I> or any regulations issued thereunder, PHMSA, or the person to whom the authority has been delegated, may request the Attorney General to bring an action in the appropriate U.S. District Court for such relief as is necessary or appropriate, including mandatory or prohibitive injunctive relief, interim equitable relief, civil penalties, and punitive damages as provided under 49 U.S.C. 60120.</P>
+</DIV8>
+
+<DIV8 N="196.211" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-196.211&quot;,&quot;citation&quot;:&quot;49 CFR 196.211&quot;}">
+<HEAD>&#xA7; 196.211 May criminal penalties be imposed?</HEAD>
+<P>Yes. Criminal penalties may be imposed as specified in 49 U.S.C. 60123.</P>
+</DIV8>
+
+</DIV6>
+</DIV5>

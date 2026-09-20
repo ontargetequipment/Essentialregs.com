@@ -482,7 +482,8 @@ def test_zzzz_hint_covers_required_points():
 
 
 @pytest.mark.parametrize("key", ["gp01", "jjjj", "iiii", "zzzz",
-                                "p191", "p192", "p194", "p195", "p199"])
+                                "p191", "p192", "p194", "p195", "p199",
+                                "p190", "p193", "p196"])
 def test_batch4_hints_reasonably_short(key):
     assert len(REG_PROMPT_HINTS[key].split()) <= 190
 
@@ -546,9 +547,10 @@ def test_batch_b_49_cfr_prompts_say_phmsa_not_epa(provision_id):
     assert "EPA" not in system.replace("NEVER EPA", "")
 
 
-def test_all_five_pipeline_parts_are_registered_as_49_cfr_keys():
+def test_all_eight_pipeline_parts_are_registered_as_49_cfr_keys():
     import summarize as _sm
-    assert _sm._REG_49_CFR_KEYS == frozenset({"p191", "p192", "p194", "p195", "p199"})
+    assert _sm._REG_49_CFR_KEYS == frozenset(
+        {"p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"})
     for key in _sm._REG_49_CFR_KEYS:
         assert key in REG_PROMPT_HINTS
 
@@ -607,7 +609,7 @@ def test_system_prompt_for_p191_says_phmsa_not_epa():
 
 def test_reg7_prompt_has_no_p19x_specific_text():
     system = system_prompt_for("sec-7-B-I-C-1")
-    for key in ("p191", "p192", "p194", "p195", "p199"):
+    for key in ("p191", "p192", "p194", "p195", "p199", "p190", "p193", "p196"):
         assert REG_PROMPT_HINTS[key] not in system
     for p19x_only in ("PHMSA", "MAOP", "SMYS", "gathering", "UNGSF"):
         assert p19x_only not in system
@@ -619,6 +621,127 @@ def test_p19x_hints_do_not_conflate_each_other():
     # part with no subparts.
     assert "Class locations" not in REG_PROMPT_HINTS["p191"]
     assert "MAOP" not in REG_PROMPT_HINTS["p191"]
+
+
+# --------------------------------------------------------------------------
+# Batch C: p190 / p193 / p196 hints, and the RMV/repair-schedule sentence
+# added to p192 / p195
+# --------------------------------------------------------------------------
+
+def test_batch_c_hints_are_registered_and_within_budget():
+    for key in ("p190", "p193", "p196"):
+        assert key in REG_PROMPT_HINTS
+        assert len(REG_PROMPT_HINTS[key].split()) <= 185, key
+
+
+def test_p192_and_p195_still_within_budget_after_the_rmv_sentence():
+    for key in ("p192", "p195"):
+        assert len(REG_PROMPT_HINTS[key].split()) <= 185, key
+
+
+@pytest.mark.parametrize("key", ["p192", "p195"])
+def test_p192_p195_carry_the_valve_and_repair_schedule_sentence(key):
+    hint = REG_PROMPT_HINTS[key]
+    assert "RMV means rupture-mitigation valve" in hint
+    assert "RCV remote-control valve" in hint
+    assert "ASV automatic shutoff valve" in hint
+    assert "expand only as the text does" in hint
+    assert "(immediate, one-year, two-year, monitored)" in hint
+    assert "only as the section names them" in hint
+
+
+def test_p192_p195_kept_their_batch_a_b_anchors_after_the_trim():
+    # the trim to fit the RMV sentence must not have dropped the checks the
+    # earlier tests and briefs rely on
+    p192 = REG_PROMPT_HINTS["p192"]
+    for must in ("NEVER EPA", "Type A/B/C/R", "Class locations 1-4", "MAOP", "UNGSF",
+                 "named, never described", "figure-omitted", "[Reserved]",
+                 "\"high\" vs. \"moderate\"", "effective date"):
+        assert must in p192, must
+    p195 = REG_PROMPT_HINTS["p195"]
+    for must in ("carbon dioxide", "NEVER EPA", "breakout tank", "195.452", "195.450",
+                 "unusually sensitive area", "API 653", "named, never described", "[Reserved]"):
+        assert must in p195, must
+
+
+@pytest.mark.parametrize("provision_id", [
+    "sec-p190-190.223-(a)",
+    "sec-p190-190.3-respondent",
+    "sec-p193-193.2007-lng-facility",
+    "sec-p193-193.2057",
+    "sec-p196-196.103",
+    "sec-p196-196.3-excavator",
+])
+def test_batch_c_49_cfr_prompts_say_phmsa_not_epa(provision_id):
+    system = system_prompt_for(provision_id)
+    assert "PHMSA" in system
+    assert "EPA Administrator" not in system
+    assert "EPA" not in system.replace("NEVER EPA", "")
+
+
+@pytest.mark.parametrize("provision_id, key", [
+    ("sec-p190-190.223-(a)", "p190"),
+    ("sec-p193-193.2007-lng-facility", "p193"),
+    ("sec-p196-196.103", "p196"),
+])
+def test_batch_c_build_prompt_system_matches_row_reg(provision_id, key):
+    result = build_prompt(_row(provision_id), meta={})
+    assert result.system == system_prompt_for(provision_id)
+    assert result.system.endswith(REG_PROMPT_HINTS[key])
+    assert REG_PROMPT_HINTS[key] not in result.prompt
+
+
+def test_p190_hint_is_procedural_and_never_invents_penalty_maxima():
+    hint = REG_PROMPT_HINTS["p190"]
+    for must in ("Respondent", "Associate Administrator", "Notice of probable violation",
+                 "compliance order", "civil-penalty amount", "never a remembered",
+                 "hearing", "Sec. 190.211"):
+        assert must in hint, must
+    # it sets no design standard, so none of the Part 192/195 engineering vocabulary
+    for never in ("MAOP", "SMYS", "Class locations", "breakout tank", "HVL", "LNG"):
+        assert never not in hint, never
+
+
+def test_p193_hint_names_nfpa_59a_without_describing_it():
+    hint = REG_PROMPT_HINTS["p193"]
+    for must in ("LNG", "impoundment", "vaporizer", "Operator", "NFPA 59A",
+                 "never describe", "design spill", "thermal radiation",
+                 "vapor-gas dispersion", "exclusion zone", "Sec. 193.2007", "Subpart J"):
+        assert must in hint, must
+    for never in ("MAOP", "Class locations", "gathering", "Respondent", "excavator"):
+        assert never not in hint, never
+
+
+def test_p196_hint_keeps_excavator_and_operator_apart_and_points_at_part_190():
+    hint = REG_PROMPT_HINTS["p196"]
+    for must in ("excavator", "pipeline operator", "One-call", "excavation damage",
+                 "Subpart C", "49 CFR Part 190", "never describe its procedures",
+                 "never a remembered maximum", "Colorado 811"):
+        assert must in hint, must
+    for never in ("MAOP", "LNG", "Class locations", "Respondent", "impoundment"):
+        assert never not in hint, never
+
+
+def test_batch_c_hints_do_not_conflate_each_other_or_batch_a_b():
+    assert "LNG" not in REG_PROMPT_HINTS["p190"]
+    assert "excavator" not in REG_PROMPT_HINTS["p190"]
+    assert "Respondent" not in REG_PROMPT_HINTS["p193"]
+    assert "excavator" not in REG_PROMPT_HINTS["p193"]
+    assert "LNG" not in REG_PROMPT_HINTS["p196"]
+    assert "Notice of probable violation" not in REG_PROMPT_HINTS["p196"]
+    for key in ("p191", "p192", "p194", "p195", "p199"):
+        assert "Respondent" not in REG_PROMPT_HINTS[key], key
+        assert "excavator" not in REG_PROMPT_HINTS[key], key
+        assert "NFPA 59A" not in REG_PROMPT_HINTS[key], key
+
+
+def test_reg7_and_oooob_prompts_have_no_batch_c_specific_text():
+    for pid in ("sec-7-B-I-C-1", "sec-oooob-60.5390b"):
+        system = system_prompt_for(pid)
+        for key in ("p190", "p193", "p196"):
+            assert REG_PROMPT_HINTS[key] not in system
+        for only in ("Respondent", "NFPA 59A", "excavator", "One-call", "rupture-mitigation"):
+            assert only not in system, (pid, only)
 
 
 # --------------------------------------------------------------------------

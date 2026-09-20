@@ -438,6 +438,37 @@ def test_batch_b_ecfr_url_and_label_omit_subpart(key, part):
     assert result.source == f"eCFR 49 CFR Part {part}"
 
 
+@pytest.mark.parametrize("key, part", [("p190", "190"), ("p193", "193"), ("p196", "196")])
+def test_batch_c_manifest_entries(key, part):
+    """Batch C: 49 CFR Parts 190/193/196 -- same shape as p191 (kind ecfr,
+    title 49, subpart null, as_of 2026-09-17, xml_sha256 null)."""
+    entry = make_manifest()["sources"][key]
+    assert entry["kind"] == "ecfr"
+    assert entry["title"] == "49"
+    assert entry["part"] == part
+    assert entry["subpart"] is None
+    assert entry["as_of"] == "2026-09-17"
+    assert entry["xml_sha256"] is None
+    assert entry == dict(make_manifest()["sources"]["p191"], part=part)
+
+
+@pytest.mark.parametrize("key, part", [("p190", "190"), ("p193", "193"), ("p196", "196")])
+def test_batch_c_ecfr_url_and_label_omit_subpart(key, part):
+    entry = make_manifest()["sources"][key]
+    url = fr.ecfr_versions_url(entry["title"], entry["part"], entry.get("subpart"))
+    assert "&subpart=" not in url
+    assert "None" not in url
+    assert f"part={part}" in url or f"/{part}" in url
+    fetcher = fr.Fetcher(fixtures_dir=Path("/does/not/exist"))
+    result = fr.check_ecfr(key, entry, fetcher)
+    assert result.source == f"eCFR 49 CFR Part {part}"
+
+
+def test_all_eight_pipeline_parts_are_in_the_manifest_and_198_is_not():
+    keys = {k for k in make_manifest()["sources"] if k.startswith("p19")}
+    assert keys == {"p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"}
+
+
 def test_every_ecfr_manifest_entry_has_a_checkable_url():
     """No manifest entry may build a URL with a literal 'None' in it -- the
     bug the subpart-optional helpers were added for."""

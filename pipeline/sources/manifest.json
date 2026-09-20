@@ -206,6 +206,30 @@
    "as_of": "2026-09-17",
    "xml_sha256": null
   },
+  "p190": {
+   "kind": "ecfr",
+   "title": "49",
+   "part": "190",
+   "subpart": null,
+   "as_of": "2026-09-17",
+   "xml_sha256": null
+  },
+  "p193": {
+   "kind": "ecfr",
+   "title": "49",
+   "part": "193",
+   "subpart": null,
+   "as_of": "2026-09-17",
+   "xml_sha256": null
+  },
+  "p196": {
+   "kind": "ecfr",
+   "title": "49",
+   "part": "196",
+   "subpart": null,
+   "as_of": "2026-09-17",
+   "xml_sha256": null
+  },
   "cdphe_gp": {
    "kind": "cdphe_gp",
    "page_url": "https://cdphe.colorado.gov/apcd/general-air-permits",

@@ -166,13 +166,50 @@ PART_META: dict[str, dict] = {
         root_citation="49 CFR Part 199",
         root_title="49 CFR Part 199 — Drug and Alcohol Testing",
     ),
+    # Batch C (September 2026): the procedural / LNG / excavation parts.
+    # Root titles are the <DIV5><HEAD> text as printed in the eCFR XML
+    # (Part 196's head says "Excavation Activity", not "Excavation Damage").
+    "p190": dict(
+        title=49, part=190, code="", suffix="", sections=(1, 499),
+        url="https://www.ecfr.gov/current/title-49/part-190",
+        enable_table_ref_links=False, table_algorithm="xml",
+        document="part", source="xml", has_subparts=True,
+        root_citation="49 CFR Part 190",
+        root_title="49 CFR Part 190 — Pipeline Safety Enforcement and Regulatory Procedures",
+    ),
+    "p193": dict(
+        title=49, part=193, code="", suffix="", sections=(2001, 2999),
+        url="https://www.ecfr.gov/current/title-49/part-193",
+        enable_table_ref_links=False, table_algorithm="xml",
+        document="part", source="xml", has_subparts=True,
+        root_citation="49 CFR Part 193",
+        root_title="49 CFR Part 193 — Liquefied Natural Gas Facilities: Federal Safety Standards",
+    ),
+    "p196": dict(
+        title=49, part=196, code="", suffix="", sections=(1, 299),
+        url="https://www.ecfr.gov/current/title-49/part-196",
+        enable_table_ref_links=False, table_algorithm="xml",
+        document="part", source="xml", has_subparts=True,
+        root_citation="49 CFR Part 196",
+        root_title="49 CFR Part 196 — Protection of Underground Pipelines From Excavation Activity",
+    ),
 }
 SUBPART_META.update(PART_META)
 
 # A 49 CFR section number resolves to a reg by its PART prefix (191.x ->
 # p191, 192.x -> p192) -- not by the 40 CFR section-number-range trick,
 # which exists only because three subparts share one numeric range.
-CFR_PART_TO_REGKEY: dict[str, str] = {"49-191": "p191", "49-192": "p192", "49-194": "p194", "49-195": "p195", "49-199": "p199"}
+# Batch C adds 190/193/196; Part 198 (state grants) stays out of the corpus.
+CFR_PART_TO_REGKEY: dict[str, str] = {
+    "49-190": "p190",
+    "49-191": "p191",
+    "49-192": "p192",
+    "49-193": "p193",
+    "49-194": "p194",
+    "49-195": "p195",
+    "49-196": "p196",
+    "49-199": "p199",
+}
 
 # Derived, backward-compatible views used throughout the module (kept as
 # plain module-level dicts -- as before -- so nothing downstream needs to
@@ -1432,8 +1469,18 @@ PART_NUMREF_RE = re.compile(
     # corpus's own two part numbers AND refuses to fire after "-" or "/", so
     # the section number inside the importer's own figure-placeholder URL
     # (".../title-49/section-192.121") is not turned into a link.
-    r"|(?<![-/\w])(?P<part3>19[12])\.(?P<num3>\d{1,4})(?P<par3>(?:\([a-zA-Z0-9]{1,7}\))*)"
+    r"|(?<![-/\w])(?P<part3>19[0-9])\.(?P<num3>\d{1,4})(?P<par3>(?:\([a-zA-Z0-9]{1,7}\))*)"
 )
+# Which parts' BARE section numbers ("§§ 190.207 through 190.213" -- the
+# trailing "190.213" carries no "§") are linked. Batch A anchored the bare
+# alternative above to 19[12]; Batch B did not widen it, so the Batch B
+# parses (194/195/199) print 38 unlinked trailing members. Batch C widens
+# the regex to 19[0-9] and gates the bare form here instead, so 190/193/196
+# link their whole "§§ x, y, or z" lists while 194/195/199 stay byte-
+# identical to what Batch B shipped. Adding "194", "195", "199" to this set
+# (one line) completes those three; do it when their parses are next
+# regenerated -- see REPORT_batchC.md "things not resolved".
+PART_BARE_LINK_PARTS: frozenset = frozenset({"190", "191", "192", "193", "196"})
 _PART_PAREN = r"\([a-zA-Z0-9]{1,7}\)"
 _PART_CHAIN = rf"(?:{_PART_PAREN})+"
 PART_CHAIN_TOKEN_RE = re.compile(_PART_CHAIN)
@@ -1448,8 +1495,23 @@ PART_SUBPART_REF_RE = re.compile(
 )
 # "appendix B to this part" / "Appendix E of this part"
 PART_APPENDIX_REF_RE = re.compile(r"\b(?P<apxword>[Aa]ppendix)\s+(?P<apx>[A-Z])\s+(?:to|of|in)\s+this\s+part\b")
-# "part 191 of this chapter", "parts 190 and 192 of this chapter", "part 195"
-PART_OTHERPART_REF_RE = re.compile(r"\bparts?\s+(?P<pnum>\d{1,3})\b(?:\s+of\s+this\s+chapter)?")
+# "part 191 of this chapter", "parts 190 and 192 of this chapter", "part 195",
+# and (Batch C) the list and range forms Part 190 uses to name the whole
+# pipeline-safety subchapter: "parts 192, 193, or 195", "parts 192, 193, 195,
+# and 199 of this subchapter", "49 CFR parts 190-199", "parts 190 through
+# 199". `pnum` is the first member (the only one the pre-Batch-C pattern saw);
+# `plist` is the whole printed list, and every member is resolved on its own
+# in `_link_citations_part`. A single-member match is rendered exactly as
+# before (the whole match wrapped), so the Batch A/B parses -- none of which
+# print a list form -- are unchanged.
+PART_OTHERPART_REF_RE = re.compile(
+    r"\bparts?\s+(?P<plist>(?P<pnum>\d{1,3})\b"
+    # comma members count only when the list closes with an "and/or/through"
+    # member ("parts 192, 193, or 195"), so "part 195, 30 days" stays a
+    # single-member match; a dash range ("parts 190-199") stands on its own
+    r"(?:(?:\s*,\s*\d{1,3}\b)*\s*,?\s*(?:and|or|through)\s+\d{1,3}\b|\s*[-–]\s*\d{1,3}\b)?"
+    r")(?:\s+of\s+this\s+chapter)?"
+)
 # bare "this part" -> the document root
 PART_THIS_PART_RE = re.compile(r"\bthis\s+part\b")
 # "49 U.S.C. 60101", "43 U.S.C. 1331"
@@ -1551,6 +1613,12 @@ def _link_citations_part(
             part = gd.get("part1") or gd.get("part2") or gd.get("part3")
             num = gd.get("num1") or gd.get("num2") or gd.get("num3")
             parens = gd.get("par1") or gd.get("par2") or gd.get("par3") or ""
+            if gd.get("num3") and part not in PART_BARE_LINK_PARTS:
+                # A bare section number of a part whose bare form is not
+                # (yet) linked: emitted verbatim, exactly as when the regex
+                # did not reach it (see PART_BARE_LINK_PARTS).
+                out.append(matched_text)
+                continue
             target_reg = _resolve_target_reg_49(part, num)
             if target_reg == own_reg:
                 base_id = f"sec-{own_reg}-{part}.{num}"
@@ -1632,16 +1700,54 @@ def _link_citations_part(
 
         # -- "part 191 of this chapter" / "part 195" ------------------------
         if gd.get("pnum"):
-            target_reg = CFR_PART_TO_REGKEY.get(f"49-{gd['pnum']}")
-            if target_reg == own_reg:
-                out.append(span(root_id, matched_text))
-            elif target_reg in corpus_regs:
-                out.append(
-                    f'<a class="xref-external-reg" href="/regulations/{target_reg}">{matched_text}</a>'
-                )
-            else:
-                out.append(matched_text)
-                unresolved[BUCKET_CFR][matched_text.strip()] += 1
+            members = re.findall(r"\d{1,3}", gd["plist"])
+            if len(members) == 1:
+                # Single member: the whole printed phrase is the link text,
+                # exactly as before Batch C.
+                target_reg = CFR_PART_TO_REGKEY.get(f"49-{gd['pnum']}")
+                if target_reg == own_reg:
+                    out.append(span(root_id, matched_text))
+                elif target_reg in corpus_regs:
+                    out.append(
+                        f'<a class="xref-external-reg" href="/regulations/{target_reg}">{matched_text}</a>'
+                    )
+                else:
+                    out.append(matched_text)
+                    unresolved[BUCKET_CFR][matched_text.strip()] += 1
+                continue
+            # A printed list or range ("parts 192, 193, or 195", "parts 190
+            # through 199"): each printed member links on its own, the
+            # separators stay as text, and out-of-corpus members are
+            # bucketed one by one as "part N" (a "190 through 199" range
+            # links only its two printed endpoints -- nothing is invented).
+            # The first member keeps the pre-Batch-C link extent ("parts 192"
+            # -- the word included), so a list that was already partly linked
+            # (Part 199 "part 192, 193, or 195") gains anchors without its
+            # existing anchor changing shape.
+            rendered = []
+            pos = 0
+            for i, pm in enumerate(re.finditer(r"\d{1,3}", matched_text)):
+                pnum = pm.group(0)
+                if i == 0:
+                    link_text = matched_text[: pm.end()]
+                    key = link_text.strip()
+                else:
+                    rendered.append(matched_text[pos : pm.start()])
+                    link_text = pnum
+                    key = f"part {pnum}"
+                target_reg = CFR_PART_TO_REGKEY.get(f"49-{pnum}")
+                if target_reg == own_reg:
+                    rendered.append(span(root_id, link_text))
+                elif target_reg in corpus_regs:
+                    rendered.append(
+                        f'<a class="xref-external-reg" href="/regulations/{target_reg}">{link_text}</a>'
+                    )
+                else:
+                    rendered.append(link_text)
+                    unresolved[BUCKET_CFR][key] += 1
+                pos = pm.end()
+            rendered.append(matched_text[pos:])
+            out.append("".join(rendered))
             continue
 
         # -- bare "this part" ----------------------------------------------
@@ -2707,8 +2813,33 @@ def _split_part_paragraph(html: str) -> list[tuple[list[str], str]]:
         return segs
 
 
+_SUPERSCRIPT_DIGITS = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
+
+
+def _definition_term_text(first_i, p_el) -> str:
+    """The printed term of a `<P><I>Term</I> means ...` definition paragraph.
+    Normally just the italic run; when the italic run is immediately followed
+    by a `<SU>` with nothing but whitespace between them (§ 193.2007
+    "<I>m</I><SU>3</SU> means a volumetric unit ...") the superscript is part
+    of the term as printed -- m³, not m -- so it is appended, as superscript
+    digits (the slug becomes "m3"). Only Part 193 prints this shape (checked
+    across all eight PHMSA parts), so every other parse is untouched."""
+    term = _xml_text(first_i)
+    if not (first_i.tail or "").strip():
+        kids = list(p_el)
+        if len(kids) > 1 and kids[1].tag == "SU":
+            su = _xml_text(kids[1])
+            term += su.translate(_SUPERSCRIPT_DIGITS)
+    return term
+
+
+_PLAIN_DIGITS = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+
+
 def _definition_slug(term: str, used: set) -> str:
-    base = re.sub(r"[^a-z0-9]+", "-", term.lower()).strip("-") or "term"
+    # superscript digits (m³) slug as plain digits ("m3"); no other term
+    # in the corpus carries one, so this is a no-op everywhere else
+    base = re.sub(r"[^a-z0-9]+", "-", term.translate(_PLAIN_DIGITS).lower()).strip("-") or "term"
     slug = base
     n = 1
     while slug in used:
@@ -2910,7 +3041,7 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
                 if is_definitions:
                     first = list(el)
                     if (not (el.text or "").strip()) and first and first[0].tag == "I":
-                        term = _PART_DEF_TERM_STRIP_RE.sub("", _xml_text(first[0]))
+                        term = _PART_DEF_TERM_STRIP_RE.sub("", _definition_term_text(first[0], el))
                         slug = _definition_slug(term, used_slugs)
                         did = f"{sec_id}-{slug}"
                         open_row = add_row(
@@ -2947,7 +3078,7 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
                         and not _PART_LEAD_LABEL_RE.match(html)
                     )
                     if is_term:
-                        term = _PART_DEF_TERM_STRIP_RE.sub("", _xml_text(first[0]))
+                        term = _PART_DEF_TERM_STRIP_RE.sub("", _definition_term_text(first[0], el))
                         # "<i>Terrestrial species with a limited range means</i>
                         # a non-aquatic ..." -- § 195.6(c) prints one term with
                         # the verb inside the italics; the term is the phrase

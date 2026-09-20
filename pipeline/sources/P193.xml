@@ -1,0 +1,929 @@
+<?xml version="1.0"?>
+<DIV5 N="193" TYPE="PART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193&amp;quot;}">
+<HEAD>PART 193&#x2014;LIQUEFIED NATURAL GAS FACILITIES: FEDERAL SAFETY STANDARDS
+</HEAD>
+<AUTH>
+<HED>Authority:</HED><PSPACE>49 U.S.C. 5103, 60102, 60103, 60104, 60108, 60109, 60110, 60113, 60118; and 49 CFR 1.53.
+</PSPACE></AUTH>
+<SOURCE>
+<HED>Source:</HED><PSPACE>45 FR 9203, Feb. 11, 1980, unless otherwise noted.
+</PSPACE></SOURCE>
+<EDNOTE>
+<HED>Editorial Note:</HED><PSPACE>Nomenclature changes to part 193 appear at 71 FR 33408, June 9, 2006.</PSPACE></EDNOTE>
+<DIV6 N="A" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subpart-A&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart A&amp;quot;}">
+<HEAD>Subpart A&#x2014;General</HEAD>
+<DIV8 N="193.2001" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2001&quot;,&quot;citation&quot;:&quot;49 CFR 193.2001&quot;}">
+<HEAD>&#xA7; 193.2001 Scope of part.</HEAD>
+<P>(a) This part prescribes safety standards for LNG facilities used in the transportation of gas by pipeline that is subject to the pipeline safety laws (49 U.S.C. 60101 <I>et seq.</I>) and Part 192 of this chapter.</P>
+<P>(b) This part does not apply to:</P>
+<P>(1) LNG facilities used by ultimate consumers of LNG or natural gas.</P>
+<P>(2) LNG facilities used in the course of natural gas treatment or hydrocarbon extraction which do not store LNG.</P>
+<P>(3) In the case of a marine cargo transfer system and associated facilities, any matter other than siting pertaining to the system or facilities between the marine vessel and the last manifold (or in the absence of a manifold, the last valve) located immediately before a storage tank.</P>
+<P>(4) Any LNG facility located in navigable waters (as defined in Section 3(8) of the Federal Power Act (16 U.S.C. 796(8)).</P>
+<CITA TYPE="N">[45 FR 9203, Feb. 11, 1980, as amended by Amdt. 193-1, 45 FR 57418, Aug. 28, 1980; Amdt. 193-10, 61 FR 18517, Apr. 26, 1996]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2003" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2003&quot;,&quot;citation&quot;:&quot;49 CFR 193.2003&quot;}">
+<HEAD>&#xA7; 193.2003 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2005" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2005&quot;,&quot;citation&quot;:&quot;49 CFR 193.2005&quot;}">
+<HEAD>&#xA7; 193.2005 Applicability.</HEAD>
+<P>(a) Regulations in this part governing siting, design, installation, or construction of LNG facilities (including material incorporated by reference in these regulations) do not apply to LNG facilities in existence or under construction when the regulations go into effect.</P>
+<P>(b) If an existing LNG facility (or facility under construction before March 31, 2000 is replaced, relocated or significantly altered after March 31, 2000, the facility must comply with the applicable requirements of this part governing, siting, design, installation, and construction, except that:</P>
+<P>(1) The siting requirements apply only to LNG storage tanks that are significantly altered by increasing the original storage capacity or relocated, and</P>
+<P>(2) To the extent compliance with the design, installation, and construction requirements would make the replaced, relocated, or altered facility incompatible with the other facilities or would otherwise be impractical, the replaced, relocated, or significantly altered facility may be designed, installed, or constructed in accordance with the original specifications for the facility, or in another manner subject to the approval of the Administrator.</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10958, Mar. 1, 2000, as amended by Amdt. 193-18, 69 FR 11336, Mar. 10, 2004]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2007" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2007&quot;,&quot;citation&quot;:&quot;49 CFR 193.2007&quot;}">
+<HEAD>&#xA7; 193.2007 Definitions.</HEAD>
+<P>As used in this part:</P>
+<P><I>Administrator</I> means the Administrator, Pipeline and Hazardous Materials Safety Administration or his or her delegate.</P>
+<P><I>Ambient vaporizer</I> means a vaporizer which derives heat from naturally occurring heat sources, such as the atmosphere, sea water, surface waters, or geothermal waters.</P>
+<P><I>Cargo transfer system</I> means a component, or system of components functioning as a unit, used exclusively for transferring hazardous fluids in bulk between a tank car, tank truck, or marine vessel and a storage tank.</P>
+<P><I>Component</I> means any part, or system of parts functioning as a unit, including, but not limited to, piping, processing equipment, containers, control devices, impounding systems, lighting, security devices, fire control equipment, and communication equipment, whose integrity or reliability is necessary to maintain safety in controlling, processing, or containing a hazardous fluid.</P>
+<P><I>Container</I> means a component other than piping that contains a hazardous fluid.</P>
+<P><I>Control system</I> means a component, or system of components functioning as a unit, including control valves and sensing, warning, relief, shutdown, and other control devices, which is activated either manually or automatically to establish or maintain the performance of another component.</P>
+<P><I>Controllable emergency</I> means an emergency where reasonable and prudent action can prevent harm to people or property.</P>
+<P><I>Design pressure</I> means the pressure used in the design of components for the purpose of determining the minimum permissible thickness or physical characteristics of its various parts. When applicable, static head shall be included in the design pressure to determine the thickness of any specific part.</P>
+<P><I>Determine</I> means make an appropriate investigation using scientific methods, reach a decision based on sound engineering judgment, and be able to demonstrate the basis of the decision.</P>
+<P><I>Dike</I> means the perimeter of an impounding space forming a barrier to prevent liquid from flowing in an unintended direction.</P>
+<P><I>Emergency</I> means a deviation from normal operation, a structural failure, or severe environmental conditions that probably would cause harm to people or property.</P>
+<P><I>Exclusion zone</I> means an area surrounding an LNG facility in which an operator or government agency legally controls all activities in accordance with &#xA7; 193.2057 and &#xA7; 193.2059 for as long as the facility is in operation.</P>
+<P><I>Fail-safe</I> means a design feature which will maintain or result in a safe condition in the event of malfunction or failure of a power supply, component, or control device.</P>
+<P><I>g</I> means the standard acceleration of gravity of 9.806 meters per second
+<SU>2</SU> (32.17 feet per second
+<SU>2</SU>).</P>
+<P><I>Gas,</I> except when designated as inert, means natural gas, other flammable gas, or gas which is toxic or corrosive.</P>
+<P><I>Hazardous fluid</I> means gas or hazardous liquid.</P>
+<P><I>Hazardous liquid</I> means LNG or a liquid that is flammable or toxic.</P>
+<P><I>Heated vaporizer</I> means a vaporizer which derives heat from other than naturally occurring heat sources.</P>
+<P><I>Impounding space</I> means a volume of space formed by dikes and floors which is designed to confine a spill of hazardous liquid.</P>
+<P><I>Impounding system</I> includes an impounding space, including dikes and floors for conducting the flow of spilled hazardous liquids to an impounding space.</P>
+<P><I>Liquefied natural gas</I> or <I>LNG</I> means natural gas or synthetic gas having methane (CH<E T="52">4</E>) as its major constituent which has been changed to a liquid.</P>
+<P><I>LNG facility</I> means a pipeline facility that is used for liquefying natural gas or synthetic gas or transferring, storing, or vaporizing liquefied natural gas.</P>
+<P><I>LNG plant</I> means an LNG facility or system of LNG facilities functioning as a unit.</P>
+<P><I>m</I>
+<SU>3</SU> means a volumetric unit which is one cubic metre, 6.2898 barrels, 35.3147 ft.
+<SU>3</SU>, or 264.1720 U.S. gallons, each volume being considered as equal to the other.</P>
+<P><I>Maximum allowable working pressure</I> means the maximum gage pressure permissible at the top of the equipment, containers or pressure vessels while operating at design temperature.</P>
+<P><I>Normal operation</I> means functioning within ranges of pressure, temperature, flow, or other operating criteria required by this part.</P>
+<P><I>Operator</I> means a person who owns or operates an LNG facility.</P>
+<P><I>Person</I> means any individual, firm, joint venture, partnership, corporation, association, state, municipality, cooperative association, or joint stock association and includes any trustee, receiver, assignee, or personal representative thereof.</P>
+<P><I>Pipeline facility</I> means new and existing piping, rights-of-way, and any equipment, facility, or building used in the transportation of gas or in the treatment of gas during the course of transportation.</P>
+<P><I>Piping</I> means pipe, tubing, hoses, fittings, valves, pumps, connections, safety devices or related components for containing the flow of hazardous fluids.</P>
+<P><I>Storage tank</I> means a container for storing a hazardous fluid.</P>
+<P><I>Transfer piping</I> means a system of permanent and temporary piping used for transferring hazardous fluids between any of the following: Liquefaction process facilities, storage tanks, vaporizers, compressors, cargo transfer systems, and facilities other than pipeline facilities.</P>
+<P><I>Transfer system</I> includes transfer piping and cargo transfer system.</P>
+<P><I>Vaporization</I> means an addition of thermal energy changing a liquid to a vapor or gaseous state.</P>
+<P><I>Vaporizer</I> means a heat transfer facility designed to introduce thermal energy in a controlled manner for changing a liquid to a vapor or gaseous state.</P>
+<P><I>Waterfront LNG plant</I> means an LNG plant with docks, wharves, piers, or other structures in, on, or immediately adjacent to the navigable waters of the United States or Puerto Rico and any shore area immediately adjacent to those waters to which vessels may be secured and at which LNG cargo operations may be conducted.</P>
+<CITA TYPE="N">[45 FR 9203, Feb. 11, 1980, as amended by Amdt. 193-1, 45 FR 57418, Aug. 28, 1980; Amdt. 193-2, 45 FR 70404, Oct. 23, 1980; Amdt. 193-10, 61 FR 18517, Apr. 26, 1996; Amdt. 193-17, 65 FR 10958, Mar. 1, 2000; 68 FR 11749, Mar. 12, 2003; 70 FR 11140, Mar. 8, 2005]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2009" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2009&quot;,&quot;citation&quot;:&quot;49 CFR 193.2009&quot;}">
+<HEAD>&#xA7; 193.2009 Rules of regulatory construction.</HEAD>
+<P>(a) As used in this part:</P>
+<P>(1) <I>Includes</I> means including but not limited to;</P>
+<P>(2) <I>May</I> means is permitted to or is authorized to;</P>
+<P>(3) <I>May not</I> means is not permitted to or is not authorized to; and</P>
+<P>(4) <I>Shall</I> or <I>must</I> is used in the mandatory and imperative sense.</P>
+<P>(b) In this part:</P>
+<P>(1) Words importing the singular include the plural; and</P>
+<P>(2) Words importing the plural include the singular.</P>
+</DIV8>
+
+<DIV8 N="193.2011" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2011&quot;,&quot;citation&quot;:&quot;49 CFR 193.2011&quot;}">
+<HEAD>&#xA7; 193.2011 Reporting.</HEAD>
+<P>Incidents, safety-related conditions, and annual pipeline summary data for LNG plants or facilities must be reported in accordance with the requirements of Part 191 of this subchapter.</P>
+<CITA TYPE="N">[75 FR 72906, Nov. 26, 2010]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2013" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2013&quot;,&quot;citation&quot;:&quot;49 CFR 193.2013&quot;}">
+<HEAD>&#xA7; 193.2013 What documents are incorporated by reference partly or wholly in this part?</HEAD>
+<P>(a) This part prescribes standards, or portions thereof, incorporated by reference into this part with the approval of the Director of the Federal Register in 5 U.S.C. 552(a) and 1 CFR part 51. The materials listed in this section have the full force of law. To enforce any edition other than that specified in this section, PHMSA must publish a notice of change in the <E T="04">Federal Register</E>.</P>
+<P>(1) <I>Availability of standards incorporated by reference.</I> All of the materials incorporated by reference are available for inspection from several sources, including the following:</P>
+<P>(i) The Office of Pipeline Safety, Pipeline and Hazardous Materials Safety Administration, 1200 New Jersey Avenue SE, Washington, DC 20590. For more information contact 202-366-4595 or go to the PHMSA website at: <I>http://www.phmsa.dot.gov/pipeline/regs.</I></P>
+<P>(ii) The National Archives and Records Administration (NARA). For information on the availability of this material at NARA, call 202-741-6030 or go to the NARA Web site at: <I>http://www.archives.gov/federal_register/code_of_federal_regulations/ibr_locations.html.</I></P>
+<P>(iii) Copies of standards incorporated by reference in this part can also be purchased or are otherwise made available from the respective standards-developing organization at the addresses provided in the centralized IBR section below.</P>
+<P>(b) American Gas Association (AGA), 400 North Capitol Street NW., Washington, DC 20001, and phone: 202-824-7000, Web site: <I>http://www.aga.org/.</I></P>
+<P>(1) American Gas Association, &#x201C;Purging Principles and Practices,&#x201D; 3rd edition, June 2001, (Purging Principles and Practices), IBR approved for &#xA7;&#xA7; 193.2513(b) and (c), 193.2517, and 193.2615(a).</P>
+<P>(2) [Reserved]</P>
+<P>(c) American Petroleum Institute (API), 1220 L Street NW., Washington, DC 20005, and phone: 202-682-8000, Web site: <I>http://api.org/.</I></P>
+<P>(1) API Standard 620, &#x201C;Design and Construction of Large, Welded, Low-pressure Storage Tanks,&#x201D; 11th edition, February 2008 (including addendum 1 (March 2009), addendum 2 (August 2010), and addendum 3 (March 2012)), (API Std 620), IBR approved for &#xA7;&#xA7; 193.2101(b); 193.2321(b).</P>
+<P>(2) [Reserved]</P>
+<P>(d) American Society of Civil Engineers (ASCE), 1801 Alexander Bell Drive, Reston, VA 20191, (800) 548-2723, 703 295-6300 (international), Web site: <I>http://www.asce.org.</I></P>
+<P>(1) ASCE/SEI 7-05, &#x201C;Minimum Design Loads for Buildings and Other Structures&#x201D; 2005 edition (including supplement No. 1 and Errata), (ASCE/SEI 7-05), IBR approved for &#xA7; 193.2067(b).</P>
+<P>(2) [Reserved]</P>
+<P>(e) ASME International (ASME), Three Park Avenue, New York, NY 10016. 800-843-2763 (U.S/Canada), Web site: <I>http://www.asme.org/.</I></P>
+<P>(1) ASME Boiler &amp; Pressure Vessel Code, Section VIII, Division 1: &#x201C;Rules for Construction of Pressure Vessels,&#x201D; 2007 edition, July 1, 2007, (ASME BPVC, Section VIII, Division 1), IBR approved for &#xA7; 193.2321(a).</P>
+<P>(2) [Reserved]</P>
+<P>(f) Gas Technology Institute (GTI), formerly the Gas Research Institute (GRI), 1700 S. Mount Prospect Road, Des Plaines, IL 60018, phone: 847-768-0500, Web site: <I>www.gastechnology.org.</I></P>
+<P>(1) GRI-96/0396.5, &#x201C;Evaluation of Mitigation Methods for Accidental LNG Releases, Volume 5: Using FEM3A for LNG Accident Consequence Analyses,&#x201D; April 1997, (GRI-96/0396.5), IBR approved for &#xA7; 193.2059(a).</P>
+<P>(2) GTI-04/0032 LNGFIRE3: &#x201C;A Thermal Radiation Model for LNG Fires&#x201D; March 2004, (GTI-04/0032 LNGFIRE3), IBR approved for &#xA7; 193.2057(a).</P>
+<P>(3) GTI-04/0049 &#x201C;LNG Vapor Dispersion Prediction with the DEGADIS 2.1: Dense Gas Dispersion Model for LNG Vapor Dispersion,&#x201D; April 2004, (GTI-04/0049), IBR approved for &#xA7; 193.2059(a).</P>
+<P>(g) National Fire Protection Association (NFPA), 1 Batterymarch Park, Quincy, MA, 02169 phone: 617-984-7275, Web site: <I>http://www.nfpa.org/.</I></P>
+<P>(1) NFPA-59A (2001), &#x201C;Standard for the Production, Storage, and Handling of Liquefied Natural Gas (LNG),&#x201D; (NFPA-59A-2001), IBR approved for &#xA7;&#xA7; 193.2019(a), 193.2051, 193.2057, 193.2059 introductory text and (c), 193.2101(a), 193.2301, 193.2303, 193.2401, 193.2521, 193.2639(a), and 193.2801.</P>
+<P>(2) NFPA 59A (2006), &#x201C;Standard for the Production, Storage, and Handling of Liquefied Natural Gas (LNG),&#x201D; 2006 edition, approved August 18, 2005, (NFPA-59A-2006), IBR approved for &#xA7;&#xA7; 193.2101(b) and 193.2321(b).</P>
+<CITA TYPE="N">[Amdt. 193-25, 80 FR 182, Jan. 5, 2015; Amdt. 193-27, 91 FR 21978, Apr. 24, 2026]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2015" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2015&quot;,&quot;citation&quot;:&quot;49 CFR 193.2015&quot;}">
+<HEAD>&#xA7; 193.2015 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2017" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2017&quot;,&quot;citation&quot;:&quot;49 CFR 193.2017&quot;}">
+<HEAD>&#xA7; 193.2017 Plans and procedures.</HEAD>
+<P>(a) Each operator shall maintain at each LNG plant the plans and procedures required for that plant by this part. The plans and procedures must be available upon request for review and inspection by the Administrator or any State Agency that has submitted a current certification or agreement with respect to the plant under the pipeline safety laws (49 U.S.C. 60101 <I>et seq.</I>). In addition, each change to the plans or procedures must be available at the LNG plant for review and inspection within 20 days after the change is made.</P>
+<P>(b) The Associate Administrator or the State Agency that has submitted a current certification under section 5(a) of the Natural Gas Pipeline Safety Act with respect to the pipeline facility governed by an operator's plans and procedures may, after notice and opportunity for hearing as provided in 49 CFR 190.206 or the relevant State procedures, require the operator to amend its plans and procedures as necessary to provide a reasonable level of safety.</P>
+<P>(c) Each operator must review and update the plans and procedures required by this part&#x2014;</P>
+<P>(1) When a component is changed significantly or a new component is installed; and</P>
+<P>(2) At intervals not exceeding 27 months, but at least once every 2 calendar years.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70404, Oct. 23, 1980, as amended by Amdt. 193-7, 56 FR 31090, July 9, 1991; Amdt. 193-10, 61 FR 18517, Apr. 26, 1996; Amdt. 193-18, 69 FR 11336, Mar. 10, 2004; Amdt. 193-24, 78 FR 58915, Sept. 25, 2013]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2019" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2019&quot;,&quot;citation&quot;:&quot;49 CFR 193.2019&quot;}">
+<HEAD>&#xA7; 193.2019 Mobile and temporary LNG facilities.</HEAD>
+<P>(a) Mobile and temporary LNG facilities for peakshaving application, for service maintenance during gas pipeline systems repair/alteration, or for other short term applications need not meet the requirements of this part if the facilities are in compliance with applicable sections of NFPA-59A-2001 (incorporated by reference, <I>see</I> &#xA7; 193.2013).</P>
+<P>(b) The State agency having jurisdiction over pipeline safety in the State in which the portable LNG equipment is to be located must be provided with a location description for the installation at least 2 weeks in advance, including to the extent practical, the details of siting, leakage containment or control, fire fighting equipment, and methods employed to restrict public access, except that in the case of emergency where such notice is not possible, as much advance notice as possible must be provided.</P>
+<CITA TYPE="N">[Amdt. 193-14, 62 FR 41311, Aug. 1, 1997, as amended by Amdt. 193-18, 69 FR 11336, Mar. 10, 2004; Amdt. 193-25, 80 FR 182, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+</DIV6>
+<DIV6 N="B" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subpart-B&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart B&amp;quot;}">
+<HEAD>Subpart B&#x2014;Siting Requirements</HEAD>
+<DIV8 N="193.2051" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2051&quot;,&quot;citation&quot;:&quot;49 CFR 193.2051&quot;}">
+<HEAD>&#xA7; 193.2051 Scope.</HEAD>
+<P>Each LNG facility designed, constructed, replaced, relocated or significantly altered after March 31, 2000 must be provided with siting requirements in accordance with the requirements of this part and of NFPA 59A (incorporated by reference, <I>see</I> &#xA7; 193.2013). In the event of a conflict between this part and NFPA-59A-2001, this part prevails.</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10958, Mar. 1, 2000, as amended by Amdt. 193-18, 69 FR 11336, Mar. 10, 2004; Amdt. 193-25, 80 FR 182, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2055" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2055&quot;,&quot;citation&quot;:&quot;49 CFR 193.2055&quot;}">
+<HEAD>&#xA7; 193.2055 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2057" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2057&quot;,&quot;citation&quot;:&quot;49 CFR 193.2057&quot;}">
+<HEAD>&#xA7; 193.2057 Thermal radiation protection.</HEAD>
+<P>Each LNG container and LNG transfer system must have a thermal exclusion zone in accordance with section 2.2.3.2 of NFPA-59A-2001 (incorporated by reference, <I>see</I> &#xA7; 193.2013) with the following exceptions:</P>
+<P>(a) The thermal radiation distances must be calculated using Gas Technology Institute's (GTI) report or computer model GTI-04/0032 LNGFIRE3: A Thermal Radiation Model for LNG Fires (incorporated by reference, <I>see</I> &#xA7; 193.2013). The use of other alternate models which take into account the same physical factors and have been validated by experimental test data may be permitted subject to the Administrator's approval.</P>
+<P>(b) In calculating exclusion distances, the wind speed producing the maximum exclusion distances shall be used except for wind speeds that occur less than 5 percent of the time based on recorded data for the area.</P>
+<P>(c) In calculating exclusion distances, the ambient temperature and relative humidity that produce the maximum exclusion distances shall be used except for values that occur less than five percent of the time based on recorded data for the area.</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10958, Mar. 1, 2000, as amended by Amdt. 193-18, 69 FR 11336, Mar. 10, 2004; Amdt. 193-22, 75 FR 48604, Aug. 11, 2010; Amdt. 193-25, 80 FR 182, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2059" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2059&quot;,&quot;citation&quot;:&quot;49 CFR 193.2059&quot;}">
+<HEAD>&#xA7; 193.2059 Flammable vapor-gas dispersion protection.</HEAD>
+<P>Each LNG container and LNG transfer system must have a dispersion exclusion zone in accordance with sections 2.2.3.3 and 2.2.3.4 of NFPA-59A-2001 (incorporated by reference, <I>see</I> &#xA7; 193.2013) with the following exceptions:</P>
+<P>(a) Flammable vapor-gas dispersion distances must be determined in accordance with the model described in the GTI-04/0049, &#x201C;LNG Vapor Dispersion Prediction with the DEGADIS 2.1 Dense Gas Dispersion Model&#x201D;&#x201D; (incorporated by reference, <I>see</I> &#xA7; 193.2013).&#x201D; Alternatively, in order to account for additional cloud dilution which may be caused by the complex flow patterns induced by tank and dike structure, dispersion distances may be calculated in accordance with the model described in the Gas Research Institute report GRI-96/0396.5 (incorporated by reference, <I>see</I> &#xA7; 193.2013), &#x201C;Evaluation of Mitigation Methods for Accidental LNG Releases. Volume 5: Using FEM3A for LNG Accident Consequence Analyses&#x201D;. The use of alternate models which take into account the same physical factors and have been validated by experimental test data shall be permitted, subject to the Administrator's approval.</P>
+<P>(b) The following dispersion parameters must be used in computing dispersion distances:</P>
+<P>(1) Average gas concentration in air = 2.5 percent.</P>
+<P>(2) Dispersion conditions are a combination of those which result in longer predicted downwind dispersion distances than other weather conditions at the site at least 90 percent of the time, based on figures maintained by National Weather Service of the U.S. Department of Commerce, or as an alternative where the model used gives longer distances at lower wind speeds, Atmospheric Stability (Pasquill Class) F, wind speed = 4.5 miles per hour (2.01 meters/sec) at reference height of 10 meters, relative humidity = 50.0 percent, and atmospheric temperature = average in the region.</P>
+<P>(3) The elevation for contour (receptor) output H = 0.5 meters.</P>
+<P>(4) A surface roughness factor of 0.03 meters shall be used. Higher values for the roughness factor may be used if it can be shown that the terrain both upwind and downwind of the vapor cloud has dense vegetation and that the vapor cloud height is more than ten times the height of the obstacles encountered by the vapor cloud.</P>
+<P>(c) The design spill shall be determined in accordance with section 2.2.3.5 of NFPA-59A-2001 (incorporated by reference, <I>see</I> &#xA7; 193.2013).</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10959, Mar. 1, 2000, as amended by Amdt. 193-18, 69 FR 11336, Mar. 10, 2004; Amdt. 193-25, 80 FR 183, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2061-193.2065" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2061-193.2065&quot;,&quot;citation&quot;:&quot;49 CFR 193.2061-193.2065&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2061-193.2065 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2067" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2067&quot;,&quot;citation&quot;:&quot;49 CFR 193.2067&quot;}">
+<HEAD>&#xA7; 193.2067 Wind forces.</HEAD>
+<P>(a) LNG facilities must be designed to withstand without loss of structural or functional integrity:</P>
+<P>(1) The direct effect of wind forces;</P>
+<P>(2) The pressure differential between the interior and exterior of a confining, or partially confining, structure; and</P>
+<P>(3) In the case of impounding systems for LNG storage tanks, impact forces and potential penetrations by wind borne missiles.</P>
+<P>(b) The wind forces at the location of the specific facility must be based on one of the following:</P>
+<P>(1) For shop fabricated containers of LNG or other hazardous fluids with a capacity of not more than 70,000 gallons, applicable wind load data in ASCE/SEI 7 (incorporated by reference, <I>see</I> &#xA7; 193.2013).</P>
+<P>(2) For all other LNG facilities:</P>
+<P>(i) An assumed sustained wind velocity of not less than 150 miles per hour, unless the Administrator finds a lower velocity is justified by adequate supportive data; or</P>
+<P>(ii) The most critical combination of wind velocity and duration, with respect to the effect on the structure, having a probability of exceedance in a 50-year period of 0.5 percent or less, if adequate wind data are available and the probabilistic methodology is reliable.</P>
+<CITA TYPE="N">[45 FR 9203, Feb. 11, 1980, as amended by Amdt. 193-1, 45 FR 57419, Aug. 28, 1980; 58 FR 14522, Mar. 18, 1993; Amdt. 193-16, 63 FR 37505, July 13, 1998; Amdt. 193-17, 65 FR 10959, Mar. 1, 2000; Amdt. 193-19, 71 FR 33409, June 9, 2006; Amdt. 193-22, 75 FR 48604, Aug. 11, 2010; Amdt. 193-25, 80 FR 183, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2069-193.2073" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2069-193.2073&quot;,&quot;citation&quot;:&quot;49 CFR 193.2069-193.2073&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2069-193.2073 [Reserved]</HEAD>
+</DIV8>
+
+</DIV6>
+<DIV6 N="C" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subpart-C&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart C&amp;quot;}">
+<HEAD>Subpart C&#x2014;Design</HEAD>
+<DIV8 N="193.2101" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2101&quot;,&quot;citation&quot;:&quot;49 CFR 193.2101&quot;}">
+<HEAD>&#xA7; 193.2101 Scope.</HEAD>
+<P>(a) Each LNG facility designed after March 31, 2000 must comply with the requirements of this part and of NFPA-59A-2001 (incorporated by reference, <I>see</I> &#xA7; 193.2013). If there is a conflict between this Part and NFPA-59A-2001, the requirements in this part prevail.</P>
+<P>(b) Each stationary LNG storage tank must comply with Section 7.2.2 of NFPA-59A-2006 (incorporated by reference, <I>see</I> &#xA7; 193.2013) for seismic design of field fabricated tanks. All other LNG storage tanks must comply with API Std-620 (incorporated by reference, <I>see</I> &#xA7; 193.2013) for seismic design.</P>
+<CITA TYPE="N">[Amdt. 193-25, 80 FR 183, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV7 N="ECFR192f01ee41aa3d8" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subject-group-ECFR192f01ee41aa3d8&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart C - Materials&amp;quot;}">
+<HEAD>Materials</HEAD>
+<DIV8 N="193.2103-193.2117" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2103-193.2117&quot;,&quot;citation&quot;:&quot;49 CFR 193.2103-193.2117&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2103-193.2117 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2119" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2119&quot;,&quot;citation&quot;:&quot;49 CFR 193.2119&quot;}">
+<HEAD>&#xA7; 193.2119 Records</HEAD>
+<P>Each operator shall keep a record of all materials for components, buildings, foundations, and support systems, as necessary to verify that material properties meet the requirements of this part. These records must be maintained for the life of the item concerned.</P>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFRb9dfbc3f8030b56" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subject-group-ECFRb9dfbc3f8030b56&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart C - Design of Components and Buildings&amp;quot;}">
+<HEAD>Design of Components and Buildings</HEAD>
+<DIV8 N="193.2121-193.2153" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2121-193.2153&quot;,&quot;citation&quot;:&quot;49 CFR 193.2121-193.2153&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2121-193.2153 [Reserved]</HEAD>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFR6eaa9429e2079dc" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subject-group-ECFR6eaa9429e2079dc&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart C - Impoundment Design and Capacity&amp;quot;}">
+<HEAD>Impoundment Design and Capacity</HEAD>
+<DIV8 N="193.2155" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2155&quot;,&quot;citation&quot;:&quot;49 CFR 193.2155&quot;}">
+<HEAD>&#xA7; 193.2155 Structural requirements.</HEAD>
+<P>(a) The structural members of an impoundment system must be designed and constructed to prevent impairment of the system's performance reliability and structural integrity as a result of the following:</P>
+<P>(1) The imposed loading from&#x2014;</P>
+<P>(i) Full hydrostatic head of impounded LNG;</P>
+<P>(ii) Hydrodynamic action, including the effect of any material injected into the system for spill control;</P>
+<P>(iii) The impingement of the trajectory of an LNG jet discharged at any predictable angle; and</P>
+<P>(iv) Anticipated hydraulic forces from a credible opening in the component or item served, assuming that the discharge pressure equals design pressure.</P>
+<P>(2) The erosive action from a spill, including jetting of spilling LNG, and any other anticipated erosive action including surface water runoff, ice formation, dislodgement of ice formation, and snow removal.</P>
+<P>(3) The effect of the temperature, any thermal gradient, and any other anticipated degradation resulting from sudden or localized contact with LNG.</P>
+<P>(4) Exposure to fire from impounded LNG or from sources other than impounded LNG.</P>
+<P>(5) If applicable, the potential impact and loading on the dike due to&#x2014;</P>
+<P>(i) Collapse of the component or item served or adjacent components; and</P>
+<P>(ii) If the LNG facility adjoins the right-of-way of any highway or railroad, collision by or explosion of a train, tank car, or tank truck that could reasonably be expected to cause the most severe loading.</P>
+<P>(b) An LNG storage tank must not be located within a horizontal distance of one mile (1.6 km) from the ends, or
+<FR>1/4</FR> mile (0.4 km) from the nearest point of a runway, whichever is longer. The height of LNG structures in the vicinity of an airport must also comply with Federal Aviation Administration requirements in 14 CFR Section 1.1.</P>
+<CITA TYPE="N">[45 FR 9203, Feb. 11, 1980, as amended by Amdt. 193-17, 65 FR 10959, Mar. 1, 2000]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2157-193.2159" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2157-193.2159&quot;,&quot;citation&quot;:&quot;49 CFR 193.2157-193.2159&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2157-193.2159 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2161" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2161&quot;,&quot;citation&quot;:&quot;49 CFR 193.2161&quot;}">
+<HEAD>&#xA7; 193.2161 Dikes, general.</HEAD>
+<P>An outer wall of a component served by an impounding system may not be used as a dike unless the outer wall is constructed of concrete.</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10959, Mar. 1, 2000]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2163-193.2165" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2163-193.2165&quot;,&quot;citation&quot;:&quot;49 CFR 193.2163-193.2165&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2163-193.2165 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2167" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2167&quot;,&quot;citation&quot;:&quot;49 CFR 193.2167&quot;}">
+<HEAD>&#xA7; 193.2167 Covered systems.</HEAD>
+<P>A covered impounding system is prohibited except for concrete wall designed tanks where the concrete wall is an outer wall serving as a dike.</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10959, Mar. 1, 2000]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2169-193.2171" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2169-193.2171&quot;,&quot;citation&quot;:&quot;49 CFR 193.2169-193.2171&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2169-193.2171 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2173" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2173&quot;,&quot;citation&quot;:&quot;49 CFR 193.2173&quot;}">
+<HEAD>&#xA7; 193.2173 Water removal.</HEAD>
+<P>(a) Impoundment areas must be constructed such that all areas drain completely to prevent water collection. Drainage pumps and piping must be provided to remove water from collecting in the impoundment area. Alternative means of draining may be acceptable subject to the Administrator's approval.</P>
+<P>(b) The water removal system must have adequate capacity to remove water at a rate equal to 25% of the maximum predictable collection rate from a storm of 10-year frequency and 1-hour duration, and other natural causes. For rainfall amounts, operators must use the &#x201C;Rainfall Frequency Atlas of the United States&#x201D; published by the National Weather Service of the U.S. Department of Commerce.</P>
+<P>(c) Sump pumps for water removal must&#x2014;</P>
+<P>(1) Be operated as necessary to keep the impounding space as dry as practical; and</P>
+<P>(2) If sump pumps are designed for automatic operation, have redundant automatic shutdown controls to prevent operation when LNG is present.</P>
+<CITA TYPE="N">[45 FR 9203, Feb. 11, 1980, as amended by Amdt. 193-17, 65 FR 10959, Mar. 1, 2000]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2175-193.2179" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2175-193.2179&quot;,&quot;citation&quot;:&quot;49 CFR 193.2175-193.2179&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2175-193.2179 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2181" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2181&quot;,&quot;citation&quot;:&quot;49 CFR 193.2181&quot;}">
+<HEAD>&#xA7; 193.2181 Impoundment capacity: LNG storage tanks.</HEAD>
+<P>Each impounding system serving an LNG storage tank must have a minimum volumetric liquid impoundment capacity of:</P>
+<P>(a) 110 percent of the LNG tank's maximum liquid capacity for an impoundment serving a single tank;</P>
+<P>(b) 100 percent of all tanks or 110 percent of the largest tank's maximum liquid capacity, whichever is greater, for the impoundment serving more than one tank; or</P>
+<P>(c) If the dike is designed to account for a surge in the event of catastrophic failure, then the impoundment capacity may be reduced to 100 percent in lieu of 110 percent.</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10960, Mar. 1, 2000]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2183-193.2185" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2183-193.2185&quot;,&quot;citation&quot;:&quot;49 CFR 193.2183-193.2185&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2183-193.2185 [Reserved]</HEAD>
+</DIV8>
+
+</DIV7>
+<DIV7 N="ECFR03d857ba4a07378" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subject-group-ECFR03d857ba4a07378&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart C - LNG Storage Tanks&amp;quot;}">
+<HEAD>LNG Storage Tanks</HEAD>
+<DIV8 N="193.2187" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2187&quot;,&quot;citation&quot;:&quot;49 CFR 193.2187&quot;}">
+<HEAD>&#xA7; 193.2187 Nonmetallic membrane liner.</HEAD>
+<P>A flammable nonmetallic membrane liner may not be used as an inner container in a storage tank.</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10960, Mar. 1, 2000]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2189-193.2233" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2189-193.2233&quot;,&quot;citation&quot;:&quot;49 CFR 193.2189-193.2233&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2189-193.2233 [Reserved]</HEAD>
+</DIV8>
+
+</DIV7>
+</DIV6>
+<DIV6 N="D" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subpart-D&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart D&amp;quot;}">
+<HEAD>Subpart D&#x2014;Construction</HEAD>
+<DIV8 N="193.2301" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2301&quot;,&quot;citation&quot;:&quot;49 CFR 193.2301&quot;}">
+<HEAD>&#xA7; 193.2301 Scope.</HEAD>
+<P>Each LNG facility constructed after March 31, 2000 must comply with requirements of this part and of NFPA-59A-2001 (incorporated by reference <I>see</I> &#xA7; 193.2013). In the event of a conflict between this part and NFPA 59A, this part prevails.</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10960, Mar. 1, 2000, as amended by Amdt. 193-18, 69 FR 11336, Mar. 10, 2004; Amdt. 193-25, 80 FR 182, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2303" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2303&quot;,&quot;citation&quot;:&quot;49 CFR 193.2303&quot;}">
+<HEAD>&#xA7; 193.2303 Construction acceptance.</HEAD>
+<P>No person may place in service any component until it passes all applicable inspections and tests prescribed by this subpart and NFPA-59A-2001 (incorporated by reference, <I>see</I> &#xA7; 193.2013).</P>
+<CITA TYPE="N">[45 FR 9203, Feb. 11, 1980, as amended by Amdt. 193-17, 65 FR 10960, Mar. 1, 2000; Amdt. 193-18, 69 FR 11337, Mar. 10, 2004; Amdt. 193-25, 80 FR 182, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2304" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2304&quot;,&quot;citation&quot;:&quot;49 CFR 193.2304&quot;}">
+<HEAD>&#xA7; 193.2304 Corrosion control overview.</HEAD>
+<P>(a) Subject to paragraph (b) of this section, components may not be constructed, repaired, replaced, or significantly altered until a person qualified under &#xA7; 193.2707(c) reviews the applicable design drawings and materials specifications from a corrosion control viewpoint and determines that the materials involved will not impair the safety or reliability of the component or any associated components.</P>
+<P>(b) The repair, replacement, or significant alteration of components must be reviewed only if the action to be taken&#x2014;</P>
+<P>(1) Involves a change in the original materials specified;</P>
+<P>(2) Is due to a failure caused by corrosion; or</P>
+<P>(3) Is occasioned by inspection revealing a significant deterioration of the component due to corrosion.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70404, Oct. 23, 1980]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2305-193.2319" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2305-193.2319&quot;,&quot;citation&quot;:&quot;49 CFR 193.2305-193.2319&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2305-193.2319 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2321" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2321&quot;,&quot;citation&quot;:&quot;49 CFR 193.2321&quot;}">
+<HEAD>&#xA7; 193.2321 Nondestructive tests.</HEAD>
+<P>(a) The butt welds in metal shells of storage tanks with internal design pressure above 15 psig must be nondestructively examined in accordance with the ASME Boiler and Pressure Vessel Code (BPVC) (Section VIII, Division 1)(incorporated by reference, <I>see</I> &#xA7; 193.2013), except that 100 percent of welds that are both longitudinal (or meridional) and circumferential (or latitudinal) of hydraulic load bearing shells with curved surfaces that are subject to cryogenic temperatures must be nondestructively examined in accordance with the ASME BPVC (Section VIII, Division 1).</P>
+<P>(b) For storage tanks with internal design pressures at 15 psig or less, ultrasonic examinations of welds on metal containers must comply with the following:</P>
+<P>(1) Section 7.3.1.2 of NFPA Std-59A-2006, (incorporated by reference, <I>see</I> &#xA7; 193. 2013);</P>
+<P>(2) Appendices C and Q of API Std 620, (incorporated by reference, <I>see</I> &#xA7; 193.2013);</P>
+<P>(c) Ultrasonic examination records must be retained for the life of the facility. If electronic records are kept, they must be retained in a manner so that they cannot be altered by any means; and</P>
+<P>(d) The ultrasonic equipment used in the examination of welds must be calibrated at a frequency no longer than eight hours. Such calibrations must verify the examination of welds against a calibration standard. If the ultrasonic equipment is found to be out of calibration, all previous weld inspections that are suspect must be reexamined.</P>
+<CITA TYPE="N">[Amdt. 193-22, 75 FR 48605, Aug. 11, 2010, as amended by Amdt. 193-25, 80 FR 183, Jan. 5, 2015; 80 FR 46848, Aug. 6, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2323-193.2329" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2323-193.2329&quot;,&quot;citation&quot;:&quot;49 CFR 193.2323-193.2329&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2323-193.2329 [Reserved]</HEAD>
+</DIV8>
+
+</DIV6>
+<DIV6 N="E" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subpart-E&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart E&amp;quot;}">
+<HEAD>Subpart E&#x2014;Equipment</HEAD>
+<DIV8 N="193.2401" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2401&quot;,&quot;citation&quot;:&quot;49 CFR 193.2401&quot;}">
+<HEAD>&#xA7; 193.2401 Scope.</HEAD>
+<P>After March 31, 2000, each new, replaced, relocated or significantly altered vaporization equipment, liquefaction equipment, and control systems must be designed, fabricated, and installed in accordance with requirements of this part and of NFPA-59A-2001. In the event of a conflict between this part and NFPA 59A (incorporated by reference, <I>see</I> &#xA7; 193.2013), this part prevails.</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10960, Mar. 1, 2000, as amended by Amdt. 193-18, 69 FR 11337, Mar. 10, 2004; Amdt. 193-25, 80 FR 182, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV7 N="ECFR0f4b846b4e84028" TYPE="SUBJGRP" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subject-group-ECFR0f4b846b4e84028&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart E - Vaporization Equipment&amp;quot;}">
+<HEAD>Vaporization Equipment</HEAD>
+<DIV8 N="193.2403-193.2439" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2403-193.2439&quot;,&quot;citation&quot;:&quot;49 CFR 193.2403-193.2439&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2403-193.2439 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2441" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2441&quot;,&quot;citation&quot;:&quot;49 CFR 193.2441&quot;}">
+<HEAD>&#xA7; 193.2441 Control center.</HEAD>
+<P>Each LNG plant must have a control center from which operations and warning devices are monitored as required by this part. A control center must have the following capabilities and characteristics:</P>
+<P>(a) It must be located apart or protected from other LNG facilities so that it is operational during a controllable emergency.</P>
+<P>(b) Each remotely actuated control system and each automatic shutdown control system required by this part must be operable from the control center.</P>
+<P>(c) Each control center must have personnel in continuous attendance while any of the components under its control are in operation, unless the control is being performed from another control center which has personnel in continuous attendance.</P>
+<P>(d) If more than one control center is located at an LNG Plant, each control center must have more than one means of communication with each other center.</P>
+<P>(e) Each control center must have a means of communicating a warning of hazardous conditions to other locations within the plant frequented by personnel.</P>
+</DIV8>
+
+<DIV8 N="193.2443" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2443&quot;,&quot;citation&quot;:&quot;49 CFR 193.2443&quot;}">
+<HEAD>&#xA7; 193.2443 [Reserved]</HEAD>
+</DIV8>
+
+<DIV8 N="193.2445" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2445&quot;,&quot;citation&quot;:&quot;49 CFR 193.2445&quot;}">
+<HEAD>&#xA7; 193.2445 Sources of power.</HEAD>
+<P>(a) Electrical control systems, means of communication, emergency lighting, and firefighting systems must have at least two sources of power which function so that failure of one source does not affect the capability of the other source.</P>
+<P>(b) Where auxiliary generators are used as a second source of electrical power:</P>
+<P>(1) They must be located apart or protected from components so that they are not unusable during a controllable emergency; and</P>
+<P>(2) Fuel supply must be protected from hazards.</P>
+</DIV8>
+
+</DIV7>
+</DIV6>
+<DIV6 N="F" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subpart-F&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart F&amp;quot;}">
+<HEAD>Subpart F&#x2014;Operations</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>Amdt. 193-2, 45 FR 70405, Oct. 23, 1980, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV8 N="193.2501" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2501&quot;,&quot;citation&quot;:&quot;49 CFR 193.2501&quot;}">
+<HEAD>&#xA7; 193.2501 Scope.</HEAD>
+<P>This subpart prescribes requirements for the operation of LNG facilities.</P>
+</DIV8>
+
+<DIV8 N="193.2503" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2503&quot;,&quot;citation&quot;:&quot;49 CFR 193.2503&quot;}">
+<HEAD>&#xA7; 193.2503 Operating procedures.</HEAD>
+<P>Each operator shall follow one or more manuals of written procedures to provide safety in normal operation and in responding to an abnormal operation that would affect safety. The procedures must include provisions for:</P>
+<P>(a) Monitoring components or buildings according to the requirements of &#xA7; 193.2507.</P>
+<P>(b) Startup and shutdown, including for initial startup, performance testing to demonstrate that components will operate satisfactory in service.</P>
+<P>(c) Recognizing abnormal operating conditions.</P>
+<P>(d) Purging and inerting components according to the requirements of &#xA7; 193.2517.</P>
+<P>(e) In the case of vaporization, maintaining the vaporization rate, temperature and pressure so that the resultant gas is within limits established for the vaporizer and the downstream piping.</P>
+<P>(f) In the case of liquefaction, maintaining temperatures, pressures, pressure differentials and flow rates, as applicable, within their design limits for:</P>
+<P>(1) Boilers;</P>
+<P>(2) Turbines and other prime movers;</P>
+<P>(3) Pumps, compressors, and expanders;</P>
+<P>(4) Purification and regeneration equipment; and</P>
+<P>(5) Equipment within cold boxes.</P>
+<P>(g) Cooldown of components according to the requirements of &#xA7; 193.2505.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70405, Oct. 23, 1980, as amended by Amdt. 193-18, 69 FR 11337, Mar. 10, 2004]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2505" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2505&quot;,&quot;citation&quot;:&quot;49 CFR 193.2505&quot;}">
+<HEAD>&#xA7; 193.2505 Cooldown.</HEAD>
+<P>(a) The cooldown of each system of components that is subjected to cryogenic temperatures must be limited to a rate and distribution pattern that keeps thermal stresses within design limits during the cooldown period, paying particular attention to the performance of expansion and contraction devices.</P>
+<P>(b) After cooldown stabilization is reached, cryogenic piping systems must be checked for leaks in areas of flanges, valves, and seals.</P>
+</DIV8>
+
+<DIV8 N="193.2507" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2507&quot;,&quot;citation&quot;:&quot;49 CFR 193.2507&quot;}">
+<HEAD>&#xA7; 193.2507 Monitoring operations.</HEAD>
+<P>Each component in operation or building in which a hazard to persons or property could exist must be monitored to detect fire or any malfunction or flammable fluid that could cause a hazardous condition. Monitoring must be accomplished by watching or listening from an attended control center for warning alarms, such as gas, temperature, pressure, vacuum, and flow alarms, or by conducting an inspection or test at intervals specified in the operating procedures.</P>
+<CITA TYPE="N">[Amdt, 193-2, 45 FR 70405, Oct. 23, 1980, as amended by Amdt. 193-18, 69 FR 11337, Mar. 10, 2004]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2509" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2509&quot;,&quot;citation&quot;:&quot;49 CFR 193.2509&quot;}">
+<HEAD>&#xA7; 193.2509 Emergency procedures.</HEAD>
+<P>(a) Each operator shall determine the types and places of emergencies other than fires that may reasonably be expected to occur at an LNG plant due to operating malfunctions, structural collapse, personnel error, forces of nature, and activities adjacent to the plant.</P>
+<P>(b) To adequately handle each type of emergency identified under paragraph (a) of this section and each fire emergency, each operator must follow one or more manuals of written procedures. The procedures must provide for the following:</P>
+<P>(1) Responding to controllable emergencies, including notifying personnel and using equipment appropriate for handling the emergency.</P>
+<P>(2) Recognizing an uncontrollable emergency and taking action to minimize harm to the public and personnel, including prompt notification of appropriate local officials of the emergency and possible need for evacuation of the public in the vicinity of the LNG plant.</P>
+<P>(3) Coordinating with appropriate local officials in preparation of an emergency evacuation plan, which sets forth the steps required to protect the public in the event of an emergency, including catastrophic failure of an LNG storage tank.</P>
+<P>(4) Cooperating with appropriate local officials in evacuations and emergencies requiring mutual assistance and keeping these officials advised of:</P>
+<P>(i) The LNG plant fire control equipment, its location, and quantity of units located throughout the plant;</P>
+<P>(ii) Potential hazards at the plant, including fires;</P>
+<P>(iii) Communication and emergency control capabilities at the LNG plant; and</P>
+<P>(iv) The status of each emergency.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70405, Oct. 23, 1980, as amended by Amdt. 193-18, 69 FR 11337, Mar. 10, 2004]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2511" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2511&quot;,&quot;citation&quot;:&quot;49 CFR 193.2511&quot;}">
+<HEAD>&#xA7; 193.2511 Personnel safety.</HEAD>
+<P>(a) Each operator shall provide any special protective clothing and equipment necessary for the safety of personnel while they are performing emergency response duties.</P>
+<P>(b) All personnel who are normally on duty at a fixed location, such as a building or yard, where they could be harmed by thermal radiation from a burning pool of impounded liquid, must be provided a means of protection at that location from the harmful effects of thermal radiation or a means of escape.</P>
+<P>(c) Each LNG plant must be equipped with suitable first-aid material, the location of which is clearly marked and readily available to personnel.</P>
+</DIV8>
+
+<DIV8 N="193.2513" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2513&quot;,&quot;citation&quot;:&quot;49 CFR 193.2513&quot;}">
+<HEAD>&#xA7; 193.2513 Transfer procedures.</HEAD>
+<P>(a) Each transfer of LNG or other hazardous fluid must be conducted in accordance with one or more manuals of written procedures to provide for safe transfers.</P>
+<P>(b) The transfer procedures must include provisions for personnel to:</P>
+<P>(1) Before transfer, verify that the transfer system is ready for use, with connections and controls in proper positions, including if the system could contain a combustible mixture, verifying that it has been adequately purged in accordance with a procedure which meets the requirements of &#x201C;Purging Principles and Practices (incorporated by reference, <I>see</I> &#xA7; 193.2013)&#x201D;;</P>
+<P>(2) Before transfer, verify that each receiving container or tank vehicle does not contain any substance that would be incompatible with the incoming fluid and that there is sufficient capacity available to receive the amount of fluid to be transferred;</P>
+<P>(3) Before transfer, verify the maximum filling volume of each receiving container or tank vehicle to ensure that expansion of the incoming fluid due to warming will not result in overfilling or overpressure;</P>
+<P>(4) When making bulk transfer of LNG into a partially filled (excluding cooldown heel) container, determine any differences in temperature or specific gravity between the LNG being transferred and the LNG already in the container and, if necessary, provide a means to prevent rollover due to stratification.</P>
+<P>(5) Verify that the transfer operations are proceeding within design conditions and that overpressure or overfilling does not occur by monitoring applicable flow rates, liquid levels, and vapor returns.</P>
+<P>(6) Manually terminate the flow before overfilling or overpressure occurs; and</P>
+<P>(7) Deactivate cargo transfer systems in a safe manner by depressurizing, venting, and disconnecting lines and conducting any other appropriate operations.</P>
+<P>(c) In addition to the requirements of paragraph (b) of this section, the procedures for cargo transfer must be located at the transfer area and include provisions for personnel to:</P>
+<P>(1) Be in constant attendance during all cargo transfer operations;</P>
+<P>(2) Prohibit the backing of tank trucks in the transfer area, except when a person is positioned at the rear of the truck giving instructions to the driver;</P>
+<P>(3) Before transfer, verify that:</P>
+<P>(i) Each tank car or tank truck complies with applicable regulations governing its use;</P>
+<P>(ii) All transfer hoses have been visually inspected for damage and defects;</P>
+<P>(iii) Each tank truck is properly immobilized with chock wheels, and electrically grounded; and</P>
+<P>(iv) Each tank truck engine is shut off unless it is required for transfer operations;</P>
+<P>(4) Prevent a tank truck engine that is off during transfer operations from being restarted until the transfer lines have been disconnected and any released vapors have dissipated;</P>
+<P>(5) Prevent loading LNG into a tank car or tank truck that is not in exclusive LNG service or that does not contain a positive pressure if it is in exclusive LNG service, until after the oxygen content in the tank is tested and if it exceeds 2 percent by volume, purged in accordance with a procedure that meets the requirements of &#x201C;Purging Principles and Practices (incorporated by reference, <I>see</I> &#xA7; 193.2013)&#x201D;.</P>
+<P>(6) Verify that all transfer lines have been disconnected and equipment cleared before the tank car or tank truck is moved from the transfer position; and</P>
+<P>(7) Verify that transfers into a pipeline system will not exceed the pressure or temperature limits of the system.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70405, Oct. 23, 1980, as amended by Amdt. 193-25, 80 FR 183, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2515" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2515&quot;,&quot;citation&quot;:&quot;49 CFR 193.2515&quot;}">
+<HEAD>&#xA7; 193.2515 Investigations of failures.</HEAD>
+<P>(a) Each operator shall investigate the cause of each explosion, fire, or LNG spill or leak which results in:</P>
+<P>(1) Death or injury requiring hospitalization; or</P>
+<P>(2) Property damage exceeding $10,000.</P>
+<P>(b) As a result of the investigation, appropriate action must be taken to minimize recurrence of the incident.</P>
+<P>(c) If the Administrator or relevant state agency under the pipeline safety laws (49 U.S.C. 60101 <I>et seq.</I>) investigates an incident, the operator involved shall make available all relevant information and provide reasonable assistance in conducting the investigation. Unless necessary to restore or maintain service, or for safety, no component involved in the incident may be moved from its location or otherwise altered until the investigation is complete or the investigating agency otherwise provides. Where components must be moved for operational or safety reasons, they must not be removed from the plant site and must be maintained intact to the extent practicable until the investigation is complete or the investigating agency otherwise provides.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70405, Oct. 23, 1980, as amended by Amdt. 193-10, 61 FR 18517, Apr. 26, 1996]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2517" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2517&quot;,&quot;citation&quot;:&quot;49 CFR 193.2517&quot;}">
+<HEAD>&#xA7; 193.2517 Purging.</HEAD>
+<P>When necessary for safety, components that could accumulate significant amounts of combustible mixtures must be purged in accordance with a procedure which meets the provisions of the &#x201C;Purging Principles and Practices (incorporated by reference, <I>see</I> &#xA7; 193.2013)&#x201D; after being taken out of service and before being returned to service.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70405, Oct. 23, 1980, as amended by Amdt. 193-25, 80 FR 183, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2519" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2519&quot;,&quot;citation&quot;:&quot;49 CFR 193.2519&quot;}">
+<HEAD>&#xA7; 193.2519 Communication systems.</HEAD>
+<P>(a) Each LNG plant must have a primary communication system that provides for verbal communications between all operating personnel at their work stations in the LNG plant.</P>
+<P>(b) Each LNG plant in excess of 70,000 gallons (265,000 liters) storage capacity must have an emergency communication system that provides for verbal communications between all persons and locations necessary for the orderly shutdown of operating equipment and the operation of safety equipment in time of emergency. The emergency communication system must be independent of and physically separated from the primary communication system and the security communication system under &#xA7; 193.2909.</P>
+<P>(c) Each communication system required by this part must have an auxiliary source of power, except sound-powered equipment.</P>
+<CITA TYPE="N">[45 FR 9203, Feb. 11, 1980, as amended by Amdt. 193-16, 63 FR 37505, July 13, 1998]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2521" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2521&quot;,&quot;citation&quot;:&quot;49 CFR 193.2521&quot;}">
+<HEAD>&#xA7; 193.2521 Operating records.</HEAD>
+<P>Each operator shall maintain a record of results of each inspection, test and investigation required by this subpart. For each LNG facility that is designed and constructed after March 31, 2000 the operator shall also maintain related inspection, testing, and investigation records that NFPA-59A-2001 (incorporated by reference, <I>see</I> &#xA7; 193.2013) requires. Such records, whether required by this part or NFPA-59A-2001, must be kept for a period of not less than five years.</P>
+<CITA TYPE="N">[Amdt. 193-17, 65 FR 10960, Mar. 1, 2000, as amended by Amdt. 193-18, 69 FR 11337, Mar. 10, 2004; Amdt. 193-25, 80 FR 182, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+</DIV6>
+<DIV6 N="G" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subpart-G&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart G&amp;quot;}">
+<HEAD>Subpart G&#x2014;Maintenance</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>Amdt. 193-2, 45 FR 70407, Oct. 23, 1980, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV8 N="193.2601" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2601&quot;,&quot;citation&quot;:&quot;49 CFR 193.2601&quot;}">
+<HEAD>&#xA7; 193.2601 Scope.</HEAD>
+<P>This subpart prescribes requirements for maintaining components at LNG plants.</P>
+</DIV8>
+
+<DIV8 N="193.2603" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2603&quot;,&quot;citation&quot;:&quot;49 CFR 193.2603&quot;}">
+<HEAD>&#xA7; 193.2603 General.</HEAD>
+<P>(a) Each component in service, including its support system, must be maintained in a condition that is compatible with its operational or safety purpose by repair, replacement, or other means.</P>
+<P>(b) An operator may not place, return, or continue in service any component which is not maintained in accordance with this subpart.</P>
+<P>(c) Each component taken out of service must be identified in the records kept under &#xA7; 193.2639.</P>
+<P>(d) If a safety device is taken out of service for maintenance, the component being served by the device must be taken out of service unless the same safety function is provided by an alternate means.</P>
+<P>(e) If the inadvertent operation of a component taken out of service could cause a hazardous condition, that component must have a tag attached to the controls bearing the words &#x201C;do not operate&#x201D; or words of comparable meaning.</P>
+</DIV8>
+
+<DIV8 N="193.2605" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2605&quot;,&quot;citation&quot;:&quot;49 CFR 193.2605&quot;}">
+<HEAD>&#xA7; 193.2605 Maintenance procedures.</HEAD>
+<P>(a) Each operator shall determine and perform, consistent with generally accepted engineering practice, the periodic inspections or tests needed to meet the applicable requirements of this subpart and to verify that components meet the maintenance standards prescribed by this subpart.</P>
+<P>(b) Each operator shall follow one or more manuals of written procedures for the maintenance of each component, including any required corrosion control. The procedures must include:</P>
+<P>(1) The details of the inspections or tests determined under paragraph (a) of this section and their frequency of performance; and</P>
+<P>(2) A description of other actions necessary to maintain the LNG plant according to the requirements of this subpart.</P>
+<P>(c) Each operator shall include in the manual required by paragraph (b) of this section instructions enabling personnel who perform operation and maintenance activities to recognize conditions that potentially may be safety-related conditions that are subject to the reporting requirements of &#xA7; 191.23 of this subchapter.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70407, Oct. 23, 1980, as amended by Amdt. 193-5, 53 FR 24950, July 1, 1988; 53 FR 26560, July 13, 1988; Amdt. 193-18, 69 FR 11337, Mar. 10, 2004]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2607" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2607&quot;,&quot;citation&quot;:&quot;49 CFR 193.2607&quot;}">
+<HEAD>&#xA7; 193.2607 Foreign material.</HEAD>
+<P>(a) The presence of foreign material, contaminants, or ice shall be avoided or controlled to maintain the operational safety of each component.</P>
+<P>(b) LNG plant grounds must be free from rubbish, debris, and other material which present a fire hazard. Grass areas on the LNG plant grounds must be maintained in a manner that does not present a fire hazard.</P>
+</DIV8>
+
+<DIV8 N="193.2609" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2609&quot;,&quot;citation&quot;:&quot;49 CFR 193.2609&quot;}">
+<HEAD>&#xA7; 193.2609 Support systems.</HEAD>
+<P>Each support system or foundation of each component must be inspected for any detrimental change that could impair support.</P>
+</DIV8>
+
+<DIV8 N="193.2611" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2611&quot;,&quot;citation&quot;:&quot;49 CFR 193.2611&quot;}">
+<HEAD>&#xA7; 193.2611 Fire protection.</HEAD>
+<P>(a) Maintenance activities on fire control equipment must be scheduled so that a minimum of equipment is taken out of service at any one time and is returned to service in a reasonable period of time.</P>
+<P>(b) Access routes for movement of fire control equipment within each LNG plant must be maintained to reasonably provide for use in all weather conditions.</P>
+</DIV8>
+
+<DIV8 N="193.2613" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2613&quot;,&quot;citation&quot;:&quot;49 CFR 193.2613&quot;}">
+<HEAD>&#xA7; 193.2613 Auxiliary power sources.</HEAD>
+<P>Each auxiliary power source must be tested monthly to check its operational capability and tested annually for capacity. The capacity test must take into account the power needed to start up and simultaneously operate equipment that would have to be served by that power source in an emergency.</P>
+</DIV8>
+
+<DIV8 N="193.2615" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2615&quot;,&quot;citation&quot;:&quot;49 CFR 193.2615&quot;}">
+<HEAD>&#xA7; 193.2615 Isolating and purging.</HEAD>
+<P>(a) Before personnel begin maintenance activities on components handling flammable fluids which are isolated for maintenance, the component must be purged in accordance with a procedure which meets the requirements of &#x201C;Purging Principles and Practices (incorporated by reference, <I>see</I> &#xA7; 193.2013)&#x201D;; unless the maintenance procedures under &#xA7; 193.2605 provide that the activity can be safely performed without purging.</P>
+<P>(b) If the component or maintenance activity provides an ignition source, a technique in addition to isolation valves (such as removing spool pieces or valves and blank flanging the piping, or double block and bleed valving) must be used to ensure that the work area is free of flammable fluids.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70405, Oct. 23, 1980, as amended by Amdt. 193-25, 80 FR 184, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2617" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2617&quot;,&quot;citation&quot;:&quot;49 CFR 193.2617&quot;}">
+<HEAD>&#xA7; 193.2617 Repairs.</HEAD>
+<P>(a) Repair work on components must be performed and tested in a manner which:</P>
+<P>(1) As far as practicable, complies with the applicable requirements of Subpart D of this part; and</P>
+<P>(2) Assures the integrity and operational safety of the component being repaired.</P>
+<P>(b) For repairs made while a component is operating, each operator shall include in the maintenance procedures under &#xA7; 193.2605 appropriate precautions to maintain the safety of personnel and property during repair activities.</P>
+</DIV8>
+
+<DIV8 N="193.2619" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2619&quot;,&quot;citation&quot;:&quot;49 CFR 193.2619&quot;}">
+<HEAD>&#xA7; 193.2619 Control systems.</HEAD>
+<P>(a) Each control system must be properly adjusted to operate within design limits.</P>
+<P>(b) If a control system is out of service for 30 days or more, it must be inspected and tested for operational capability before returning it to service.</P>
+<P>(c) Control systems in service, but not normally in operation, such as relief valves and automatic shutdown devices, and control systems for internal shutoff valves for bottom penetration tanks must be inspected and tested once each calendar year, not exceeding 15 months, with the following exceptions:</P>
+<P>(1) Control systems used seasonally, such as for liquefaction or vaporization, must be inspected and tested before use each season.</P>
+<P>(2) Control systems that are intended for fire protection must be inspected and tested at regular intervals not to exceed 6 months.</P>
+<P>(d) Control systems that are normally in operation, such as required by a base load system, must be inspected and tested once each calendar year but with intervals not exceeding 15 months.</P>
+<P>(e) Relief valves must be inspected and tested for verification of the valve seat lifting pressure and reseating.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70407, Oct. 23, 1980, as amended by Amdt. 193-17, 65 FR 10960, Mar. 1, 2000]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2621" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2621&quot;,&quot;citation&quot;:&quot;49 CFR 193.2621&quot;}">
+<HEAD>&#xA7; 193.2621 Testing transfer hoses.</HEAD>
+<P>Hoses used in LNG or flammable refrigerant transfer systems must be:</P>
+<P>(a) Tested once each calendar year, but with intervals not exceeding 15 months, to the maximum pump pressure or relief valve setting; and</P>
+<P>(b) Visually inspected for damage or defects before each use.</P>
+</DIV8>
+
+<DIV8 N="193.2623" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2623&quot;,&quot;citation&quot;:&quot;49 CFR 193.2623&quot;}">
+<HEAD>&#xA7; 193.2623 Inspecting LNG storage tanks.</HEAD>
+<P>Each LNG storage tank must be inspected or tested to verify that each of the following conditions does not impair the structural integrity or safety of the tank:</P>
+<P>(a) Foundation and tank movement during normal operation and after a major meteorological or geophysical disturbance.</P>
+<P>(b) Inner tank leakage.</P>
+<P>(c) Effectiveness of insulation.</P>
+<P>(d) Frost heave.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70407, Oct. 23, 1980, as amended at 47 FR 32720, July 29, 1982]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2625" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2625&quot;,&quot;citation&quot;:&quot;49 CFR 193.2625&quot;}">
+<HEAD>&#xA7; 193.2625 Corrosion protection.</HEAD>
+<P>(a) Each operator shall determine which metallic components could, unless corrosion is controlled, have their integrity or reliability adversely affected by external, internal, or atmospheric corrosion during their intended service life.</P>
+<P>(b) Components whose integrity or reliability could be adversely affected by corrosion must be either&#x2014;</P>
+<P>(1) Protected from corrosion in accordance with &#xA7;&#xA7; 193.2627 through 193.2635, as applicable; or</P>
+<P>(2) Inspected and replaced under a program of scheduled maintenance in accordance with procedures established under &#xA7; 193.2605.</P>
+</DIV8>
+
+<DIV8 N="193.2627" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2627&quot;,&quot;citation&quot;:&quot;49 CFR 193.2627&quot;}">
+<HEAD>&#xA7; 193.2627 Atmospheric corrosion control.</HEAD>
+<P>Each exposed component that is subject to atmospheric corrosive attack must be protected from atmospheric corrosion by&#x2014;</P>
+<P>(a) Material that has been designed and selected to resist the corrosive atmosphere involved; or</P>
+<P>(b) Suitable coating or jacketing.</P>
+</DIV8>
+
+<DIV8 N="193.2629" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2629&quot;,&quot;citation&quot;:&quot;49 CFR 193.2629&quot;}">
+<HEAD>&#xA7; 193.2629 External corrosion control: buried or submerged components.</HEAD>
+<P>(a) Each buried or submerged component that is subject to external corrosive attack must be protected from external corrosion by&#x2014;</P>
+<P>(1) Material that has been designed and selected to resist the corrosive environment involved; or</P>
+<P>(2) The following means:</P>
+<P>(i) An external protective coating designed and installed to prevent corrosion attack and to meet the requirements of &#xA7; 192.461 of this chapter; and</P>
+<P>(ii) A cathodic protection system designed to protect components in their entirety in accordance with the requirements of &#xA7; 192.463 of this chapter and placed in operation before October 23, 1981, or within 1 year after the component is constructed or installed, whichever is later.</P>
+<P>(b) Where cathodic protection is applied, components that are electrically interconnected must be protected as a unit.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70407, Oct. 23, 1980, as amended at 47 FR 32720, July 29, 1982]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2631" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2631&quot;,&quot;citation&quot;:&quot;49 CFR 193.2631&quot;}">
+<HEAD>&#xA7; 193.2631 Internal corrosion control.</HEAD>
+<P>Each component that is subject to internal corrosive attack must be protected from internal corrosion by&#x2014;</P>
+<P>(a) Material that has been designed and selected to resist the corrosive fluid involved; or</P>
+<P>(b) Suitable coating, inhibitor, or other means.</P>
+</DIV8>
+
+<DIV8 N="193.2633" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2633&quot;,&quot;citation&quot;:&quot;49 CFR 193.2633&quot;}">
+<HEAD>&#xA7; 193.2633 Interference currents.</HEAD>
+<P>(a) Each component that is subject to electrical current interference must be protected by a continuing program to minimize the detrimental effects of currents.</P>
+<P>(b) Each cathodic protection system must be designed and installed so as to minimize any adverse effects it might cause to adjacent metal components.</P>
+<P>(c) Each impressed current power source must be installed and maintained to prevent adverse interference with communications and control systems.</P>
+</DIV8>
+
+<DIV8 N="193.2635" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2635&quot;,&quot;citation&quot;:&quot;49 CFR 193.2635&quot;}">
+<HEAD>&#xA7; 193.2635 Monitoring corrosion control.</HEAD>
+<P>Corrosion protection provided as required by this subpart must be periodically monitored to give early recognition of ineffective corrosion protection, including the following, as applicable:</P>
+<P>(a) Each buried or submerged component under cathodic protection must be tested at least once each calendar year, but with intervals not exceeding 15 months, to determine whether the cathodic protection meets the requirements of &#xA7; 192.463 of this chapter.</P>
+<P>(b) Each cathodic protection rectifier or other impressed current power source must be inspected at least 6 times each calendar year, but with intervals not exceeding 2
+<FR>1/2</FR> months, to ensure that it is operating properly.</P>
+<P>(c) Each reverse current switch, each diode, and each interference bond whose failure would jeopardize component protection must be electrically checked for proper performance at least 6 times each calendar year, but with intervals not exceeding 2
+<FR>1/2</FR> months. Each other interference bond must be checked at least once each calendar year, but with intervals not exceeding 15 months.</P>
+<P>(d) Each component that is protected from atmospheric corrosion must be inspected at intervals not exceeding 3 years.</P>
+<P>(e) If a component is protected from internal corrosion, monitoring devices designed to detect internal corrosion, such as coupons or probes, must be located where corrosion is most likely to occur. However, monitoring is not required for corrosion resistant materials if the operator can demonstrate that the component will not be adversely affected by internal corrosion during its service life. Internal corrosion control monitoring devices must be checked at least two times each calendar year, but with intervals not exceeding 7
+<FR>1/2</FR> months.</P>
+</DIV8>
+
+<DIV8 N="193.2637" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2637&quot;,&quot;citation&quot;:&quot;49 CFR 193.2637&quot;}">
+<HEAD>&#xA7; 193.2637 Remedial measures.</HEAD>
+<P>Prompt corrective or remedial action must be taken whenever an operator learns by inspection or otherwise that atmospheric, external, or internal corrosion is not controlled as required by this subpart.</P>
+</DIV8>
+
+<DIV8 N="193.2639" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2639&quot;,&quot;citation&quot;:&quot;49 CFR 193.2639&quot;}">
+<HEAD>&#xA7; 193.2639 Maintenance records.</HEAD>
+<P>(a) Each operator shall keep a record at each LNG plant of the date and type of each maintenance activity performed on each component to meet the requirements of this part. For each LNG facility that is designed and constructed after March 31, 2000 the operator shall also maintain related periodic inspection and testing records that NFPA-59A-2001 (incorporated by reference, <I>see</I> &#xA7; 193.2013) requires. Maintenance records, whether required by this part or NFPA-59A-2001, must be kept for a period of not less than five years.</P>
+<P>(b) Each operator shall maintain records or maps to show the location of cathodically protected components, neighboring structures bonded to the cathodic protection system, and corrosion protection equipment.</P>
+<P>(c) Each of the following records must be retained for as long as the LNG facility remains in service:</P>
+<P>(1) Each record or map required by paragraph (b) of this section.</P>
+<P>(2) Records of each test, survey, or inspection required by this subpart in sufficient detail to demonstrate the adequacy of corrosion control measures.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70407, Oct. 23, 1980, as amended by Amdt. 193-17, 65 FR 10960, Mar. 1, 2000; Amdt. 193-18, 69 FR 11337, Mar. 10, 2004; Amdt. 193-25, 80 FR 182, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+</DIV6>
+<DIV6 N="H" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subpart-H&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart H&amp;quot;}">
+<HEAD>Subpart H&#x2014;Personnel Qualifications and Training</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>Sections 193.2707 through 193.2719 appear at Amdt. 193-2, 45 FR 70404, Oct. 23, 1980, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV8 N="193.2701" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2701&quot;,&quot;citation&quot;:&quot;49 CFR 193.2701&quot;}">
+<HEAD>&#xA7; 193.2701 Scope.</HEAD>
+<P>This subpart prescribes requirements for personnel qualifications and training.</P>
+<CITA TYPE="N">[45 FR 9219, Feb. 11, 1980]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2703" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2703&quot;,&quot;citation&quot;:&quot;49 CFR 193.2703&quot;}">
+<HEAD>&#xA7; 193.2703 Design and fabrication.</HEAD>
+<P>For the design and fabrication of components, each operator shall use&#x2014;</P>
+<P>(a) With respect to design, persons who have demonstrated competence by training or experience in the design of comparable components.</P>
+<P>(b) With respect to fabrication, persons who have demonstrated competence by training or experience in the fabrication of comparable components.</P>
+<CITA TYPE="N">[45 FR 9219, Feb. 11, 1980]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2705" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2705&quot;,&quot;citation&quot;:&quot;49 CFR 193.2705&quot;}">
+<HEAD>&#xA7; 193.2705 Construction, installation, inspection, and testing.</HEAD>
+<P>(a) Supervisors and other personnel utilized for construction, installation, inspection, or testing must have demonstrated their capability to perform satisfactorily the assigned function by appropriate training in the methods and equipment to be used or related experience and accomplishments.</P>
+<P>(b) Each operator must periodically determine whether inspectors performing construction, installation, and testing duties required by this part are satisfactorily performing their assigned functions.</P>
+<CITA TYPE="N">[45 FR 9219, Feb. 11, 1980, as amended by Amdt. 193-18, 69 FR 11337, Mar. 10, 2004]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2707" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2707&quot;,&quot;citation&quot;:&quot;49 CFR 193.2707&quot;}">
+<HEAD>&#xA7; 193.2707 Operations and maintenance.</HEAD>
+<P>(a) Each operator shall utilize for operation or maintenance of components only those personnel who have demonstrated their capability to perform their assigned functions by&#x2014;</P>
+<P>(1) Successful completion of the training required by &#xA7;&#xA7; 193.2713 and 193.2717; and</P>
+<P>(2) Experience related to the assigned operation or maintenance function; and</P>
+<P>(3) Acceptable performance on a proficiency test relevant to the assigned function.</P>
+<P>(b) A person who does not meet the requirements of paragraph (a) of this section may operate or maintain a component when accompanied and directed by an individual who meets the requirements.</P>
+<P>(c) Corrosion control procedures under &#xA7; 193.2605(b), including those for the design, installation, operation, and maintenance of cathodic protection systems, must be carried out by, or under the direction of, a person qualified by experience and training in corrosion control technology.</P>
+</DIV8>
+
+<DIV8 N="193.2709" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2709&quot;,&quot;citation&quot;:&quot;49 CFR 193.2709&quot;}">
+<HEAD>&#xA7; 193.2709 Security.</HEAD>
+<P>Personnel having security duties must be qualified to perform their assigned duties by successful completion of the training required under &#xA7; 193.2715.</P>
+</DIV8>
+
+<DIV8 N="193.2711" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2711&quot;,&quot;citation&quot;:&quot;49 CFR 193.2711&quot;}">
+<HEAD>&#xA7; 193.2711 Personnel health.</HEAD>
+<P>Each operator shall follow a written plan to verify that personnel assigned operating, maintenance, security, or fire protection duties at the LNG plant do not have any physical condition that would impair performance of their assigned duties. The plan must be designed to detect both readily observable disorders, such as physical handicaps or injury, and conditions requiring professional examination for discovery.</P>
+</DIV8>
+
+<DIV8 N="193.2713" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2713&quot;,&quot;citation&quot;:&quot;49 CFR 193.2713&quot;}">
+<HEAD>&#xA7; 193.2713 Training: operations and maintenance.</HEAD>
+<P>(a) Each operator shall provide and implement a written plan of initial training to instruct&#x2014;</P>
+<P>(1) All permanent maintenance, operating, and supervisory personnel&#x2014;</P>
+<P>(i) About the characteristics and hazards of LNG and other flammable fluids used or handled at the facility, including, with regard to LNG, low temperatures, flammability of mixtures with air, odorless vapor, boiloff characteristics, and reaction to water and water spray;</P>
+<P>(ii) About the potential hazards involved in operating and maintenance activities; and</P>
+<P>(iii) To carry out aspects of the operating and maintenance procedures under &#xA7;&#xA7; 193.2503 and 193.2605 that relate to their assigned functions; and</P>
+<P>(2) All personnel&#x2014;</P>
+<P>(i) To carry out the emergency procedures under &#xA7; 193.2509 that relate to their assigned functions; and</P>
+<P>(ii) To give first-aid; and</P>
+<P>(3) All operating and appropriate supervisory personnel&#x2014;</P>
+<P>(i) To understand detailed instructions on the facility operations, including controls, functions, and operating procedures; and</P>
+<P>(ii) To understand the LNG transfer procedures provided under &#xA7; 193.2513.</P>
+<P>(b) A written plan of continuing instruction must be conducted at intervals of not more than two years to keep all personnel current on the knowledge and skills they gained in the program of initial instruction.</P>
+</DIV8>
+
+<DIV8 N="193.2715" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2715&quot;,&quot;citation&quot;:&quot;49 CFR 193.2715&quot;}">
+<HEAD>&#xA7; 193.2715 Training: security.</HEAD>
+<P>(a) Personnel responsible for security at an LNG plant must be trained in accordance with a written plan of initial instruction to:</P>
+<P>(1) Recognize breaches of security;</P>
+<P>(2) Carry out the security procedures under &#xA7; 193.2903 that relate to their assigned duties;</P>
+<P>(3) Be familiar with basic plant operations and emergency procedures, as necessary to effectively perform their assigned duties; and</P>
+<P>(4) Recognize conditions where security assistance is needed.</P>
+<P>(b) A written plan of continuing instruction must be conducted at intervals of not more than two years to keep all personnel having security duties current on the knowledge and skills they gained in the program of initial instruction.</P>
+</DIV8>
+
+<DIV8 N="193.2717" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2717&quot;,&quot;citation&quot;:&quot;49 CFR 193.2717&quot;}">
+<HEAD>&#xA7; 193.2717 Training: fire protection.</HEAD>
+<P>(a) All personnel involved in maintenance and operations of an LNG plant, including their immediate supervisors, must be trained according to a written plan of initial instruction, including plant fire drills, to:</P>
+<P>(1) Know the potential causes and areas of fire;</P>
+<P>(2) Know the types, sizes, and predictable consequences of fire; and</P>
+<P>(3) Know and be able to perform their assigned fire control duties according to the procedures established under &#xA7; 193.2509 and by proper use of equipment provided under &#xA7; 193.2801.</P>
+<P>(b) A written plan of continuing instruction, including plant fire drills, must be conducted at intervals of not more than two years to keep personnel current on the knowledge and skills they gained in the instruction under paragraph (a) of the section.</P>
+<P>(c) Plant fire drills must provide personnel hands-on experience in carrying out their duties under the fire emergency procedures required by &#xA7; 193.2509.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70404, Oct. 23, 1980, as amended by Amdt. 193-18, 69 FR 11337, Mar. 10, 2004]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2719" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2719&quot;,&quot;citation&quot;:&quot;49 CFR 193.2719&quot;}">
+<HEAD>&#xA7; 193.2719 Training: records.</HEAD>
+<P>(a) Each operator shall maintain a system of records which&#x2014;</P>
+<P>(1) Provide evidence that the training programs required by this subpart have been implemented; and</P>
+<P>(2) Provide evidence that personnel have undergone and satisfactorily completed the required training programs.</P>
+<P>(b) Records must be maintained for one year after personnel are no longer assigned duties at the LNG plant.</P>
+</DIV8>
+
+</DIV6>
+<DIV6 N="I" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subpart-I&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart I&amp;quot;}">
+<HEAD>Subpart I&#x2014;Fire Protection</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>Amdt. 193-2, 45 FR 70408, Oct. 23, 1980, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV8 N="193.2801" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2801&quot;,&quot;citation&quot;:&quot;49 CFR 193.2801&quot;}">
+<HEAD>&#xA7; 193.2801 Fire protection.</HEAD>
+<P>Each operator must provide and maintain fire protection at LNG plants according to sections 9.1 through 9.7 and section 9.9 of NFPA-59A-2001 (incorporated by reference, <I>see</I> &#xA7; 193.2013). However, LNG plants existing on March 31, 2000, need not comply with provisions on emergency shutdown systems, water delivery systems, detection systems, and personnel qualification and training until September 12, 2005.</P>
+<CITA TYPE="N">[Amdt. 193-18, 69 FR 11337, Mar. 10, 2004; Amdt. 193-25, 80 FR 182, Jan. 5, 2015]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2803-193.2821" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2803-193.2821&quot;,&quot;citation&quot;:&quot;49 CFR 193.2803-193.2821&quot;}">
+<HEAD>&#xA7;&#xA7; 193.2803-193.2821 [Reserved]</HEAD>
+</DIV8>
+
+</DIV6>
+<DIV6 N="J" TYPE="SUBPART" VOLUME="3" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-49/part-193/subpart-J&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;49 CFR Part 193 Subpart J&amp;quot;}">
+<HEAD>Subpart J&#x2014;Security</HEAD>
+<SOURCE>
+<HED>Source:</HED><PSPACE>Amdt. 193-2, 45 FR 70409, Oct. 23, 1980, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV8 N="193.2901" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2901&quot;,&quot;citation&quot;:&quot;49 CFR 193.2901&quot;}">
+<HEAD>&#xA7; 193.2901 Scope.</HEAD>
+<P>This subpart prescribes requirements for security at LNG plants. However, the requirements do not apply to existing LNG plants that do not contain LNG.</P>
+<CITA TYPE="N">[Amdt. 193-4, 52 FR 675, Jan. 8, 1987]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2903" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2903&quot;,&quot;citation&quot;:&quot;49 CFR 193.2903&quot;}">
+<HEAD>&#xA7; 193.2903 Security procedures.</HEAD>
+<P>Each operator shall prepare and follow one or more manuals of written procedures to provide security for each LNG plant. The procedures must be available at the plant in accordance with &#xA7; 193.2017 and include at least:</P>
+<P>(a) A description and schedule of security inspections and patrols performed in accordance with &#xA7; 193.2913;</P>
+<P>(b) A list of security personnel positions or responsibilities utilized at the LNG plant;</P>
+<P>(c) A brief description of the duties associated with each security personnel position or responsibility;</P>
+<P>(d) Instructions for actions to be taken, including notification of other appropriate plant personnel and law enforcement officials, when there is any indication of an actual or attempted breach of security;</P>
+<P>(e) Methods for determining which persons are allowed access to the LNG plant;</P>
+<P>(f) Positive identification of all persons entering the plant and on the plant, including methods at least as effective as picture badges; and</P>
+<P>(g) Liaison with local law enforcement officials to keep them informed about current security procedures under this section.</P>
+</DIV8>
+
+<DIV8 N="193.2905" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2905&quot;,&quot;citation&quot;:&quot;49 CFR 193.2905&quot;}">
+<HEAD>&#xA7; 193.2905 Protective enclosures.</HEAD>
+<P>(a) The following facilities must be surrounded by a protective enclosure:</P>
+<P>(1) Storage tanks;</P>
+<P>(2) Impounding systems;</P>
+<P>(3) Vapor barriers;</P>
+<P>(4) Cargo transfer systems;</P>
+<P>(5) Process, liquefaction, and vaporization equipment;</P>
+<P>(6) Control rooms and stations;</P>
+<P>(7) Control systems;</P>
+<P>(8) Fire control equipment;</P>
+<P>(9) Security communications systems; and</P>
+<P>(10) Alternative power sources.</P>
+<FP>The protective enclosure may be one or more separate enclosures surrounding a single facility or multiple facilities.
+</FP>
+<P>(b) Ground elevations outside a protective enclosure must be graded in a manner that does not impair the effectiveness of the enclosure.</P>
+<P>(c) Protective enclosures may not be located near features outside of the facility, such as trees, poles, or buildings, which could be used to breach the security.</P>
+<P>(d) At least two accesses must be provided in each protective enclosure and be located to minimize the escape distance in the event of emergency.</P>
+<P>(e) Each access must be locked unless it is continuously guarded. During normal operations, an access may be unlocked only by persons designated in writing by the operator. During an emergency, a means must be readily available to all facility personnel within the protective enclosure to open each access.</P>
+</DIV8>
+
+<DIV8 N="193.2907" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2907&quot;,&quot;citation&quot;:&quot;49 CFR 193.2907&quot;}">
+<HEAD>&#xA7; 193.2907 Protective enclosure construction.</HEAD>
+<P>(a) Each protective enclosure must have sufficient strength and configuration to obstruct unauthorized access to the facilities enclosed.</P>
+<P>(b) Openings in or under protective enclosures must be secured by grates, doors or covers of construction and fastening of sufficient strength such that the integrity of the protective enclosure is not reduced by any opening.</P>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70409, Oct. 23, 1980, as amended by Amdt. 193-12, 61 FR 27793, June 3, 1996; 61 FR 45905, Aug. 30, 1996]
+</CITA>
+</DIV8>
+
+<DIV8 N="193.2909" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2909&quot;,&quot;citation&quot;:&quot;49 CFR 193.2909&quot;}">
+<HEAD>&#xA7; 193.2909 Security communications.</HEAD>
+<P>A means must be provided for:</P>
+<P>(a) Prompt communications between personnel having supervisory security duties and law enforcement officials; and</P>
+<P>(b) Direct communications between all on-duty personnel having security duties and all control rooms and control stations.</P>
+</DIV8>
+
+<DIV8 N="193.2911" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2911&quot;,&quot;citation&quot;:&quot;49 CFR 193.2911&quot;}">
+<HEAD>&#xA7; 193.2911 Security lighting.</HEAD>
+<P>Where security warning systems are not provided for security monitoring under &#xA7; 193.2913, the area around the facilities listed under &#xA7; 193.2905(a) and each protective enclosure must be illuminated with a minimum in service lighting intensity of not less than 2.2 lux (0.2 ft
+<SU>c</SU>) between sunset and sunrise.</P>
+</DIV8>
+
+<DIV8 N="193.2913" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2913&quot;,&quot;citation&quot;:&quot;49 CFR 193.2913&quot;}">
+<HEAD>&#xA7; 193.2913 Security monitoring.</HEAD>
+<P>Each protective enclosure and the area around each facility listed in &#xA7; 193.2905(a) must be monitored for the presence of unauthorized persons. Monitoring must be by visual observation in accordance with the schedule in the security procedures under &#xA7; 193.2903(a) or by security warning systems that continuously transmit data to an attended location. At an LNG plant with less than 40,000 m
+<SU>3</SU> (250,000 bbl) of storage capacity, only the protective enclosure must be monitored.</P>
+</DIV8>
+
+<DIV8 N="193.2915" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2915&quot;,&quot;citation&quot;:&quot;49 CFR 193.2915&quot;}">
+<HEAD>&#xA7; 193.2915 Alternative power sources.</HEAD>
+<P>An alternative source of power that meets the requirements of &#xA7; 193.2445 must be provided for security lighting and security monitoring and warning systems required under &#xA7;&#xA7; 193.2911 and 193.2913.</P>
+</DIV8>
+
+<DIV8 N="193.2917" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-49/section-193.2917&quot;,&quot;citation&quot;:&quot;49 CFR 193.2917&quot;}">
+<HEAD>&#xA7; 193.2917 Warning signs.</HEAD>
+<P>(a) Warning signs must be conspicuously placed along each protective enclosure at intervals so that at least one sign is recognizable at night from a distance of 30m (100 ft.) from any way that could reasonably be used to approach the enclosure.</P>
+<P>(b) Signs must be marked with at least the following on a background of sharply contrasting color:</P>
+<FP>The words &#x201C;NO TRESPASSING,&#x201D; or words of comparable meaning.
+</FP>
+<CITA TYPE="N">[Amdt. 193-2, 45 FR 70409, Oct. 23, 1980, as amended at 47 FR 32720, July 29, 1982]
+</CITA>
+</DIV8>
+
+</DIV6>
+</DIV5>

@@ -1419,8 +1419,12 @@ CORPUS_REGS = {
     # Batch B adds 49 CFR Parts 194 (onshore oil response plans), 195
     # (hazardous liquid pipelines) and 199 (drug and alcohol testing) --
     # same whole-PART shape, same importer path.
+    # Batch C adds 49 CFR Parts 190 (enforcement and rulemaking procedures),
+    # 193 (LNG facilities) and 196 (excavation damage prevention). Part 198
+    # (state grants) stays out of the corpus.
     "p191": "p191", "p192": "p192",
     "p194": "p194", "p195": "p195", "p199": "p199",
+    "p190": "p190", "p193": "p193", "p196": "p196",
     "ecmc": "ecmc", "cp": "cp",
     **{k: k for k in GP_KEYS},
 }
@@ -1435,7 +1439,8 @@ CORPUS_REGS = {
 # XML rather than subparts read from a PDF print -- import_ecfr.cmd_parse
 # dispatches on SUBPART_META[reg]["document"] == "part" and expects --xml.
 ECFR_REGS = {"ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz",
-             "p191", "p192", "p194", "p195", "p199"}
+             "p191", "p192", "p194", "p195", "p199",
+             "p190", "p193", "p196"}
 
 # Regulation Number 27 and 40 CFR Part 60 Subpart OOOO (the un-suffixed,
 # pre-2022 version) are deliberately NOT in CORPUS_REGS: citations to them
@@ -1486,6 +1491,9 @@ CFR_TITLE_PART_TO_REGKEY: dict[tuple[str, str], str] = {
     ("49", "194"): "p194",
     ("49", "195"): "p195",
     ("49", "199"): "p199",
+    ("49", "190"): "p190",
+    ("49", "193"): "p193",
+    ("49", "196"): "p196",
 }
 # "49 CFR Part 192", "49 CFR part 191", "49 CFR 192.605", "49 CFR 191.5(b)"
 # -- plus the forms ECMC actually writes 49 CFR citations in (the only
@@ -1555,6 +1563,27 @@ REG_META: dict[str, dict] = {
         "source_url": "https://www.ecfr.gov/current/title-49/part-199",
         "root_citation": "49 CFR Part 199",
         "root_title": "49 CFR Part 199 \u2014 Drug and Alcohol Testing",
+    },
+    # -- Batch C: 49 CFR Parts 190 / 193 / 196 ---------------------------
+    # Root titles are the <DIV5><HEAD> text as printed in the eCFR XML
+    # (Part 196's head reads "Excavation Activity", not "Excavation Damage").
+    "p190": {
+        "jurisdiction_level": "federal", "issuing_body": "PHMSA",
+        "source_url": "https://www.ecfr.gov/current/title-49/part-190",
+        "root_citation": "49 CFR Part 190",
+        "root_title": "49 CFR Part 190 \u2014 Pipeline Safety Enforcement and Regulatory Procedures",
+    },
+    "p193": {
+        "jurisdiction_level": "federal", "issuing_body": "PHMSA",
+        "source_url": "https://www.ecfr.gov/current/title-49/part-193",
+        "root_citation": "49 CFR Part 193",
+        "root_title": "49 CFR Part 193 \u2014 Liquefied Natural Gas Facilities: Federal Safety Standards",
+    },
+    "p196": {
+        "jurisdiction_level": "federal", "issuing_body": "PHMSA",
+        "source_url": "https://www.ecfr.gov/current/title-49/part-196",
+        "root_citation": "49 CFR Part 196",
+        "root_title": "49 CFR Part 196 \u2014 Protection of Underground Pipelines From Excavation Activity",
     },
     # -- APCD General Permits GP01-GP12 (5 CCR-adjacent Division-issued
     # general construction permits, not AQCC-numbered regulations) --------
@@ -5947,7 +5976,7 @@ def cmd_parse(args):
 
         return import_ecfr.cmd_parse(args)
     if not args.pdf:
-        raise SystemExit("--pdf is required for CCR regulations (only the whole-PART 49 CFR regs p191/p192/p194/p195/p199 use --xml)")
+        raise SystemExit("--pdf is required for CCR regulations (only the whole-PART 49 CFR regs p190-p196/p199 use --xml)")
     (result, unresolved, table_hits, n_tables_found, duplicate_ids,
      label_fixes_applied, anomalies, marker_audit) = parse_reg(args.reg, args.txt, args.pdf)
     out_path = Path(args.out)
@@ -7405,9 +7434,9 @@ def main():
 
     p_parse = sub.add_parser("parse", help="Parse a regulation's pdftotext output into provisions JSON.")
     p_parse.add_argument("--reg", required=True)
-    p_parse.add_argument("--pdf", default=None, help="Path to the source .pdf (for pdfplumber table extraction). Not used by the whole-PART eCFR regs (p191/p192/p194/p195/p199), which read --xml.")
+    p_parse.add_argument("--pdf", default=None, help="Path to the source .pdf (for pdfplumber table extraction). Not used by the whole-PART eCFR regs (p190/p191/p192/p193/p194/p195/p196/p199), which read --xml.")
     p_parse.add_argument("--txt", default=None, help="Path to pdftotext -layout output (defaults to sources/REG_<reg>.txt).")
-    p_parse.add_argument("--xml", default=None, help="Path to the eCFR versioner XML; required for the whole-PART eCFR regs (p191/p192/p194/p195/p199).")
+    p_parse.add_argument("--xml", default=None, help="Path to the eCFR versioner XML; required for the whole-PART eCFR regs (p190/p191/p192/p193/p194/p195/p196/p199).")
     p_parse.add_argument("--out", required=True)
     p_parse.set_defaults(func=cmd_parse)
 
