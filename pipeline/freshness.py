@@ -394,10 +394,35 @@ def render_report(results: list[CheckResult]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _diag_dump_cdphe(manifest: dict, fetcher: Fetcher) -> None:
+    """TEMPORARY (side branch only): dump the live CDPHE page into the job log."""
+    import base64
+    import gzip
+
+    entry = manifest["sources"]["cdphe_gp"]
+    html = fetcher.get_text(entry["page_url"], fixture_name="cdphe_gp.html", headers=CDPHE_BROWSER_HEADERS)
+    print(f"DIAG: fetched {len(html)} chars")
+    print("=== current parse_cdphe_page() result ===")
+    for k, v in sorted(parse_cdphe_page(html).items()):
+        print(f"  {k}: {v}")
+    print("=== every docid= anchor with 200 chars of preceding text ===")
+    for m in re.finditer(r"docid=(\d+)", html, re.IGNORECASE):
+        ctx = re.sub(r"\s+", " ", html[max(0, m.start() - 200): m.end() + 80])
+        print(f"[{m.group(1)}] ...{ctx}")
+    b64 = base64.b64encode(gzip.compress(html.encode("utf-8"))).decode("ascii")
+    print("=== GZB64 START ===")
+    for i in range(0, len(b64), 4000):
+        print(b64[i:i + 4000])
+    print("=== GZB64 END ===")
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     manifest_path = Path(args.manifest)
     manifest = load_manifest(manifest_path)
     fetcher = Fetcher(fixtures_dir=Path(args.fixtures) if args.fixtures else None)
+
+    _diag_dump_cdphe(manifest, fetcher)
+    return 0
 
     results = run_check(manifest, fetcher)
     report = render_report(results)
