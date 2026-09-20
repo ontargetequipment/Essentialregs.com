@@ -3240,11 +3240,20 @@ class Reg30TableCaptionExtraTests(unittest.TestCase):
 
 class Reg30RegNoAbbreviationTests(unittest.TestCase):
     def test_regulation_no_dot_links_a_corpus_reg(self):
+        # Batch 5 put Regulation Number 27 into the corpus; the "not in
+        # corpus" half of this test now holds 27 out explicitly (the same
+        # text links it when 27 is present — see the next test).
         text = "used in Commission Regulation No. 3, Part B, Section III.B.5.d. and Regulation No. 27, Part B, Section II.A.6."
-        html, buckets = ic.link_citations(text, "30", {"sec-30-top-REG-30"}, set(ic.CORPUS_REGS))
+        html, buckets = ic.link_citations(text, "30", {"sec-30-top-REG-30"}, set(ic.CORPUS_REGS) - {"27"})
         self.assertIn('href="/regulations/3">Regulation No. 3</a>', html)
         self.assertEqual(dict(buckets[ic.BUCKET_OTHER_REG]), {"Regulation No. 27, Part B, Section II.A.6.": 1})
         self.assertEqual(dict(buckets[ic.BUCKET_UNPARSEABLE]), {})
+
+    def test_regulation_no_dot_27_links_once_27_is_in_corpus(self):
+        text = "used in Commission Regulation No. 3, Part B, Section III.B.5.d. and Regulation No. 27, Part B, Section II.A.6."
+        html, buckets = ic.link_citations(text, "30", {"sec-30-top-REG-30"}, set(ic.CORPUS_REGS))
+        self.assertIn('href="/regulations/27">Regulation No. 27</a>', html)
+        self.assertEqual(dict(buckets[ic.BUCKET_OTHER_REG]), {})
 
     def test_regulation_number_keyword_form_unaffected(self):
         html, buckets = ic.link_citations(
@@ -3886,3 +3895,2113 @@ class DuplicateMarkerKeepsBothParagraphsTests(unittest.TestCase):
         self.assertIn("permanently disconnected, if applicable", text)
         self.assertEqual(text.count("date and duration of any period"), 1)
         self.assertLess(text.index("permanently disconnected"), text.index("date and duration"))
+
+
+# ---------------------------------------------------------------------------
+# Reg 11 — Motor Vehicle Emissions Inspection Program (5 CCR 1001-13).
+# Standard Part A-H shape (Part H a roman_seq statement of basis with a
+# topic opener, not a date), plus four shapes new to the corpus: Part A's
+# Section II definitions numbered BARE ("1." .. "61.", no "II." prefix —
+# BARE_DIGIT_CHILD_SECTIONS); Part F's whitespace-aligned, ruling-free
+# emissions-limit tables (LAYOUT_TEXT_TABLES); a 2,100-line Appendix A that
+# is itself an outlined technical document with decimal sections, lettered
+# items, six ATTACHMENTs and unlabeled headings (APPENDIX_LADDERS); and a
+# six-line PART heading (REG_META part_heading_max_lines).
+# ---------------------------------------------------------------------------
+
+REG11_TXT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "REG_11.txt")
+REG11_PDF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "REG_11.pdf")
+
+
+class Reg11MetaTests(unittest.TestCase):
+    def test_corpus_and_meta_entries(self):
+        self.assertEqual(ic.CORPUS_REGS["11"], "11")
+        meta = ic.REG_META["11"]
+        self.assertEqual(meta["jurisdiction_level"], "state")
+        self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
+        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 11")
+        self.assertEqual(meta["root_title"], "MOTOR VEHICLE EMISSIONS INSPECTION PROGRAM 5 CCR 1001-13")
+        self.assertNotIn("no_parts", meta)
+        self.assertTrue(meta["part_intro_text"])
+        self.assertEqual(meta["part_heading_max_lines"], 6)
+
+    def test_sob_part_config_topic_opener(self):
+        cfg = ic.SOB_PART_CONFIG["11"]
+        self.assertEqual((cfg["letter"], cfg["top_family"]), ("H", "roman_seq"))
+        self.assertIsNotNone(cfg["top_opener_re"].match("AMENDMENTS TO PART A - E"))
+        self.assertIsNotNone(cfg["top_opener_re"].match("AMENDMENTS"))
+        self.assertIsNotNone(cfg["top_opener_re"].match("REVISIONS TO PART C (VIII) AND PART F (III)"))
+        self.assertIsNone(cfg["top_opener_re"].match("Adopted: January 17, 2025"))
+        self.assertIsNone(cfg["top_opener_re"].match("The Commission concluded"))
+        self.assertNotIn("inner_items", cfg)  # Part H's only inner list (entry II, 1.-10.) never restarts
+
+    def test_new_config_dicts_are_reg_11_scoped(self):
+        self.assertEqual(set(ic.APPENDIX_LADDERS), {"11"})
+        self.assertEqual(ic.APPENDIX_LADDERS["11"], frozenset({"A"}))
+        self.assertEqual(set(ic.BARE_DIGIT_CHILD_SECTIONS), {"11"})
+        self.assertEqual(ic.BARE_DIGIT_CHILD_SECTIONS["11"], {("A", "II"): "definition"})
+        self.assertEqual(set(ic.LAYOUT_TEXT_TABLES), {"11"})
+        self.assertEqual([e["row_id"] for e in ic.LAYOUT_TEXT_TABLES["11"]],
+                         ["sec-11-F-I-A", "sec-11-F-II-A", "sec-11-F-II-A", "sec-11-F-III-C", "sec-11-F-III-D",
+                          "sec-11-H-APPENDIX-A-2.11-F"])
+        self.assertIn("11", ic.APPENDIX_HEADING_DEDUP_REGS)
+        for reg in ("1", "2", "3", "7", "9", "26", "30", "cp"):
+            self.assertNotIn(reg, ic.APPENDIX_LADDERS)
+            self.assertNotIn(reg, ic.BARE_DIGIT_CHILD_SECTIONS)
+            self.assertNotIn(reg, ic.LAYOUT_TEXT_TABLES)
+            self.assertEqual(ic.REG_META.get(reg, {}).get("part_heading_max_lines", 3), 3)
+
+
+class Reg11LabelFixTests(unittest.TestCase):
+    PART_H = [
+        "XII.   AMENDMENTS",
+        "",
+        "ADOPTED DECEMBER 19, 2002",
+        "",
+        "Basis and Purpose",
+        "",
+        "XII.   AMENDMENTS",
+        "",
+        "ADOPTED SEPTEMBER 18, 2003",
+        "",
+        "Basis and Purpose",
+        "",
+        "XIII.   AMENDMENTS",
+        "",
+        "ADOPTED DECEMBER 18, 2003",
+        "",
+        "The purpose of this revision is to postpone the change in emissions standards",
+        "",
+        "XV.     AMENDMENTS",
+        "",
+        "ADOPTED DECEMBER 18, 2003",
+    ]
+
+    def test_next_line_prefix_picks_the_right_identical_label_line(self):
+        out, applied = ic.apply_known_label_fixes("11", list(self.PART_H))
+        self.assertEqual(out[0], "XII.   AMENDMENTS")     # the real XII is untouched
+        self.assertEqual(out[6], "XIII.   AMENDMENTS")    # second XII -> XIII
+        self.assertEqual(out[12], "XIV.   AMENDMENTS")    # printed XIII -> XIV
+        self.assertEqual(out[18], "XV.     AMENDMENTS")
+        hits = {(a["old_label"], a["new_label"]): a["hits"] for a in applied}
+        self.assertEqual(hits[("XII.", "XIII.")], 1)
+        self.assertEqual(hits[("XIII.", "XIV.")], 1)
+
+    def test_next_line_prefix_is_optional_and_a_no_op_when_absent(self):
+        """An entry without `next_line_prefix` still rewrites EVERY matching
+        line, exactly as before (existing regs' fixes never set it)."""
+        saved = ic.KNOWN_LABEL_FIXES
+        try:
+            ic.KNOWN_LABEL_FIXES = {"zz": [dict(old_label="XII.", new_label="XIII.", match_prefix="XII.   AMENDMENTS",
+                                                line_hint=1, note="")]}
+            out, applied = ic.apply_known_label_fixes("zz", list(self.PART_H))
+        finally:
+            ic.KNOWN_LABEL_FIXES = saved
+        self.assertEqual(out[0], "XIII.   AMENDMENTS")
+        self.assertEqual(out[6], "XIII.   AMENDMENTS")
+        self.assertEqual(applied[0]["hits"], 2)
+
+    def test_lower_case_l_typo_in_part_d(self):
+        lines = ["       Ill.D.3. That the repair facility be adequately equipped and maintain a level of",
+                 "                diagnostic and repair equipment necessary to perform emissions related"]
+        out, applied = ic.apply_known_label_fixes("11", lines)
+        self.assertTrue(out[0].lstrip().startswith("III.D.3. That the repair facility"))
+        self.assertEqual(out[0][:7], " " * 7)
+        self.assertEqual({a["old_label"]: a["hits"] for a in applied}["Ill.D.3."], 1)
+
+    def test_every_reg_11_fix_hits_exactly_once_on_the_real_source(self):
+        if not os.path.exists(REG11_TXT):
+            self.skipTest("sources/REG_11.txt not present in this checkout")
+        raw = open(REG11_TXT, encoding="utf-8").read()
+        lines, _ = ic.clean_pages(raw, "11")
+        _, applied = ic.apply_known_label_fixes("11", lines)
+        self.assertEqual(len(applied), 3)
+        for a in applied:
+            self.assertEqual(a["hits"], 1, a)
+        _, tapplied = ic.apply_known_text_fixes("11", lines)
+        self.assertEqual(len(tapplied), 1)
+        self.assertEqual(tapplied[0]["hits"], 1)
+
+
+class Reg11BareDigitDefinitionsTests(unittest.TestCase):
+    """Part A's Section II definitions list in the exact REG_11.txt shape:
+    bare "N." labels, a wrapped continuation line that starts with "82."
+    (the tail of "40 CFR Part\\n82.") and the next compound-labelled
+    section closing the list."""
+
+    LINES = [
+        "PART A        General Provisions",
+        "",
+        "I.     APPLICABILITY",
+        "",
+        "Subject to the provisions described in Sections I.A and I.B of this Part A.",
+        "",
+        "II.   DEFINITIONS",
+        "",
+        "1.    “Accreditation” means certification that the instrument and instrument",
+        "      manufacturer meet the operating criteria specifications.",
+        "",
+        "2.    “Air Intake Systems” are those systems that allow for the induction of ambient air",
+        "      (to include preheated air) into the engine combustion chamber.",
+        "",
+        "3.    “Chlorofluorocarbon” (CFC) is a class I stratospheric ozone depleting compound as",
+        "      listed in Appendix A, final rule vol.57.mp 147 Federal Register, 40 CFR Part",
+        "      82.",
+        "",
+        "5.    “Skipped” is not the next ordinal and must stay body text of item 3.",
+        "",
+        "4.    \"Contractor\" shall have the same meaning as set forth in Section 42-4-304(5), C.R.S.",
+        "",
+        "III.   EXEMPTION FROM SECTION 42-4-314, C.R.S.",
+        "",
+        "III.A. The following persons are exempt.",
+        "",
+    ]
+
+    def _parse(self, reg):
+        markers, _ = ic.scan_markers(self.LINES, set(), reg, None)
+        provisions, order, _u, _t = ic.build_provisions(reg, self.LINES, markers, {})
+        return provisions, order
+
+    def test_each_definition_is_its_own_row_under_section_ii(self):
+        prov, order = self._parse("11")
+        for n in (1, 2, 3, 4):
+            self.assertIn(f"sec-11-A-II-{n}", prov, order)
+        r1 = prov["sec-11-A-II-1"]
+        self.assertEqual(r1["citation"], "II.1.")
+        self.assertEqual(r1["title"], "II.1. Accreditation")
+        self.assertEqual(r1["kind"], "definition")
+        self.assertEqual(r1["parent_id"], "sec-11-A-II")
+        self.assertTrue(r1["full_text"].startswith("<p>“Accreditation” means certification"))
+        self.assertEqual(prov["sec-11-A-II-4"]["title"], "II.4. Contractor")  # straight quotes too
+        # "82." is a wrapped continuation (not next in sequence): stays in item 3.
+        self.assertNotIn("sec-11-A-II-82", prov)
+        self.assertIn("40 CFR Part 82.", re.sub(r"<[^>]+>", "", prov["sec-11-A-II-3"]["full_text"]))
+        # "5." out of sequence: body text of item 3, not a row.
+        self.assertNotIn("sec-11-A-II-5", prov)
+        self.assertIn("5. “Skipped”", re.sub(r"<[^>]+>", "", prov["sec-11-A-II-3"]["full_text"]))
+        # The list closes at the next compound-labelled section.
+        self.assertIn("sec-11-A-III", prov)
+        self.assertIn("sec-11-A-III-A", prov)
+        self.assertEqual(prov["sec-11-A-III-A"]["parent_id"], "sec-11-A-III")
+        self.assertEqual(prov["sec-11-A-II"]["kind"], "section")
+
+    def test_no_op_for_a_regulation_without_the_config(self):
+        prov, _ = self._parse("26")
+        self.assertNotIn("sec-26-A-II-1", prov)
+        self.assertIn("Accreditation", prov["sec-26-A-II"]["full_text"])  # fused, as before
+
+    def test_citation_into_the_bare_digit_section_resolves(self):
+        known = {"sec-11-top-REG-11", "sec-11-P-A", "sec-11-A-II", "sec-11-A-II-40", "sec-11-A-I", "sec-11-P-H"}
+        html, buckets = ic.link_citations("an objection from the US EPA in Part A, Section II.40. and Part A, Section I.",
+                                          "11", known, ic.CORPUS_REGS, "H", "sec-11-H-XXIX")
+        self.assertIn('<span class="xref" data-target="sec-11-A-II-40">Section II.40.</span>', html)
+        self.assertIn('<span class="xref" data-target="sec-11-A-I">Section I.</span>', html)
+        self.assertFalse(any(buckets.values()))
+        # a missing definition number is still unparseable, never historical
+        _, buckets = ic.link_citations("see Part A, Section II.99.", "11", known, ic.CORPUS_REGS, "H", "sec-11-H-XXIX")
+        self.assertEqual(dict(buckets[ic.BUCKET_UNPARSEABLE]), {"II.99.": 1})
+        # and a reg without the config keeps the old (unparseable) result even if such an id existed
+        html, buckets = ic.link_citations("see Section II.40. here", "26", {"sec-26-top-REG-26", "sec-26-A-II", "sec-26-A-II-40"},
+                                          ic.CORPUS_REGS, "A", "sec-26-A-I")
+        self.assertNotIn("xref", html)
+        self.assertEqual(dict(buckets[ic.BUCKET_UNPARSEABLE]), {"II.40.": 1})
+
+
+class Reg11LayoutTextTableTests(unittest.TestCase):
+    HEAVY = [
+        "       Maximum Concentration Limits for Heavy-Duty Vehicles",
+        "          Model Year                Percent Carbon               Parts/million",
+        "                                      Monoxide                   Hydrocarbon",
+        "        1967 and earlier                 7.0                        1500",
+        "             1968                        6.5                        1200",
+        "             1978                        5.5                        1000",
+        "Heavy-Duty Vehicles (1979 and Newer Greater Than 8500 lbs. GVWR) Subject to Idle",
+        "Short Test(s)",
+        "",
+        "",
+        "         Model Year                Percent Carbon            Parts/million",
+        "                                     Monoxide                Hydrocarbon",
+        "",
+        "            1979                          4.0                    800",
+        "       1986 and newer                     2.0                    300",
+        "",
+    ]
+
+    def test_parse_layout_text_table_merges_two_header_lines_by_column(self):
+        rows = ic._parse_layout_text_table(self.HEAVY[1:6], header_lines=2)
+        self.assertEqual(rows[0], ["Model Year", "Percent Carbon Monoxide", "Parts/million Hydrocarbon"])
+        self.assertEqual(rows[1], ["1967 and earlier", "7.0", "1500"])
+        self.assertEqual(rows[3], ["1978", "5.5", "1000"])
+
+    def test_swap_replaces_both_blocks_in_printed_order_and_stops_at_prose(self):
+        tables, hits = {}, {"used": 0, "captions_used": []}
+        out = ic._swap_layout_text_tables(list(self.HEAVY), "sec-11-F-II-A", "11", tables, hits)
+        caps = [e["caption"] for e in ic.LAYOUT_TEXT_TABLES["11"] if e["row_id"] == "sec-11-F-II-A"]
+        self.assertEqual(hits["captions_used"], caps)
+        sentinels = [ln for ln in out if ln.startswith(ic._TABLE_SENTINEL)]
+        self.assertEqual(len(sentinels), 2)
+        # The one-cell sub-caption line ends the first block and survives as prose.
+        self.assertIn("Heavy-Duty Vehicles (1979 and Newer Greater Than 8500 lbs. GVWR) Subject to Idle", out)
+        self.assertEqual(tables[caps[0]]["rows"][-1], ["1978", "5.5", "1000"])
+        self.assertEqual(tables[caps[1]]["rows"][1], ["1979", "4.0", "800"])
+        self.assertEqual(tables[caps[1]]["rows"][-1], ["1986 and newer", "2.0", "300"])
+        # Rendered through the same path as pdfplumber tables.
+        html = ic.render_table_html(tables[caps[1]])
+        self.assertIn("<th>Percent Carbon Monoxide</th>", html)
+        self.assertIn("<td>1986 and newer</td><td>2.0</td><td>300</td>", html)
+
+    def test_no_op_for_other_rows_and_regs(self):
+        tables, hits = {}, {"used": 0, "captions_used": []}
+        self.assertEqual(ic._swap_layout_text_tables(list(self.HEAVY), "sec-11-F-II-B", "11", tables, hits), self.HEAVY)
+        self.assertEqual(ic._swap_layout_text_tables(list(self.HEAVY), "sec-11-F-II-A", "26", tables, hits), self.HEAVY)
+        self.assertEqual(hits["used"], 0)
+        self.assertEqual(tables, {})
+
+
+class Reg11AppendixLadderTests(unittest.TestCase):
+    """Appendix A in the exact REG_11.txt shape (decimal sections, lettered
+    and numbered items, a wrapped "0.5 liters" continuation, a wrapped
+    "(1)." continuation, six attachments, an attachment with restarted
+    decimals, one with unlabeled headings only, and Appendix B after)."""
+
+    LINES = [
+        "PART H        Statements of Basis, Specific Statutory Authority and Purpose",
+        "",
+        "I.      AMENDMENTS TO PART A - E",
+        "",
+        "ADOPTED MARCH 21, 1996",
+        "",
+        "The amendments were adopted.",
+        "",
+        "APPENDIX A          Technical Specifications",
+        "",
+        "Revised Sept 09, 1994",
+        "",
+        "INTRODUCTION",
+        "",
+        "The Colorado AIR Program is in the process of modifying its current program.",
+        "",
+        "1.0   GENERAL",
+        "",
+        "1.1   Design Goals",
+        "",
+        "      The specifications that have been developed are designed utilizing a personal",
+        "      computer system.",
+        "",
+        "1.2   Manuals",
+        "",
+        "      A.     Reference Operating Instructions",
+        "",
+        "      B.    Quarterly (90 days) examination, calibration, and routine maintenance of",
+        "            the analyzer and sampling systems, sample hose (1) and sample probes",
+        "            (1). Maintain the extra consumable inventory upon examination.",
+        "",
+        "             1.     control each of the analyzer functions;",
+        "",
+        "             2.     examine and obtain values from all of the analyzer sensors;",
+        "",
+        "                    a.     All equipment and software submitted for certification",
+        "                           must be the full and current configuration.",
+        "",
+        "      C.    Instruct all certified inspectors.",
+        "",
+        "2.0    CONSTRUCTION DESIGN",
+        "",
+        "2.1    Automatic Calibrations",
+        "",
+        "       The analyzer shall limit gas usage to no more than 3.5 liters (or",
+        "       0.5 liters in 24 hours) if the calibration gas valve(s) is/are not shut off.",
+        "",
+        "       2.1.1 Temperature Control",
+        "",
+        "             Analyzer components shall have their internal temperatures controlled.",
+        "",
+        "2.3    Skipped minor (2.2 is missing) stays body text",
+        "",
+        "ATTACHMENT I        PDF 1000 Scanner",
+        "",
+        "This document is incorporated by reference.",
+        "",
+        "ATTACHMENT II Colorado Automobile Dealers Transient Mode Test Analyzer",
+        "System",
+        "",
+        "This document is incorporated by reference.",
+        "",
+        "ATTACHMENT III Specifications for Colorado 97 Analyzer",
+        "",
+        "INTRODUCTION",
+        "",
+        "Colorado's current enhanced I/M program contains a two-speed idle component.",
+        "",
+        "1.0   GENERAL",
+        "",
+        "It is expected that the Colorado 97 software will be upgraded.",
+        "",
+        "1.1   Design Goals",
+        "",
+        "      The specifications are designed utilizing a personal computer system.",
+        "",
+        "Vehicle Inspection Report – Passing Form",
+        "Vehicle Inspection Report – Failing Form",
+        "ATTACHMENT IV         Specifications for Colorado On-Board Diagnostic (OBD) Stand-",
+        "Alone Analyzer",
+        "",
+        "INTRODUCTION",
+        "",
+        "This document contains specifications for manufacturers.",
+        "",
+        "Design Goals",
+        "",
+        "The CO-OBD-TAS must be designed and constructed to provide reliable service.",
+        "",
+        "   •   Initiate the inspection by collecting and entering the vehicle identification",
+        "       information;",
+        "",
+        "Pass/Fail Requirement",
+        "",
+        "The CO-OBD-TAS shall fail vehicles for the following reasons:",
+        "",
+        "Design Goals",
+        "",
+        "A second heading with the same text gets a numbered slug.",
+        "",
+        "ATTACHMENT V “Colorado Approved” Calibration Span Gas Label Samples",
+        "",
+        "",
+        "APPENDIX B        Standards and Specifications for Calibration/Span Gas",
+        "Suppliers [Repealed eff. 11/30/2014]",
+        "",
+        "Editor's Notes",
+        "",
+        "History",
+        "Entire rule eff. 08/30/2007.",
+    ]
+    # the page-seam index for the "Failing Form" line (clean_pages strips the
+    # blank run at the end of the page the "Passing Form" caption closes)
+    SEAMS = {LINES.index("Vehicle Inspection Report – Failing Form")}
+
+    @classmethod
+    def setUpClass(cls):
+        markers, _ = ic.scan_markers(cls.LINES, cls.SEAMS, "11", None)
+        cls.prov, cls.order, _u, cls.hits = ic.build_provisions("11", cls.LINES, markers, {})
+
+    def T(self, suffix):
+        return self.prov[f"sec-11-H-APPENDIX-A{('-' + suffix) if suffix else ''}"]
+
+    def test_appendix_row_keeps_only_its_own_lead_in(self):
+        a = self.T("")
+        self.assertEqual(a["parent_id"], "sec-11-top-REG-11")
+        self.assertEqual(a["kind"], "appendix")
+        self.assertEqual(a["full_text"], "Appendix A — Technical Specifications<p>Revised Sept 09, 1994</p>")
+        self.assertEqual([i for i in self.order if self.prov[i]["parent_id"] == a["id"]],
+                         ["sec-11-H-APPENDIX-A-INTRODUCTION", "sec-11-H-APPENDIX-A-1.0", "sec-11-H-APPENDIX-A-2.0",
+                          "sec-11-H-APPENDIX-A-ATT-I", "sec-11-H-APPENDIX-A-ATT-II", "sec-11-H-APPENDIX-A-ATT-III",
+                          "sec-11-H-APPENDIX-A-ATT-IV", "sec-11-H-APPENDIX-A-ATT-V"])
+
+    def test_unlabeled_heading_rows(self):
+        intro = self.T("INTRODUCTION")
+        self.assertEqual((intro["citation"], intro["title"], intro["kind"]), ("INTRODUCTION", "INTRODUCTION", "item"))
+        self.assertTrue(intro["full_text"].startswith("INTRODUCTION<p>The Colorado AIR Program"))
+        self.assertNotIn("sec-11-H-APPENDIX-A-REVISED-SEPT", "".join(self.order))  # a dated line is not a heading
+
+    def test_decimal_sections_and_nesting(self):
+        self.assertEqual(self.T("1.0")["title"], "1.0. GENERAL")
+        self.assertEqual(self.T("1.0")["kind"], "section")
+        self.assertEqual(self.T("1.0")["full_text"], "1.0. GENERAL")
+        s11 = self.T("1.1")
+        self.assertEqual((s11["citation"], s11["title"], s11["kind"], s11["parent_id"]),
+                         ("1.1.", "1.1. Design Goals", "item", "sec-11-H-APPENDIX-A-1.0"))
+        self.assertTrue(s11["full_text"].startswith("1.1. Design Goals<p>The specifications that have been developed"))
+        self.assertEqual(self.T("2.1.1")["parent_id"], "sec-11-H-APPENDIX-A-2.1")
+        self.assertEqual(self.T("2.1.1")["citation"], "2.1.1.")
+        # "0.5 liters ..." is a wrapped continuation, "2.3" is out of sequence (no 2.2): both body text.
+        self.assertNotIn("sec-11-H-APPENDIX-A-0.5", self.prov)
+        self.assertNotIn("sec-11-H-APPENDIX-A-2.3", self.prov)
+        self.assertIn("0.5 liters in 24 hours", self.T("2.1")["full_text"])
+        self.assertIn("2.3 Skipped minor", self.T("2.1.1")["full_text"])
+
+    def test_lettered_numbered_and_lower_items_under_a_decimal_section(self):
+        a = self.T("1.2-A")
+        self.assertEqual((a["citation"], a["title"], a["parent_id"]), ("1.2.A.", "1.2.A. Reference Operating Instructions", "sec-11-H-APPENDIX-A-1.2"))
+        b = self.T("1.2-B")
+        self.assertEqual(b["title"], "1.2.B.")
+        self.assertTrue(b["full_text"].startswith("<p>Quarterly (90 days)"))
+        self.assertNotIn("sec-11-H-APPENDIX-A-1.2-B-(1)", self.prov)  # "(1). Maintain" is a wrapped line
+        self.assertIn("(1). Maintain the extra", b["full_text"])
+        self.assertEqual(self.T("1.2-B-1")["parent_id"], "sec-11-H-APPENDIX-A-1.2-B")
+        self.assertEqual(self.T("1.2-B-2")["citation"], "1.2.B.2.")
+        self.assertEqual(self.T("1.2-B-2-a")["citation"], "1.2.B.2.a.")
+        self.assertEqual(self.T("1.2-B-2-a")["parent_id"], "sec-11-H-APPENDIX-A-1.2-B-2")
+        self.assertEqual(self.T("1.2-C")["parent_id"], "sec-11-H-APPENDIX-A-1.2")  # closes the digit/lower levels
+
+    def test_attachments(self):
+        i = self.T("ATT-I")
+        self.assertEqual((i["citation"], i["title"], i["kind"], i["parent_id"]),
+                         ("Attachment I", "Attachment I — PDF 1000 Scanner", "appendix", "sec-11-H-APPENDIX-A"))
+        self.assertEqual(i["full_text"], "Attachment I — PDF 1000 Scanner<p>This document is incorporated by reference.</p>")
+        self.assertEqual(self.T("ATT-II")["title"], "Attachment II — Colorado Automobile Dealers Transient Mode Test Analyzer System")
+        self.assertTrue(self.T("ATT-II")["full_text"].endswith("<p>This document is incorporated by reference.</p>"))
+        # hyphen-wrapped title joins without a space
+        self.assertEqual(self.T("ATT-IV")["title"], "Attachment IV — Specifications for Colorado On-Board Diagnostic (OBD) Stand-Alone Analyzer")
+        self.assertEqual(self.T("ATT-V")["full_text"], "Attachment V — “Colorado Approved” Calibration Span Gas Label Samples")
+
+    def test_attachment_restarts_the_decimal_outline_under_its_own_prefix(self):
+        self.assertEqual(self.T("ATT-III-INTRODUCTION")["parent_id"], "sec-11-H-APPENDIX-A-ATT-III")
+        self.assertEqual(self.T("ATT-III-1.0")["parent_id"], "sec-11-H-APPENDIX-A-ATT-III")
+        self.assertEqual(self.T("ATT-III-1.0")["title"], "1.0. GENERAL")
+        self.assertTrue(self.T("ATT-III-1.0")["full_text"].startswith("1.0. GENERAL<p>It is expected"))
+        self.assertEqual(self.T("ATT-III-1.1")["parent_id"], "sec-11-H-APPENDIX-A-ATT-III-1.0")
+        # figure captions at a page end / seam are heading-only rows
+        self.assertEqual(self.T("ATT-III-VEHICLE-INSPECTION-REPORT-PASSING-FORM")["full_text"], "Vehicle Inspection Report – Passing Form")
+        self.assertEqual(self.T("ATT-III-VEHICLE-INSPECTION-REPORT-FAILING-FORM")["full_text"], "Vehicle Inspection Report – Failing Form")
+        self.assertNotIn("Vehicle Inspection Report", self.T("ATT-III-1.1")["full_text"])
+
+    def test_unlabeled_headings_only_attachment(self):
+        kids = [i for i in self.order if self.prov[i]["parent_id"] == "sec-11-H-APPENDIX-A-ATT-IV"]
+        self.assertEqual(kids, ["sec-11-H-APPENDIX-A-ATT-IV-INTRODUCTION", "sec-11-H-APPENDIX-A-ATT-IV-DESIGN-GOALS",
+                                "sec-11-H-APPENDIX-A-ATT-IV-PASS-FAIL-REQUIREMENT", "sec-11-H-APPENDIX-A-ATT-IV-DESIGN-GOALS-2"])
+        dg = self.T("ATT-IV-DESIGN-GOALS")
+        self.assertEqual(dg["citation"], "Design Goals")
+        self.assertIn("<p>• Initiate the inspection", dg["full_text"])  # bullets stay as paragraphs
+
+    def test_appendix_b_and_sob_unaffected(self):
+        b = self.prov["sec-11-H-APPENDIX-B"]
+        self.assertEqual(b["title"], "Appendix B — Standards and Specifications for Calibration/Span Gas Suppliers [Repealed eff. 11/30/2014]")
+        self.assertTrue(b["full_text"].startswith(b["title"] + "<p>Editor's Notes</p>"))
+        self.assertEqual(self.prov["sec-11-H-I"]["parent_id"], "sec-11-P-H")
+        # nothing from Appendix B's body was scanned as a ladder unit
+        self.assertFalse(any("APPENDIX-B-" in i for i in self.order))
+
+    def test_ladder_is_a_no_op_for_a_regulation_without_the_config(self):
+        markers, _ = ic.scan_markers(self.LINES, self.SEAMS, "26", None)
+        prov, order, _u, _t = ic.build_provisions("26", self.LINES, markers, {})
+        self.assertFalse(any("APPENDIX-A-" in i for i in order))
+        self.assertIn("1.1 Design Goals", prov["sec-26-H-APPENDIX-A"]["full_text"])
+
+
+class Reg11DorRegulationTests(unittest.TestCase):
+    def test_dor_regulation_1_is_not_linked_to_aqcc_reg_1(self):
+        known = {"sec-11-top-REG-11"}
+        text = "licensing as prescribed by C.R.S., AQCC Regulation 11, and DOR Regulation 1. In order to"
+        html, buckets = ic.link_citations(text, "11", known, ic.CORPUS_REGS, "H", "sec-11-H-APPENDIX-A-ATT-V-AUDITING-REQUIREMENTS")
+        self.assertIn('<span class="xref" data-target="sec-11-top-REG-11">Regulation 11</span>', html)
+        self.assertNotIn("xref-external-reg", html)
+        self.assertEqual(dict(buckets[ic.BUCKET_OTHER_REG]), {"DOR Regulation 1": 1})
+        # an ordinary mention of Regulation 1 still links
+        html, buckets = ic.link_citations("see AQCC Regulation Number 1 for opacity", "11", known, ic.CORPUS_REGS, "A", "sec-11-A-I")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/1">Regulation Number 1</a>', html)
+
+
+class Reg11PartHeadingTests(unittest.TestCase):
+    LINES = [
+        "PART D       Qualification and Licensing of Emissions Mechanics, Emissions",
+        "Inspectors, and Clean Screen Inspectors; Licensing of Emissions Inspection and",
+        "Readjustment Stations, Inspection-Only Stations, Inspection-Only Facilities,",
+        "Fleets, Motor Vehicle Dealer Test Facilities, Enhanced Inspection Centers;",
+        "Qualification of Clean Screen Inspection Sites; and Registration of Emissions",
+        "Related Repair Facilities and Technicians",
+        "",
+        "I.   LICENSING OF EMISSIONS INSPECTION AND READJUSTMENT STATIONS",
+        "",
+        "I.A.   Text of the first item.",
+    ]
+
+    def test_six_line_part_heading_is_kept_whole(self):
+        markers, _ = ic.scan_markers(self.LINES, set(), "11", None)
+        prov, order, _u, _t = ic.build_provisions("11", self.LINES, markers, {})
+        self.assertTrue(prov["sec-11-P-D"]["title"].endswith("and Registration of Emissions Related Repair Facilities and Technicians"))
+        self.assertEqual(prov["sec-11-P-D"]["full_text"], prov["sec-11-P-D"]["title"])  # no intro paragraph invented
+        self.assertIn("sec-11-D-I-A", prov)
+
+    def test_default_cap_unchanged_for_other_regs(self):
+        markers, _ = ic.scan_markers(self.LINES, set(), "26", None)
+        heading = next(m for m in markers if m["type"] == "part")["heading"]
+        self.assertTrue(heading.endswith("Enhanced Inspection Centers;"))
+
+
+class Reg11FullParseTests(unittest.TestCase):
+    """End-to-end parse of the real source (skipped when it's not present).
+    Runs in a subprocess so the pdfplumber walk's memory is released."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not (os.path.exists(REG11_TXT) and os.path.exists(REG11_PDF)):
+            raise unittest.SkipTest("sources/REG_11.* not present in this checkout")
+        import subprocess, tempfile
+        cls.tmp = tempfile.TemporaryDirectory()
+        out = os.path.join(cls.tmp.name, "reg11.json")
+        subprocess.run([sys.executable, "import_ccr.py", "parse", "--reg", "11", "--pdf", REG11_PDF,
+                        "--txt", REG11_TXT, "--out", out], check=True, capture_output=True,
+                       cwd=os.path.dirname(os.path.abspath(__file__)))
+        cls.rows = json.load(open(out, encoding="utf-8"))
+        cls.unresolved = json.load(open(out.replace(".json", "_unresolved.json"), encoding="utf-8"))
+        cls.by_id = {r["id"]: r for r in cls.rows}
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_row_counts_and_kinds(self):
+        self.assertEqual(len(self.rows), 715)
+        kinds = {}
+        for r in self.rows:
+            kinds[r["kind"]] = kinds.get(r["kind"], 0) + 1
+        self.assertEqual(kinds, {"root": 1, "part": 8, "section": 92, "item": 545, "definition": 61, "appendix": 8})
+
+    def test_no_duplicate_ids_every_parent_resolves_no_giant_rows(self):
+        ids = [r["id"] for r in self.rows]
+        self.assertEqual(len(ids), len(set(ids)))
+        for r in self.rows:
+            if r["parent_id"] is not None:
+                self.assertIn(r["parent_id"], self.by_id)
+        longest = max(self.rows, key=lambda r: len(r["full_text"]))
+        self.assertLess(len(longest["full_text"]), 15000, longest["id"])
+
+    def test_parts_and_top_level_sections(self):
+        top = [r["citation"] for r in self.rows if r["parent_id"] == "sec-11-top-REG-11"]
+        self.assertEqual(top, [f"PART {l}" for l in "ABCDEFGH"] + ["Appendix A", "Appendix B"])
+        per_part = {"A": 5, "B": 11, "C": 12, "D": 9, "E": 1, "F": 7, "G": 4, "H": 37}
+        for letter, n in per_part.items():
+            secs = [r for r in self.rows if re.fullmatch(rf"sec-11-{letter}-[IVXL]+", r["id"])]
+            self.assertEqual(len(secs), n, letter)
+        self.assertTrue(self.by_id["sec-11-P-D"]["title"].endswith("Related Repair Facilities and Technicians"))
+        self.assertIn("<p>In order for a vehicle (owner) to obtain a Certificate of Emissions Compliance", self.by_id["sec-11-P-F"]["full_text"])
+        self.assertIn("<p>Effective April 1, 2027", self.by_id["sec-11-P-G"]["full_text"])
+        self.assertIn("THIS PART E DESCRIBES THE GROUNDS UPON WHICH THE LICENSE OF", self.by_id["sec-11-E-I"]["full_text"])
+
+    def test_part_h_thirty_seven_entries_with_the_two_misprints_corrected(self):
+        entries = [r for r in self.rows if re.fullmatch(r"sec-11-H-[IVXL]+", r["id"])]
+        self.assertEqual([r["citation"] for r in entries], [f"{ic.int_to_roman(n)}." for n in range(1, 38)])
+        self.assertIn("ADOPTED DECEMBER 19, 2002", self.by_id["sec-11-H-XII"]["full_text"])
+        self.assertIn("ADOPTED SEPTEMBER 18, 2003", self.by_id["sec-11-H-XIII"]["full_text"])
+        self.assertIn("ADOPTED DECEMBER 18, 2003", self.by_id["sec-11-H-XIV"]["full_text"])
+        self.assertIn("postpone the change in emissions standards", self.by_id["sec-11-H-XIV"]["full_text"])
+        self.assertIn("ADOPTED November 19-21, 2025", self.by_id["sec-11-H-XXXVII"]["full_text"])
+        # entry II's ten-item inner list, and no other inner rows anywhere in Part H
+        self.assertEqual([r["id"] for r in self.rows if r["id"].startswith("sec-11-H-II-")],
+                         [f"sec-11-H-II-{n}" for n in range(1, 11)])
+        inner = [r["id"] for r in self.rows if re.match(r"sec-11-H-[IVXL]+-", r["id"]) and "APPENDIX" not in r["id"]]
+        self.assertEqual(len(inner), 10)
+
+    def test_part_a_definitions(self):
+        defs = [r for r in self.rows if r["parent_id"] == "sec-11-A-II"]
+        self.assertEqual([r["citation"] for r in defs], [f"II.{n}." for n in range(1, 62)])
+        self.assertTrue(all(r["kind"] == "definition" for r in defs))
+        self.assertEqual(self.by_id["sec-11-A-II-24"]["title"], "II.24. Division")
+        self.assertIn("Air Pollution Control Division", self.by_id["sec-11-A-II-24"]["full_text"])
+        self.assertEqual(self.by_id["sec-11-A-II-30"]["title"], "II.30. Executive Director of the Department of Revenue")
+        self.assertEqual(self.by_id["sec-11-A-II-61"]["title"], "II.61. Zero Gas")
+        self.assertIn("40 CFR Part 82.", re.sub(r"<[^>]+>", "", self.by_id["sec-11-A-II-12"]["full_text"]))
+        self.assertIn("sec-11-A-III", self.by_id)
+
+    def test_part_d_iii_d_3_label_fix_row(self):
+        self.assertEqual([r["citation"] for r in self.rows if r["parent_id"] == "sec-11-D-III-D"],
+                         ["III.D.1.", "III.D.2.", "III.D.3.", "III.D.4.", "III.D.5."])
+        self.assertIn("adequately equipped", self.by_id["sec-11-D-III-D-3"]["full_text"])
+
+    def test_part_f_tables_round_trip(self):
+        t = self.by_id["sec-11-F-I-A"]["full_text"]
+        self.assertIn("<th>Model Year</th><th>Percent Carbon Monoxide</th><th>Parts/million Hydrocarbon</th>", t)
+        self.assertIn("<td>1970 and earlier</td><td>3.5</td><td>1000</td>", t)
+        self.assertIn("<td>1981 and newer</td><td>1.2</td><td>220</td>", t)
+        t = self.by_id["sec-11-F-II-A"]["full_text"]
+        self.assertEqual(t.count('<table class="doc-table">'), 2)
+        self.assertIn("<td>1967 and earlier</td><td>7.0</td><td>1500</td>", t)
+        self.assertIn("<td>1978</td><td>5.5</td><td>1000</td></tr></tbody></table>", t)
+        self.assertIn("<p>Heavy-Duty Vehicles (1979 and Newer Greater Than 8500 lbs. GVWR) Subject to Idle Short Test(s)</p>", t)
+        self.assertIn("<td>1986 and newer</td><td>2.0</td><td>300</td>", t)
+        t = self.by_id["sec-11-F-III-C"]["full_text"]
+        self.assertIn("<th>MODEL YEAR</th><th>HC</th><th>CO</th><th>NOx</th>", t)
+        self.assertIn("<td>1982</td><td>3.5</td><td>45.0</td><td>4.0</td>", t)
+        self.assertIn("<td>2000 and newer</td><td>0.6</td><td>15.0</td><td>1.5</td>", t)
+        t = self.by_id["sec-11-F-III-D"]["full_text"]
+        self.assertIn("<td>2007 and newer</td><td>0.6</td><td>15.0</td><td>1.5</td>", t)
+        self.assertEqual(t.count("<tr>"), 27)
+        t = self.by_id["sec-11-H-APPENDIX-A-2.11-F"]["full_text"]
+        self.assertIn("<td>HC ppm</td><td>0-400</td><td>±12ppm</td>", t)
+        # nothing of the flattened dump survives as prose
+        self.assertNotIn("1000 1971", re.sub(r"<[^>]+>", " ", self.by_id["sec-11-F-I-A"]["full_text"]))
+
+    def test_appendix_a_outline(self):
+        kids = [r["id"] for r in self.rows if r["parent_id"] == "sec-11-H-APPENDIX-A"]
+        self.assertEqual(kids, ["sec-11-H-APPENDIX-A-INTRODUCTION", "sec-11-H-APPENDIX-A-1.0", "sec-11-H-APPENDIX-A-2.0",
+                                "sec-11-H-APPENDIX-A-3.0"] + [f"sec-11-H-APPENDIX-A-ATT-{r}" for r in ("I", "II", "III", "IV", "V", "VI")])
+        self.assertEqual(self.by_id["sec-11-H-APPENDIX-A"]["full_text"], "Appendix A — Technical Specifications<p>Revised Sept 09, 1994</p>")
+        self.assertEqual([r["citation"] for r in self.rows if r["parent_id"] == "sec-11-H-APPENDIX-A-1.0"],
+                         [f"1.{n}." for n in range(1, 10)])
+        self.assertEqual([r["citation"] for r in self.rows if r["parent_id"] == "sec-11-H-APPENDIX-A-2.0"],
+                         [f"2.{n}." for n in range(1, 20)])
+        self.assertEqual(self.by_id["sec-11-H-APPENDIX-A-2.8.1"]["parent_id"], "sec-11-H-APPENDIX-A-2.8")
+        self.assertEqual([r["citation"] for r in self.rows if r["parent_id"] == "sec-11-H-APPENDIX-A-2.11"],
+                         [f"2.11.{c}." for c in "ABCDEFGHIJK"])
+        self.assertEqual([r["citation"] for r in self.rows if r["parent_id"] == "sec-11-H-APPENDIX-A-2.14"],
+                         [f"2.14.{n}." for n in range(1, 14)])
+        self.assertEqual(self.by_id["sec-11-H-APPENDIX-A-2.13-D-4-a"]["parent_id"], "sec-11-H-APPENDIX-A-2.13-D-4")
+        self.assertEqual(self.by_id["sec-11-H-APPENDIX-A-ATT-IV"]["title"], "Attachment IV — Specifications for Colorado 97 Analyzer")
+        self.assertEqual([r["citation"] for r in self.rows if r["parent_id"] == "sec-11-H-APPENDIX-A-ATT-IV-3.0"],
+                         ["3.1.", "3.2.", "3.3.", "3.4.", "3.5."])
+        att_v = [r for r in self.rows if r["parent_id"] == "sec-11-H-APPENDIX-A-ATT-V"]
+        self.assertEqual(len(att_v), 28)
+        self.assertEqual(att_v[0]["citation"], "INTRODUCTION")
+        self.assertEqual(att_v[-1]["citation"], "Certification Requirements")
+        self.assertEqual(self.by_id["sec-11-H-APPENDIX-A-ATT-VI"]["full_text"],
+                         "Attachment VI — “Colorado Approved” Calibration Span Gas Label Samples")
+        self.assertTrue(self.by_id["sec-11-H-APPENDIX-B"]["full_text"].startswith(
+            "Appendix B — Standards and Specifications for Calibration/Span Gas Suppliers [Repealed eff. 11/30/2014]<p>Editor's Notes</p>"))
+
+    def test_no_repeated_paragraph_prefix_within_a_row(self):
+        from collections import Counter
+        for r in self.rows:
+            paras = re.findall(r"<p>(.*?)</p>", r["full_text"], re.S)
+            counts = Counter(p[:50] for p in paras)
+            for prefix, n in counts.items():
+                self.assertLess(n, 3, f"{r['id']!r} repeats paragraph prefix {prefix!r} {n} times")
+
+    def test_cross_references(self):
+        self.assertIn('data-target="sec-11-top-REG-11"', self.by_id["sec-11-H-I"]["full_text"])
+        self.assertIn('data-target="sec-11-A-II-40"', self.by_id["sec-11-H-XXIX"]["full_text"])
+        self.assertIn('<span class="xref" data-target="sec-11-C-II-C">', self.by_id["sec-11-F-VII"]["full_text"])
+        self.assertEqual(self.unresolved["other_reg"], [["DOR Regulation 1", 1]])
+        self.assertNotIn("xref-external-reg", json.dumps(self.rows))  # Reg 11 cites no other corpus regulation
+        self.assertEqual(dict(self.unresolved["cfr"])["40 CFR Part 51"], 2)
+        self.assertEqual(sorted(t for t, _ in self.unresolved["unparseable"]),
+                         ["I.A.10t", "III.A.2", "III.B.2", "IX.C."])
+        self.assertEqual(self.unresolved["historical"], [])
+
+
+# ---------------------------------------------------------------------------
+# Regulation Number 12 — Reduction of Diesel Vehicle Emissions (5 CCR
+# 1001-15), Batch 5. Standard AQCC Part/Section shape (Parts A-D, D = roman_seq
+# statement of basis with a topic-line opener), plus three gated additions:
+# the bare dotted lower-roman fifth level / dotted capital sixth level
+# (REG_CYCLE_AB["12"] + FAMILY_REGEX["bare_lroman"]), "Part X, <citation>"
+# cross-references with no "Section" keyword (PART_COMMA_CITATION_REGS), and
+# the whole-line KNOWN_CONTINUATION_LINES match. Every one is a no-op for
+# every other regulation (see CrossRefNoOpProof-style assertions below).
+# ---------------------------------------------------------------------------
+
+REG12_TXT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "REG_12.txt")
+REG12_PDF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "REG_12.pdf")
+
+
+class Reg12MetaTests(unittest.TestCase):
+    def test_corpus_and_meta_entries(self):
+        self.assertEqual(ic.CORPUS_REGS["12"], "12")
+        self.assertNotIn("12", ic.ECFR_REGS)
+        meta = ic.REG_META["12"]
+        self.assertEqual(meta["jurisdiction_level"], "state")
+        self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
+        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 12")
+        self.assertEqual(meta["root_title"], "REDUCTION OF DIESEL VEHICLE EMISSIONS 5 CCR 1001-15")
+        self.assertNotIn("no_parts", meta)
+        self.assertNotIn("family", meta)
+
+    def test_sob_part_config(self):
+        cfg = ic.SOB_PART_CONFIG["12"]
+        self.assertEqual((cfg["letter"], cfg["top_family"]), ("D", "roman_seq"))
+        self.assertFalse(cfg["inner_items"])
+        for opener in ("Amendment to Parts A and B, and Creation of this Part D",
+                       "Amendments to Parts B and D", "AMENDMENTS TO PARTS A, B, C, and D", "AMENDMENTS"):
+            self.assertIsNotNone(cfg["top_opener_re"].match(opener), opener)
+        # an inner "I." factor list item / a date line must not open an entry
+        for text in ("Existing data concerning diesel emissions", "Adopted January 15, 1998",
+                     "Amend the regulation"):
+            self.assertIsNone(cfg["top_opener_re"].match(text), text)
+
+    def test_dotted_cfr_gate_includes_12_only_additively(self):
+        self.assertIn("12", ic.CFR_DOTTED_REGS)
+        self.assertIn("8", ic.CFR_DOTTED_REGS)
+        self.assertNotIn("26", ic.CFR_DOTTED_REGS)
+
+
+class Reg12BareLowerRomanCycleTests(unittest.TestCase):
+    """REG_CYCLE_AB["12"]: depth 5 is a dotted lower roman ("I.D.2.a.i."),
+    depth 6 a dotted capital ("I.D.7.d.ii.A.")."""
+
+    def test_cycle_and_family_regex(self):
+        self.assertEqual(ic.cycle_ab_for("12"), ["roman", "upper", "digit", "lower", "bare_lroman", "upper"])
+        self.assertEqual(ic.cycle_ab_for("26"), ic.CYCLE_AB)
+        self.assertEqual(ic.cycle_ab_for(None), ic.CYCLE_AB)
+        self.assertIn("bare_lroman", ic.FAMILY_REGEX)
+        self.assertIn("bare_lroman", ic.FAMILY_REGEX_NO_TRAILING_DOT)
+        self.assertNotIn("bare_lroman", ic.CYCLE_AB)
+        self.assertNotIn("bare_lroman", ic.CYCLE_C_INNER)
+
+    def test_depth_five_and_six_tokenize_and_display_as_printed(self):
+        cyc = ic.cycle_ab_for("12")
+        toks, n = ic.tokenize_by_cycle("I.D.2.a.ii. The date of the transfer", cyc)
+        self.assertEqual(toks, [("roman", "I"), ("upper", "D"), ("digit", "2"), ("lower", "a"), ("bare_lroman", "ii")])
+        self.assertEqual(n, len("I.D.2.a.ii."))
+        self.assertEqual(ic.tokens_to_citation(toks), "I.D.2.a.ii.")
+        self.assertEqual(ic.tokens_to_id_suffix(toks), "I-D-2-a-ii")
+        toks, n = ic.tokenize_by_cycle("II.C.1.b.i.A.    Range: 0-100 percent opacity", cyc)
+        self.assertEqual(toks[-2:], [("bare_lroman", "i"), ("upper", "A")])
+        self.assertEqual(ic.tokens_to_citation(toks), "II.C.1.b.i.A.")
+        self.assertEqual(ic.tokens_to_id_suffix(toks), "II-C-1-b-i-A")
+
+    def test_bare_lroman_is_roman_validated(self):
+        cyc = ic.cycle_ab_for("12")
+        # "I.D.7.d.iv." is valid; a non-roman letter run at depth 5 stops the walk
+        toks, _ = ic.tokenize_by_cycle("I.D.7.d.iv. Air pollution control equipment", cyc)
+        self.assertEqual(toks[-1], ("bare_lroman", "iv"))
+        toks, _ = ic.tokenize_by_cycle("I.D.7.d.ix.x. text", cyc)  # "ix" ok, then "x" -> upper fails
+        self.assertEqual(toks[-1], ("bare_lroman", "ix"))
+        toks, _ = ic.tokenize_by_cycle("I.D.7.d.vv. text", cyc)  # "vv" is not a roman numeral
+        self.assertEqual(toks[-1], ("lower", "d"))
+
+    def test_depth_four_lettered_i_is_still_a_lower_token(self):
+        # Reg 12's own "II.A.2.i." is the 9th lettered item, not a roman one.
+        toks, _ = ic.tokenize_by_cycle("II.A.2.i. Notwithstanding the provisions", ic.cycle_ab_for("12"))
+        self.assertEqual(toks[-1], ("lower", "i"))
+        self.assertEqual(ic._label_ordinal("lower", "i"), 9)
+        self.assertEqual(ic._label_ordinal("bare_lroman", "iv"), 4)
+        self.assertIsNone(ic._label_ordinal("bare_lroman", "vv"))
+
+    def test_other_regulations_unaffected(self):
+        # Under plain CYCLE_AB the same line stops at depth 4 exactly as before.
+        toks, n = ic.tokenize_by_cycle("I.D.2.a.ii. The date", ic.CYCLE_AB)
+        self.assertEqual(toks[-1], ("lower", "a"))
+        self.assertEqual(n, len("I.D.2.a."))
+        self.assertEqual(ic._citation_to_id_suffix("I.D.2.a.ii.", ic.cycle_ab_for("12")), "I-D-2-a-ii")
+        self.assertIsNone(ic._citation_to_id_suffix("I.D.2.a.ii.", ic.CYCLE_AB))
+
+
+class Reg12LabelFixTests(unittest.TestCase):
+    def test_each_fix_rewrites_only_its_label(self):
+        lines = [
+            "IV. B.   Test Site and Vehicle Parameters",
+            "        I.D.4    Any new heavy-duty diesel vehicle of model year 2014 or newer having a gross vehicle",
+            "                        I.D.2.b.iii         Any new heavy-duty diesel vehicle having a GVWR of twenty six",
+            "                                     II.C.1.b.i.F     Peak Hold Feature",
+            "                            II.D.2.e.i        Provision for field checking the accuracy of the dynamometer’s",
+            "                      III C.4.b.vi.    Reserved",
+            "IV. B.   something else entirely",  # a different line must not be rewritten
+        ]
+        out, applied = ic.apply_known_label_fixes("12", lines)
+        self.assertTrue(out[0].startswith("IV.B.   Test Site"))
+        self.assertTrue(out[1].lstrip().startswith("I.D.4.    Any new heavy-duty"))
+        self.assertTrue(out[2].lstrip().startswith("I.D.2.b.iii.         Any new"))
+        self.assertTrue(out[3].lstrip().startswith("II.C.1.b.i.F.     Peak Hold"))
+        self.assertTrue(out[4].lstrip().startswith("II.D.2.e.i.        Provision"))
+        self.assertTrue(out[5].lstrip().startswith("III.C.4.b.vi.    Reserved"))
+        self.assertEqual(out[6], lines[6])
+        self.assertEqual(len(out[2]) - len(out[2].lstrip()), len(lines[2]) - len(lines[2].lstrip()))
+        self.assertEqual({a["old_label"]: a["hits"] for a in applied},
+                         {"IV. B.": 1, "I.D.4": 1, "I.D.2.b.iii": 1, "II.C.1.b.i.F": 1, "II.D.2.e.i": 1,
+                          "III C.4.b.vi.": 1})
+
+    def test_every_reg_12_fix_hits_exactly_once_on_the_real_source(self):
+        if not os.path.exists(REG12_TXT):
+            self.skipTest("sources/REG_12.txt not present in this checkout")
+        raw = open(REG12_TXT, encoding="utf-8").read()
+        lines, _ = ic.clean_pages(raw, "12")
+        _, applied = ic.apply_known_label_fixes("12", lines)
+        self.assertEqual(len(applied), 6)
+        for a in applied:
+            self.assertEqual(a["hits"], 1, a)
+        _, cont = ic.find_known_continuation_lines("12", lines)
+        self.assertEqual(len(cont), 3)
+        for a in cont:
+            self.assertEqual(a["hits"], 1, a)
+
+    def test_anomaly_documented_not_corrected(self):
+        self.assertEqual([a["label"] for a in ic.KNOWN_LABEL_ANOMALIES["12"]], ["I.D.7.d.ii.F."])
+
+
+class Reg12WholeLineContinuationTests(unittest.TestCase):
+    def test_whole_line_matches_only_the_bare_citation_line(self):
+        lines = [
+            "      I.B.16. “Opacity meter” means an optical instrument",
+            "        specifications set out in SAE J1667 ... as provided in Part A,",
+            "        I.B.16.",
+            "      I.B.16. “Diesel Opacity Inspection” means an inspection",
+        ]
+        skip, applied = ic.find_known_continuation_lines("12", lines)
+        self.assertIn(2, skip)
+        self.assertNotIn(0, skip)
+        self.assertNotIn(3, skip)
+        hit = next(a for a in applied if a["old_label"] == "I.B.16.")
+        self.assertEqual(hit["hits"], 1)
+
+    def test_prefix_entries_keep_prefix_semantics(self):
+        # Reg 1's entry (no whole_line) still matches by prefix, unchanged.
+        lines = ["IV.D.2. may apply to the division for an exemption from continuous emission monitoring"]
+        skip, applied = ic.find_known_continuation_lines("1", lines)
+        self.assertEqual(skip, {0})
+        self.assertEqual(applied[0]["hits"], 1)
+
+
+class Reg12PartCommaCitationTests(unittest.TestCase):
+    KNOWN = {"sec-12-top-REG-12", "sec-12-P-A", "sec-12-P-B", "sec-12-A-I", "sec-12-A-IV", "sec-12-A-IV-C",
+             "sec-12-A-IV-C-5", "sec-12-A-VII", "sec-12-B-I", "sec-12-B-II", "sec-12-B-II-C",
+             "sec-12-B-I-D", "sec-12-B-I-D-2", "sec-12-B-I-D-2-a", "sec-12-B-I-D-2-a-i"}
+
+    def test_gate(self):
+        self.assertEqual(ic.PART_COMMA_CITATION_REGS, frozenset({"12"}))
+
+    def test_part_comma_citation_links_against_that_part(self):
+        html, buckets = ic.link_citations(
+            "tested according to the procedures in Part A, IV.C.5. and the standards of Part A, VII. as well",
+            "12", self.KNOWN, set(ic.CORPUS_REGS), own_part="B")
+        self.assertIn('<span class="xref" data-target="sec-12-P-A">Part A</span>, '
+                      '<span class="xref" data-target="sec-12-A-IV-C-5">IV.C.5.</span>', html)
+        self.assertIn('<span class="xref" data-target="sec-12-A-VII">VII.</span>', html)
+        self.assertEqual(sum(sum(c.values()) for c in buckets.values()), 0)
+
+    def test_depth_five_target_and_no_section_keyword_needed(self):
+        html, _ = ic.link_citations("pursuant to Part B, I.D.2.a.i., unless such transfer", "12",
+                                    self.KNOWN, set(ic.CORPUS_REGS), own_part="B")
+        self.assertIn('<span class="xref" data-target="sec-12-B-I-D-2-a-i">I.D.2.a.i.</span>', html)
+
+    def test_missing_target_is_bucketed_not_linked(self):
+        html, buckets = ic.link_citations("pursuant to Part A, I.D.4., or unless", "12",
+                                          self.KNOWN, set(ic.CORPUS_REGS), own_part="A")
+        self.assertIn('<span class="xref" data-target="sec-12-P-A">Part A</span>, I.D.4., or', html)
+        self.assertEqual(buckets[ic.BUCKET_UNPARSEABLE]["I.D.4."], 1)
+
+    def test_explicit_section_keyword_form_still_takes_priority(self):
+        html, _ = ic.link_citations("see Part B, Section II.C. for meters", "12",
+                                    self.KNOWN, set(ic.CORPUS_REGS), own_part="A")
+        self.assertIn('<span class="xref" data-target="sec-12-B-II-C">Section II.C.</span>', html)
+        self.assertEqual(html.count("sec-12-B-II-C"), 1)
+
+    def test_no_op_for_other_regulations(self):
+        known = {"sec-26-top-REG-26", "sec-26-P-B", "sec-26-B-II", "sec-26-B-II-C"}
+        text = "the requirements of Part B, II.C. of this regulation"
+        html, buckets = ic.link_citations(text, "26", known, set(ic.CORPUS_REGS), own_part="A")
+        self.assertIn('<span class="xref" data-target="sec-26-P-B">Part B</span>, II.C. of', html)
+        self.assertNotIn("sec-26-B-II-C", html)
+
+
+class Reg12MiniParseTests(unittest.TestCase):
+    """Fixture in the exact pdftotext -layout shape of REG_12.txt: a Part B
+    nested to depth six, a Part C of sentence-as-heading sections and a
+    Part D roman_seq statement of basis with topic-line openers, a
+    wrapped-heading entry, and restarting inner lists."""
+
+    LINES = [
+        "PART B           DIESEL OPACITY INSPECTION PROGRAM",
+        "",
+        "I.      General Provisions",
+        "",
+        "I.D.   Conditions for Issuance of Certification of Emissions Control",
+        "",
+        "       I.D.2.   For new diesel motor vehicles being registered for the first time.",
+        "",
+        "                I.D.2.a. For light-duty vehicles, such certification shall expire on the earliest of:",
+        "",
+        "                        I.D.2.a.i.       The anniversary of the day of the issuance of such certification",
+        "                                  when such vehicle has reached its fourth model year.",
+        "",
+        "                        I.D.2.a.ii.         The date of the transfer of ownership if such date is within twelve",
+        "                                  months before such certification would expire, pursuant to Part B,",
+        "                                  I.D.2.a.i., unless such transfer of ownership is a transfer from the lessor",
+        "                                  to the lessee.",
+        "",
+        "       I.D.7.   A “Certification of Diesel Smoke Opacity Waiver” shall be issued if:",
+        "",
+        "                I.D.7.d. Emissions related repairs:",
+        "",
+        "                        I.D.7.d.ii.       Replacements, repairs and adjustments to the following systems",
+        "                                  shall qualify as emissions related repairs:",
+        "",
+        "                                I.D.7.d.ii.A.     Air intake systems",
+        "",
+        "                                I.D.7.d.ii.B.      Fuel system components, including fuel injection pumps,",
+        "                                          injectors and related components.",
+        "",
+        "                        I.D.7.d.iii.       The expenditure for smoke reduction activities does not include",
+        "                                  the opacity inspection or reinspection fee(s).",
+        "",
+        "II.     Test Equipment Requirements",
+        "",
+        "Standards and procedures for the operation of the Division-approved smoke opacity meters.",
+        "",
+        "II.A.   Approval of Required Test Equipment",
+        "",
+        "PART C      STANDARDS FOR VISIBLE POLLUTANTS FROM DIESEL ENGINE POWERED",
+        "VEHICLES (Operating on Roads, Streets and Highways)",
+        "",
+        "I.      No person shall emit or cause to be emitted into the atmosphere from any diesel-powered motor",
+        "        vehicle operating in the program area of any air contaminant exceeding twenty percent (20%)",
+        "        opacity measured over five (5) seconds.",
+        "",
+        "II.     This standard shall apply to motor vehicles intended, designed, and manufactured primarily for",
+        "        travel or use in transporting person, property, auxiliary equipment, and/or cargo over roads.",
+        "",
+        "III.    Enforcement of these emission standards shall be by peace officers and environmental officers",
+        "        pursuant to the authority of 42-4-412, or 42-4-413 C.R.S., within program boundaries.",
+        "",
+        "PART D           STATEMENT OF BASIS, SPECIFIC STATUTORY AUTHORITY AND PURPOSE",
+        "",
+        "I.      Amendment to Parts A and B, and Creation of this Part D",
+        "",
+        "Adopted January 15, 1998",
+        "",
+        "Basis and Purpose",
+        "",
+        "Regulation Number12 establishes programs for Diesel Opacity Inspections. See Part B, I.D.2.a.ii.",
+        "",
+        "1.      A first numbered finding.",
+        "",
+        "2.      A second numbered finding.",
+        "",
+        "II.     Amendments to Parts B and D",
+        "",
+        "Adopted January 11, 2001",
+        "",
+        "Basis and Purpose",
+        "",
+        "1.      A restarted numbered list inside entry II.",
+        "",
+        "I.      Existing data concerning diesel emissions — an inner factor list, not an entry.",
+        "",
+        "II.     Input from the scientific community — also inner.",
+        "",
+        "XI.     AMENDMENTS",
+        "",
+        "Adopted January 16, 2025",
+        "",
+        "         a.      These rules are based upon reasonably available, validated methodologies.",
+        "",
+        "         b.      Evidence in the record supports the finding.",
+        "",
+        "III.    AMENDMENTS TO PARTS A, B, C, and D",
+        "",
+        "Adopted September 18, 2003",
+        "",
+        "Third real entry (XI. above was out of sequence and must be inner text of II).",
+        "",
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        markers, _ = ic.scan_markers(cls.LINES, set(), "12")
+        provisions, order, cls.unresolved, _ = ic.build_provisions("12", cls.LINES, markers, {})
+        cls.rows = [provisions[pid] for pid in order]
+        cls.by_id = {r["id"]: r for r in cls.rows}
+
+    def test_deep_rows_exist_with_printed_citations(self):
+        for pid, cite in (("sec-12-B-I-D-2-a-i", "I.D.2.a.i."), ("sec-12-B-I-D-2-a-ii", "I.D.2.a.ii."),
+                          ("sec-12-B-I-D-7-d-ii-A", "I.D.7.d.ii.A."), ("sec-12-B-I-D-7-d-ii-B", "I.D.7.d.ii.B."),
+                          ("sec-12-B-I-D-7-d-iii", "I.D.7.d.iii.")):
+            self.assertIn(pid, self.by_id, pid)
+            self.assertEqual(self.by_id[pid]["citation"], cite)
+        self.assertEqual(self.by_id["sec-12-B-I-D-7-d-ii-A"]["parent_id"], "sec-12-B-I-D-7-d-ii")
+        self.assertEqual(self.by_id["sec-12-B-I-D-7-d-ii-A"]["title"], "I.D.7.d.ii.A. Air intake systems")
+        self.assertIn("injectors and related components", self.by_id["sec-12-B-I-D-7-d-ii-B"]["full_text"])
+
+    def test_wrapped_citation_line_stays_body_text(self):
+        # The "I.D.2.a.i., unless ..." continuation is in KNOWN_CONTINUATION_LINES
+        # but scan_markers only honours skip_candidates handed to it; here the
+        # generic guards alone must not have split I.D.2.a.ii. — check it is
+        # a single row containing its whole sentence.
+        text = self.by_id["sec-12-B-I-D-2-a-ii"]["full_text"]
+        self.assertIn("to the lessee", text)
+        self.assertIn('data-target="sec-12-B-I-D-2-a-i">I.D.2.a.i.</span>', text)
+
+    def test_sentence_headed_part_c_sections(self):
+        for pid in ("sec-12-C-I", "sec-12-C-II", "sec-12-C-III"):
+            self.assertIn(pid, self.by_id)
+            self.assertEqual(self.by_id[pid]["kind"], "section")
+            self.assertEqual(self.by_id[pid]["parent_id"], "sec-12-P-C")
+        self.assertIn("peace officers and environmental officers", self.by_id["sec-12-C-III"]["full_text"])
+        self.assertIn("within program boundaries", self.by_id["sec-12-C-III"]["full_text"])
+        self.assertIn("(Operating on Roads, Streets and Highways)", self.by_id["sec-12-P-C"]["title"])
+
+    def test_section_heading_with_lead_paragraph(self):
+        text = self.by_id["sec-12-B-II"]["full_text"]
+        self.assertTrue(text.startswith("<p>Test Equipment Requirements</p><p>Standards and procedures"))
+        self.assertIn("sec-12-B-II-A", self.by_id)
+
+    def test_sob_entries_are_single_rows_in_order(self):
+        entries = [r["id"] for r in self.rows if r["parent_id"] == "sec-12-P-D"]
+        self.assertEqual(entries, ["sec-12-D-I", "sec-12-D-II", "sec-12-D-III"])
+        self.assertNotIn("sec-12-D-XI", self.by_id)
+        self.assertNotIn("sec-12-D-I-1", self.by_id)
+        self.assertNotIn("sec-12-D-II-1", self.by_id)
+        one = self.by_id["sec-12-D-I"]["full_text"]
+        self.assertTrue(one.startswith('<p>Amendment to Parts A and B, and Creation of this <span class="xref" '
+                                       'data-target="sec-12-P-D">Part D</span></p><p>Adopted January 15, 1998</p>'),
+                        one[:160])
+        self.assertIn("<p>2. A second numbered finding.</p>", one)
+        two = self.by_id["sec-12-D-II"]["full_text"]
+        self.assertIn("Existing data concerning diesel emissions", two)
+        self.assertIn("<p>XI. AMENDMENTS</p>", two)
+        self.assertIn("<p>b. Evidence in the record supports the finding.</p>", two)
+        self.assertIn("Third real entry", self.by_id["sec-12-D-III"]["full_text"])
+
+    def test_cross_part_citation_from_sob_resolves_to_depth_five(self):
+        self.assertIn('<span class="xref" data-target="sec-12-B-I-D-2-a-ii">I.D.2.a.ii.</span>',
+                      self.by_id["sec-12-D-I"]["full_text"])
+
+
+class Reg12FullParseTests(unittest.TestCase):
+    """End-to-end parse of the real source (skipped when it's not present)."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(REG12_TXT):
+            raise unittest.SkipTest("sources/REG_12.txt not present in this checkout")
+        pdf = REG12_PDF if os.path.exists(REG12_PDF) else None
+        (cls.rows, cls.unresolved, _th, _nt, cls.dupes, cls.fixes, cls.anomalies, _audit) = ic.parse_reg(
+            "12", REG12_TXT, pdf
+        )
+        cls.by_id = {r["id"]: r for r in cls.rows}
+
+    def test_no_duplicate_ids(self):
+        self.assertEqual(self.dupes, [])
+
+    def test_label_fixes_all_hit_once(self):
+        self.assertEqual(len(self.fixes), 9)  # 6 label fixes + 3 continuation lines
+        self.assertTrue(all(f["hits"] == 1 for f in self.fixes), self.fixes)
+
+    def test_structure(self):
+        parts = [r["id"] for r in self.rows if r["kind"] == "part"]
+        self.assertEqual(parts, ["sec-12-P-A", "sec-12-P-B", "sec-12-P-C", "sec-12-P-D"])
+        secs = {}
+        for r in self.rows:
+            if r["kind"] == "section":
+                secs.setdefault(r["parent_id"], []).append(r["citation"])
+        self.assertEqual(secs["sec-12-P-A"], ["I.", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII."])
+        self.assertEqual(secs["sec-12-P-B"], ["I.", "II.", "III.", "IV.", "V.", "VI.", "VII."])
+        self.assertEqual(secs["sec-12-P-C"], ["I.", "II.", "III."])
+        self.assertEqual(secs["sec-12-P-D"], [f"{ic.int_to_roman(n)}." for n in range(1, 12)])
+        self.assertFalse(any(r["kind"] == "appendix" for r in self.rows))
+        root = self.by_id["sec-12-top-REG-12"]
+        self.assertEqual(root["title"], "REDUCTION OF DIESEL VEHICLE EMISSIONS 5 CCR 1001-15")
+
+    def test_fixed_labels_and_deep_rows(self):
+        for pid in ("sec-12-A-IV-B", "sec-12-A-IV-B-1", "sec-12-A-I-D-4", "sec-12-B-I-D-2-b-iii", "sec-12-B-II-C-1-b-i-F",
+                    "sec-12-B-II-D-2-e-i", "sec-12-B-III-C-4-b-vi", "sec-12-B-III-C-4-b-viii-C",
+                    "sec-12-B-I-D-7-d-ii-G", "sec-12-B-II-C-1-b-vii"):
+            self.assertIn(pid, self.by_id, pid)
+        self.assertEqual(self.by_id["sec-12-A-IV-B"]["title"], "IV.B. Test Site and Vehicle Parameters")
+        self.assertEqual(self.by_id["sec-12-B-III-C-4-b-vi"]["full_text"], "III.C.4.b.vi. Reserved")
+        # the documented E gap: D, F, G with no E
+        kids = [r["citation"] for r in self.rows if r["parent_id"] == "sec-12-B-I-D-7-d-ii"]
+        self.assertEqual(kids, ["I.D.7.d.ii.A.", "I.D.7.d.ii.B.", "I.D.7.d.ii.C.", "I.D.7.d.ii.D.",
+                                "I.D.7.d.ii.F.", "I.D.7.d.ii.G."])
+        self.assertEqual([a["label"] for a in self.anomalies], ["I.D.7.d.ii.F."])
+
+    def test_continuation_lines_kept_in_their_rows(self):
+        iv_c_5 = self.by_id["sec-12-A-IV-C-5"]["full_text"]
+        self.assertIn("as provided in", iv_c_5)
+        self.assertIn('data-target="sec-12-A-I-B-16">I.B.16.</span>', iv_c_5)
+        self.assertIn("shall be issued a completed CEC", iv_c_5)
+        self.assertNotIn("completed CEC", self.by_id["sec-12-A-I-B-16"]["full_text"])
+        self.assertIn("to the lessee", self.by_id["sec-12-B-I-D-2-a-ii"]["full_text"])
+        self.assertIn("to the lessee", self.by_id["sec-12-B-I-D-2-b-ii"]["full_text"])
+
+    def test_every_parent_resolves_and_ids_extend_parents(self):
+        for r in self.rows:
+            if r["parent_id"] is not None:
+                self.assertIn(r["parent_id"], self.by_id, r["id"])
+            if r["kind"] == "item":
+                self.assertTrue(r["id"].startswith(r["parent_id"] + "-"), r["id"])
+
+    def test_no_page_furniture_leaks(self):
+        for r in self.rows:
+            self.assertNotRegex(r["full_text"], r"CODE OF COLORADO REGULATIONS|\d\s*Air Quality Control Commission")
+
+    def test_sob_entries(self):
+        entries = [r for r in self.rows if r["parent_id"] == "sec-12-P-D"]
+        self.assertEqual(len(entries), 11)
+        dates = ["January 15, 1998", "January 11, 2001", "September 18, 2003", "October 21, 2004",
+                 "March 18, 2005", "November 16, 2006", "October 20, 2011", "August 15, 2013",
+                 "August 18, 2016", "October 18, 2018", "January 16, 2025"]
+        for e, d in zip(entries, dates):
+            self.assertIn(f"<p>Adopted {d}</p>", e["full_text"], e["id"])
+        self.assertFalse(any((r["parent_id"] or "").startswith("sec-12-D-") for r in self.rows))
+
+    def test_opacity_limits_verbatim(self):
+        self.assertIn("twenty percent (20%) opacity measured over five (5) seconds", self.by_id["sec-12-C-I"]["full_text"])
+        self.assertIn("shall not exceed twenty percent (20%) opacity measured over 5 seconds",
+                      self.by_id["sec-12-A-VII"]["full_text"])
+
+    def test_cross_references(self):
+        self.assertIn('<span class="xref" data-target="sec-12-B-II-C">II.C.</span>',
+                      self.by_id["sec-12-A-I-B-16"]["full_text"])
+        self.assertEqual(self.unresolved[ic.BUCKET_CFR]["40 C.F.R. Part 85, Subpart V"], 2)
+        self.assertIn('data-target="sec-12-A-I-D-4">I.D.4.</span>', self.by_id["sec-12-A-II-A-2-h"]["full_text"])
+        self.assertEqual(dict(self.unresolved[ic.BUCKET_UNPARSEABLE]), {"I.V.C.5": 1, "I.D.5.": 1, "VII.by": 1})
+        self.assertEqual(self.unresolved[ic.BUCKET_OTHER_REG], {})
+        self.assertEqual(self.unresolved[ic.BUCKET_HISTORICAL], {})
+        for r in self.rows:
+            for t in re.findall(r'data-target="([^"]+)"', r["full_text"]):
+                self.assertIn(t, self.by_id, (r["id"], t))
+            self.assertNotIn("xref-external-reg", r["full_text"])
+
+
+# ---------------------------------------------------------------------------
+# Batch 5 — Regulation Number 25 (Control of Emissions from Surface Coating,
+# Solvents, Asphalt, Graphic Arts and Printing, and Pharmaceuticals, 5 CCR
+# 1001-29). Standard AQCC Part A/B/C shape (Part C = roman_seq statement of
+# basis with bare-date openers like Reg 26/24), plus five gated additions:
+# `top_after_terminal` (SOB_PART_CONFIG), SIBLING_CHAIN_REGS /
+# LIST_OR_SIBLING_REGS, ITEM_TABLE_SPLICE_REGS / MULTI_CAPTION_PAGE_REGS and
+# the UNCAPTIONED_TABLES `spans` / `stop_prefix` / `header_rows` / `compact`
+# keys, and the APPENDIX_FIGURES map placeholders — every one keyed to "25".
+# ---------------------------------------------------------------------------
+
+REG25_TXT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "REG_25.txt")
+REG25_PDF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "REG_25.pdf")
+
+
+class Reg25MetaTests(unittest.TestCase):
+    def test_corpus_and_meta_entries(self):
+        self.assertEqual(ic.CORPUS_REGS["25"], "25")
+        self.assertNotIn("25", ic.ECFR_REGS)
+        meta = ic.REG_META["25"]
+        self.assertEqual(meta["jurisdiction_level"], "state")
+        self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
+        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 25")
+        self.assertEqual(
+            meta["root_title"],
+            "CONTROL OF EMISSIONS FROM SURFACE COATING, SOLVENTS, ASPHALT, "
+            "GRAPHIC ARTS AND PRINTING, AND PHARMACEUTICALS 5 CCR 1001-29",
+        )
+        self.assertNotIn("no_parts", meta)
+        self.assertNotIn("family", meta)
+
+    def test_sob_part_config(self):
+        cfg = ic.SOB_PART_CONFIG["25"]
+        self.assertEqual((cfg["letter"], cfg["top_family"]), ("C", "roman_seq"))
+        self.assertIs(cfg["top_opener_re"], ic.DATE_START_RE)
+        self.assertFalse(cfg["inner_items"])
+        self.assertTrue(cfg["top_after_terminal"])
+        self.assertIsNotNone(cfg["top_opener_re"].match("December 18-20, 2024 (Revisions to Part A"))
+        self.assertIsNone(cfg["top_opener_re"].match("The Commission adopted revisions"))
+        # the new key is set nowhere else
+        for reg, other in ic.SOB_PART_CONFIG.items():
+            if reg != "25":
+                self.assertNotIn("top_after_terminal", other, reg)
+
+    def test_gated_sets_name_only_the_expected_regs(self):
+        self.assertEqual(ic.SIBLING_CHAIN_REGS, frozenset({"8", "25"}))
+        self.assertEqual(ic.LIST_OR_SIBLING_REGS, frozenset({"25"}))
+        # Batch 5 merge: Reg 27 shares the set (strict mode); Reg 25 keeps merge_continuations.
+        self.assertEqual(ic.ITEM_TABLE_SPLICE_REGS, frozenset({"25", "27"}))
+        self.assertEqual(ic.ITEM_TABLE_SPLICE_MODE["25"], "merge_continuations")
+        self.assertEqual(ic.MULTI_CAPTION_PAGE_REGS, frozenset({"25"}))
+        self.assertEqual(ic.APPENDIX_SEAM_BREAK_REGS, frozenset({"25"}))
+        self.assertEqual(set(ic.APPENDIX_FIGURES), {"25"})
+        self.assertIn("25", ic.APPENDIX_HEADING_DEDUP_REGS)
+        self.assertNotIn("25", ic.APPENDIX_TABLE_SPLICE_REGS)
+        for entry in ic.UNCAPTIONED_TABLES["8"] + ic.UNCAPTIONED_TABLES["30"]:
+            for key in ("spans", "stop_prefix", "header_rows", "compact"):
+                self.assertNotIn(key, entry)
+
+    def test_regulation_number_25_links_from_another_reg(self):
+        text = "Part C became Regulation Number 25; Part D remained in Regulation Number 7."
+        linked, _b = ic.link_citations(text, "26", {"sec-26-top-REG-26"}, ic.CORPUS_REGS, "C", "sec-26-C-I")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/25">Regulation Number 25</a>', linked)
+
+    def test_regulation_number_25_is_bucketed_while_out_of_corpus(self):
+        corpus = {k: v for k, v in ic.CORPUS_REGS.items() if k != "25"}
+        text = "Part C became Regulation Number 25."
+        linked, buckets = ic.link_citations(text, "26", {"sec-26-top-REG-26"}, corpus, "C", "sec-26-C-I")
+        self.assertNotIn("/regulations/25", linked)
+        self.assertEqual(buckets[ic.BUCKET_OTHER_REG]["Regulation Number 25"], 1)
+
+
+class Reg25SobTopAfterTerminalTests(unittest.TestCase):
+    """REG_25.txt lines 6280-6284: entry II is printed directly under entry
+    I's last line ("...in the most cost-effective manner.") with no blank
+    line, marker line or page seam before it."""
+
+    LINES = [
+        "PART C         Statements of Basis, Specific Statutory Authority and Purpose",
+        "",
+        "I.      April 20, 2023",
+        "This Statement of Basis complies with the requirements of the State Administrative Procedure Act.",
+        "",
+        "(IV) The rules are the most cost-effective alternative to achieve the necessary reduction",
+        "in air pollution and provide the regulated entity flexibility.",
+        "(V) The selected regulatory alternative will maximize the air quality benefits of regulation",
+        "in the most cost-effective manner.",
+        "II.     December 18-20, 2024 (Revisions to Part A, Section II.C.2. and Part B,",
+        "        Sections I.L.6., I.O.5., and I.P.)",
+        "",
+        "This Statement of Basis complies with the requirements of the State Administrative Procedure Act.",
+        "",
+        "III.    November 19-21, 2025 (Revisions to Part B, Section I.Q. and Repeal of Part",
+        "        B, Section IV.C.)",
+        "",
+        "This Statement of Basis complies with the requirements of the State Administrative Procedure Act.",
+    ]
+
+    def _ids(self, reg):
+        markers, _audit = ic.scan_markers(self.LINES, set(), reg)
+        provisions, order, _u, _t = ic.build_provisions(reg, self.LINES, markers, {})
+        return [pid for pid in order if pid.startswith(f"sec-{reg}-C-")], provisions
+
+    def test_reg25_finds_all_three_entries(self):
+        ids, provisions = self._ids("25")
+        self.assertEqual(ids, ["sec-25-C-I", "sec-25-C-II", "sec-25-C-III"])
+        self.assertIn("cost-effective manner.", provisions["sec-25-C-I"]["full_text"])
+        self.assertNotIn("December 18-20", provisions["sec-25-C-I"]["full_text"])
+        self.assertTrue(provisions["sec-25-C-II"]["full_text"].startswith("<p>December 18-20, 2024"))
+
+    def test_same_shape_without_the_flag_fuses_entries_as_before(self):
+        # Reg 26 has the identical family/opener but not the flag: entry II
+        # stays fused (the pre-existing behaviour, deliberately unchanged).
+        ids, _p = self._ids("26")
+        self.assertEqual(ids, ["sec-26-C-I"])
+
+
+class Reg25ListOrSiblingTests(unittest.TestCase):
+    """A "; or" (or a bare wrapped "or" after a ";") directly before the
+    open marker's immediate next sibling is a paragraph boundary for Reg 25
+    only — `_label_position_plausible` alone rejects every non-seam line
+    that ends in "or"."""
+
+    LINES = [
+        "PART B    Surface Coating",
+        "",
+        "I.     Surface Coating Operations",
+        "",
+        "I.A.   General Provisions",
+        "",
+        "       I.A.5. Compliance with the emission limitations shall be achieved by:",
+        "",
+        "           I.A.5.a.      Use of coatings with proportions of VOC less than or equal",
+        "                  to the maximums specified by the applicable section of this",
+        "                  regulation; or",
+        "           I.A.5.b.      Use of the specified equipment and procedures prescribed",
+        "                  by the applicable section of this regulation; or",
+        "",
+        "           I.A.5.c.       Use of an alternative means of control which satisfies the",
+        "                  requirements of Section I.A.5.e.;",
+        "                  or",
+        "           I.A.5.d.      Use of crossline averaging.",
+        "",
+        "           I.A.5.e.       The design, operation and efficiency of any capture system",
+        "                  shall be approved by the Division.",
+    ]
+
+    def _ids(self, reg):
+        markers, _audit = ic.scan_markers(self.LINES, set(), reg)
+        return [ic.tokens_to_citation(m["tokens"]) for m in markers if m["type"] == "item"]
+
+    def test_prev_is_list_or_helper(self):
+        self.assertTrue(ic._prev_is_list_or(["regulation; or", "I.A.5.b. x"], 1))
+        self.assertTrue(ic._prev_is_list_or(["regulation, or", "I.A.5.b. x"], 1))
+        self.assertTrue(ic._prev_is_list_or(["requirements;", "     or", "I.A.5.d. x"], 2))
+        self.assertFalse(ic._prev_is_list_or(["subject to Sections I.A.5.a. or", "I.A.5.b. x"], 1))
+        self.assertFalse(ic._prev_is_list_or(["requirements", "or", "I.A.5.d. x"], 2))
+        self.assertFalse(ic._prev_is_list_or(["I.A.5.b. x"], 0))
+
+    def test_reg25_accepts_siblings_after_list_or(self):
+        self.assertEqual(self._ids("25"), ["I.", "I.A.", "I.A.5.", "I.A.5.a.", "I.A.5.b.", "I.A.5.c.", "I.A.5.d.", "I.A.5.e."])
+
+    def test_other_regs_keep_rejecting_labels_after_or(self):
+        for reg in ("7", "26", "8"):
+            self.assertNotIn("I.A.5.b.", self._ids(reg), reg)
+            self.assertNotIn("I.A.5.d.", self._ids(reg), reg)
+
+    def test_wrapped_citation_list_ending_or_still_rejected_for_reg25(self):
+        lines = [
+            "PART B    Surface Coating",
+            "",
+            "I.     Surface Coating Operations",
+            "",
+            "       I.A.5. Sources must comply with the emission limitations of this section",
+            "              and with the requirements of Sections I.A.5.a. or",
+            "              I.A.6. and Part A, Section II.D., as applicable.",
+            "",
+            "       I.A.7. Recordkeeping.",
+        ]
+        markers, _audit = ic.scan_markers(lines, set(), "25")
+        cites = [ic.tokens_to_citation(m["tokens"]) for m in markers if m["type"] == "item"]
+        self.assertEqual(cites, ["I.", "I.A.", "I.A.5.", "I.A.7."])  # "I.A." is the gap-filled level
+
+
+class Reg25LabelFixTests(unittest.TestCase):
+    def test_the_three_fixes_rewrite_only_their_own_line(self):
+        lines = [
+            "                zxsdaI.A.5.d.(iv) The crossline averaging shall be met on a daily",
+            "                      weighted average.",
+            "          II.F.5.b The owner or operator of operations that use solvents that utilize a",
+            "                  control device must operate and maintain the control device",
+            "              IV.B.1.a.(vi “Heatset” means any lithographic or letterpress",
+            "                     printing operation where printing inks are set by the",
+            "              IV.B.1.a.(v) “Fountain solution” means a mixture of water,",
+        ]
+        out, applied = ic.apply_known_label_fixes("25", lines)
+        self.assertTrue(out[0].lstrip().startswith("I.A.5.d.(iv) The crossline averaging"))
+        self.assertTrue(out[2].lstrip().startswith("II.F.5.b. The owner or operator"))
+        self.assertTrue(out[4].lstrip().startswith("IV.B.1.a.(vi) “Heatset” means"))
+        self.assertEqual(out[0][:16], lines[0][:16])  # indent preserved
+        for i in (1, 3, 5, 6):
+            self.assertEqual(out[i], lines[i])
+        hits = {a["old_label"]: a["hits"] for a in applied}
+        self.assertEqual(hits, {"zxsdaI.A.5.d.(iv)": 1, "II.F.5.b": 1, "IV.B.1.a.(vi": 1})
+
+    def test_every_reg_25_fix_hits_exactly_once_on_the_real_source(self):
+        if not os.path.exists(REG25_TXT):
+            self.skipTest("sources/REG_25.txt not present in this checkout")
+        raw = open(REG25_TXT, encoding="utf-8").read()
+        lines, _ = ic.clean_pages(raw)
+        _, applied = ic.apply_known_label_fixes("25", lines)
+        self.assertEqual(len(applied), 3)
+        for a in applied:
+            self.assertEqual(a["hits"], 1, a)
+
+    def test_anomalies_documented(self):
+        labels = {a["label"] for a in ic.KNOWN_LABEL_ANOMALIES["25"]}
+        self.assertEqual(labels, {"I.L.1.c.(xv)", "I.L.1.c.(x)"})
+
+
+class Reg25UncaptionedTableOptionsTests(unittest.TestCase):
+    def test_stop_prefix_ends_the_replaced_block_before_the_footnote(self):
+        own_lines = [
+            "For refrigerated chillers operated below 0°C., the following requirements apply:",
+            "",
+            "DEGREASER WIDTH                *CALORIES/HR METER OF                BTU/HR FOOT OF",
+            "Less than 1.1 meters (3.5      165                                  200",
+            "Greater than 3.0 meters (10 500                                     600",
+            "* Kilocalories (1 Kilocalorie = 4184.0 joules)",
+            "",
+            "For refrigerated chillers operating above 0°C., there shall be at least 415 Calories/Hr.",
+        ]
+        cap = "Minimum cooling capacities for refrigerated freeboard chillers"
+        hits = {"used": 0, "captions_used": []}
+        out = ic._swap_uncaptioned_table(own_lines, "sec-25-B-APPENDIX-D", "25",
+                                         {cap: {"caption": cap, "rows": [["a"]]}}, hits)
+        self.assertEqual(out, own_lines[:2] + ["", ic._TABLE_SENTINEL + cap, ""] + own_lines[5:])
+        self.assertEqual(hits["used"], 1)
+
+    def test_drop_repeated_leading_rows_drops_the_whole_header_block(self):
+        first = [["Coating category", "Air dried", None], [None, "kg VOC/l", "lb VOC/gal"], ["Camouflage", "0.80", "6.67"]]
+        cont = [["Coating category", "Air dried", None], [None, "kg VOC/l", "lb VOC/gal"], ["Metallic", "0.80", "6.67"]]
+        self.assertEqual(ic._drop_repeated_leading_rows(first, cont), [["Metallic", "0.80", "6.67"]])
+        # a one-row header is still just one row dropped
+        self.assertEqual(ic._drop_repeated_leading_rows([["h", "h2"], ["x", "1"]], [["h", "h2"], ["y", "2"]]), [["y", "2"]])
+        self.assertEqual(ic._drop_repeated_leading_rows([], [["h"]]), [["h"]])
+
+    def test_merge_header_rows_joins_column_wise(self):
+        rows = [
+            ["Industrial Finishing Categories", "", "Lb VOC per", "", "", "Lb VOC per", "", "Kg VOC per\nLiter of Solids"],
+            [None, None, "Gallon Coating", None, None, "Gallon of", None, None],
+            [None, None, "less water", None, None, "Solids", None, None],
+            ["Can Industry", None, None, None, None, None, None, None],
+            ["End sealing compound", "3.7", None, None, "7.4", None, None, "0.88"],
+        ]
+        merged = ic._merge_header_rows(rows, 3)
+        self.assertEqual(merged[0], ["Industrial Finishing Categories", "", "Lb VOC per Gallon Coating less water", "",
+                                     "", "Lb VOC per Gallon of Solids", "", "Kg VOC per Liter of Solids"])
+        self.assertEqual(merged[1:], rows[3:])
+        self.assertEqual(ic._merge_header_rows(rows, 1), rows)
+        compact = [[c for c in r if (c or "").strip()] for r in merged]
+        self.assertEqual(compact[1], ["Can Industry"])
+        self.assertEqual(compact[2], ["End sealing compound", "3.7", "7.4", "0.88"])
+
+    def test_reg25_uncaptioned_entries_are_unique_and_well_formed(self):
+        entries = ic.UNCAPTIONED_TABLES["25"]
+        captions = [e["caption"] for e in entries]
+        self.assertEqual(len(captions), len(set(captions)))
+        self.assertEqual(len(entries), 14)
+        for e in entries:
+            self.assertTrue(e["row_id"].startswith("sec-25-"))
+            self.assertTrue(bool(e.get("to_end")) != bool(e.get("stop_prefix")), e["row_id"])
+        tracking = next(e for e in entries if e["row_id"] == "sec-25-C-I")
+        self.assertEqual(tracking["spans"], [(p, 0) for p in range(121, 132)])
+        appx_e = next(e for e in entries if e["row_id"] == "sec-25-B-APPENDIX-E")
+        self.assertEqual((appx_e["spans"], appx_e["header_rows"], appx_e["compact"]), ([(118, 0), (119, 0)], 3, True))
+
+
+class Reg25ItemTableSpliceTests(unittest.TestCase):
+    """Two tables in one item row, and a reprinted continuation caption."""
+
+    T3 = "Table 3 – Motor vehicle materials VOC content limits"
+    T4 = "Table 4 – Automotive coatings VOC content limits"
+    TABLES = {
+        T3: {"caption": T3, "rows": [["Coating Category", "kg", "lbs"], ["Motor vehicle cavity\nwax", "0.65", "5.4"],
+                                     ["Motor vehicle sealer", "0.65", "5.4"]]},
+        T4: {"caption": T4, "rows": [["Coating Category", "g/l", "lbs"], ["Adhesion promoter", "540", "4.5"],
+                                     ["Clear coating", "250", "2.1"]]},
+    }
+    OWN = [
+        "                material, then the most stringent emission limitation applies.",
+        "",
+        "               Table 3 – Motor vehicle materials VOC content limits",
+        "",
+        "               Coating Category          kg VOC/liter coating   lbs VOC/gal coating",
+        "",
+        "               Motor vehicle cavity              0.65                    5.4",
+        "               wax",
+        "",
+        "               Motor vehicle sealer              0.65                    5.4",
+        "               Table 3 – Motor vehicle materials VOC content limits",
+        "",
+        "               Coating Category          kg VOC/liter coating   lbs VOC/gal coating",
+        "               Motor vehicle sealer              0.65                    5.4",
+        "",
+        "",
+        "                 Table 4 – Automotive coatings VOC content limits",
+        "",
+        "                 Coating Category           grams/liter          lbs/gallon (minus",
+        "                 Adhesion promoter                     540                4.5",
+        "                 Clear coating                         250                2.1",
+        "",
+        "    A closing paragraph.",
+    ]
+
+    def test_splice_with_merge_continuations(self):
+        hits = {"used": 0, "captions_used": []}
+        out = ic._splice_appendix_tables(list(self.OWN), "25", self.TABLES, hits, merge_continuations=True)
+        sentinels = [ln for ln in out if ln.startswith(ic._TABLE_SENTINEL)]
+        self.assertEqual(sentinels, [ic._TABLE_SENTINEL + self.T3, ic._TABLE_SENTINEL + self.T4])
+        self.assertEqual(hits["captions_used"], [self.T3, self.T4])
+        text = " ".join(ln for ln in out if not ln.startswith(ic._TABLE_SENTINEL))
+        self.assertNotIn("Motor vehicle", text)
+        self.assertNotIn("Adhesion promoter", text)
+        self.assertNotIn("Coating Category", text)
+        self.assertIn("most stringent emission limitation applies", text)
+        self.assertIn("A closing paragraph.", text)
+
+    def test_without_merge_a_reprinted_caption_is_a_second_table(self):
+        # the Reg 9 behaviour, unchanged
+        hits = {"used": 0, "captions_used": []}
+        out = ic._splice_appendix_tables(list(self.OWN), "9", self.TABLES, hits)
+        # the reprinted caption line, printed right under the last data row,
+        # is eaten by the wrapped-cell loop and its page's dump stays as text
+        self.assertEqual(hits["captions_used"], [self.T3, self.T4])
+        self.assertIn("               Coating Category          kg VOC/liter coating   lbs VOC/gal coating", out)
+
+    def test_item_branch_uses_the_splice_only_for_reg25(self):
+        lines = [
+            "PART B    Surface Coating",
+            "",
+            "I.     Surface Coating Operations",
+            "",
+            "       I.P.4. Limits",
+            "",
+            "         I.P.4.d.     If more than one emission limitation applies to a specific",
+            "                material, then the most stringent emission limitation applies.",
+        ] + self.OWN[1:]
+        for reg, expect_t4 in (("25", True), ("7", False)):
+            markers, _a = ic.scan_markers(lines, set(), reg)
+            provisions, _o, _u, hits = ic.build_provisions(reg, lines, markers, self.TABLES)
+            text = provisions[f"sec-{reg}-B-I-P-4-d"]["full_text"]
+            self.assertIn(self.T3, text, reg)
+            self.assertEqual(self.T4 in text, expect_t4, reg)
+            self.assertEqual("A closing paragraph." in text, expect_t4, reg)
+            self.assertEqual(text.count('<table class="doc-table">'), 2 if expect_t4 else 1, reg)
+
+
+class Reg25AppendixFigureTests(unittest.TestCase):
+    def test_placeholder_inserted_after_each_map_title_only_for_that_row(self):
+        paras = ["II. Maps", "Denver Metropolitan Area and North Front Range (2008 Ozone NAAQS)",
+                 "Denver Metropolitan Area and North Front Range and  northern Weld County (2015 ozone NAAQS)"]
+        out = ic._insert_figure_placeholders(paras, "25", "sec-25-A-APPENDIX-A")
+        self.assertEqual(len(out), 5)
+        self.assertTrue(out[2].startswith(ic._FIGURE_SENTINEL))
+        self.assertTrue(out[4].startswith(ic._FIGURE_SENTINEL))
+        self.assertIn("page 16", out[4])
+        self.assertEqual(ic._insert_figure_placeholders(paras, "25", "sec-25-B-APPENDIX-D"), paras)
+        self.assertEqual(ic._insert_figure_placeholders(paras, "26", "sec-26-A-APPENDIX-A"), paras)
+
+    def test_placeholder_html_shape_matches_the_ecfr_convention(self):
+        html = ic._figure_placeholder_html("Map not reproduced — see REG_25.pdf page 15: <x>")
+        self.assertTrue(html.startswith('<p class="figure-omitted">[Map not reproduced'))
+        self.assertIn("&lt;x&gt;", html)
+
+    def test_seam_break_splits_the_appendix_at_page_boundaries(self):
+        lines = [
+            "PART A        Applicability and General Provisions",
+            "",
+            "I.     Applicability",
+            "",
+            "Appendix A Colorado Ozone Nonattainment or Attainment Maintenance Areas",
+            "",
+            "I.      Chronology of Attainment Status",
+            "",
+            "12/31/2021 EPA modification of the 9 county Denver Metropolitan Area 8-hour ozone",
+            "      nonattainment designation (2015 NAAQS) to include the portion of northern Weld",
+            "      County defined in Part A",
+            "II.   Maps",
+            "",
+            "Denver Metropolitan Area and North Front Range (2008 Ozone NAAQS)",
+            "Denver Metropolitan Area and North Front Range and northern Weld County",
+            "(2015 ozone NAAQS)",
+            "",
+            "PART B    Surface Coating",
+            "",
+            "I.     Surface Coating Operations",
+        ]
+        seams = {11, 14}
+        for reg in ("25", "26"):
+            markers, _a = ic.scan_markers(lines, seams, reg)
+            provisions, _o, _u, _h = ic.build_provisions(reg, lines, markers, {}, seams)
+            text = provisions[f"sec-{reg}-A-APPENDIX-A"]["full_text"]
+            if reg == "25":
+                self.assertIn("</p><p>II. Maps</p><p>Denver Metropolitan Area and North Front Range (2008 Ozone NAAQS)</p>"
+                              '<p class="figure-omitted">', text)
+                self.assertEqual(text.count("figure-omitted"), 2)
+            else:
+                self.assertIn("Part A</span> II. Maps</p>", text)
+                self.assertNotIn("figure-omitted", text)
+
+    def test_build_provisions_seam_starts_defaults_to_none(self):
+        # the new optional parameter must not change any call that omits it
+        import inspect
+        sig = inspect.signature(ic.build_provisions)
+        self.assertIs(sig.parameters["seam_starts"].default, None)
+
+
+class Reg25FullParseTests(unittest.TestCase):
+    """End-to-end parse of the real source (skipped when it's not present)."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(REG25_TXT) or not os.path.exists(REG25_PDF):
+            raise unittest.SkipTest("sources/REG_25.* not present in this checkout")
+        (cls.rows, cls.unresolved, cls.table_hits, cls.n_tables, cls.dupes, cls.fixes, cls.anomalies,
+         cls.audit) = ic.parse_reg("25", REG25_TXT, REG25_PDF)
+        cls.by_id = {r["id"]: r for r in cls.rows}
+
+    def test_structure(self):
+        top = [r["id"] for r in self.rows if r["parent_id"] == "sec-25-top-REG-25"]
+        self.assertEqual(top, ["sec-25-P-A", "sec-25-A-APPENDIX-A", "sec-25-P-B",
+                               "sec-25-B-APPENDIX-D", "sec-25-B-APPENDIX-E", "sec-25-P-C"])
+        self.assertEqual([r["id"] for r in self.rows if r["parent_id"] == "sec-25-P-A"], ["sec-25-A-I", "sec-25-A-II"])
+        self.assertEqual([r["id"] for r in self.rows if r["parent_id"] == "sec-25-P-B"],
+                         ["sec-25-B-I", "sec-25-B-II", "sec-25-B-III", "sec-25-B-IV", "sec-25-B-V"])
+        self.assertEqual([r["id"] for r in self.rows if r["parent_id"] == "sec-25-P-C"],
+                         ["sec-25-C-I", "sec-25-C-II", "sec-25-C-III"])
+        self.assertEqual(self.by_id["sec-25-B-I"]["title"], "I. Surface Coating Operations")
+        self.assertEqual(self.by_id["sec-25-top-REG-25"]["title"], ic.REG_META["25"]["root_title"])
+
+    def test_sob_entries_are_three_undivided_rows(self):
+        c_rows = [r for r in self.rows if r["id"].startswith("sec-25-C-") ]
+        self.assertEqual([r["id"] for r in c_rows], ["sec-25-C-I", "sec-25-C-II", "sec-25-C-III"])
+        self.assertTrue(self.by_id["sec-25-C-I"]["full_text"].startswith("<p>April 20, 2023"))
+        self.assertTrue(self.by_id["sec-25-C-II"]["full_text"].startswith("<p>December 18-20, 2024"))
+        self.assertTrue(self.by_id["sec-25-C-III"]["full_text"].startswith("<p>November 19-21, 2025"))
+        self.assertIn("Regulation 7 rule-history tracking table", self.by_id["sec-25-C-I"]["full_text"])
+        for r in self.rows:
+            self.assertLess(len(r["full_text"]), 20000, r["id"])
+
+    def test_duplicates_fixes_anomalies(self):
+        self.assertEqual(self.dupes, ["sec-25-B-I-L-1-c-(xv)"])
+        self.assertTrue(all(f["hits"] == 1 for f in self.fixes), self.fixes)
+        self.assertEqual(len(self.fixes), 3)
+        xv = re.sub(r"<[^>]+>", " ", self.by_id["sec-25-B-I-L-1-c-(xv)"]["full_text"])
+        self.assertIn("High-Performance Architectural Coating", xv)
+        self.assertIn("Metallic Coating", xv)
+        self.assertNotIn("sec-25-B-I-L-1-c-(x)", self.by_id)
+        self.assertIn("sec-25-B-I-L-1-c-(xxvi)", self.by_id)
+
+    def test_recovered_labels_present(self):
+        for pid in ("sec-25-B-I-A-5-d-(iv)", "sec-25-B-II-F-5-b", "sec-25-B-IV-B-1-a-(vi)",
+                    "sec-25-B-I-A-5-b", "sec-25-B-I-O-3-a-(iii)-(C)", "sec-25-B-IV-A-3-a-(v)",
+                    "sec-25-B-I-N-4-a-(ii)", "sec-25-B-I-N-4-a-(ii)-(A)", "sec-25-B-I-N-4-a-(ii)-(B)",
+                    "sec-25-B-IV-B-1-a-(v)", "sec-25-B-V-B-4-b", "sec-25-B-I-Q-2-mmmm"):
+            self.assertIn(pid, self.by_id, pid)
+        self.assertTrue(self.by_id["sec-25-B-I-A-5-b"]["full_text"].startswith("<p>Use of the specified equipment"))
+
+    def test_every_parent_resolves_and_no_furniture(self):
+        for r in self.rows:
+            if r["parent_id"] is not None:
+                self.assertIn(r["parent_id"], self.by_id, r["id"])
+            self.assertNotRegex(r["full_text"], r"CODE OF COLORADO REGULATIONS")
+
+    def test_all_nineteen_tables_rendered(self):
+        self.assertEqual(self.n_tables, 19)
+        self.assertEqual(self.table_hits["used"], 19)
+        t1 = self.by_id["sec-25-B-I-L-2-b-(ii)"]["full_text"]
+        t2 = self.by_id["sec-25-B-I-L-2-b-(iii)"]["full_text"]
+        self.assertEqual(t1.count('<table class="doc-table">'), 1)
+        self.assertEqual(t1.count("<tr>"), 26)   # 2 header rows + 24 coating categories
+        self.assertEqual(t2.count("<tr>"), 27)   # 2 header rows + 25 (14 on page 41 + 11 on page 42)
+        self.assertIn("<td>Drum coating, reconditioned, interior</td><td>1.17</td><td>9.78</td><td>1.17</td><td>9.78</td>", t1)
+        self.assertIn("<td>Pan backing</td><td>0.42</td><td>3.5</td><td>0.42</td><td>3.5</td>", t2)
+        self.assertNotIn("Electric-insulating varnish 0.80", re.sub(r"<[^>]+>", " ", t1))
+        p4d = self.by_id["sec-25-B-I-P-4-d"]["full_text"]
+        self.assertEqual(p4d.count('<table class="doc-table">'), 2)
+        self.assertIn("Table 4 – Automotive coatings VOC content limits", p4d)
+        self.assertIn("<td>Truck bedliner coating</td><td>310</td><td>2.6</td>", p4d)
+        self.assertNotIn("lubricating wax/compound</p>", p4d)
+        t5 = self.by_id["sec-25-B-I-Q-3-a-(ii)"]["full_text"]
+        self.assertEqual(t5.count("<tr>"), 58)   # header + 57 coating types
+        self.assertIn("<td>Maskants – bonding maskant</td><td>1230</td>", t5)
+        for pid, cell in (("sec-25-B-I-B-3", "<td>Prime application, flashoff area, and oven</td><td>0.23</td><td>1.9</td>"),
+                          ("sec-25-B-I-C-3", "<td>Three-piece can side-seam spray</td><td>0.66</td><td>5.5</td>"),
+                          ("sec-25-B-I-K-3", "<td>Vinyl Coating Line</td><td>0.45</td><td>3.8</td>"),
+                          ("sec-25-B-V-B-1", "<td>Greater than 300(Greater than 5.8)</td><td>-25°C(-13°F)</td>"),
+                          ("sec-25-B-APPENDIX-D", "<td>Greater than 3.0 meters (10</td><td>500</td><td>600</td>"),
+                          ("sec-25-B-APPENDIX-E", "<td>Three-piece can side-seam spray</td><td>5.5</td><td>21.7</td><td>2.61</td>"),
+                          ("sec-25-C-I", "<td>1995</td><td>Dec. 21</td>")):
+            self.assertIn(cell, self.by_id[pid]["full_text"], pid)
+        appx_e = self.by_id["sec-25-B-APPENDIX-E"]["full_text"]
+        self.assertIn("<th>Lb VOC per Gallon Coating less water</th>", appx_e)
+        self.assertIn("<tr><td>Can Industry</td></tr>", appx_e)
+        # the footnotes after Appendix D's and V.B.1.'s tables survive as text
+        self.assertIn("* Kilocalories (1 Kilocalorie = 4184.0 joules)", self.by_id["sec-25-B-APPENDIX-D"]["full_text"])
+        self.assertIn("**But not including the maximum value of the range.", self.by_id["sec-25-B-V-B-1"]["full_text"])
+        self.assertIn("The Commission also made typographical", self.by_id["sec-25-C-I"]["full_text"])
+        # the tracking table is one table with 25 dated rule rows
+        tracking = self.by_id["sec-25-C-I"]["full_text"]
+        self.assertEqual(tracking.count('<table class="doc-table">'), 1)
+        self.assertEqual(len(re.findall(r"<tr><td>(?:19|20)\d\d</td>", tracking)), 25)
+
+    def test_appendix_rows(self):
+        a = self.by_id["sec-25-A-APPENDIX-A"]["full_text"]
+        self.assertEqual(a.count('<p class="figure-omitted">'), 2)
+        self.assertIn("<p>II. Maps</p>", a)
+        d = self.by_id["sec-25-B-APPENDIX-D"]["full_text"]
+        self.assertTrue(d.startswith("Appendix D — Minimum Cooling Capacities for Refrigerated Freeboard Chillers on Vapor Degreasers<p>The specifications"))
+        self.assertNotIn("<p>Vapor Degreasers</p>", d)
+
+    def test_cross_references(self):
+        joined = "".join(r["full_text"] for r in self.rows)
+        for reg in ("3", "7", "22", "24", "26"):
+            self.assertIn(f'href="/regulations/{reg}"', joined, reg)
+        self.assertIn('<span class="xref" data-target="sec-25-B-I-A-5-d">Section I.A.5.d.</span>', joined)
+        # Batch 5 merge: Reg 27 is in the corpus, so the one "Regulation
+        # Number 27" mention (sec-25-C-I) is now an anchor, not a bucket hit.
+        self.assertIn('<a class="xref-external-reg" href="/regulations/27">Regulation Number 27</a>',
+                      self.by_id["sec-25-C-I"]["full_text"])
+        self.assertNotIn("Regulation Number 27", self.unresolved[ic.BUCKET_OTHER_REG])
+        self.assertEqual(self.unresolved[ic.BUCKET_CFR]["40 CFR Part 60"], 10)
+        for r in self.rows:
+            for target in re.findall(r'data-target="([^"]+)"', r["full_text"]):
+                self.assertIn(target, self.by_id, (r["id"], target))
+
+
+# ---------------------------------------------------------------------------
+# Batch 5 — Regulation Number 27 (GHG Emissions and Energy Management for
+# Manufacturing, 5 CCR 1001-31). See BATCH5_BRIEF.md and REPORT.md.
+# ---------------------------------------------------------------------------
+
+REG27_TXT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "REG_27.txt")
+REG27_PDF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "REG_27.pdf")
+
+
+class Reg27MetaTests(unittest.TestCase):
+    def test_corpus_and_meta_entries(self):
+        self.assertEqual(ic.CORPUS_REGS["27"], "27")
+        meta = ic.REG_META["27"]
+        self.assertEqual(meta["jurisdiction_level"], "state")
+        self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
+        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 27")
+        self.assertEqual(meta["root_title"],
+                         "GREENHOUSE GAS EMISSIONS AND ENERGY MANAGEMENT FOR MANUFACTURING 5 CCR 1001-31")
+        self.assertNotIn("no_parts", meta)
+        self.assertTrue(meta["seam_standalone_line_breaks"])
+        self.assertTrue(meta["triple_letter_labels"])
+        # Both flags are Reg 27's alone (clean_pages / family_regex_for are
+        # byte-identical elsewhere).
+        for reg, m in ic.REG_META.items():
+            if reg != "27":
+                self.assertNotIn("seam_standalone_line_breaks", m, reg)
+                self.assertNotIn("triple_letter_labels", m, reg)
+
+    def test_triple_letter_labels_tokenize_only_for_reg_27(self):
+        self.assertIs(ic.family_regex_for("27"), ic.FAMILY_REGEX_TRIPLE_UPPER)
+        for reg in ("30", "26", "7", "3", "22", "1", "cp", "9", None):
+            self.assertIs(ic.family_regex_for(reg), ic.FAMILY_REGEX, reg)
+        self.assertIs(ic.family_regex_for("gp12"), ic.FAMILY_REGEX_NO_TRAILING_DOT)
+        line = "II.AAA. “Process” means a specific operation at an EITE stationary source"
+        toks, consumed = ic.tokenize_by_cycle(line, ic.CYCLE_AB, ic.family_regex_for("27"))
+        self.assertEqual(toks, [("roman", "II"), ("upper", "AAA")])
+        self.assertEqual(line[consumed:].strip(), "“Process” means a specific operation at an EITE stationary source")
+        # "II.III." is the 61st term ("Residential building unit"), an upper
+        # token at depth 2, not a second roman numeral.
+        toks, _ = ic.tokenize_by_cycle("II.III.   “Residential building unit” means", ic.CYCLE_AB, ic.family_regex_for("27"))
+        self.assertEqual(toks, [("roman", "II"), ("upper", "III")])
+        self.assertEqual(ic.tokens_to_id_suffix(toks), "II-III")
+        # the plain table (every other reg) stops at two letters, as before
+        toks, _ = ic.tokenize_by_cycle(line, ic.CYCLE_AB)
+        self.assertEqual(toks, [("roman", "II")])
+        # the variant is otherwise the same table
+        for fam in ic.FAMILY_REGEX:
+            if fam != "upper":
+                self.assertIs(ic.FAMILY_REGEX_TRIPLE_UPPER[fam], ic.FAMILY_REGEX[fam])
+
+    def test_sob_part_config(self):
+        cfg = ic.SOB_PART_CONFIG["27"]
+        self.assertEqual((cfg["letter"], cfg["top_family"]), ("E", "roman_seq"))
+        self.assertIs(cfg["inner_items"], False)
+        self.assertIsNotNone(cfg["top_opener_re"].match("Adopted: October 22, 2021"))
+        self.assertIsNotNone(cfg["top_opener_re"].match("Adopted: December 18-20, 2024"))
+        self.assertIsNone(cfg["top_opener_re"].match("(Removed from Regulation Number 22"))
+
+    def test_regulation_number_27_links_from_other_regs(self):
+        html, buckets = ic.link_citations(
+            "as defined and established in Regulation Number 27, Part D to achieve",
+            "7", {"sec-7-top-REG-7"}, set(ic.CORPUS_REGS))
+        self.assertIn('<a class="xref-external-reg" href="/regulations/27">Regulation Number 27</a>', html)
+        self.assertEqual(dict(buckets[ic.BUCKET_OTHER_REG]), {})
+        # ...and stays a bucket hit while 27 is held out of the corpus.
+        html2, buckets2 = ic.link_citations(
+            "as defined and established in Regulation Number 27, Part D to achieve",
+            "7", {"sec-7-top-REG-7"}, set(ic.CORPUS_REGS) - {"27"})
+        self.assertNotIn("/regulations/27", html2)
+        self.assertEqual(dict(buckets2[ic.BUCKET_OTHER_REG]), {"Regulation Number 27, Part D": 1})
+
+    def test_self_reference_links_to_root(self):
+        html, _ = ic.link_citations("the requirements of Regulation Number 27 continue to apply",
+                                    "27", {"sec-27-top-REG-27"}, set(ic.CORPUS_REGS))
+        self.assertIn('<span class="xref" data-target="sec-27-top-REG-27">Regulation Number 27</span>', html)
+
+    def test_table_configs_are_reg_27_only(self):
+        # Batch 5 merge: Reg 25 shares the set (merge_continuations mode); Reg 27 keeps strict.
+        self.assertEqual(ic.ITEM_TABLE_SPLICE_REGS, frozenset({"25", "27"}))
+        self.assertEqual(ic.ITEM_TABLE_SPLICE_MODE["27"], "strict")
+        self.assertEqual(set(ic.TABLE_CAPTION_PINS), {"27"})
+        self.assertEqual([c for c, _p, _i in ic.TABLE_CAPTION_PINS["27"]], ["Table 2", "Table 3", "Table 4"])
+        self.assertEqual([e["row_id"] for e in ic.UNCAPTIONED_TABLES["27"]], ["sec-27-E-IV"])
+        self.assertIn("end_prefix", ic.UNCAPTIONED_TABLES["27"][0])
+        self.assertNotIn("27", ic.TABLE_CAPTION_EXTRA_RE)
+        self.assertNotIn("27", ic.APPENDIX_TABLE_SPLICE_REGS)
+
+
+class Reg27LabelFixTests(unittest.TestCase):
+    def test_i_a_1_d_is_rewritten_to_ii_a_1_d(self):
+        lines = [
+            "                 I.A.1.d. The difference in metric tons of CO2e between the GEMM 2 facility’s GEMM 2",
+            "                          annual GHG emissions requirement for 2030 and its GEMM 2 annual GHG",
+        ]
+        out, applied = ic.apply_known_label_fixes("27", lines)
+        self.assertTrue(out[0].lstrip().startswith("II.A.1.d. The difference in metric tons"))
+        self.assertEqual(len(out[0]) - len(out[0].lstrip()), 17)  # indent kept
+        self.assertEqual(out[1], lines[1])
+        hits = {a["old_label"]: a["hits"] for a in applied}
+        self.assertEqual(hits["I.A.1.d."], 1)
+        self.assertEqual(hits["II.D.1"], 0)
+
+    def test_ii_d_1_gains_its_trailing_period(self):
+        lines = ["        II.D.1   Each manufacturing stationary source and midstream segment company must designate"]
+        out, applied = ic.apply_known_label_fixes("27", lines)
+        self.assertTrue(out[0].lstrip().startswith("II.D.1.   Each manufacturing"))
+        toks, _ = ic.tokenize_by_cycle(out[0].strip(), ic.CYCLE_AB)
+        self.assertEqual(toks, [("roman", "II"), ("upper", "D"), ("digit", "1")])
+
+    def test_every_reg_27_fix_hits_exactly_once_on_the_real_source(self):
+        if not os.path.exists(REG27_TXT):
+            self.skipTest("sources/REG_27.txt not present in this checkout")
+        raw = open(REG27_TXT, encoding="utf-8").read()
+        lines, _ = ic.clean_pages(raw, "27")
+        _, applied = ic.apply_known_label_fixes("27", lines)
+        self.assertEqual(len(applied), 2)
+        for a in applied:
+            self.assertEqual(a["hits"], 1, a)
+
+
+class Reg27SeamStandaloneLineBreakTests(unittest.TestCase):
+    """REG_META["27"]["seam_standalone_line_breaks"]: a page that opens with a
+    one-line paragraph gets a paragraph break at the seam; a page that opens
+    with a wrapped continuation does not; every other reg is untouched."""
+
+    PAGE1 = "PART E   Statements\n\nsome prose that ends here.\n\n\n   12\n"
+    PAGE2_HEADING = "CODE OF COLORADO REGULATIONS   5 CCR 1001-31\nAir Quality Control Commission\n\n\nPurpose\n\nIn 2021 the Commission adopted.\n"
+    PAGE2_WRAP = "CODE OF COLORADO REGULATIONS   5 CCR 1001-31\nAir Quality Control Commission\n\n\nbetween.\nnext paragraph line one\n"
+
+    def test_heading_at_page_top_gets_a_break_for_reg_27(self):
+        lines, seams = ic.clean_pages(self.PAGE1 + ic.FF + self.PAGE2_HEADING, "27")
+        self.assertEqual(lines, ["PART E   Statements", "", "some prose that ends here.", "",
+                                 "Purpose", "", "In 2021 the Commission adopted."])
+        self.assertEqual(seams, {4})  # the real first line, not the inserted blank
+        self.assertEqual(ic.split_into_paragraphs(lines[2:]),
+                         ["some prose that ends here.", "Purpose", "In 2021 the Commission adopted."])
+
+    def test_wrapped_last_line_at_page_top_is_still_joined_for_reg_27(self):
+        lines, seams = ic.clean_pages(self.PAGE1 + ic.FF + self.PAGE2_WRAP, "27")
+        self.assertEqual(lines[2:], ["some prose that ends here.", "between.", "next paragraph line one"])
+        self.assertEqual(seams, {3})
+
+    def test_single_line_page_gets_a_break_for_reg_27(self):
+        lines, seams = ic.clean_pages(self.PAGE1 + ic.FF + "Air Quality Control Commission\n\nOnly line\n\n\n", "27")
+        self.assertEqual(lines[2:], ["some prose that ends here.", "", "Only line"])
+        self.assertEqual(seams, {4})
+
+    def test_no_break_after_a_blank_line(self):
+        # The previous page's last surviving line is never blank (trailing
+        # blanks are stripped), but the guard is explicit: nothing doubles up.
+        lines, _ = ic.clean_pages("a.\n\n" + ic.FF + "B\n\nc", "27")
+        self.assertEqual(lines, ["a.", "", "B", "", "c"])
+
+    def test_other_regs_unchanged(self):
+        text = self.PAGE1 + ic.FF + self.PAGE2_HEADING
+        for reg in ("30", "26", "7", "3", "22", "1", "cp", "ecmc", None):
+            lines, seams = ic.clean_pages(text, reg)
+            self.assertEqual(lines, ["PART E   Statements", "", "some prose that ends here.",
+                                     "Purpose", "", "In 2021 the Commission adopted."], reg)
+            self.assertEqual(seams, {3}, reg)
+
+
+class Reg27StrictTableSpliceTests(unittest.TestCase):
+    """`_splice_appendix_tables(strict=True)` — the ITEM_TABLE_SPLICE_REGS
+    path: wrapped first-column keys match by their first physical line, the
+    table ends at the first non-key paragraph, a page seam bounds a key row's
+    continuation run, and prose before/after every table survives."""
+
+    TABLE5 = {"caption": "Table 5", "rows": [
+        ["GEMM 2 Facility\nPercent\nContribution", "GEMM 2 Annual GHG Emissions Requirement in 2030 and\nbeyond"],
+        ["30% or greater", "6% less than the GEMM 2 facility GHG baseline emissions"],
+        ["At least 20% but\nless than 30%", "5% less than the GEMM 2 facility GHG baseline emissions"],
+    ]}
+    OWN = [
+        "        intro sentence mentioning Table 5.",
+        "",
+        "                                  Table 5",
+        "",
+        "                GEMM 2 Facility       GEMM 2 Annual GHG Emissions Requirement in 2030 and",
+        "                   Percent                                beyond",
+        "                 Contribution",
+        "",
+        "                 30% or greater         6% less than the GEMM 2 facility GHG baseline emissions",
+        "",
+        "                At least 20% but",
+        "                 less than 30%          5% less than the GEMM 2 facility GHG baseline emissions",
+        "",
+        "Prose after the table that must survive.",
+        "second line of that prose.",
+    ]
+
+    def test_strict_mode_keeps_prose_after_the_table(self):
+        hits = {"used": 0, "captions_used": []}
+        out = ic._splice_appendix_tables(list(self.OWN), "27", {"Table 5": self.TABLE5}, hits, strict=True)
+        self.assertEqual(hits["captions_used"], ["Table 5"])
+        paras = ic.split_into_paragraphs(out)
+        self.assertEqual(paras, ["intro sentence mentioning Table 5.",
+                                 ic._TABLE_SENTINEL + "Table 5",
+                                 "Prose after the table that must survive. second line of that prose."])
+
+    def test_non_strict_mode_is_the_old_behaviour(self):
+        # Multi-line keys never match a single line in the old (Reg 9) mode,
+        # so the "At least 20% but" rows are left behind as prose — exactly
+        # what the strict flag exists to fix; the old path itself is unchanged.
+        hits = {"used": 0, "captions_used": []}
+        out = ic._splice_appendix_tables(list(self.OWN), "27", {"Table 5": self.TABLE5}, hits)
+        paras = ic.split_into_paragraphs(out)
+        self.assertEqual(paras[1], ic._TABLE_SENTINEL + "Table 5")
+        self.assertTrue(paras[2].startswith("At least 20% but less than 30%"))
+
+    def test_seam_bounds_a_key_rows_continuation_run(self):
+        table = {"caption": "TABLE 1", "rows": [["Facility Name", "x"], ["Yuma Ethanol, LLC", "55,500"]]}
+        own = ["TABLE 1", "", "Facility Name       x", "", "Yuma Ethanol, LLC        55,500",
+               "In establishing the criteria the Commission considered", "more of that paragraph.", "", "Next."]
+        hits = {"used": 0, "captions_used": []}
+        # Without the seam the page-top paragraph reads as a wrapped cell...
+        out = ic._splice_appendix_tables(list(own), "27", {"TABLE 1": table}, hits, strict=True)
+        self.assertEqual(ic.split_into_paragraphs(out), [ic._TABLE_SENTINEL + "TABLE 1", "Next."])
+        # ...and with it (index 5 starts a new page) the paragraph survives.
+        out = ic._splice_appendix_tables(list(own), "27", {"TABLE 1": table}, hits, strict=True, seam_starts={5})
+        self.assertEqual(ic.split_into_paragraphs(out),
+                         [ic._TABLE_SENTINEL + "TABLE 1",
+                          "In establishing the criteria the Commission considered more of that paragraph.", "Next."])
+
+    def test_unrecovered_caption_is_left_as_text(self):
+        hits = {"used": 0, "captions_used": []}
+        out = ic._splice_appendix_tables(list(self.OWN), "27", {}, hits, strict=True)
+        self.assertEqual(out, self.OWN)
+        self.assertEqual(hits["used"], 0)
+
+
+class Reg27UncaptionedEndPrefixTests(unittest.TestCase):
+    def test_end_prefix_replaces_only_the_block_between_the_markers(self):
+        own = ["prose before.", "", "                 DE = (CP + GL) x GE", "                 where:",
+               "Step 1:    Displaced electricity emissions   DE   CP = CHP electricity production", "", "",
+               "                 AD = DT / DU x AT", "Step 6:    Direct stationary avoided emissions   AD",
+               "                 AT = Total avoided emissions", "", "", "Transparency", "", "prose after."]
+        caption = ic.UNCAPTIONED_TABLES["27"][0]["caption"]
+        hits = {"used": 0, "captions_used": []}
+        out = ic._swap_uncaptioned_table(own, "sec-27-E-IV", "27", {caption: {"caption": caption, "rows": [["a"]]}}, hits)
+        self.assertEqual(ic.split_into_paragraphs(out),
+                         ["prose before.", ic._TABLE_SENTINEL + caption, "Transparency", "prose after."])
+        self.assertEqual(hits["used"], 1)
+
+    def test_end_prefix_missing_leaves_the_row_untouched(self):
+        own = ["prose before.", "", "DE = (CP + GL) x GE", "no end marker here", "", "prose after."]
+        caption = ic.UNCAPTIONED_TABLES["27"][0]["caption"]
+        hits = {"used": 0, "captions_used": []}
+        out = ic._swap_uncaptioned_table(list(own), "sec-27-E-IV", "27", {caption: {"caption": caption, "rows": [["a"]]}}, hits)
+        self.assertEqual(out, own)
+        self.assertEqual(hits["used"], 0)
+
+    def test_other_rows_and_regs_untouched(self):
+        own = ["DE = (CP + GL) x GE", "AT = Total avoided emissions"]
+        caption = ic.UNCAPTIONED_TABLES["27"][0]["caption"]
+        tables = {caption: {"caption": caption, "rows": [["a"]]}}
+        hits = {"used": 0, "captions_used": []}
+        self.assertEqual(ic._swap_uncaptioned_table(list(own), "sec-27-E-I", "27", tables, hits), own)
+        self.assertEqual(ic._swap_uncaptioned_table(list(own), "sec-27-E-IV", "30", tables, hits), own)
+        self.assertEqual(hits["used"], 0)
+
+
+class Reg27FullParseTests(unittest.TestCase):
+    """End-to-end parse of the real source (skipped when it's not present)."""
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(REG27_TXT):
+            raise unittest.SkipTest("sources/REG_27.txt not present in this checkout")
+        pdf = REG27_PDF if os.path.exists(REG27_PDF) else None
+        (cls.rows, cls.unresolved, cls.table_hits, cls.n_tables, cls.dupes, cls.fixes, _an, _audit) = ic.parse_reg(
+            "27", REG27_TXT, pdf
+        )
+        cls.by_id = {r["id"]: r for r in cls.rows}
+        cls.has_pdf = pdf is not None
+
+    @staticmethod
+    def _visible(html):
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))
+
+    def test_row_counts_and_structure(self):
+        kinds = {}
+        for r in self.rows:
+            kinds[r["kind"]] = kinds.get(r["kind"], 0) + 1
+        self.assertEqual(kinds, {"root": 1, "part": 5, "section": 23, "item": 384})
+        self.assertEqual(len(self.rows), 413)
+        parts = [r["id"] for r in self.rows if r["kind"] == "part"]
+        self.assertEqual(parts, [f"sec-27-P-{p}" for p in "ABCDE"])
+        top = {p: [r["citation"] for r in self.rows if r["parent_id"] == f"sec-27-P-{p}"] for p in "ABCDE"}
+        self.assertEqual(top, {
+            "A": ["I.", "II.", "III."], "B": ["I.", "II.", "III.", "IV.", "V."],
+            "C": ["I.", "II.", "III.", "IV.", "V.", "VI."], "D": ["I.", "II.", "III.", "IV."],
+            "E": ["I.", "II.", "III.", "IV.", "V."],
+        })
+        root = self.by_id["sec-27-top-REG-27"]
+        self.assertEqual(root["title"], ic.REG_META["27"]["root_title"])
+
+    def test_no_duplicate_ids_and_every_parent_resolves(self):
+        self.assertEqual(self.dupes, [])
+        ids = [r["id"] for r in self.rows]
+        self.assertEqual(len(ids), len(set(ids)))
+        for r in self.rows:
+            if r["parent_id"] is not None:
+                self.assertIn(r["parent_id"], self.by_id, r["id"])
+            if r["kind"] == "item":
+                self.assertTrue(r["id"].startswith(r["parent_id"] + "-"), r["id"])
+
+    def test_label_fixes_all_hit_once(self):
+        self.assertEqual(len(self.fixes), 2)
+        self.assertTrue(all(f["hits"] == 1 for f in self.fixes), self.fixes)
+        # II.A.1.d. sits under II.A.1. with its three siblings; nothing under I.A.1. but a/b.
+        self.assertEqual([r["citation"] for r in self.rows if r["parent_id"] == "sec-27-B-II-A-1"],
+                         ["II.A.1.a.", "II.A.1.b.", "II.A.1.c.", "II.A.1.d."])
+        self.assertEqual([r["citation"] for r in self.rows if r["parent_id"] == "sec-27-B-I-A-1"],
+                         ["I.A.1.a.", "I.A.1.b."])
+        self.assertEqual([r["citation"] for r in self.rows if r["parent_id"] == "sec-27-D-II-D"],
+                         ["II.D.1.", "II.D.2.", "II.D.3."])
+        self.assertIn("Each manufacturing stationary source and midstream segment company must designate",
+                      self.by_id["sec-27-D-II-D-1"]["full_text"])
+
+    def test_definitions_one_row_per_term(self):
+        defs = [r for r in self.rows if r["parent_id"] == "sec-27-A-II"]
+        self.assertEqual(len(defs), 69)
+        self.assertEqual(defs[0]["id"], "sec-27-A-II-A")
+        self.assertEqual(defs[51]["id"], "sec-27-A-II-ZZ")
+        self.assertEqual(defs[52]["id"], "sec-27-A-II-AAA")
+        self.assertEqual(defs[-1]["id"], "sec-27-A-II-QQQ")
+        self.assertTrue(self.by_id["sec-27-A-II-AAA"]["full_text"].startswith("<p>“Process” means"))
+        self.assertTrue(self.by_id["sec-27-A-II-III"]["full_text"].startswith("<p>“Residential building unit” means"))
+        self.assertTrue(self.by_id["sec-27-A-II-QQQ"]["full_text"].startswith("<p>“Verifiable” means"))
+        self.assertNotIn("“Process” means", self.by_id["sec-27-A-II-ZZ"]["full_text"])
+        self.assertTrue(self.by_id["sec-27-A-II-B"]["full_text"].startswith("<p>“2030 social cost of GHGs” means"))
+        self.assertIn("$89 per metric ton of carbon dioxide", self.by_id["sec-27-A-II-B"]["full_text"])
+        self.assertIn("$33,000 per metric ton of nitrous oxide", self.by_id["sec-27-A-II-B"]["full_text"])
+
+    def test_sob_part_e_five_undivided_entries(self):
+        entries = [r for r in self.rows if r["parent_id"] == "sec-27-P-E"]
+        self.assertEqual([r["citation"] for r in entries], ["I.", "II.", "III.", "IV.", "V."])
+        for r, opener in zip(entries, ("Adopted: October 22, 2021", "Adopted: July 21, 2022",
+                                       "Adopted: April 20, 2023", "Adopted: October 20, 2023",
+                                       "Adopted: December 18-20, 2024")):
+            self.assertTrue(r["full_text"].startswith(f"<p>{opener}</p>"), r["id"])
+        self.assertEqual([r["id"] for r in self.rows if r["id"].startswith("sec-27-E-")],
+                         [e["id"] for e in entries])
+        # the restarting inner lists stay inside the entries as paragraphs
+        self.assertIn("<p>1. CO2 must be captured onsite at a GEMM 2 facility.", self.by_id["sec-27-E-IV"]["full_text"])
+        # ...and the citation-shaped wrapped line "...starting in\n2027. The
+        # facility must certify..." (line 3751) is body text, not a "2027." row.
+        self.assertIn("for each compliance period starting in 2027. The facility must certify",
+                      self.by_id["sec-27-E-IV"]["full_text"])
+
+    def test_page_top_headings_are_their_own_paragraphs(self):
+        for eid, heading in (("sec-27-E-II", "Specific Statutory Authority"), ("sec-27-E-IV", "Purpose"),
+                             ("sec-27-E-IV", "Transparency"), ("sec-27-E-I", "Points of Compliance"),
+                             ("sec-27-E-V", "Basis"), ("sec-27-E-IV", "State-Managed GHG Reduction Fund")):
+            self.assertIn(f"<p>{heading}</p>", self.by_id[eid]["full_text"], (eid, heading))
+        # ...and a paragraph that merely wraps across a page break is still whole.
+        self.assertIn("many of the facilities were somewhere in between.", self.by_id["sec-27-E-IV"]["full_text"])
+
+    def test_tables(self):
+        if not self.has_pdf:
+            self.skipTest("REG_27.pdf not present")
+        self.assertEqual(self.n_tables, 8)
+        self.assertEqual(self.table_hits["used"], 8)
+        for rid, cap in (("sec-27-B-I-A-1-a", "Table 1"), ("sec-27-B-I-A-2", "Table 2"), ("sec-27-B-I-A-3", "Table 3"),
+                         ("sec-27-B-I-A-4", "Table 4"), ("sec-27-B-I-A-5", "Table 5")):
+            self.assertIn(f'<div class="doc-table-caption">{cap}</div>', self.by_id[rid]["full_text"], rid)
+        t3 = self.by_id["sec-27-B-I-A-3"]["full_text"]
+        self.assertIn("<td>1.50% less than the GEMM 2 facility GHG baseline emissions</td>", t3)
+        self.assertIn("<td>8% less than the GEMM 2 facility GHG baseline emissions</td>", t3)
+        t4 = self.by_id["sec-27-B-I-A-4"]["full_text"]
+        self.assertIn("<td>12.5% less than the GEMM 2 facility GHG baseline emissions</td>", t4)
+        t5 = self.by_id["sec-27-B-I-A-5"]["full_text"]
+        self.assertIn("<td>At least 5% but less than 10%</td><td>3% less than", t5)
+        self.assertNotIn("<p>At least", t5)  # no leftover flattened rows
+        e4 = self.by_id["sec-27-E-IV"]["full_text"]
+        self.assertEqual(e4.count('<table class="doc-table">'), 3)
+        self.assertIn("<td>Suncor Energy USA, Commerce City</td><td>951,898</td><td>951,898</td>", e4)
+        self.assertIn("<td>Western Sugar Cooperative</td><td>81,981</td><td>109,141</td>", e4)
+        self.assertIn("<td>JBS Swift Beef Company, Greeley</td><td>1.75%</td><td>15.5%</td>", e4)
+        self.assertIn("<td>Step 2:</td><td>Displaced thermal emissions</td><td>DT</td><td>DT = CT / TP x TE where:", e4)
+        # prose after each of the three tables is intact, in order
+        i1 = e4.index("<p>In establishing the GHG reduction criteria")
+        i2 = e4.index("<p>Notwithstanding the above, the Commission recognized")
+        i3 = e4.index("<p>In line with the Commission’s commitment to equitable representation")
+        self.assertLess(e4.index("Yuma Ethanol, LLC"), i1)
+        self.assertLess(i1, e4.index("Yuma Ethanol</td>"))
+        self.assertLess(e4.index("Yuma Ethanol</td>"), i2)
+        self.assertLess(i2, e4.index("Step 6:"))
+        self.assertLess(e4.index("Step 6:"), i3)
+        self.assertNotIn("DT = C T / T P x T E", e4)  # pdftotext's garbled subscripts are gone
+        self.assertEqual(self._visible(e4).count("Facility Name"), 2)
+
+    def test_no_page_furniture_leaks(self):
+        for r in self.rows:
+            self.assertNotRegex(r["full_text"], r"CODE OF COLORADO REGULATIONS")
+            self.assertNotRegex(r["full_text"], r"Air Quality Control Commission</p>")
+
+    def test_cross_references(self):
+        self.assertIn('<a class="xref-external-reg" href="/regulations/22">Regulation Number 22</a>',
+                      self.by_id["sec-27-A-I-B"]["full_text"])
+        self.assertIn('<span class="xref" data-target="sec-27-top-REG-27">Regulation Number 27</span>',
+                      self.by_id["sec-27-A-I-B"]["full_text"])
+        self.assertIn('<span class="xref" data-target="sec-27-B-IV">Section IV.</span>',
+                      self.by_id["sec-27-B-I-A"]["full_text"])
+        self.assertIn('<span class="xref" data-target="sec-27-B-I-A-1">Sections I.A.1.</span>',
+                      self.by_id["sec-27-B-I-A-5"]["full_text"])
+        # Batch 5 merge: Reg 25 is in the corpus, so the one "Regulation
+        # Number 25" mention (sec-27-E-III, the April 2023 reorganisation
+        # statement) is now an anchor, not a bucket hit.
+        self.assertIn('<a class="xref-external-reg" href="/regulations/25">Regulation Number 25</a>',
+                      self.by_id["sec-27-E-III"]["full_text"])
+        self.assertEqual(dict(self.unresolved["other_reg"]), {})
+        self.assertEqual(set(self.unresolved["cfr"]), {"40 CFR Part 98", "40 CFR Part 98, Subpart A"})
+        for r in self.rows:
+            for tgt in re.findall(r'data-target="([^"]+)"', r["full_text"]):
+                self.assertIn(tgt, self.by_id, (r["id"], tgt))
+
+    def test_no_repeated_paragraph_prefix_within_a_row(self):
+        for r in self.rows:
+            paras = re.findall(r"<p>(.*?)</p>", r["full_text"])
+            seen = {}
+            for p in paras:
+                key = self._visible(p)[:50]
+                seen[key] = seen.get(key, 0) + 1
+            for key, n in seen.items():
+                if n >= 3:
+                    # the one legitimate repeat: three separate formulas in entry I
+                    self.assertEqual((r["id"], key, n), ("sec-27-E-I", "The calculation is as follows:", 3))

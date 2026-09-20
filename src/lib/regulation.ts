@@ -317,9 +317,10 @@ const OTHER_HEADING = "Other";
 /**
  * Groups the Colorado (/regulations) index by issuing_body. Within the AQCC
  * group, order is Common Provisions first, then numerically by regulation
- * number (1, 2, 3, 6, 7, 8, 9, 22, 24, 26, 30, ...) -- the printed CCR
- * series' own ordering, not id/insertion order (id order would put "22"
- * before "3" as strings).
+ * number (1, 2, 3, 6, 7, 8, 9, 11, 12, 22, 24, 25, 26, 27, 30, ...) -- the
+ * printed CCR series' own ordering, not id/insertion order (id order would
+ * put "22" before "3" as strings). Batch 5's 11/12/25/27 slot in by this
+ * same numeric comparator with no per-reg list to maintain.
  *
  * The eleven APCD general permits (gp01..gp12) share issuing_body
  * "CDPHE-APCD" with the numbered AQCC regulations but aren't AQCC

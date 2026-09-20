@@ -97,7 +97,30 @@ DEFAULT_AUDIENCE = (
 # keying). Regs with no entry get DEFAULT_AUDIENCE -- this is the hook for a
 # future non-oil-and-gas regulation to swap in its own reader description;
 # ECMC is still oil & gas, so it gets no entry here.
-REG_AUDIENCE: dict[str, str] = {}
+REG_AUDIENCE: dict[str, str] = {
+    # Reg 11 is the motor-vehicle emissions inspection (AIR) program: its
+    # readers run or work at inspection stations and repair shops, or manage
+    # fleets -- not oil and gas operators.
+    "11": (
+        "an owner or licensed inspector/mechanic at a Colorado emissions "
+        "inspection station or repair facility, or a fleet manager"
+    ),
+    # Reg 12: diesel fleet self-certification and opacity inspection.
+    "12": (
+        "a fleet manager, diesel opacity inspector, or vehicle owner in "
+        "Colorado's diesel emissions programs"
+    ),
+    # Reg 25: surface coating, solvent, printing and pharmaceutical VOC rules.
+    "25": (
+        "an environmental or plant manager at a Colorado surface coating, "
+        "printing, degreasing, asphalt or pharmaceutical facility"
+    ),
+    # Reg 27: greenhouse-gas requirements for manufacturing facilities.
+    "27": (
+        "an environmental or energy manager at a Colorado manufacturing "
+        "facility subject to the GEMM 2 or EITE greenhouse gas rules"
+    ),
+}
 
 SYSTEM_PROMPT_TEMPLATE = (
     "You are explaining a legal/regulatory provision to {audience} who is NOT a lawyer and does "
@@ -363,6 +386,93 @@ REG_PROMPT_HINTS: dict[str, str] = {
         "its numeric thresholds rather than restating every cell. Part C rows are "
         "rulemaking history. Mention section 25-7-109.5, C.R.S. only if the text "
         "in front of you actually references it."
+    ),
+    "11": (
+        "This row is from Colorado Regulation Number 11 (the motor vehicle "
+        "emissions inspection, or AIR, program). Two different agencies appear: "
+        "\"the Division\" is the Air Pollution Control Division of CDPHE "
+        "(analyzer approval, technical specifications, program design), while "
+        "licensing, enforcement and the field program are run by the "
+        "\"Department of Revenue\" / \"Executive Director\" -- keep them "
+        "apart and never merge them into one agency. \"Program area\", "
+        "\"enhanced\" and \"basic\" program areas, the \"North Front Range "
+        "Area\" and the \"Clean Screen Program\" mean only what Part A's "
+        "definitions and the cited C.R.S. sections say; never generalize a "
+        "provision scoped to one area to the whole state. Emissions limits "
+        "(percent CO, ppm HC, grams/mile HC/CO/NOx, opacity, gas-cap decay) "
+        "apply by model year and vehicle class exactly as the Part F tables "
+        "print them -- point to the table rather than restating it, and never "
+        "invent or round a cutpoint, model-year split, or pass/fail threshold. "
+        "OBD, MIL, DLC, IM 240, TSI, BAR 90/97, Colorado 94/97, TAS and VIN "
+        "expand only as this regulation defines them. Part H rows are "
+        "rulemaking history, not current requirements; Appendix A rows are "
+        "analyzer technical specifications for manufacturers (say so), and "
+        "Appendix B is repealed."
+    ),
+    "12": (
+        "This row is from Colorado Regulation Number 12 (reduction of diesel "
+        "vehicle emissions -- a State-Only program, not part of the SIP). It has "
+        "two separate programs: Part A, the Diesel Fleet Self-Certification "
+        "Program (fleets of nine or more diesel vehicles over 14,000 lb GVWR, "
+        "inspected by the fleet's own certified inspectors), and Part B, the "
+        "Diesel Opacity Inspection Program (licensed stations inspecting "
+        "individual vehicles); never merge their requirements. \"The "
+        "Division\" means the Air Pollution Control Division (CDPHE); "
+        "\"Department\" in Part B means the Colorado Department of Revenue, which "
+        "licenses stations and inspectors. \"Fleet\", \"fleet owner\", \"Excessive "
+        "Violation\", \"program area\" and \"Certification of Emissions Control "
+        "(CEC)\" mean only what Section I.B. of each part defines. Quote opacity "
+        "percentages, averaging times (e.g. \"twenty percent (20%) opacity measured "
+        "over five (5) seconds\"), model-year cutoffs (\"1991 and later\", \"model "
+        "year 2014 or newer\"), weight thresholds, fees and test-step numbers "
+        "exactly as printed -- never invent a cutpoint or convert units. Part C "
+        "is the roadside visible-emissions standard. Part D rows are rulemaking "
+        "history, not current requirements. SAE J1667 and 40 "
+        "C.F.R. Part 85, Subpart V are incorporated by name -- name them, don't "
+        "describe their contents. \"Reserved\" is a placeholder, not a gap."
+    ),
+    "25": (
+        "This row is from Colorado Regulation Number 25 (surface coating, "
+        "solvents, cutback asphalt, graphic arts and printing, pharmaceutical "
+        "synthesis -- VOC RACT). Part A, Section I.A.1. scopes the regulation "
+        "to the Denver 1-hour ozone attainment/maintenance area, the 8-hour "
+        "Ozone Control Area, northern Weld County and (State Only) any ozone "
+        "nonattainment area -- Appendix A lists them; state exactly the area "
+        "the text names, never generalize to statewide. \"(State Only)\" is "
+        "kept as printed. Quote every VOC limit in the units printed (lb "
+        "VOC/gal coating, lb VOC/gal solids, kg VOC/l, g/L, Kg/lc, Lb/gc, "
+        "lb/day, tons per year, torr/psia, degrees C and F), never converted, "
+        "rounded or restated on another basis -- \"less water and exempt "
+        "solvents\" and \"per volume solids\" limits are different numbers. "
+        "Point to a table for its cell values instead of restating them. An "
+        "EPA Control Techniques Guideline (CTG), EPA method or guidance "
+        "document (e.g. EPA-450/3-84/019) is incorporated by name and date -- "
+        "name it, never describe its contents. \"The Division\" is the Air "
+        "Pollution Control Division (defined in the Common Provisions, not "
+        "here); \"Commission\" is the AQCC. Appendices D and E are engineering "
+        "data, not applicability rules. Part C rows are rulemaking history, "
+        "not current requirements."
+    ),
+    "27": (
+        "This row is from Colorado Regulation Number 27 (GHG emissions and "
+        "energy management for manufacturing, GEMM 2). The operative rule "
+        "(Part B, Tables 1-5) sets requirements by TIER (percent reduction "
+        "since 2015, percent contribution to the group), never by facility "
+        "name: never name a facility or state a tonnage for a Part B row. "
+        "Facility names, baselines and per-facility targets appear only in "
+        "the October 2023 statement of basis entry (Part E, IV) -- quote those "
+        "numbers verbatim or not at all. \"GHG credit\", \"GEMM 2 facility\", "
+        "\"2015 GHG emissions\", \"EITE stationary source\", \"GHG BAECT\" (not "
+        "Reg 3 BACT), \"energy BMP\", \"audit\" and \"auction settlement price\" "
+        "mean only what Part A, Section II defines; \"Division\" is the APCD, "
+        "\"Commission\" the AQCC. Numbers as printed, never converted: $89/mt "
+        "CO2 social cost, the 25,000 metric tons CO2e/yr applicability "
+        "threshold, the 5 % EITE reduction, Table 5 tiers, the 50 % CHP credit "
+        "cap. Auction, plan, report, certification dates as printed. "
+        "Statement-of-basis entries I and II cite pre-2023 Regulation Number "
+        "22 numbering -- history, not current sections. Reporting is under "
+        "Regulation Number 22, Part A and credit trading under Regulation "
+        "Number 7, Part B, Section VII -- name them, do not describe them."
     ),
     "3": _COLORADO_AREA_SCOPE_HINT,
     "7": _COLORADO_AREA_SCOPE_HINT,

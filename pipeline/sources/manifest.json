@@ -109,6 +109,42 @@
    "ruleVersionId": "12561",
    "effective_date": "2026-06-14"
   },
+  "11": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-13",
+   "ruleId": "2346",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "12430",
+   "effective_date": "2026-03-02"
+  },
+  "12": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-15",
+   "ruleId": "2348",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "11881",
+   "effective_date": "2025-03-17"
+  },
+  "25": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-29",
+   "ruleId": "3410",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "12376",
+   "effective_date": "2026-01-14"
+  },
+  "27": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-31",
+   "ruleId": "3412",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "11838",
+   "effective_date": "2025-02-14"
+  },
   "ecmc": {
    "kind": "sos",
    "ccr": "2 CCR 404-1",

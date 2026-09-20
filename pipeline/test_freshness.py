@@ -8,6 +8,7 @@ Run with: python3 -m pytest -q test_freshness.py
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -610,3 +611,56 @@ def test_render_report_blocked_does_not_affect_exit_code(tmp_path):
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+# ---------------------------------------------------------------------------
+# Batch 5: AQCC Regs 11 / 12 / 25 / 27 -- SOS entries in the shape of "30"
+# ---------------------------------------------------------------------------
+
+BATCH5_SOS = {
+    "11": ("5 CCR 1001-13", "2346", "12430", "2026-03-02"),
+    "12": ("5 CCR 1001-15", "2348", "11881", "2025-03-17"),
+    "25": ("5 CCR 1001-29", "3410", "12376", "2026-01-14"),
+    "27": ("5 CCR 1001-31", "3412", "11838", "2025-02-14"),
+}
+
+
+@pytest.mark.parametrize("key", sorted(BATCH5_SOS))
+def test_batch5_manifest_entries(key):
+    """Batch 5: Regs 11/12/25/27 are registered like "30" -- kind sos, the
+    CDPHE dept/agency ids, a ruleId, a ruleVersionId and an ISO effective
+    date, and nothing else."""
+    ccr, rule_id, rvid, eff = BATCH5_SOS[key]
+    entry = make_manifest()["sources"][key]
+    assert set(entry) == set(make_manifest()["sources"]["30"])
+    assert entry["kind"] == "sos"
+    assert entry["ccr"] == ccr
+    assert entry["ruleId"] == rule_id
+    assert entry["deptID"] == "16"
+    assert entry["agencyID"] == "7"
+    assert entry["ruleVersionId"] == rvid
+    assert entry["effective_date"] == eff
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", entry["effective_date"])
+
+
+@pytest.mark.parametrize("key", sorted(BATCH5_SOS))
+def test_batch5_sos_url_and_label(key):
+    """check_sos builds the SOS URL from the entry's ruleId and labels the
+    result with its CCR cite; no fixture is registered so the fetch fails,
+    but the label is built before the fetch and asserted on the ERROR result."""
+    entry = make_manifest()["sources"][key]
+    fetcher = fr.Fetcher(fixtures_dir=Path("/does/not/exist"))
+    result = fr.check_sos(key, entry, fetcher)
+    assert result.source == f"SOS {BATCH5_SOS[key][0]}"
+    assert result.ours == BATCH5_SOS[key][2]
+    assert result.status == fr.STATUS_ERROR
+    assert f"ruleId={BATCH5_SOS[key][1]}" in fr.SOS_URL_TMPL.format(
+        ruleId=entry["ruleId"], deptID=entry["deptID"], agencyID=entry["agencyID"])
+
+
+def test_batch5_rule_ids_and_ccr_cites_are_unique_across_sos_entries():
+    sos = {k: v for k, v in make_manifest()["sources"].items() if v.get("kind") == "sos"}
+    rule_ids = [v["ruleId"] for v in sos.values()]
+    ccrs = [v["ccr"] for v in sos.values()]
+    assert len(rule_ids) == len(set(rule_ids))
+    assert len(ccrs) == len(set(ccrs))

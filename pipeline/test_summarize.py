@@ -103,7 +103,7 @@ def test_round_trip_mapping_for_batch_of_provision_ids():
 import pytest  # noqa: E402
 
 import summarize  # noqa: E402
-from summarize import (  # noqa: E402
+from summarize import (
     DEFAULT_AUDIENCE,
     REG_AUDIENCE,
     REG_PROMPT_HINTS,
@@ -156,14 +156,17 @@ def test_reg_key_of(provision_id, expected):
     ("sec-2-B-IX-B-3", "2", "Regulation Number 2"),
     ("sec-6-A-SUBPART-Kb", "6", "Regulation Number 6"),
     ("sec-8-E-III-M", "8", "Regulation Number 8"),
+    ("sec-25-B-I-L-2-b-(ii)", "25", "Regulation Number 25"),
+    ("sec-25-A-APPENDIX-A", "25", "Appendix A"),
 ])
 def test_specific_hint_selected_by_id_prefix(provision_id, key, marker):
     system = system_prompt_for(provision_id)
-    assert system.startswith(SYSTEM_PROMPT)
+    assert system.startswith(SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE.get(key, DEFAULT_AUDIENCE)))
     assert system.endswith(REG_PROMPT_HINTS[key])
     assert marker in system
     # Exactly one hint appended, separated from the base prompt by a blank line.
-    assert system == f"{SYSTEM_PROMPT}\n\n{REG_PROMPT_HINTS[key]}"
+    base = SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE.get(key, DEFAULT_AUDIENCE))
+    assert system == f"{base}\n\n{REG_PROMPT_HINTS[key]}"
 
 
 @pytest.mark.parametrize("provision_id, key", [
@@ -193,6 +196,21 @@ def test_shared_hint_is_identical_across_existing_colorado_regs():
 def test_no_hint_for_cfr_subparts(provision_id):
     assert reg_key_of(provision_id) not in REG_PROMPT_HINTS
     assert system_prompt_for(provision_id) == SYSTEM_PROMPT
+
+
+def test_reg_11_hint_and_audience():
+    system = system_prompt_for("sec-11-F-III-C")
+    assert system.endswith(REG_PROMPT_HINTS["11"])
+    assert "Regulation Number 11" in system
+    assert "Department of Revenue" in system and "Air Pollution Control Division" in system
+    assert "never invent or round a cutpoint" in system
+    # Reg 11's audience is inspection stations / fleets, not oil and gas.
+    assert REG_AUDIENCE["11"] in system
+    assert DEFAULT_AUDIENCE not in system
+    assert system_prompt_for("sec-11-H-APPENDIX-A-ATT-V-OPACITY").startswith(
+        SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE["11"]))
+    # every other reg still renders the default audience
+    assert system_prompt_for("sec-26-B-III").startswith(SYSTEM_PROMPT)
 
 
 def test_no_hint_for_unknown_or_malformed_id():
@@ -758,10 +776,11 @@ def test_default_audience_matches_original_wording():
     )
 
 
-def test_no_reg_overrides_audience_yet():
-    # ECMC stays on the O&G default -- REG_AUDIENCE is a hook for a future
-    # non-oil-and-gas regulation, not yet populated.
-    assert REG_AUDIENCE == {}
+def test_only_reg_11_overrides_the_audience():
+    # ECMC and every oil-and-gas regulation stay on the O&G default; Reg 11
+    # (motor vehicle inspection stations) is the first non-O&G audience.
+    assert set(REG_AUDIENCE) == {"11", "12", "25", "27"}
+    assert system_prompt_for("sec-ecmc-100-a").startswith(SYSTEM_PROMPT)
 
 
 @pytest.mark.parametrize("provision_id", [
@@ -836,3 +855,60 @@ def test_call_sites_use_per_row_system(monkeypatch):
     assert captured[0]["system"] == f"{SYSTEM_PROMPT}\n\n{REG_PROMPT_HINTS['8']}"
     assert captured[1]["system"] == SYSTEM_PROMPT
     assert stats.processed == 2
+
+
+# --------------------------------------------------------------------------
+# Batch 5: Regulation Number 12 (diesel vehicle emissions)
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("provision_id", ["sec-12-A-I-B-8", "sec-12-B-III-C-4-b-viii-C", "sec-12-D-XI"])
+def test_reg12_hint_selected_by_id_prefix(provision_id):
+    assert reg_key_of(provision_id) == "12"
+    system = system_prompt_for(provision_id)
+    assert system == f"{SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE['12'])}\n\n{REG_PROMPT_HINTS['12']}"
+    assert "Regulation Number 12" in system
+
+
+def test_reg12_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["12"]
+    for marker in (
+        "Regulation Number 12", "State-Only", "Part A", "Diesel Fleet Self-Certification",
+        "Part B", "Diesel Opacity Inspection", "Air Pollution Control Division",
+        "Department of Revenue", "fleet owner", "Excessive Violation", "program area",
+        "twenty percent (20%) opacity", "model-year", "never invent a cutpoint",
+        "Part C", "Part D", "SAE J1667", "40 C.F.R. Part 85, Subpart V", "Reserved",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 12 hint"
+    assert len(hint.split()) <= 200
+
+
+# --------------------------------------------------------------------------
+# Batch 5: Regulation Number 27 (GHG emissions and energy management, GEMM 2)
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("provision_id", ["sec-27-B-I-A-3", "sec-27-D-IV-B-1", "sec-27-E-IV"])
+def test_reg27_hint_selected_by_id_prefix(provision_id):
+    assert reg_key_of(provision_id) == "27"
+    system = system_prompt_for(provision_id)
+    assert system == f"{SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE['27'])}\n\n{REG_PROMPT_HINTS['27']}"
+    assert "Regulation Number 27" in system
+    # Reg 27 has its own manufacturing-facility audience (Batch 5).
+    assert "manufacturing" in system[:400]
+
+
+def test_reg27_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["27"]
+    for marker in (
+        "Regulation Number 27", "GEMM 2", "TIER", "never name a facility",
+        "October 2023 statement of basis", "verbatim", "Part A, Section II",
+        "GHG credit", "EITE stationary source", "GHG BAECT", "APCD", "AQCC",
+        "$89/mt", "25,000 metric tons", "5 % EITE", "Table 5", "50 % CHP",
+        "as printed", "entries I and II", "pre-2023 Regulation Number 22",
+        "not current sections", "Regulation Number 22, Part A",
+        "Regulation Number 7, Part B, Section VII", "do not describe",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 27 hint"
+    assert len(hint.split()) <= 200
+    # Reg 27's hint must not leak into any other Colorado reg's prompt.
+    for other in ("sec-7-B-I-C-1", "sec-22-A-I", "sec-25-B-I-A", "sec-30-B-I"):
+        assert REG_PROMPT_HINTS["27"] not in system_prompt_for(other)
