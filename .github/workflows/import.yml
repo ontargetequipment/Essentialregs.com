@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       reg:
-        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, cp, ecmc, oooob, ooooa, ooooc, gp01-gp12, jjjj, iiii, zzzz, p190, p191, p192, p193, p194, p195, p196, p199."
+        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, cp, aqs, sip, ecmc, oooob, ooooa, ooooc, gp01-gp12, jjjj, iiii, zzzz, p190, p191, p192, p193, p194, p195, p196, p199."
         required: true
       execute:
         description: "Execute: actually write the plan to Supabase. Leave unchecked to only parse/export/diff/build the apply plan and upload the report -- no database writes."
@@ -57,6 +57,10 @@ jobs:
             SRC_BASENAME="REG_${REG}"
           elif [ "$REG" = "cp" ]; then
             SRC_BASENAME="REG_CP"
+          elif [ "$REG" = "aqs" ]; then
+            SRC_BASENAME="REG_AQS"
+          elif [ "$REG" = "sip" ]; then
+            SRC_BASENAME="REG_SIP"
           elif [ "$REG" = "ecmc" ]; then
             SRC_BASENAME="ECMC"
           elif [ "$REG" = "oooob" ]; then
@@ -72,7 +76,7 @@ jobs:
           elif [[ "$REG" =~ ^p19[0-9]$ ]]; then
             SRC_BASENAME="${REG^^}"
           else
-            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), cp, ecmc, one of oooob/ooooa/ooooc/jjjj/iiii/zzzz, an APCD general permit gp01-gp12, or one of the whole-PART 49 CFR regs p190/p191/p192/p193/p194/p195/p196/p199."
+            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), cp, aqs, sip, ecmc, one of oooob/ooooa/ooooc/jjjj/iiii/zzzz, an APCD general permit gp01-gp12, or one of the whole-PART 49 CFR regs p190/p191/p192/p193/p194/p195/p196/p199."
             exit 1
           fi
           echo "SRC_BASENAME=${SRC_BASENAME}" >> "$GITHUB_ENV"
