@@ -296,7 +296,7 @@ existing `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`. Never commit the key.
 ## Running it
 
 **Embed provisions** workflow (Actions tab), inputs: `reg`, `limit`, `dry_run`,
-`force`, `neighbors_only`. Always dry-run first — it prints the chunk count,
+`force`, `neighbors_only`, `start_after`. Always dry-run first — it prints the chunk count,
 token estimate and cost, and calls nothing:
 
 ```
@@ -304,6 +304,7 @@ python pipeline/embed.py --dry-run --show 3      # whole corpus estimate
 python pipeline/embed.py --reg 7                 # embed Reg 7 (changed rows only)
 python pipeline/embed.py                         # whole corpus, resumable
 python pipeline/embed.py --neighbors-only        # rebuild related panel, no API calls
+python pipeline/embed.py --neighbors-only --start-after sec-gp09-IX-B   # resume a rebuild that died
 ```
 
 The **Import regulation** workflow has an `embed` checkbox that runs
@@ -312,6 +313,12 @@ The **Import regulation** workflow has an `embed` checkbox that runs
 without a separate step. Note that `--reg` runs only recompute neighbours for
 the rows they touched; run `--neighbors-only` once afterwards if you want
 older rows to be able to point at the newly added ones.
+
+The neighbour rebuild sizes its RPC batches adaptively: a statement timeout
+(57014) halves the batch and retries the same ids; after a run of clean
+batches it doubles back up. Progress lines print `last=<id>`; if a run still
+fails, rerun with `start_after` set to that id (the error message spells out
+the exact flag) and it skips everything already done.
 
 ## Cost
 

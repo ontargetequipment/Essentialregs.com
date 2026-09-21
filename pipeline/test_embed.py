@@ -7,6 +7,8 @@ No network and no database: everything here runs on in-memory rows.
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import embed  # noqa: E402
@@ -244,6 +246,152 @@ def test_upsert_splits_page_on_statement_timeout(monkeypatch):
     rows = [{"provision_id": f"p{i}", "chunk_index": 0} for i in range(4)]
     embed.upsert_embeddings(C(), rows)
     assert sizes == [4, 2, 2]
+
+
+# --- neighbour rebuild: adaptive batches + resume -------------------------
+
+def _timeout():
+    return RuntimeError("{'message': 'canceling statement due to statement timeout', 'code': '57014'}")
+
+
+class _RpcClient:
+    """Stub Supabase client whose `recompute_provision_neighbors` RPC fails
+    according to `fail(batch, call_no)`; records every batch it was sent."""
+    def __init__(self, fail):
+        self.fail = fail
+        self.calls: list[list[str]] = []
+        self.ok: list[list[str]] = []
+
+    def rpc(self, name, params):
+        assert name == "recompute_provision_neighbors"
+        batch = list(params["target_ids"])
+        self.calls.append(batch)
+        exc = self.fail(batch, len(self.calls))
+        outer = self
+
+        class R:
+            def execute(self_inner):
+                if exc is not None:
+                    raise exc
+                outer.ok.append(batch)
+
+                class D:
+                    data = len(batch) * 5
+                return D()
+        return R()
+
+
+def _quiet(monkeypatch, batch=8, grow_after=2, max_retries=1):
+    monkeypatch.setattr(embed, "NEIGHBOR_BATCH_IDS", batch)
+    monkeypatch.setattr(embed, "NEIGHBOR_GROW_AFTER", grow_after)
+    monkeypatch.setattr(embed, "NEIGHBOR_MAX_RETRIES", max_retries)
+    monkeypatch.setattr(embed.time, "sleep", lambda *_: None)
+
+
+def test_neighbors_halve_on_timeout_and_cover_every_id_once(monkeypatch):
+    """Batches over the cache's comfort size (here 2) hit 57014; the loop
+    halves and keeps going instead of retrying the same size and aborting."""
+    _quiet(monkeypatch, batch=8, grow_after=100)
+    ids = [f"p{i:02d}" for i in range(20)]
+    c = _RpcClient(lambda b, _n: _timeout() if len(b) > 2 else None)
+    total = embed.recompute_neighbors(c, ids)
+    assert [len(b) for b in c.calls][:4] == [8, 4, 2, 2]
+    assert max(len(b) for b in c.ok) == 2
+    assert [i for b in c.ok for i in b] == ids          # every id exactly once, in order
+    assert total == 20 * 5
+
+
+def test_neighbors_grow_back_after_clean_streak(monkeypatch):
+    """One cold timeout halves the batch; after NEIGHBOR_GROW_AFTER clean
+    batches the size doubles back up to the ceiling."""
+    _quiet(monkeypatch, batch=8, grow_after=2)
+    ids = [f"p{i:02d}" for i in range(40)]
+    c = _RpcClient(lambda b, n: _timeout() if n == 1 else None)
+    embed.recompute_neighbors(c, ids)
+    assert [len(b) for b in c.calls] == [8, 4, 4, 8, 8, 8, 8]
+    assert [i for b in c.ok for i in b] == ids
+
+
+def test_neighbors_single_id_timeout_raises_with_resume_point(monkeypatch):
+    """A batch that is already one id cannot be halved: it is retried with
+    backoff, then the run fails naming the last id that did complete so the
+    rerun can --start-after it."""
+    _quiet(monkeypatch, batch=2, max_retries=2)
+    ids = ["a", "b", "c", "d"]
+    c = _RpcClient(lambda b, _n: _timeout() if "c" in b else None)
+    with pytest.raises(RuntimeError) as ei:
+        embed.recompute_neighbors(c, ids)
+    msg = str(ei.value)
+    assert "--start-after b" in msg
+    assert "starting at c (size 1)" in msg
+    assert [len(b) for b in c.calls] == [2, 2, 1, 1, 1]  # ab ok; cd halves; c retried 1+2 times
+    assert [i for b in c.ok for i in b] == ["a", "b"]
+
+
+def test_neighbors_non_timeout_error_is_retried_then_raised(monkeypatch):
+    _quiet(monkeypatch, batch=4, max_retries=2)
+    ids = ["a", "b", "c", "d"]
+    boom = RuntimeError("connection reset")
+    c = _RpcClient(lambda b, n: boom if n == 1 else None)
+    assert embed.recompute_neighbors(c, ids) == 20
+    assert [len(b) for b in c.calls] == [4, 4]           # same size, not halved
+
+    c2 = _RpcClient(lambda b, n: boom)
+    with pytest.raises(RuntimeError) as ei:
+        embed.recompute_neighbors(c2, ids)
+    assert "failed 3 times" in str(ei.value)
+    assert "rerun --neighbors-only from the start" in str(ei.value)
+
+
+def test_neighbors_start_after_filters_server_side(monkeypatch):
+    """--start-after becomes a `provision_id > X` filter on the id fetch, so a
+    rerun never re-pages (or re-computes) the rows already done."""
+    _quiet(monkeypatch, batch=4)
+    filters: list[tuple] = []
+
+    class Q:
+        def __init__(self): self.after = None
+        def select(self, *_): return self
+        def eq(self, *_): return self
+        def gt(self, col, val): filters.append((col, val)); self.after = val; return self
+        def order(self, *_): return self
+        def range(self, *_): return self
+        def execute(self):
+            rows = [{"provision_id": i} for i in ["a", "b", "c", "d", "e"] if self.after is None or i > self.after]
+
+            class R: data = rows
+            return R()
+
+    class C(_RpcClient):
+        def table(self, *_): return Q()
+
+    c = C(lambda b, n: None)
+    embed.recompute_neighbors(c, None, start_after="b")
+    assert filters == [("provision_id", "b")]
+    assert [i for b in c.ok for i in b] == ["c", "d", "e"]
+
+    filters.clear()
+    c = C(lambda b, n: None)
+    embed.recompute_neighbors(c, None)
+    assert filters == []
+    assert [i for b in c.ok for i in b] == ["a", "b", "c", "d", "e"]
+
+
+def test_neighbors_progress_line_names_last_completed_id(monkeypatch, capsys):
+    _quiet(monkeypatch, batch=2)
+    ids = ["a", "b", "c", "d", "e"]
+    embed.recompute_neighbors(_RpcClient(lambda b, n: None), ids, log_every=2)
+    out = capsys.readouterr().out
+    assert "neighbours: 4/5 provisions  batch=2  last=d" in out
+    assert "neighbours: 5/5 provisions  batch=2  last=e" in out
+    assert "final batch 2" in out
+
+
+def test_start_after_requires_neighbors_only():
+    args = embed.parse_args(["--neighbors-only", "--start-after", "sec-gp09-IX-B"])
+    assert args.start_after == "sec-gp09-IX-B"
+    with pytest.raises(SystemExit):
+        embed.parse_args(["--start-after", "sec-gp09-IX-B"])
 
 
 def test_vector_literal_format():
