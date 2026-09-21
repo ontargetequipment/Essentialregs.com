@@ -780,7 +780,15 @@ def test_only_reg_11_overrides_the_audience():
     # ECMC and every oil-and-gas regulation stay on the O&G default; Reg 11
     # (motor vehicle inspection stations) is the first non-O&G audience.
     # Batch 6 merge: aqs, 16, sip, 18, 19, 20, 21 all name their own reader.
-    assert set(REG_AUDIENCE) == {"11", "12", "25", "27", "aqs", "16", "sip", "18", "19", "20", "21"}
+    # Batch 7 merge: all eight new keys name their own reader — "proc" (the
+    # AQCC Procedural Rules) the people appearing before the Commission, 4
+    # stove/fireplace retailers and homeowners, 10 transportation planners,
+    # 15 A/C and refrigeration technicians, 23 power-plant and large
+    # industrial environmental managers, 28 building owners, 29 public-entity
+    # grounds and fleet managers, 31 landfill operators. None of them is the
+    # oil-and-gas default.
+    assert set(REG_AUDIENCE) == {"11", "12", "25", "27", "aqs", "16", "sip", "18", "19", "20", "21",
+                                 "proc", "4", "10", "15", "23", "28", "29", "31"}
     assert system_prompt_for("sec-ecmc-100-a").startswith(SYSTEM_PROMPT)
 
 
@@ -1167,3 +1175,533 @@ def test_reg21_build_prompt_system_matches_row_reg():
     assert result.system == system_prompt_for("sec-21-A-VI-QQQQQQQ")
     assert result.system.endswith(REG_PROMPT_HINTS["21"])
     assert REG_PROMPT_HINTS["21"] not in result.prompt
+
+
+# --------------------------------------------------------------------------
+# Batch 7: the AQCC Procedural Rules (key "proc")
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("provision_id", [
+    "sec-proc-A-III-D", "sec-proc-B-V-E-3", "sec-proc-B-VI-C-12", "sec-proc-B-XII-I",
+])
+def test_proc_hint_and_audience_selected_by_id_prefix(provision_id):
+    assert reg_key_of(provision_id) == "proc"
+    system = system_prompt_for(provision_id)
+    assert system == f"{SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE['proc'])}\n\n{REG_PROMPT_HINTS['proc']}"
+    assert "5 CCR 1001-1" in system
+    assert REG_AUDIENCE["proc"] in system[:400]
+    assert DEFAULT_AUDIENCE not in system[:400]
+
+
+def test_proc_audience_names_the_real_reader():
+    audience = REG_AUDIENCE["proc"]
+    for word in ("appearing before", "Air Quality Control Commission", "rulemaking", "adjudication"):
+        assert word in audience
+    assert "oil and gas" not in audience
+
+
+def test_proc_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["proc"]
+    for marker in (
+        "5 CCR 1001-1", "not a pollution-control rule",
+        "Air Quality Control Commission (AQCC)", "Air Pollution Control Division (APCD)",
+        "Section III of this same part defines them",
+        '"Hearing Officer" is never defined here',
+        "24-4-101 et seq., C.R.S.", "State Administrative Procedure Act",
+        "25-7-101 et seq., C.R.S.", "never describe what they require",
+        "deadline", "days or working days", "page limit", "copy count",
+        "time allotment", "exactly as printed",
+        "Section XII rows are rulemaking history",
+    ):
+        assert marker in hint, f"missing {marker!r} from proc hint"
+    assert len(hint.split()) <= 200
+
+
+def test_proc_hint_forbids_restating_the_part_a_part_b_date_split():
+    """Batch 6's Reg 21 lesson: the hint must tell the model NOT to repeat or
+    infer the applicability/date scope on rows that do not state it."""
+    hint = REG_PROMPT_HINTS["proc"]
+    assert (
+        "The August 1, 2025 split between Part A and Part B is stated on the "
+        "two PART rows and nowhere else: never repeat it, name a part, or add "
+        "a date window on any other row."
+    ) in hint
+    # ... and it must NOT invite the opposite behaviour
+    for forbidden in ("state which part applies", "state the applicability",
+                      "note whether the row is in Part A or Part B"):
+        assert forbidden not in hint
+
+
+def test_proc_hint_does_not_name_terms_the_document_never_defines():
+    # "Presiding Officer" does not appear anywhere in REG_PROC.txt.
+    assert "Presiding Officer" not in REG_PROMPT_HINTS["proc"]
+
+
+def test_proc_hint_does_not_leak_into_other_regs():
+    for other in ("sec-7-B-I-C-1", "sec-26-B-III", "sec-25-B-I-A", "sec-30-B-I",
+                  "sec-aqs-V-A-1", "sec-ecmc-100-a", "sec-1-III-C-1"):
+        system = system_prompt_for(other)
+        assert REG_PROMPT_HINTS["proc"] not in system
+        assert REG_AUDIENCE["proc"] not in system
+
+
+def test_proc_build_prompt_system_matches_row_reg():
+    result = build_prompt(_row("sec-proc-B-V-D-5-a-(iii)"), meta={})
+    assert result.system == system_prompt_for("sec-proc-B-V-D-5-a-(iii)")
+    assert result.system.endswith(REG_PROMPT_HINTS["proc"])
+    assert REG_PROMPT_HINTS["proc"] not in result.prompt
+
+
+# --------------------------------------------------------------------------
+# Batch 7: Regulation Number 4 (wood-burning appliances, 5 CCR 1001-6)
+# --------------------------------------------------------------------------
+
+
+def test_reg4_hint_selected_by_id_prefix():
+    for provision_id in ("sec-4-B-I-A-19", "sec-4-A-I", "sec-4-C-XI-A",
+                         "sec-4-C-APPENDIX-A-5.5.12.1.1"):
+        system = system_prompt_for(provision_id)
+        assert system.endswith(REG_PROMPT_HINTS["4"])
+        assert "Regulation Number 4" in system
+
+
+def test_reg4_audience_names_the_real_reader():
+    audience = REG_AUDIENCE["4"]
+    for word in ("stove", "fireplace", "retailer", "installer", "homeowner",
+                 "Colorado", "high-pollution"):
+        assert word in audience
+    assert "oil & gas" not in audience and "oil and gas" not in audience
+    system = system_prompt_for("sec-4-B-II-A-1")
+    assert audience in system[:400]
+    assert DEFAULT_AUDIENCE not in system[:400]
+
+
+def test_reg4_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["4"]
+    for marker in (
+        "Regulation Number 4", "5 CCR 1001-6",
+        "Part A, Section I states the applicability",
+        "state-only basis for carbon monoxide", "October 15, 2024",
+        "(State Only)", "Air Quality Control Commission",
+        "Air Pollution Control Division", "Phase III Certified",
+        "exempt device", "approved pellet stove", "approved masonry heater",
+        "high pollution day", "burn down time", "primary source of heat",
+        "Section I.A", "40 CFR Part 60 Subpart AAA", "Methods 5G, 5H, 28 and 28A",
+        "never describe what they require", "4.1 grams per hour",
+        "Give exemptions only as listed", "Section IX", "Section X and Part C",
+        "rulemaking history", "Appendix A is a laboratory test protocol",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 4 hint"
+    assert len(hint.split()) <= 200
+
+
+def test_reg4_hint_forbids_restating_applicability_on_other_rows():
+    """Batch 6's Reg 21 lesson: a hint that invites the model to state
+    applicability per row makes it GUESS one. Reg 4's hint must pin
+    applicability to Part A Section I and forbid it everywhere else."""
+    hint = REG_PROMPT_HINTS["4"]
+    assert "Do not repeat or infer applicability, scope, geography or an "\
+           "effective date on any other row" in hint
+    assert "name an area, county or date only when that row's own text names it" in hint
+    for banned in ("state applicability per part", "state the applicability of each"):
+        assert banned not in hint
+
+
+def test_reg4_hint_does_not_leak_into_other_regs():
+    for other in ("sec-7-B-I-C-1", "sec-3-A-I", "sec-25-B-I-A",
+                  "sec-26-B-I-D-5-d-(ii)", "sec-1-III-D-2-b-(ii)"):
+        system = system_prompt_for(other)
+        assert REG_PROMPT_HINTS["4"] not in system
+        assert REG_AUDIENCE["4"] not in system
+
+
+def test_reg4_build_prompt_system_matches_row_reg():
+    result = build_prompt(_row("sec-4-B-VII-E-1"), meta={})
+    assert result.system == system_prompt_for("sec-4-B-VII-E-1")
+    assert result.system.endswith(REG_PROMPT_HINTS["4"])
+    assert REG_PROMPT_HINTS["4"] not in result.prompt
+
+
+# --------------------------------------------------------------------------
+# Batch 7: Reg 10 (transportation conformity), Reg 15 (ozone-depleting
+# compounds) and Reg 29 (lawn and garden equipment) -- agent_small7.
+#
+# The START_HERE lesson these tests exist to lock in: after Reg 21's audience
+# hint told the model to "state applicability per part", it prepended a
+# guessed geographic scope tag to ~60% of rows and 186 had to be corrected by
+# hand. None of these three hints may ask for applicability, scope, geography
+# or an effective date to be restated on rows that do not state them.
+# --------------------------------------------------------------------------
+
+_BATCH7_SMALL_KEYS = ("10", "15", "29")
+
+
+@pytest.mark.parametrize("provision_id, key", [
+    ("sec-10-I-A", "10"),
+    ("sec-10-III-A-3-c", "10"),
+    ("sec-10-VI-D", "10"),
+    ("sec-15-I-G", "15"),
+    ("sec-15-IV-A-1", "15"),
+    ("sec-15-VI-B", "15"),
+    ("sec-29-A-I-C", "29"),
+    ("sec-29-A-III-B", "29"),
+    ("sec-29-B-I", "29"),
+])
+def test_batch7_small_hint_selected_by_id_prefix(provision_id, key):
+    assert reg_key_of(provision_id) == key
+    system = system_prompt_for(provision_id)
+    base = SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE[key])
+    assert system == f"{base}\n\n{REG_PROMPT_HINTS[key]}"
+    assert REG_AUDIENCE[key] in system[:400]
+    assert DEFAULT_AUDIENCE not in system[:400]
+
+
+def test_reg10_audience_names_the_real_reader():
+    audience = REG_AUDIENCE["10"]
+    for word in ("transportation planner", "metropolitan planning organization",
+                 "conformity", "Colorado"):
+        assert word in audience
+    assert "oil" not in audience
+
+
+def test_reg15_audience_names_the_real_reader():
+    audience = REG_AUDIENCE["15"]
+    for word in ("air-conditioning", "refrigeration", "technician", "Colorado"):
+        assert word in audience
+    assert "oil" not in audience
+
+
+def test_reg29_audience_names_the_real_reader():
+    audience = REG_AUDIENCE["29"]
+    for word in ("fleet", "grounds manager", "lawn and garden", "Colorado"):
+        assert word in audience
+    assert "oil" not in audience
+
+
+def test_reg10_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["10"]
+    for marker in (
+        "Regulation Number 10", "40 CFR Part 93 Subpart A", "93.105",
+        "93.122(a)(4)(ii)", "93.125(c)", "51.390",
+        "name the citation, never describe what the federal rule requires",
+        "Section II's defined terms", "CDOT", "Lead Planning Agency (LPA)",
+        "metropolitan planning organization (MPO)",
+        "Transportation Planning Region (TPR)", "Hot Spot Analysis",
+        "routine conformity determination", "Air Quality Control Commission",
+        "Air Pollution Control Division",
+        "never move one agency's duty to another",
+        "TCM, TIP, SIP, FHWA, FTA and EPA",
+        "Section VI rows are rulemaking history",
+        "ignore the trailing Editor's Notes revision history",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 10 hint"
+    assert len(hint.split()) <= 200
+
+
+def test_reg15_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["15"]
+    for marker in (
+        "Regulation Number 15", "Air Conditioning and Refrigeration Service",
+        "Product Refrigeration System", "Refrigerated Food Appliance",
+        "Refrigerated Food Facility", "Stationary Appliance",
+        "100 horsepower or greater", "40 CFR Part 82 Subparts B and F",
+        "42 USC 7671g", "62 Fed. Reg. 68026",
+        "name them, never describe their contents",
+        "Quote every fee, cap, pound threshold and filing window",
+        "Air Pollution Control Division", "Air Quality Control Commission",
+        "Section VI rows are rulemaking history",
+        "ignore the trailing Editor's Notes revision history",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 15 hint"
+    assert len(hint.split()) <= 200
+
+
+def test_reg29_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["29"]
+    for marker in (
+        "Regulation Number 29", "Part A Section I", "Section I.B exemptions",
+        "Section II defines", "ozone nonattainment area", "special district",
+        "state government agency",
+        "III.A covers state government agencies", "19 kW (25 horsepower)",
+        "III.B covers the federal government and local governments",
+        "7 kW (10 horsepower)", "June 1 - August 31",
+        "Part B is rulemaking history",
+        "ignore the trailing Editor's Notes revision history",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 29 hint"
+    assert len(hint.split()) <= 200
+
+
+@pytest.mark.parametrize("key", _BATCH7_SMALL_KEYS)
+def test_batch7_small_hints_never_ask_to_restate_applicability(key):
+    """The Reg 21 failure mode: a hint that tells the model to state
+    applicability/scope on every row makes it guess one. Each of these three
+    hints must instead FORBID adding a scope, area or date a row does not
+    print."""
+    hint = REG_PROMPT_HINTS[key]
+    lowered = hint.lower()
+    for banned in (
+        "state applicability", "state the applicability",
+        "state its applicability", "state which area",
+        "state the scope", "state where it applies",
+        "always say which area", "note the applicability",
+    ):
+        assert banned not in lowered, f"reg {key} hint asks for applicability to be restated"
+    assert "a row does not itself" in hint or "a row does not itself name" in hint
+    assert "never" in lowered
+
+
+@pytest.mark.parametrize("key", _BATCH7_SMALL_KEYS)
+def test_batch7_small_hint_forbids_inventing_an_area_or_date(key):
+    hint = REG_PROMPT_HINTS[key]
+    assert "never add" in hint or "never write" in hint
+    for word in ("area", "date"):
+        assert word in hint
+
+
+@pytest.mark.parametrize("key", _BATCH7_SMALL_KEYS)
+def test_batch7_small_hints_reasonably_short(key):
+    assert len(REG_PROMPT_HINTS[key].split()) <= 200
+
+
+@pytest.mark.parametrize("key", _BATCH7_SMALL_KEYS)
+def test_batch7_small_hints_do_not_leak_into_other_regs(key):
+    for other in ("sec-7-B-I-C-1", "sec-22-A-I", "sec-25-B-I-A",
+                  "sec-21-A-II-O", "sec-30-B-I", "sec-9-II-A"):
+        system = system_prompt_for(other)
+        assert REG_PROMPT_HINTS[key] not in system
+        assert REG_AUDIENCE[key] not in system
+
+
+@pytest.mark.parametrize("key", _BATCH7_SMALL_KEYS)
+def test_batch7_small_hints_are_distinct(key):
+    others = [REG_PROMPT_HINTS[k] for k in _BATCH7_SMALL_KEYS if k != key]
+    assert REG_PROMPT_HINTS[key] not in others
+
+
+@pytest.mark.parametrize("provision_id, key", [
+    ("sec-10-III-H-4-c", "10"),
+    ("sec-15-V-A-2", "15"),
+    ("sec-29-A-IV-B-3-b", "29"),
+])
+def test_batch7_small_build_prompt_system_matches_row_reg(provision_id, key):
+    result = build_prompt(_row(provision_id), meta={})
+    assert result.system == system_prompt_for(provision_id)
+    assert result.system.endswith(REG_PROMPT_HINTS[key])
+    assert REG_PROMPT_HINTS[key] not in result.prompt
+
+
+# --------------------------------------------------------------------------
+# Batch 7: Regulation Number 23 (Regional Haze Limits, 5 CCR 1001-27)
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("provision_id", [
+    "sec-23-A-I", "sec-23-A-II-M", "sec-23-A-IV-A-2", "sec-23-A-V-A-1-b-(i)-(C)", "sec-23-B-II",
+])
+def test_reg23_hint_selected_by_id_prefix(provision_id):
+    assert reg_key_of(provision_id) == "23"
+    system = system_prompt_for(provision_id)
+    assert system == f"{SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE['23'])}\n\n{REG_PROMPT_HINTS['23']}"
+    assert "Regulation Number 23" in system
+    assert REG_AUDIENCE["23"] in system[:400]
+    assert DEFAULT_AUDIENCE not in system[:400]
+
+
+def test_reg23_audience_names_the_real_reader():
+    audience = REG_AUDIENCE["23"]
+    for word in ("environmental manager", "Colorado", "power plant", "industrial source", "regional haze"):
+        assert word in audience
+    assert "oil & gas" not in audience and "oil and gas" not in audience
+
+
+def test_reg23_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["23"]
+    for marker in (
+        "Regulation Number 23", "Regional Haze Limits",
+        "Section I states applicability",
+        "Regional Haze State Implementation Plan", "State-Only",
+        "Section II defines BART", "Reasonable Progress (RP)",
+        "Existing Stationary Facility", "deciview",
+        "Section IV sets limits for named units in tables",
+        "lb/MMBtu", "tons per year", "ppmvd", "lb/ton of clinker", "grains/dscf",
+        "averaging period", "exactly as printed",
+        "empty table cell means no printed limit",
+        "40 CFR Parts 51, 60, 63, 64 and 75", "name them, never describe them",
+        "Air Quality Control Commission", "Air Pollution Control Division",
+        "Colorado Public Utilities Commission",
+        "Part B rows are rulemaking history",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 23 hint"
+    assert len(hint.split()) <= 200
+    # Reg 23's hint must not leak into any other regulation's prompt.
+    for other in ("sec-7-B-I-C-1", "sec-3-A-I", "sec-22-A-I", "sec-25-B-I-A",
+                  "sec-26-B-I", "sec-2-B-IX-B-3", "sec-ecmc-100-a"):
+        assert REG_PROMPT_HINTS["23"] not in system_prompt_for(other)
+        assert REG_AUDIENCE["23"] not in system_prompt_for(other)
+
+
+def test_reg23_hint_never_asks_for_applicability_on_other_rows():
+    """Batch 6's Reg 21 lesson: a hint that tells the model to state
+    applicability per row makes it invent a scope tag on rows that state
+    none. Reg 23's hint must say the opposite, once, and nowhere ask for a
+    restatement."""
+    hint = REG_PROMPT_HINTS["23"]
+    assert ("do not repeat or infer applicability, scope, geography, the "
+            "SIP/State-Only split or an effective date on any other row") in hint
+    for banned in ("state applicability", "state the applicability",
+                   "say which area", "name the area", "add the scope",
+                   "state the scope", "restate"):
+        assert banned not in hint.lower(), banned
+
+
+def test_reg23_build_prompt_system_matches_row_reg():
+    result = build_prompt(_row("sec-23-A-IV-F-3"), meta={})
+    assert result.system == system_prompt_for("sec-23-A-IV-F-3")
+    assert result.system.endswith(REG_PROMPT_HINTS["23"])
+    assert REG_PROMPT_HINTS["23"] not in result.prompt
+
+
+# --------------------------------------------------------------------------
+# Batch 7: Regulation Number 28 (building benchmarking and performance
+# standards, 5 CCR 1001-32)
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize("provision_id", ["sec-28-A-II-A", "sec-28-A-III-O", "sec-28-C-I-B-2-a-(iv)", "sec-28-F-I"])
+def test_reg28_hint_selected_by_id_prefix(provision_id):
+    assert reg_key_of(provision_id) == "28"
+    system = system_prompt_for(provision_id)
+    assert system == f"{SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE['28'])}\n\n{REG_PROMPT_HINTS['28']}"
+    assert "Regulation Number 28" in system
+    assert REG_AUDIENCE["28"] in system[:400]
+    assert DEFAULT_AUDIENCE not in system[:400]
+
+
+def test_reg28_audience_names_the_real_reader():
+    audience = REG_AUDIENCE["28"]
+    for word in ("owner", "property manager", "commercial", "multifamily", "Colorado"):
+        assert word in audience
+    assert "oil and gas" not in audience
+
+
+def test_reg28_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["28"]
+    for marker in (
+        "Regulation Number 28", "5 CCR 1001-32", "Colorado Energy Office",
+        "never a chief executive officer", "Air Pollution Control Division", "AQCC",
+        "Covered building", "public building", "under-resourced building",
+        "building owner", "gross floor area", "benchmarking tool", "site EUI",
+        "weather-normalized", "square-footage threshold", "fee",
+        "civil-penalty amount", "never round or convert",
+        "Part C, Table 1", "point to the table rather than restating a value",
+        "never apply one property type's target to another",
+        "ENERGY STAR Portfolio Manager", "Building Emissions Calculator",
+        "name them, do not describe them",
+        "Part F rows are rulemaking history",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 28 hint"
+    assert len(hint.split()) <= 200
+
+
+def test_reg28_hint_confines_applicability_to_its_own_section():
+    """The Batch 6 lesson (START_HERE.md): Reg 21's hint told the model to
+    "state applicability per part" and it prepended a guessed scope tag to
+    ~60% of rows. Reg 28's hint must name where applicability and the
+    definitions live and forbid repeating or inferring them anywhere else."""
+    hint = REG_PROMPT_HINTS["28"]
+    assert "Part A, Section II states applicability and Part A, Section III defines every term" in hint
+    assert ("do not repeat or infer applicability, coverage, an exemption or a definition "
+            "on any other row") in hint
+    assert "describe only what the row in front of you says" in hint
+    # ...and it must not ask for applicability/scope to be restated.
+    for banned in ("state applicability", "state the applicability", "state who it applies to",
+                   "say where it applies", "statewide"):
+        assert banned not in hint, banned
+
+
+def test_reg28_hint_does_not_leak_into_other_regs():
+    for other in ("sec-7-B-I-C-1", "sec-22-A-I", "sec-25-B-I-A", "sec-27-B-I-A-3",
+                  "sec-30-B-I", "sec-21-A-II-O"):
+        assert REG_PROMPT_HINTS["28"] not in system_prompt_for(other)
+        assert REG_AUDIENCE["28"] not in system_prompt_for(other)
+
+
+def test_reg28_build_prompt_system_matches_row_reg():
+    result = build_prompt(_row("sec-28-C-I-A-1"), meta={})
+    assert result.system == system_prompt_for("sec-28-C-I-A-1")
+    assert result.system.endswith(REG_PROMPT_HINTS["28"])
+    assert REG_PROMPT_HINTS["28"] not in result.prompt
+
+
+# --------------------------------------------------------------------------
+# Batch 7: Regulation Number 31 (methane from municipal solid waste landfills)
+# --------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "provision_id",
+    ["sec-31-A-II-A", "sec-31-A-IV-GG", "sec-31-C-III-B-9", "sec-31-D-I-C-2-d", "sec-31-K-I"],
+)
+def test_reg31_hint_selected_by_id_prefix(provision_id):
+    assert reg_key_of(provision_id) == "31"
+    system = system_prompt_for(provision_id)
+    assert system == f"{SYSTEM_PROMPT_TEMPLATE.format(audience=REG_AUDIENCE['31'])}\n\n{REG_PROMPT_HINTS['31']}"
+    assert "Regulation Number 31" in system
+    # Reg 31 has its own landfill-operator audience, not the oil & gas default.
+    assert REG_AUDIENCE["31"] in system[:400]
+    assert "municipal solid waste landfill" in system[:400]
+    assert DEFAULT_AUDIENCE not in system[:400]
+
+
+def test_reg31_audience_names_the_real_reader():
+    audience = REG_AUDIENCE["31"]
+    for word in ("operator", "municipal solid waste landfill", "Colorado"):
+        assert word in audience
+    assert "oil and gas" not in audience
+    assert "oil & gas" not in audience
+
+
+def test_reg31_hint_covers_required_points():
+    hint = REG_PROMPT_HINTS["31"]
+    for marker in (
+        "Regulation Number 31",
+        "Part A, Section II states applicability",
+        "Section III the exemptions",
+        "Part A, Section IV defines",
+        "GCCS", "component leak", "waste-in-place", "ppmv and ppm-m",
+        "450,000 short tons", "500 ppm", "200 ppmv", "25-foot and 100-foot spacing",
+        "the owner or operator",
+        "AQCC", "APCD", "Hazardous Materials and Waste Management Division",
+        "40 CFR Part 60 Subparts Cf and XXX", "40 CFR Part 63 Subpart AAAA",
+        "40 CFR Part 98", "EPA Methods 3A, 3C, 18, 21 and 25C",
+        "name them, never describe them",
+        "Part K is rulemaking history",
+    ):
+        assert marker in hint, f"missing {marker!r} from reg 31 hint"
+    assert len(hint.split()) <= 200
+
+
+def test_reg31_hint_forbids_restating_applicability_on_other_rows():
+    """The Batch 6 Reg 21 lesson: a hint that invites the model to restate
+    applicability/scope produces guessed scope tags on rows that never say
+    it. Reg 31's hint must say the opposite, in so many words."""
+    hint = REG_PROMPT_HINTS["31"]
+    assert "do not repeat or infer applicability, scope or a date on any other row" in hint
+    assert "if a row does not say whom or where it covers, say nothing about that" in hint
+    # and it must not tell the model to state applicability per row/part
+    for forbidden in ("state applicability", "state the applicability",
+                      "say whether it applies statewide", "name the area"):
+        assert forbidden not in hint
+
+
+def test_reg31_hint_does_not_leak_into_other_regs():
+    for other in ("sec-7-B-I-C-1", "sec-22-A-I", "sec-25-B-I-A", "sec-26-A-I-A",
+                  "sec-30-B-I", "sec-ecmc-100-DEF-OPERATOR", "sec-21-A-VI-XXXX"):
+        system = system_prompt_for(other)
+        assert REG_PROMPT_HINTS["31"] not in system
+        assert REG_AUDIENCE["31"] not in system
+
+
+def test_reg31_build_prompt_system_matches_row_reg():
+    result = build_prompt(_row("sec-31-D-I-C-2"), meta={})
+    assert result.system == system_prompt_for("sec-31-D-I-C-2")
+    assert result.system.endswith(REG_PROMPT_HINTS["31"])
+    assert REG_PROMPT_HINTS["31"] not in result.prompt

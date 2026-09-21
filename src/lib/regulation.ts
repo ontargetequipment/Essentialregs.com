@@ -219,12 +219,12 @@ const CCR_CITE = /5 CCR 1001-\d+/i;
 
 /**
  * Colorado AQCC regulations are stored under their bare printed title
- * ("COMMON PROVISIONS REGULATION 5 CCR 1001-2", "PRACTICE AND PROCEDURE
- * 2 CCR 404-1" for ECMC). The index card shows a friendlier alias instead --
- * "Regulation Number N — <title>", "Common Provisions Regulation", "ECMC
- * Rules (Practice and Procedure)" -- without changing what's actually
- * stored. See groupColoradoRegulations for the section heading these sit
- * under.
+ * ("COMMON PROVISIONS REGULATION 5 CCR 1001-2", "PROCEDURAL RULES 5 CCR
+ * 1001-1", "PRACTICE AND PROCEDURE 2 CCR 404-1" for ECMC). The index card
+ * shows a friendlier alias instead -- "Regulation Number N — <title>",
+ * "Common Provisions Regulation", "Procedural Rules", "ECMC Rules (Practice
+ * and Procedure)" -- without changing what's actually stored. See
+ * groupColoradoRegulations for the section heading these sit under.
  */
 /** Matches an APCD general-permit key ("gp01".."gp12") as used in provision ids. */
 const GP_KEY = /^gp\d\d$/i;
@@ -255,18 +255,28 @@ const GP_CLOSURE_NOTE: Record<string, string> = {
   gp10: " · closed to new registrations July 15, 2026",
 };
 
-// Batch 6: two AQCC documents that carry NO regulation number and are keyed
-// by name instead ("aqs" = Air Quality Standards, Designations and Emission
-// Budgets, 5 CCR 1001-14; "sip" = the SIP Local Elements document, 5 CCR
-// 1001-20). Their stored titles are the printed all-caps title plus the CCR
-// suffix, like every numbered reg; the card shows this friendlier alias with
-// the CCR cite (pulled from the stored title) as the subtitle. `order` puts
-// them after the numbered regulations in the AQCC group (see
-// groupColoradoRegulations), aqs before sip. Display-only, like everything
-// else in this file -- nothing stored changes.
-const AQCC_NAMED_DOCS: Record<string, { title: string; order: number }> = {
-  aqs: { title: "Air Quality Standards, Designations and Emission Budgets", order: 1 },
-  sip: { title: "SIP — Local Elements for Nonattainment/Attainment-Maintenance Areas", order: 2 },
+// AQCC documents that carry NO regulation number and are keyed by name
+// instead. Batch 6 added "aqs" (Air Quality Standards, Designations and
+// Emission Budgets, 5 CCR 1001-14) and "sip" (the SIP Local Elements
+// document, 5 CCR 1001-20); Batch 7 adds "proc" (the Commission's Procedural
+// Rules, 5 CCR 1001-1). Their stored titles are the printed all-caps title
+// plus the CCR suffix, like every numbered reg; the card shows this
+// friendlier alias with the CCR cite (pulled from the stored title) as the
+// subtitle.
+//
+// `rank` is the AQCC group's sort key directly (see groupColoradoRegulations
+// / aqccRank), NOT a position within the named docs: "proc" sorts FIRST in
+// the group, ahead of the Common Provisions Regulation (-1) and every
+// numbered regulation, because it is the Commission's rules of procedure
+// rather than a substantive regulation -- and because 5 CCR 1001-1 is
+// literally the first document of the printed CCR series (Common Provisions
+// is 1001-2). "aqs" and "sip" keep their Batch 6 position after every
+// numbered regulation, aqs before sip. Display-only, like everything else in
+// this file -- nothing stored changes.
+const AQCC_NAMED_DOCS: Record<string, { title: string; rank: number }> = {
+  proc: { title: "Procedural Rules", rank: -2 },
+  aqs: { title: "Air Quality Standards, Designations and Emission Budgets", rank: 1_000_001 },
+  sip: { title: "SIP — Local Elements for Nonattainment/Attainment-Maintenance Areas", rank: 1_000_002 },
 };
 
 export function regulationCardInfo(
@@ -337,11 +347,13 @@ const OTHER_HEADING = "Other";
  * group, order is Common Provisions first, then numerically by regulation
  * number (1, 2, 3, 6, 7, 8, 9, 11, 12, 22, 24, 25, 26, 27, 30, ...) -- the
  * printed CCR series' own ordering, not id/insertion order (id order would
- * put "22" before "3" as strings). Batch 5's 11/12/25/27 (and Batch 6's
- * 16/18/19/20/21) slot in by this same numeric comparator with no per-reg
- * list to maintain. The two name-keyed AQCC documents (Batch 6's "aqs" and
- * "sip", see AQCC_NAMED_DOCS) have no number and sort AFTER every numbered
- * regulation, aqs before sip.
+ * put "22" before "3" as strings). Batch 5's 11/12/25/27, Batch 6's
+ * 16/18/19/20/21 and Batch 7's 4/10/15/23/28/29/31 all slot in by this same
+ * numeric comparator with no per-reg list to maintain. The name-keyed AQCC
+ * documents (see AQCC_NAMED_DOCS) have no number and take an explicit rank:
+ * Batch 7's "proc" (the Procedural Rules, 5 CCR 1001-1) sorts FIRST, ahead
+ * of Common Provisions and every numbered regulation; Batch 6's "aqs" and
+ * "sip" sort AFTER every numbered regulation, aqs before sip.
  *
  * The eleven APCD general permits (gp01..gp12) share issuing_body
  * "CDPHE-APCD" with the numbered AQCC regulations but aren't AQCC
@@ -363,11 +375,12 @@ export function groupColoradoRegulations<T extends Pick<Provision, "id" | "issui
     else if (r.issuing_body === "ECMC") ecmc.push(r);
     else other.push(r);
   }
-  // Sort key: Common Provisions first, numbered regs by number, then the
-  // name-keyed documents (aqs, sip) after every number.
+  // Sort key: the Procedural Rules first (rank -2), then Common Provisions
+  // (-1), then the numbered regs by number, then the remaining name-keyed
+  // documents (aqs, sip) after every number. See AQCC_NAMED_DOCS.
   const aqccRank = (key: string | null): number => {
     if (key === "cp") return -1;
-    if (key && AQCC_NAMED_DOCS[key]) return 1_000_000 + AQCC_NAMED_DOCS[key].order;
+    if (key && AQCC_NAMED_DOCS[key]) return AQCC_NAMED_DOCS[key].rank;
     return Number(key) || 0;
   };
   aqcc.sort((a, b) => aqccRank(regulationNumber(a.id)) - aqccRank(regulationNumber(b.id)));

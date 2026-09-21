@@ -167,6 +167,67 @@ REG_AUDIENCE: dict[str, str] = {
         "a manufacturer, distributor or retailer of consumer products or "
         "architectural coatings sold in Colorado"
     ),
+    # Batch 7. Reg 4 (wood-burning appliances): its readers sell, install or
+    # own stoves, fireplaces and masonry heaters -- not oil and gas
+    # equipment. Appendix A is written for a test laboratory, but the
+    # regulation as a whole is read by the trade and by homeowners in the
+    # areas where high-pollution-day burning restrictions apply.
+    "4": (
+        "a stove and fireplace retailer, installer or homeowner in a "
+        "Colorado high-pollution area"
+    ),
+    # Batch 7. Reg 10 is the transportation conformity rule: its readers
+    # are MPO / CDOT / Division planners running conformity analyses and
+    # the interagency consultation process, not stationary-source
+    # operators.
+    "10": (
+        "a transportation planner at a Colorado metropolitan planning "
+        "organization or state agency doing conformity analysis"
+    ),
+    # Reg 15 is the ozone-depleting-compound refrigerant rule: registration,
+    # notification and recordkeeping for the people who service air
+    # conditioning and refrigeration equipment.
+    "15": (
+        "a motor-vehicle air-conditioning or refrigeration service "
+        "technician in Colorado"
+    ),
+    # Batch 7: Reg 23 (Regional Haze Limits) sets unit-by-unit NOx/SO2/
+    # particulate limits and closure dates for named Colorado power plants,
+    # cement kilns, a steel mill and a refinery -- read by the people who
+    # have to meet them, not by oil and gas operators.
+    "23": (
+        "an environmental manager at a Colorado power plant or large "
+        "industrial source subject to regional haze limits"
+    ),
+    # Reg 28 (Batch 7): building benchmarking and performance standards --
+    # read by the people who own or run the buildings (50,000 sq ft and up,
+    # commercial and multifamily), not by oil and gas operators.
+    "28": (
+        "an owner or property manager of a large commercial or multifamily "
+        "building in Colorado"
+    ),
+    # Reg 29 restricts gasoline-powered lawn and garden equipment used BY
+    # (or under contract to) public entities -- its readers run government
+    # grounds and fleets, not industrial sources.
+    "29": (
+        "a public-entity fleet or grounds manager buying or using lawn and "
+        "garden equipment in Colorado"
+    ),
+    # Reg 31 (Batch 7): methane from municipal solid waste landfills -- gas
+    # collection and control systems, surface emissions monitoring, cover and
+    # reporting. Its readers run landfills; they are not oil and gas
+    # operators and not stationary combustion sources.
+    "31": (
+        "an operator of a municipal solid waste landfill in Colorado"
+    ),
+    # Batch 7: the AQCC Procedural Rules (5 CCR 1001-1) -- how to appear
+    # before the Commission, not what to emit. Its readers are the people in
+    # the hearing room: proponents, parties, petitioners and members of the
+    # public, not operators of any particular kind of source.
+    "proc": (
+        "anyone appearing before the Colorado Air Quality Control Commission "
+        "in a rulemaking or adjudication"
+    ),
 }
 
 SYSTEM_PROMPT_TEMPLATE = (
@@ -650,6 +711,121 @@ REG_PROMPT_HINTS: dict[str, str] = {
         "\"Division\" is the Air Pollution Control Division, \"Commission\" "
         "the AQCC. Part C rows are rulemaking history, not requirements."
     ),
+    # Batch 7: Regulation Number 4 (wood-burning appliances, 5 CCR 1001-6).
+    # Applicability lives in ONE place in this document -- Part A, Section I
+    # -- and nowhere else, so the hint says so explicitly and forbids
+    # restating or inferring it on any other row. (Batch 6's Reg 21 hint
+    # asked the model to "state applicability per part"; it read that as
+    # licence to prepend a guessed scope tag to ~60% of rows and 186 had to
+    # be corrected by hand. The same trap is live here: Part A is state-only
+    # for carbon monoxide, Section IV and its children are "(State Only)"
+    # masonry-heater provisions, and Sections VII/IX are scoped to the
+    # high-pollution-day areas and the listed jurisdictions -- three
+    # different scopes that a model would happily average into one.)
+    "4": (
+        "This row is from Colorado Regulation Number 4 (sale and "
+        "installation of wood-burning appliances, 5 CCR 1001-6). Part A, "
+        "Section I states the applicability -- as of October 15, 2024 Reg 4 "
+        "is implemented on a state-only basis for carbon monoxide. Do not "
+        "repeat or infer applicability, scope, geography or an effective "
+        "date on any other row: name an area, county or date only when that "
+        "row's own text names it. Keep a printed \"(State Only)\" prefix. "
+        "\"Commission\" is the Air Quality Control Commission; "
+        "\"Division\" is the Air Pollution Control Division. Use Phase III "
+        "Certified wood-burning stove, exempt device, approved pellet stove, "
+        "approved masonry heater, high pollution day, burn down time and "
+        "primary source of heat only as Section I.A defines them. 40 CFR "
+        "Part 60 Subpart AAA and Methods 5G, 5H, 28 and 28A are incorporated "
+        "by name and date -- name them, never describe what they require. "
+        "Quote emission standards and burn-down periods exactly (4.1 grams "
+        "per hour; three hours). Give exemptions only as listed. Section IX "
+        "is a table of local ordinances; Section X and Part C are rulemaking "
+        "history; Appendix A is a laboratory test protocol."
+    ),
+    # Batch 7: Reg 23 (Regional Haze Limits, 5 CCR 1001-27). Deliberately does
+    # NOT tell the model to restate applicability or scope per row: Section I
+    # carries the whole applicability statement (BART-eligible sources plus RP
+    # sources) AND the SIP-vs-State-Only split, and the Reg 21 experience in
+    # Batch 6 showed that "state applicability per part" gets read as licence
+    # to prepend a guessed scope tag to every row. Reg 23's own per-unit rows
+    # name their source; nothing else should be added.
+    "23": (
+        "This row is from Colorado Regulation Number 23 (Regional Haze "
+        "Limits). Section I states applicability and which sections are "
+        "incorporated into Colorado's Regional Haze State Implementation Plan "
+        "rather than being State-Only; do not repeat or infer applicability, "
+        "scope, geography, the SIP/State-Only split or an effective date on "
+        "any other row. Section II defines BART, Reasonable Progress (RP), "
+        "BART Alternative, Existing Stationary Facility and deciview -- use "
+        "them only as defined there. Section IV sets "
+        "limits for named units in tables: quote the unit, the number, its "
+        "units (lb/MMBtu, tons per year, ppmvd, lb/ton of clinker, "
+        "grains/dscf), the averaging period and the closure or compliance date "
+        "exactly as printed, and never carry one unit's limit, date or "
+        "shutdown across to another unit or to sources in general; an empty "
+        "table cell means no printed limit, and *, ** and + are footnote "
+        "markers explained in the same row. 40 CFR Parts 51, 60, 63, 64 and 75 "
+        "and the EPA test methods are incorporated by reference -- name them, "
+        "never describe them. \"Commission\" is the Air Quality Control "
+        "Commission, \"Division\" the Air Pollution Control Division, \"PUC\" "
+        "the Colorado Public Utilities Commission. Part B rows are rulemaking "
+        "history, not current requirements."
+    ),
+    # Batch 7. Written against the Batch 6 Reg 21 lesson (START_HERE.md):
+    # the hint must never invite the model to restate applicability, scope or
+    # coverage on a row that does not state it -- Reg 28's applicability
+    # lives in Part A, Section II and its definitions in Part A, Section III,
+    # and nowhere else.
+    "28": (
+        "This row is from Colorado Regulation Number 28 (building "
+        "benchmarking and performance standards, 5 CCR 1001-32). \"CEO\" is "
+        "the Colorado Energy Office (Part A, Section III.N.), never a chief "
+        "executive officer; \"Division\" is the Air Pollution Control "
+        "Division and \"Commission\" the AQCC. Part A, Section II states "
+        "applicability and Part A, Section III defines every term: do not "
+        "repeat or infer applicability, coverage, an exemption or a "
+        "definition on any other row -- describe only what the row in front "
+        "of you says. \"Covered building\", \"public building\", "
+        "\"under-resourced building\", \"building owner\", \"gross floor "
+        "area\", \"benchmarking tool\", \"site EUI\" and "
+        "\"weather-normalized\" mean only what Section III says. Quote every "
+        "square-footage threshold, fee, civil-penalty amount, percentage, "
+        "deadline and calendar year exactly as printed; never round or "
+        "convert. Part C, Table 1 sets site EUI and greenhouse gas intensity "
+        "targets by property type -- point to the table rather than restating "
+        "a value, and never apply one property type's target to another. "
+        "ENERGY STAR Portfolio Manager and its Building Emissions Calculator "
+        "are named tools: name them, do not describe them. Part F rows are "
+        "rulemaking history, not current requirements."
+    ),
+    # Batch 7: Regulation Number 31 (Control of Methane Emissions from
+    # Municipal Solid Waste Landfills, 5 CCR 1001-35). Deliberately says
+    # NOTHING that invites the model to restate applicability, scope or an
+    # effective date on rows that do not state them -- the Batch 6 Reg 21
+    # lesson (an audience hint that said "state applicability per part"
+    # produced ~186 hand-corrected rows). Reg 31's applicability lives in
+    # exactly two places (Part A, Sections II and III) and stays there.
+    "31": (
+        "This row is from Colorado Regulation Number 31 (methane from "
+        "municipal solid waste landfills). Part A, Section II states "
+        "applicability and Section III the exemptions; do not repeat or infer "
+        "applicability, scope or a date on any other row; if a row does not "
+        "say whom or where it covers, say nothing about that. Terms mean only "
+        "what Part A, Section IV defines: active, inactive, closed and "
+        "controlled MSW landfill; GCCS; gas collection and gas control "
+        "device; component leak; intermediate and final cover; waste-in-place; "
+        "ppmv and ppm-m (never convert one into the other). Quote every "
+        "threshold, reading, spacing and deadline exactly as printed (450,000 "
+        "short tons, 500 ppm, 200 ppmv, 25-foot and 100-foot spacing, "
+        "quarterly); never carry one landfill's or well's figure onto "
+        "another. Duties belong to whoever the text names, usually \"the owner "
+        "or operator\". \"Commission\" is the AQCC and \"Division\" the APCD; "
+        "the Hazardous Materials and Waste Management Division is another "
+        "agency. 40 CFR Part 60 Subparts Cf and XXX, 40 CFR Part 63 Subpart "
+        "AAAA, 40 CFR Part 98 and EPA Methods 3A, 3C, 18, 21 and 25C are "
+        "incorporated by name and date: name them, never describe them. Part "
+        "K is rulemaking history, not requirements."
+    ),
     "3": _COLORADO_AREA_SCOPE_HINT,
     "7": _COLORADO_AREA_SCOPE_HINT,
     "22": _COLORADO_AREA_SCOPE_HINT,
@@ -678,6 +854,82 @@ REG_PROMPT_HINTS: dict[str, str] = {
     # Batch 6: Air Quality Standards, Designations and Emission Budgets
     # (5 CCR 1001-14, key "aqs") -- a part-less AQCC document, not a
     # numbered regulation.
+    # -- Batch 7 ---------------------------------------------------------
+    # Reg 10 (Criteria for Analysis of Transportation Conformity, 5 CCR
+    # 1001-12). Deliberately says NOTHING about restating scope: Reg 10 is
+    # a part-less document whose Section I is the only place the
+    # regulation's reach is stated, and the Batch 6 Reg 21 post-mortem
+    # (186 hand-corrected rows) showed that telling the model to "state
+    # applicability" makes it guess a scope tag onto rows that carry none.
+    "10": (
+        "This row is from Colorado Regulation Number 10 (criteria for "
+        "analysis of transportation conformity). Section I is the only "
+        "section that states which federal provisions this rule addresses "
+        "and what it requires compliance with -- do not repeat or infer "
+        "that on any other row, and never add a nonattainment or "
+        "maintenance area, a county or an effective date a row does not "
+        "itself name. 40 CFR Part 93 Subpart A (and Sections 93.105, "
+        "93.122(a)(4)(ii), 93.125(c), 51.390) is adopted by reference: name "
+        "the citation, never describe what the federal rule requires. When "
+        "a row cites another section, say it cites it. Section II's defined "
+        "terms -- CDOT, Commission (the Air Quality Control Commission), "
+        "Division (the Air Pollution Control Division), Lead Planning "
+        "Agency (LPA), metropolitan planning organization (MPO), "
+        "Transportation Planning Region (TPR), Hot Spot Analysis, Regional "
+        "Transportation Conformity, routine conformity determination -- "
+        "mean only what Section II says. Section III assigns duties agency "
+        "by agency; never move one agency's duty to another. Keep TCM, TIP, "
+        "SIP, FHWA, FTA and EPA as written. Section VI rows are rulemaking "
+        "history, not current requirements; ignore the trailing Editor's "
+        "Notes revision history on the last of them."
+    ),
+    # Reg 15 (Control of Emissions of Ozone-Depleting Compounds, 5 CCR
+    # 1001-19). Same discipline: this regulation states no geographic scope
+    # anywhere, so the hint forbids inventing one rather than asking for
+    # applicability to be restated.
+    "15": (
+        "This row is from Colorado Regulation Number 15 (control of "
+        "emissions of ozone-depleting compounds). Nothing in this "
+        "regulation states a geographic scope, an area or an effective "
+        "date on a per-provision basis -- never write \"statewide\", name "
+        "an area or county, or add a date a row does not itself print. "
+        "Section I defines Air Conditioning and Refrigeration Service "
+        "Facility, Facility, Product Refrigeration System, Refrigerated "
+        "Food Appliance, Refrigerated Food Facility, Site and Stationary "
+        "Appliance; use those terms only as Section I defines them (a "
+        "stationary appliance is 100 horsepower or greater and is NOT a "
+        "refrigerated food appliance). 40 CFR Part 82 Subparts B and F, 42 "
+        "USC 7671g and 62 Fed. Reg. 68026 are incorporated by reference as "
+        "of the edition dates printed -- name them, never describe their "
+        "contents. Quote every fee, cap, pound threshold and filing window "
+        "exactly as printed. \"Division\" is the Air Pollution Control "
+        "Division; \"Commission\" is the Air Quality Control Commission. "
+        "Section VI rows are rulemaking history, not requirements; ignore "
+        "the trailing Editor's Notes revision history on the last of them."
+    ),
+    # Reg 29 (Emission Reduction Requirements for Lawn and Garden
+    # Equipment, 5 CCR 1001-33). Section I states applicability and the
+    # exemptions; the hint says so explicitly and forbids repeating it
+    # elsewhere -- the START_HERE lesson from Reg 21.
+    "29": (
+        "This row is from Colorado Regulation Number 29 (emission reduction "
+        "requirements for lawn and garden equipment). Part A Section I "
+        "states applicability and the Section I.B exemptions; do not repeat "
+        "or infer applicability, scope or an exemption on any other row, "
+        "and never add \"statewide\", the ozone nonattainment area, a "
+        "county or a date a row does not itself print. Section II defines "
+        "federal government, landscaping, lawn and garden equipment, lawn "
+        "and garden services, local government, municipality, ozone "
+        "nonattainment area, special district and state government agency "
+        "-- use them only as defined. Section III's two restrictions are "
+        "NOT interchangeable: III.A covers state government agencies and "
+        "engines smaller than 19 kW (25 horsepower); III.B covers the "
+        "federal government and local governments and engines smaller than "
+        "7 kW (10 horsepower) in the ozone nonattainment area. Quote every "
+        "kW/horsepower figure, June 1 - August 31 window and reporting date "
+        "exactly. Part B is rulemaking history, not requirements; ignore the "
+        "trailing Editor's Notes revision history at its end."
+    ),
     "aqs": (
         "This row is from Colorado's Air Quality Standards, Designations and "
         "Emission Budgets document (5 CCR 1001-14) -- not a numbered "
@@ -700,6 +952,40 @@ REG_PROMPT_HINTS: dict[str, str] = {
         "history -- not current requirements."
     ),
 }
+
+# Batch 7: the AQCC Procedural Rules (5 CCR 1001-1, key "proc") -- the
+# Commission's own procedure, not a pollution-control rule.
+#
+# The Batch 6 Reg 21 lesson applies here with force: this document prints
+# TWO complete alternative procedures (Part A for proceedings before August
+# 1, 2025 and for petitions/hearing requests filed before that date, Part B
+# for everything on or after it) whose section numbering is nearly
+# identical. An instruction to "state which part applies" would invite the
+# model to stamp a guessed date window onto hundreds of rows that say
+# nothing about one. The hint therefore says the opposite, explicitly: the
+# cutover is stated on the two PART rows and nowhere else, so no other row
+# may repeat it or name a part.
+REG_PROMPT_HINTS["proc"] = (
+    "This row is from the Colorado AQCC Procedural Rules (5 CCR 1001-1) -- "
+    "the Commission's own procedure for meetings, rulemakings, adjudications "
+    "and permit comment hearings, not a pollution-control rule. "
+    "\"Commission\" is the Air Quality Control Commission (AQCC); "
+    "\"Division\" is the Air Pollution Control Division (APCD). Use "
+    "\"Party\", \"Proponent\", \"Redline(s)\", \"Alternate Proposal\", "
+    "\"Interested Person\" and \"Good Cause\" only as Section III of this "
+    "same part defines them; Parts A and B word several differently. \"Hearing Officer\" is never defined here -- "
+    "describe it only as the row does. Name \u00a7 24-4-101 et seq., C.R.S. "
+    "(the State Administrative Procedure Act) and \u00a7 25-7-101 et seq., "
+    "C.R.S. (the Act); never describe what they require. Quote every "
+    "deadline, day count (days or working days, as printed), page limit, "
+    "copy count and time allotment exactly as printed. The August 1, 2025 "
+    "split between Part A and Part B is stated on the two PART rows and "
+    "nowhere else: never repeat it, name a part, or add a date window on any "
+    "other row. A cross-reference may point to a section this document no "
+    "longer prints: say the row cites it, do not describe the target. "
+    "Section XII rows are rulemaking history, not current requirements."
+)
+
 
 # APCD general permits GP01-GP12 all share one hint (Division-issued permit
 # terms, not regulation text). Registered under all eleven keys so

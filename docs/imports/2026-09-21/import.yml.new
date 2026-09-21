@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       reg:
-        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, cp, aqs, sip, ecmc, oooob, ooooa, ooooc, gp01-gp12, jjjj, iiii, zzzz, p190, p191, p192, p193, p194, p195, p196, p199."
+        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, cp, aqs, sip, proc, ecmc, oooob, ooooa, ooooc, gp01-gp12, jjjj, iiii, zzzz, p190, p191, p192, p193, p194, p195, p196, p199."
         required: true
       execute:
         description: "Execute: actually write the plan to Supabase. Leave unchecked to only parse/export/diff/build the apply plan and upload the report -- no database writes."
@@ -41,7 +41,11 @@ jobs:
 
       - name: Map reg to source file basename
         run: |
-          # Numeric CCR regs (3, 7, 22, 26, ...) use pipeline/sources/REG_<n>.pdf/.txt.
+          # Numeric CCR regs (3, 7, 22, 26, ...) use pipeline/sources/REG_<n>.pdf/.txt,
+          # which covers Batch 7's 4/10/15/23/28/29/31 with no change here.
+          # The three name-keyed AQCC documents have their own basenames:
+          # cp -> REG_CP, aqs -> REG_AQS, sip -> REG_SIP and (Batch 7) the
+          # Procedural Rules, proc -> REG_PROC.
           # Federal eCFR subparts use their own subpart-code basename instead --
           # oooob -> OOOOb.pdf/.txt, ooooa -> OOOOa.pdf/.txt, ooooc -> OOOOc.pdf/.txt,
           # jjjj -> JJJJ.pdf/.txt, iiii -> IIII.pdf/.txt, zzzz -> ZZZZ.pdf/.txt.
@@ -61,6 +65,8 @@ jobs:
             SRC_BASENAME="REG_AQS"
           elif [ "$REG" = "sip" ]; then
             SRC_BASENAME="REG_SIP"
+          elif [ "$REG" = "proc" ]; then
+            SRC_BASENAME="REG_PROC"
           elif [ "$REG" = "ecmc" ]; then
             SRC_BASENAME="ECMC"
           elif [ "$REG" = "oooob" ]; then
@@ -76,7 +82,7 @@ jobs:
           elif [[ "$REG" =~ ^p19[0-9]$ ]]; then
             SRC_BASENAME="${REG^^}"
           else
-            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), cp, aqs, sip, ecmc, one of oooob/ooooa/ooooc/jjjj/iiii/zzzz, an APCD general permit gp01-gp12, or one of the whole-PART 49 CFR regs p190/p191/p192/p193/p194/p195/p196/p199."
+            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), cp, aqs, sip, proc, ecmc, one of oooob/ooooa/ooooc/jjjj/iiii/zzzz, an APCD general permit gp01-gp12, or one of the whole-PART 49 CFR regs p190/p191/p192/p193/p194/p195/p196/p199."
             exit 1
           fi
           echo "SRC_BASENAME=${SRC_BASENAME}" >> "$GITHUB_ENV"
