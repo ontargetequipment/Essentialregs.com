@@ -1,0 +1,212 @@
+name: Import regulation from official PDF
+
+on:
+  workflow_dispatch:
+    inputs:
+      reg:
+        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, cp, aqs, sip, ecmc, oooob, ooooa, ooooc, gp01-gp12, jjjj, iiii, zzzz, p190, p191, p192, p193, p194, p195, p196, p199."
+        required: true
+      execute:
+        description: "Execute: actually write the plan to Supabase. Leave unchecked to only parse/export/diff/build the apply plan and upload the report -- no database writes."
+        type: boolean
+        required: false
+        default: false
+      regenerate_summaries:
+        description: "Regenerate summaries: after a successful execute, also run summarize.py --force on exactly the ids the apply plan says need a fresh summary. Ignored unless execute is also checked."
+        type: boolean
+        required: false
+        default: false
+      embed:
+        description: "Embed: after a successful execute (and summaries, if requested), run embed.py for this regulation so semantic search and the related-provisions panel pick up the new/changed rows. Only rows whose text or summary changed are sent to Voyage. Ignored unless execute is also checked."
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      REG: ${{ inputs.reg }}
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Validate reg input
+        run: |
+          if [[ ! "$REG" =~ ^[A-Za-z0-9]+$ ]]; then
+            echo "::error::reg must be alphanumeric (e.g. 7, 3, 26, oooob, ooooa, ooooc) -- got: $REG"
+            exit 1
+          fi
+
+      - name: Map reg to source file basename
+        run: |
+          # Numeric CCR regs (3, 7, 22, 26, ...) use pipeline/sources/REG_<n>.pdf/.txt.
+          # Federal eCFR subparts use their own subpart-code basename instead --
+          # oooob -> OOOOb.pdf/.txt, ooooa -> OOOOa.pdf/.txt, ooooc -> OOOOc.pdf/.txt,
+          # jjjj -> JJJJ.pdf/.txt, iiii -> IIII.pdf/.txt, zzzz -> ZZZZ.pdf/.txt.
+          # APCD general permits (gp01-gp12) use their upper-cased key as the
+          # basename -- gp01 -> GP01.pdf/.txt, ..., gp12 -> GP12.pdf/.txt.
+          # 49 CFR Parts 191/192 (PHMSA) are whole-PART eCFR imports, read
+          # directly from pipeline/sources/P19x.xml -- p191 -> P191,
+          # p192 -> P192, p194 -> P194, p195 -> P195, p199 -> P199 (Batch B),
+          # p190 -> P190, p193 -> P193, p196 -> P196 (Batch C). No PDF/TXT is
+          # required for these (see
+          # the pdftotext step below).
+          if [[ "$REG" =~ ^[0-9]+$ ]]; then
+            SRC_BASENAME="REG_${REG}"
+          elif [ "$REG" = "cp" ]; then
+            SRC_BASENAME="REG_CP"
+          elif [ "$REG" = "aqs" ]; then
+            SRC_BASENAME="REG_AQS"
+          elif [ "$REG" = "sip" ]; then
+            SRC_BASENAME="REG_SIP"
+          elif [ "$REG" = "ecmc" ]; then
+            SRC_BASENAME="ECMC"
+          elif [ "$REG" = "oooob" ]; then
+            SRC_BASENAME="OOOOb"
+          elif [ "$REG" = "ooooa" ]; then
+            SRC_BASENAME="OOOOa"
+          elif [ "$REG" = "ooooc" ]; then
+            SRC_BASENAME="OOOOc"
+          elif [[ "$REG" =~ ^gp[0-9]{2}$ ]]; then
+            SRC_BASENAME="${REG^^}"
+          elif [[ "$REG" =~ ^(jjjj|iiii|zzzz)$ ]]; then
+            SRC_BASENAME="${REG^^}"
+          elif [[ "$REG" =~ ^p19[0-9]$ ]]; then
+            SRC_BASENAME="${REG^^}"
+          else
+            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), cp, aqs, sip, ecmc, one of oooob/ooooa/ooooc/jjjj/iiii/zzzz, an APCD general permit gp01-gp12, or one of the whole-PART 49 CFR regs p190/p191/p192/p193/p194/p195/p196/p199."
+            exit 1
+          fi
+          echo "SRC_BASENAME=${SRC_BASENAME}" >> "$GITHUB_ENV"
+          echo "Resolved reg '$REG' -> source basename '${SRC_BASENAME}'."
+
+      - name: Install poppler-utils (pdftotext)
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      - name: pdftotext (skip if the .txt is already committed)
+        run: |
+          # p19x (190/191/192/193/194/195/196/199) are whole-PART eCFR imports parsed directly from the
+          # eCFR versioner XML (import_ecfr.py's parse_ecfr_part()) -- they
+          # need neither a PDF nor a pdftotext .txt to exist, only the XML.
+          # This is the "sources present" sanity check for these two: it
+          # fails the job early, with a clear message, instead of letting
+          # a missing XML surface later as an obscure parse error.
+          if [[ "$REG" =~ ^p19[0-9]$ ]]; then
+            XML="pipeline/sources/${SRC_BASENAME}.xml"
+            if [ ! -f "$XML" ]; then
+              echo "::error::$XML not found. The whole-PART 49 CFR regs (p190/p191/p192/p193/p194/p195/p196/p199) are parsed directly from the eCFR versioner XML; commit it to pipeline/sources/ first."
+              exit 1
+            fi
+            echo "$XML present -- p19x whole-PART regs read the eCFR XML directly, no PDF/TXT needed. Skipping pdftotext."
+          else
+            PDF="pipeline/sources/${SRC_BASENAME}.pdf"
+            TXT="pipeline/sources/${SRC_BASENAME}.txt"
+            if [ -f "$TXT" ]; then
+              echo "$TXT already exists in the repo -- skipping pdftotext."
+            elif [ -f "$PDF" ]; then
+              pdftotext -layout "$PDF" "$TXT"
+              echo "Generated $TXT from $PDF."
+            else
+              echo "::error::Neither $TXT nor $PDF found. Commit the official PDF to pipeline/sources/ first."
+              exit 1
+            fi
+          fi
+
+      - name: Parse PDF into provisions JSON
+        run: |
+          python pipeline/import_ccr.py parse \
+            --reg "$REG" \
+            --pdf "pipeline/sources/${SRC_BASENAME}.pdf" \
+            --txt "pipeline/sources/${SRC_BASENAME}.txt" \
+            --out "pipeline/out/reg${REG}_parsed.json"
+
+      - name: Export current DB rows for this regulation
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python pipeline/import_ccr.py export \
+            --reg "$REG" \
+            --out "pipeline/out/reg${REG}_db.json"
+
+      - name: Diff parsed output against the DB export
+        run: |
+          python pipeline/import_ccr.py diff \
+            --reg "$REG" \
+            --parsed "pipeline/out/reg${REG}_parsed.json" \
+            --db "pipeline/out/reg${REG}_db.json" \
+            --out "pipeline/out/reg${REG}_diff_report.md"
+
+      - name: Build apply plan (and execute it, if requested)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          ARGS=(apply --reg "$REG" \
+            --parsed "pipeline/out/reg${REG}_parsed.json" \
+            --db "pipeline/out/reg${REG}_db.json" \
+            --out-dir "pipeline/out/apply_reg${REG}")
+          if [ "${{ inputs.execute }}" = "true" ]; then
+            ARGS+=(--execute --yes)
+          fi
+          echo "Running: python pipeline/import_ccr.py ${ARGS[*]}"
+          python pipeline/import_ccr.py "${ARGS[@]}"
+
+      - name: Print stats and diff report to the job log
+        if: always()
+        run: |
+          echo "### apply_reg${REG}/stats.md"
+          cat "pipeline/out/apply_reg${REG}/stats.md" || echo "(not found -- an earlier step must have failed)"
+          echo
+          echo "### reg${REG}_diff_report.md (first 60 lines)"
+          head -n 60 "pipeline/out/reg${REG}_diff_report.md" || echo "(not found -- an earlier step must have failed)"
+
+      - name: Regenerate summaries for the ids this import changed
+        # Both inputs are `type: boolean`, so in the `inputs` context they are
+        # real booleans. Comparing one to the string 'true' coerces both to
+        # numbers (true -> 1, 'true' -> NaN), which is never equal -- the old
+        # `== 'true'` form meant this step could never run, no matter what was
+        # checked. The shell steps above get away with `= "true"` because
+        # interpolating into bash renders the literal text `true`.
+        if: ${{ inputs.execute && inputs.regenerate_summaries }}
+        working-directory: pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python summarize.py \
+            --ids-file "../pipeline/out/apply_reg${REG}/summary_regen_ids.txt" \
+            --force \
+            --model claude-sonnet-4-5
+
+      - name: Embed new/changed rows for semantic search
+        if: ${{ inputs.execute && inputs.embed }}
+        working-directory: pipeline
+        env:
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python embed.py --reg "$REG"
+
+      - name: Upload import report (no SQL batch files)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: import-reg${{ inputs.reg }}
+          path: |
+            pipeline/out/**
+            !pipeline/out/**/*.sql
+          retention-days: 30
+          if-no-files-found: warn

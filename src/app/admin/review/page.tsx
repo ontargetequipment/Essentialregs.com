@@ -7,7 +7,7 @@ import { approveSummary, rejectSummary, saveEditAndApprove } from "./actions";
 
 export const metadata = { title: "Review queue" };
 
-const REG_KEYS = ["cp", "1", "2", "3", "6", "7", "8", "9", "22", "24", "26", "30", "11", "12", "25", "27", "gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12", "ecmc", "ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz", "p191", "p192", "p194", "p195", "p199", "p190", "p193", "p196"] as const;
+const REG_KEYS = ["cp", "1", "2", "3", "6", "7", "8", "9", "22", "24", "26", "30", "11", "12", "25", "27", "16", "18", "19", "20", "21", "aqs", "sip", "gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12", "ecmc", "ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz", "p191", "p192", "p194", "p195", "p199", "p190", "p193", "p196"] as const;
 const REG_LABELS: Record<string, string> = {
   cp: "Common Provisions",
   "1": "Reg 1",
@@ -25,6 +25,13 @@ const REG_LABELS: Record<string, string> = {
   "12": "Reg 12",
   "25": "Reg 25",
   "27": "Reg 27",
+  "16": "Reg 16",
+  "18": "Reg 18",
+  "19": "Reg 19",
+  "20": "Reg 20",
+  "21": "Reg 21",
+  aqs: "AQ Standards & Designations (1001-14)",
+  sip: "SIP Local Elements (1001-20)",
   gp01: "GP01",
   gp02: "GP02",
   gp03: "GP03",

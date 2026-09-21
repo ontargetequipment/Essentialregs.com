@@ -664,3 +664,62 @@ def test_batch5_rule_ids_and_ccr_cites_are_unique_across_sos_entries():
     ccrs = [v["ccr"] for v in sos.values()]
     assert len(rule_ids) == len(set(rule_ids))
     assert len(ccrs) == len(set(ccrs))
+
+
+# ---------------------------------------------------------------------------
+# Batch 6: aqs / 16 / sip / 18 / 19 / 20 / 21 -- SOS entries in the shape of "30"
+# ---------------------------------------------------------------------------
+
+BATCH6_SOS = {
+    "aqs": ("5 CCR 1001-14", "2347", "12357", "2026-01-14"),
+    "16": ("5 CCR 1001-18", "2350", "1529", "2007-04-20"),
+    "sip": ("5 CCR 1001-20", "2352", "2721", "2008-12-30"),
+    "18": ("5 CCR 1001-22", "2354", "4928", "2012-12-15"),
+    "19": ("5 CCR 1001-23", "2355", "9953", "2022-01-14"),
+    "20": ("5 CCR 1001-24", "3282", "11186", "2023-12-15"),
+    "21": ("5 CCR 1001-25", "3303", "10677", "2023-02-14"),
+}
+
+
+@pytest.mark.parametrize("key", sorted(BATCH6_SOS))
+def test_batch6_manifest_entries(key):
+    """Batch 6: the seven AQCC documents are registered like "30" -- kind sos,
+    the CDPHE dept/agency ids, a ruleId, a ruleVersionId and an ISO effective
+    date, and nothing else."""
+    ccr, rule_id, rvid, eff = BATCH6_SOS[key]
+    entry = make_manifest()["sources"][key]
+    assert set(entry) == set(make_manifest()["sources"]["30"])
+    assert entry["kind"] == "sos"
+    assert entry["ccr"] == ccr
+    assert entry["ruleId"] == rule_id
+    assert entry["deptID"] == "16"
+    assert entry["agencyID"] == "7"
+    assert entry["ruleVersionId"] == rvid
+    assert entry["effective_date"] == eff
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", entry["effective_date"])
+
+
+@pytest.mark.parametrize("key", sorted(BATCH6_SOS))
+def test_batch6_sos_url_and_label(key):
+    """Same proof as Batch 5: check_sos builds the SOS URL from the entry's
+    ruleId and labels the result with its CCR cite (no fixture -> ERROR)."""
+    entry = make_manifest()["sources"][key]
+    fetcher = fr.Fetcher(fixtures_dir=Path("/does/not/exist"))
+    result = fr.check_sos(key, entry, fetcher)
+    assert result.source == f"SOS {BATCH6_SOS[key][0]}"
+    assert result.ours == BATCH6_SOS[key][2]
+    assert result.status == fr.STATUS_ERROR
+    assert f"ruleId={BATCH6_SOS[key][1]}" in fr.SOS_URL_TMPL.format(
+        ruleId=entry["ruleId"], deptID=entry["deptID"], agencyID=entry["agencyID"])
+
+
+def test_manifest_has_the_batch6_aqs_sos_entry():
+    # Batch 6: Air Quality Standards, Designations and Emission Budgets
+    # (5 CCR 1001-14) is a SOS-checked CCR document like Reg 1/cp.
+    manifest = make_manifest()
+    entry = manifest["sources"]["aqs"]
+    assert entry == {
+        "kind": "sos", "ccr": "5 CCR 1001-14", "ruleId": "2347", "deptID": "16", "agencyID": "7",
+        "ruleVersionId": "12357", "effective_date": "2026-01-14",
+    }
+    assert set(entry) == set(manifest["sources"]["1"])

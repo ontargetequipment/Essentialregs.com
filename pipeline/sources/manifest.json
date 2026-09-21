@@ -145,6 +145,69 @@
    "ruleVersionId": "11838",
    "effective_date": "2025-02-14"
   },
+  "aqs": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-14",
+   "ruleId": "2347",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "12357",
+   "effective_date": "2026-01-14"
+  },
+  "16": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-18",
+   "ruleId": "2350",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "1529",
+   "effective_date": "2007-04-20"
+  },
+  "sip": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-20",
+   "ruleId": "2352",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "2721",
+   "effective_date": "2008-12-30"
+  },
+  "18": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-22",
+   "ruleId": "2354",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "4928",
+   "effective_date": "2012-12-15"
+  },
+  "19": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-23",
+   "ruleId": "2355",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "9953",
+   "effective_date": "2022-01-14"
+  },
+  "20": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-24",
+   "ruleId": "3282",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "11186",
+   "effective_date": "2023-12-15"
+  },
+  "21": {
+   "kind": "sos",
+   "ccr": "5 CCR 1001-25",
+   "ruleId": "3303",
+   "deptID": "16",
+   "agencyID": "7",
+   "ruleVersionId": "10677",
+   "effective_date": "2023-02-14"
+  },
   "ecmc": {
    "kind": "sos",
    "ccr": "2 CCR 404-1",

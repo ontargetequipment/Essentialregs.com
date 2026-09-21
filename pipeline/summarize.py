@@ -120,6 +120,53 @@ REG_AUDIENCE: dict[str, str] = {
         "an environmental or energy manager at a Colorado manufacturing "
         "facility subject to the GEMM 2 or EITE greenhouse gas rules"
     ),
+    # Batch 6: Air Quality Standards, Designations and Emission Budgets
+    # (5 CCR 1001-14) -- ambient standards, area designations and motor
+    # vehicle emissions budgets: read by planners and permit engineers.
+    "aqs": (
+        "an air-quality planner or permit engineer checking Colorado's "
+        "ambient standards, nonattainment/maintenance area designations "
+        "and motor vehicle emissions budgets"
+    ),
+    # Batch 6 (Sept 20 2026). Reg 16 (street sanding) and the SIP Local
+    # Elements document (per-area street sanding, sweeping and woodburning
+    # measures) are read by the public-works side of local government, not
+    # by oil and gas operators.
+    "16": (
+        "a municipal public-works or street-maintenance manager in a Colorado "
+        "PM10 area"
+    ),
+    "sip": (
+        "a municipal public-works or street-maintenance manager in a Colorado "
+        "PM10 area"
+    ),
+    # Reg 18 adopts the federal Acid Rain Program (40 CFR Parts 72 and 76)
+    # for Colorado's Title IV utility units.
+    "18": (
+        "an environmental manager at a Colorado electric utility or large "
+        "combustion source"
+    ),
+    # Reg 19 (Batch 6): Colorado's lead-based paint program -- training,
+    # certification and work practices for abatement, and pre-renovation
+    # education. Its readers are the certified trades, not oil and gas.
+    "19": (
+        "a lead-based-paint contractor, inspector, risk assessor or renovator "
+        "in Colorado"
+    ),
+    # Reg 20 (Batch 6): Colorado Clean Cars and Trucks -- LEV/ZEV/ACT vehicle
+    # standards adopted from California; its readers sell, certify, register
+    # or run fleets of vehicles, not oil and gas equipment.
+    "20": (
+        "a vehicle manufacturer, dealer or fleet compliance manager selling "
+        "or registering vehicles in Colorado"
+    ),
+    # Reg 21: VOC content limits for consumer products and AIM coatings --
+    # its readers make, distribute or sell those products, not operate
+    # stationary sources.
+    "21": (
+        "a manufacturer, distributor or retailer of consumer products or "
+        "architectural coatings sold in Colorado"
+    ),
 }
 
 SYSTEM_PROMPT_TEMPLATE = (
@@ -474,6 +521,135 @@ REG_PROMPT_HINTS: dict[str, str] = {
         "Regulation Number 22, Part A and credit trading under Regulation "
         "Number 7, Part B, Section VII -- name them, do not describe them."
     ),
+    # Batch 6 (Sept 20 2026): Reg 16, the SIP Local Elements document, Reg 18.
+    "16": (
+        "This row is from Colorado Regulation Number 16 (street sanding "
+        "emissions, 5 CCR 1001-18), a short part-less regulation. Section I "
+        "sets street sanding material specifications and applies to "
+        "governmental entities, their contractors and suppliers in the AIR "
+        "program area (Section 42-4-307(8) C.R.S.); Section II applies only in "
+        "the Denver PM10 attainment/maintenance area -- never generalize "
+        "either to the whole state. Quote the standards exactly as printed: "
+        "less than 2% fines and less than 45% durability index, OR less than "
+        "4% fines, less than 33% durability index and a high degree of "
+        "angularity; the 30%, 20%, 72%, 54% and 50% reductions, measured "
+        "against uncontrolled 1989 levels, for the named areas (foothills, "
+        "CBD, I-25, the Federal/Downing/38th/Louisiana box). \"Percent "
+        "Fines\", \"Durability Index\", \"Base Sanding Amount\" and \"Foothills "
+        "Area\" mean only what Sections I.B and II.B define. \"Division\" is "
+        "the Air Pollution Control Division; RAQC is the Regional Air Quality "
+        "Council; CDOT is the Colorado Department of Transportation. The "
+        "source print has typos (\"sand ;d during c :h\" means sanded during "
+        "each) -- read through them, do not reproduce them. Section III rows "
+        "(III.A, III.B) are statements of basis: rulemaking history, not "
+        "requirements."
+    ),
+    "sip": (
+        "This row is from the Colorado SIP Local Elements document (State "
+        "Implementation Plan, Specific Regulations for Nonattainment-"
+        "Attainment/Maintenance Areas (Local Elements), 5 CCR 1001-20). Each "
+        "top-level section is ONE area -- I Pagosa Springs, II Telluride, III "
+        "Aspen/Pitkin County, IV Lamar, V Canon City, VI Fort Collins "
+        "(repealed), VII Colorado Springs, VIII Steamboat Springs -- and "
+        "every row applies only in its own area's named highways, streets or "
+        "boundaries: always name the area, never write \"statewide\". Quote "
+        "the standards as printed (1% fines, 2% fines, 30% durability index, "
+        "the 10%/15% sand reductions, 2-year record retention, sweeping "
+        "within four days or at least twice) and the effective dates. "
+        "Definitions differ by area (\"Percent Fines\" is a #200 sieve here, "
+        "\"Division\" is the Colorado Department of Health or CDPHE Air "
+        "Pollution Control Division as printed). Named ordinances and "
+        "resolutions are local law incorporated by reference with an as-of "
+        "date -- name them, do not describe their contents. Rows headed "
+        "\"Statement of Basis\" (I.D, II.C, III.D, IV, V, VI.A, VII.A, VIII.F) "
+        "are rulemaking history, not requirements; \"Reserved\" and "
+        "\"Repealed\" rows have no requirements. \"Commission\" is the AQCC."
+    ),
+    "18": (
+        "This row is from Colorado Regulation Number 18 (control of emissions "
+        "of acid deposition precursors, 5 CCR 1001-22). Section I is the whole "
+        "operative rule: the Commission incorporates by reference 40 CFR Part "
+        "72 and Part 76 (the July 1, 2011 editions) to implement the Title IV "
+        "Acid Rain Program -- say exactly that, and do not summarize or invent "
+        "the federal rules' contents (permits, allowances, NOx limits, "
+        "monitoring). The incorporated edition date is not a compliance date; "
+        "later federal amendments are not included. \"Permitting authority\" "
+        "means the Colorado Air Pollution Control Division and "
+        "\"Administrator\" means the EPA Administrator, as Section I defines "
+        "them; where Parts 72/76 conflict with Regulation Number 3 the federal "
+        "provisions take precedence. Title IV is a delegated program; these "
+        "adoptions are not SIP revisions. Section II rows (II.A-II.G) are "
+        "statements of basis -- rulemaking history that describes which "
+        "federal amendments each adoption picked up (e.g. May 2005 CEMS "
+        "definitions, March 2011 Protocol Gas Verification Program) -- not "
+        "current requirements. \"Commission\" is the Air Quality Control "
+        "Commission."
+    ),
+    "19": (
+        "This row is from Colorado Regulation Number 19 (The Control of Lead "
+        "Hazards, 5 CCR 1001-23): Part A covers lead-based paint activities -- "
+        "training-program accreditation, individual and firm certification, "
+        "and work practices for inspections, lead-hazard screens, risk "
+        "assessments and abatement in target housing and child-occupied "
+        "facilities; Part B is pre-renovation education (the lead hazard "
+        "pamphlet). \"Division\" is CDPHE's Air Pollution Control Division "
+        "(Part A, II.B.28.), \"Commission\" the AQCC; \"Department\" is "
+        "not a defined term (Part A, VI. delegates to local departments). Use "
+        "target housing, child-occupied facility, abatement "
+        "(not renovation), lead-based paint, lead-based paint hazard, LAF/LEF "
+        "and the disciplines (inspector, risk assessor, supervisor, worker, "
+        "project designer) only as Part A, Section II defines them. Quote "
+        "course hours, certification periods (every 3 or 5 years), fees ($180 "
+        "per year, $600, $1,500, the notification fee bands), lead levels with "
+        "their units (ug/ft2, ug/g, ug/dL) and the Appendix A units-to-test "
+        "counts exactly as printed -- never round, convert or interpolate. 40 "
+        "CFR Part 745 is EPA's federal program: name it, do not describe it. "
+        "Part B, V. prints SAMPLE acknowledgment wording, not mandatory text. "
+        "Part C is rulemaking history; its \"PART A.\"/\"PART B.\" headings are "
+        "history, and III.B.4. is Reserved (removed 2021)."
+    ),
+    "20": (
+        "This row is from Colorado Regulation Number 20 (Colorado Clean Cars "
+        "and Trucks). Its standards are California Code of Regulations, Title "
+        "13 sections incorporated by reference in the versions listed in Part "
+        "H, Table 1: name the section (e.g. \"13 CCR 1962.4\") and say it is "
+        "incorporated; never describe or guess the California text, and never "
+        "invent a percentage, credit value or test procedure it contains. In the "
+        "incorporated sections \"California\" means Colorado, \"CARB\"/\"Air "
+        "Resources Board\" means CDPHE and \"Executive Officer\" means the "
+        "Executive Director of CDPHE; \"Department\" is CDPHE (Part A, "
+        "Section II). Keep every model-year window (\"2022 through 2025 and "
+        "2027 through 2032\"), GVWR threshold (8,500 lbs; 14,001 lbs), "
+        "percentage (\"36 percent\", \"23 percent\"), date and deadline exactly "
+        "as printed; do not merge Part B (LEV), Part D (ZEV credits and "
+        "deficits), Part E (HD Low NOx, 2027 and later), Part F (ACT) or Part G "
+        "(one-time Large Entity Reporting) requirements into each other. ZEV, "
+        "TZEV, NZEV, PHEV, BEVx, FCEV, NEV, LEV, ACT, LER and APU expand only "
+        "as Part A or Part G, Section VI defines them. Part H rows list "
+        "incorporated sections with their amendment dates; Part I rows are "
+        "rulemaking history, not current requirements."
+    ),
+    "21": (
+        "This row is from Colorado Regulation Number 21 (VOC content limits "
+        "for consumer products, Part A, and architectural and industrial "
+        "maintenance (AIM) coatings, Part B). Each part applies in the 8-hour "
+        "Ozone Control Area and northern Weld County and, \"(State Only)\", "
+        "statewide -- say which the row names. Quote every limit in the "
+        "units printed: percent VOC by weight for consumer "
+        "products (Part A, Table 1: manufactured on or after May 1, 2020, and "
+        "the lower limits that apply 60 days after an EPA finding that "
+        "Colorado missed the severe ozone deadline), grams per liter for AIM "
+        "coatings (Part B, Table 1, manufactured on or after May 1, 2020); "
+        "FIFRA-registered products start May 1, 2021. Point to a table for "
+        "its values rather than restating them. A product category means only "
+        "what the same part's Section VI defines -- Parts A and B define terms "
+        "separately; \"LVP-VOC\", \"Table B compound\", \"HVOC\"/\"MVOC\" and "
+        "\"ACP\" only as defined here. CARB Method 310, EPA Method 24, "
+        "ASTM/SCAQMD/BAAQMD methods and California Title 17 sections are "
+        "incorporated by name and date -- name them, never describe them. "
+        "\"Division\" is the Air Pollution Control Division, \"Commission\" "
+        "the AQCC. Part C rows are rulemaking history, not requirements."
+    ),
     "3": _COLORADO_AREA_SCOPE_HINT,
     "7": _COLORADO_AREA_SCOPE_HINT,
     "22": _COLORADO_AREA_SCOPE_HINT,
@@ -498,6 +674,30 @@ REG_PROMPT_HINTS: dict[str, str] = {
         "Series rules by cross-reference -- say so. 100 Series rows are "
         "definitions. Table 423-1 and 423-2 are plain text. The History tail "
         "ending Appendix IX is a changelog, not Form 41."
+    ),
+    # Batch 6: Air Quality Standards, Designations and Emission Budgets
+    # (5 CCR 1001-14, key "aqs") -- a part-less AQCC document, not a
+    # numbered regulation.
+    "aqs": (
+        "This row is from Colorado's Air Quality Standards, Designations and "
+        "Emission Budgets document (5 CCR 1001-14) -- not a numbered "
+        "regulation. \"Commission\" means the Air Quality Control Commission "
+        "(AQCC); \"Division\" means the Air Pollution Control Division. "
+        "Section I.A only points to the federal NAAQS in 40 CFR Part 50; the "
+        "Section I.B SO2 standard, the Section IV visibility standard and the "
+        "Section VI Eisenhower Tunnel carbon monoxide standard are State Only "
+        "-- say so, and quote every level, averaging time and unit exactly as "
+        "printed (700 micrograms per cubic meter, three-hour maximum; "
+        ".076/km, four hours; 100 parts per million, 15 minute average), "
+        "never converted. Section III lists designated areas: give each "
+        "area's classification, effective date and boundary only as printed, "
+        "name no county or date the row omits; a map row is a heading whose "
+        "map is not reproduced. Section V budgets: quote tons/day, tons per "
+        "summer day (tpsd) and lbs./day figures and their years verbatim, and "
+        "name a budget's NAAQS or SIP only when the row does; \"Repealed\" and "
+        "\"Reserved\" rows have no content. Bracketed [1]-[5] are footnote "
+        "markers. Section VII is rationale and Section VIII rulemaking "
+        "history -- not current requirements."
     ),
 }
 

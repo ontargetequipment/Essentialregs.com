@@ -255,6 +255,20 @@ const GP_CLOSURE_NOTE: Record<string, string> = {
   gp10: " · closed to new registrations July 15, 2026",
 };
 
+// Batch 6: two AQCC documents that carry NO regulation number and are keyed
+// by name instead ("aqs" = Air Quality Standards, Designations and Emission
+// Budgets, 5 CCR 1001-14; "sip" = the SIP Local Elements document, 5 CCR
+// 1001-20). Their stored titles are the printed all-caps title plus the CCR
+// suffix, like every numbered reg; the card shows this friendlier alias with
+// the CCR cite (pulled from the stored title) as the subtitle. `order` puts
+// them after the numbered regulations in the AQCC group (see
+// groupColoradoRegulations), aqs before sip. Display-only, like everything
+// else in this file -- nothing stored changes.
+const AQCC_NAMED_DOCS: Record<string, { title: string; order: number }> = {
+  aqs: { title: "Air Quality Standards, Designations and Emission Budgets", order: 1 },
+  sip: { title: "SIP — Local Elements for Nonattainment/Attainment-Maintenance Areas", order: 2 },
+};
+
 export function regulationCardInfo(
   reg: Pick<Provision, "id" | "title" | "issuing_body" | "citation">
 ): RegulationCardInfo {
@@ -264,6 +278,10 @@ export function regulationCardInfo(
   }
   if (regNumber === "cp") {
     return { title: "Common Provisions Regulation", subtitle: null };
+  }
+  if (regNumber && AQCC_NAMED_DOCS[regNumber]) {
+    const cite = reg.title.match(CCR_CITE)?.[0] ?? null;
+    return { title: AQCC_NAMED_DOCS[regNumber].title, subtitle: cite };
   }
   if (regNumber && GP_KEY.test(regNumber)) {
     const gpLabel = regNumber.toUpperCase();
@@ -319,8 +337,11 @@ const OTHER_HEADING = "Other";
  * group, order is Common Provisions first, then numerically by regulation
  * number (1, 2, 3, 6, 7, 8, 9, 11, 12, 22, 24, 25, 26, 27, 30, ...) -- the
  * printed CCR series' own ordering, not id/insertion order (id order would
- * put "22" before "3" as strings). Batch 5's 11/12/25/27 slot in by this
- * same numeric comparator with no per-reg list to maintain.
+ * put "22" before "3" as strings). Batch 5's 11/12/25/27 (and Batch 6's
+ * 16/18/19/20/21) slot in by this same numeric comparator with no per-reg
+ * list to maintain. The two name-keyed AQCC documents (Batch 6's "aqs" and
+ * "sip", see AQCC_NAMED_DOCS) have no number and sort AFTER every numbered
+ * regulation, aqs before sip.
  *
  * The eleven APCD general permits (gp01..gp12) share issuing_body
  * "CDPHE-APCD" with the numbered AQCC regulations but aren't AQCC
@@ -342,13 +363,14 @@ export function groupColoradoRegulations<T extends Pick<Provision, "id" | "issui
     else if (r.issuing_body === "ECMC") ecmc.push(r);
     else other.push(r);
   }
-  aqcc.sort((a, b) => {
-    const an = regulationNumber(a.id);
-    const bn = regulationNumber(b.id);
-    if (an === "cp") return bn === "cp" ? 0 : -1;
-    if (bn === "cp") return 1;
-    return (Number(an) || 0) - (Number(bn) || 0);
-  });
+  // Sort key: Common Provisions first, numbered regs by number, then the
+  // name-keyed documents (aqs, sip) after every number.
+  const aqccRank = (key: string | null): number => {
+    if (key === "cp") return -1;
+    if (key && AQCC_NAMED_DOCS[key]) return 1_000_000 + AQCC_NAMED_DOCS[key].order;
+    return Number(key) || 0;
+  };
+  aqcc.sort((a, b) => aqccRank(regulationNumber(a.id)) - aqccRank(regulationNumber(b.id)));
   gp.sort((a, b) => {
     const an = Number((regulationNumber(a.id) ?? "").replace(/\D/g, ""));
     const bn = Number((regulationNumber(b.id) ?? "").replace(/\D/g, ""));
