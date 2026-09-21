@@ -32,6 +32,9 @@ Examples:
     # Only refresh the related-provisions table, no API calls at all.
     python pipeline/embed.py --neighbors-only
 
+    # Same, but resume a rebuild that died part-way (id from the failed run's log).
+    python pipeline/embed.py --neighbors-only --start-after sec-gp09-IX-B
+
 Required environment variables:
     SUPABASE_URL
     SUPABASE_SERVICE_ROLE_KEY
@@ -82,6 +85,10 @@ DB_PAGE_SIZE = 500
 UPSERT_PAGE_SIZE = 25            # each row is also an HNSW insert; 100 rows crossed the 8s cap
 IN_BATCH = 40                    # ids per in.(...) filter; long ids must fit the request URL
 NEIGHBOR_BATCH_IDS = 25          # PostgREST caps each call at 8s; ~25 anchors ≈ 1s warm, well under
+NEIGHBOR_GROW_AFTER = 8          # consecutive successes at a halved size before doubling back up
+NEIGHBOR_MAX_RETRIES = 5         # retries of a batch that cannot be halved further (size 1) or a non-timeout error
+NEIGHBOR_RETRY_SLEEP = 2         # seconds; doubled on every retry of the same batch
+NEIGHBOR_LOG_EVERY = 40          # batches between progress lines (~1,000 provisions at full size)
 MAX_RETRIES = 6
 
 TAG_RE = re.compile(r"<[^>]+>")
@@ -315,45 +322,108 @@ def delete_stale_chunks(client, provision_id: str, keep_upto: int) -> None:
      .eq("provision_id", provision_id).gt("chunk_index", keep_upto).execute())
 
 
-def fetch_embedded_ids(client) -> list[str]:
-    """Every provision that has a chunk-0 embedding, sorted."""
+def fetch_embedded_ids(client, start_after: Optional[str] = None) -> list[str]:
+    """Every provision that has a chunk-0 embedding, sorted. With `start_after`
+    only ids strictly greater than it (in the database's own ordering, the same
+    one the neighbour loop walks) -- the resume point for a rebuild that died
+    part-way through."""
     ids: list[str] = []
     start = 0
     while True:
-        rows = (client.table("provision_embeddings").select("provision_id")
-                .eq("chunk_index", 0).order("provision_id")
-                .range(start, start + 1000 - 1).execute().data or [])
+        q = client.table("provision_embeddings").select("provision_id").eq("chunk_index", 0)
+        if start_after is not None:
+            q = q.gt("provision_id", start_after)
+        rows = (q.order("provision_id").range(start, start + 1000 - 1).execute().data or [])
         ids.extend(r["provision_id"] for r in rows)
         if len(rows) < 1000:
             return ids
         start += 1000
 
 
-def recompute_neighbors(client, ids: Optional[list[str]]) -> int:
-    """Calls the SQL-side neighbour builder in small batches. None = every
-    embedded provision. Never sends the whole corpus in one RPC: PostgREST
-    enforces an 8-second statement timeout per call (the `authenticator`
-    role's setting), and a 200-id batch already blew through it once."""
+def _is_statement_timeout(exc: Exception) -> bool:
+    return "57014" in str(exc)
+
+
+def _resume_hint(last_done: Optional[str]) -> str:
+    if last_done is None:
+        return "no batch completed; rerun --neighbors-only from the start"
+    return f"resume with: --neighbors-only --start-after {last_done}"
+
+
+def recompute_neighbors(client, ids: Optional[list[str]], start_after: Optional[str] = None,
+                        log_every: int = NEIGHBOR_LOG_EVERY) -> int:
+    """Calls the SQL-side neighbour builder in adaptive batches. None = every
+    embedded provision (optionally only those after `start_after`).
+
+    Never sends the whole corpus in one RPC: PostgREST enforces an 8-second
+    statement timeout per call (the `authenticator` role's setting). Each
+    anchor costs an HNSW probe plus heap reads, and once the index and the
+    vector heap outgrow shared_buffers a cold stretch of the corpus can take
+    ~0.8 s per anchor. So the batch size adapts: a 57014 halves the batch and
+    retries the same ids at once (the pages it did read are now warm); after
+    NEIGHBOR_GROW_AFTER clean batches it doubles back toward NEIGHBOR_BATCH_IDS.
+    Only a batch that is already a single id is retried at the same size, with
+    backoff, before the run is abandoned -- and the error names the last id
+    completed so the rerun can `--start-after` it instead of starting over.
+    """
     if ids is None:
-        ids = fetch_embedded_ids(client)
+        ids = fetch_embedded_ids(client, start_after=start_after)
+    elif start_after is not None:
+        # Explicit id lists are already sorted the way the DB sorts them
+        # (callers pass fetch_* output); Python's ordering is only a fallback.
+        ids = [i for i in ids if i > start_after]
+    n = len(ids)
     total = 0
-    for i in range(0, len(ids), NEIGHBOR_BATCH_IDS):
-        batch = ids[i:i + NEIGHBOR_BATCH_IDS]
-        last_exc: Optional[Exception] = None
-        for attempt in range(3):
-            try:
-                res = client.rpc("recompute_provision_neighbors", {"target_ids": batch}).execute()
-                total += int(res.data or 0)
-                last_exc = None
-                break
-            except Exception as exc:  # noqa: BLE001 -- timeout on a cold cache; retry smaller
-                last_exc = exc
-                time.sleep(2)
-        if last_exc is not None:
-            raise RuntimeError(f"neighbour batch starting at {batch[0]} failed 3x: {last_exc}")
-        done = min(i + NEIGHBOR_BATCH_IDS, len(ids))
-        if done % 500 < NEIGHBOR_BATCH_IDS or done == len(ids):
-            print(f"  neighbours: {done:,}/{len(ids):,} provisions")
+    pos = 0
+    size = NEIGHBOR_BATCH_IDS
+    min_size = size
+    streak = 0
+    retries = 0
+    batches = 0
+    halvings = 0
+    last_done: Optional[str] = start_after
+    t0 = time.monotonic()
+    if start_after is not None:
+        print(f"  resuming after {start_after}: {n:,} provisions to do")
+    while pos < n:
+        batch = ids[pos:pos + size]
+        try:
+            res = client.rpc("recompute_provision_neighbors", {"target_ids": batch}).execute()
+        except Exception as exc:  # noqa: BLE001
+            if _is_statement_timeout(exc) and len(batch) > 1:
+                size = len(batch) // 2
+                min_size = min(min_size, size)
+                halvings += 1
+                streak = 0
+                print(f"  neighbour batch of {len(batch)} (from {batch[0]}) hit the statement "
+                      f"timeout; halving to {size}")
+                continue
+            retries += 1
+            if retries > NEIGHBOR_MAX_RETRIES:
+                raise RuntimeError(
+                    f"neighbour batch starting at {batch[0]} (size {len(batch)}) failed "
+                    f"{retries} times: {exc}. {n - pos:,} of {n:,} provisions left; "
+                    f"{_resume_hint(last_done)}") from exc
+            wait = NEIGHBOR_RETRY_SLEEP * (2 ** (retries - 1))
+            kind = "statement timeout on a single id" if _is_statement_timeout(exc) else f"error: {exc}"
+            print(f"  neighbour batch of {len(batch)} (from {batch[0]}): {kind}; "
+                  f"retry {retries}/{NEIGHBOR_MAX_RETRIES} in {wait}s")
+            time.sleep(wait)
+            continue
+        total += int(res.data or 0)
+        pos += len(batch)
+        last_done = batch[-1]
+        batches += 1
+        retries = 0
+        streak += 1
+        if size < NEIGHBOR_BATCH_IDS and streak >= NEIGHBOR_GROW_AFTER:
+            size = min(size * 2, NEIGHBOR_BATCH_IDS)
+            streak = 0
+        if batches % log_every == 0 or pos == n:
+            print(f"  neighbours: {pos:,}/{n:,} provisions  batch={size}  last={last_done}  "
+                  f"elapsed={time.monotonic() - t0:,.0f}s")
+    print(f"  neighbour rebuild: {n:,} provisions in {batches:,} batches, {halvings} halvings, "
+          f"smallest batch {min_size}, final batch {size}, {time.monotonic() - t0:,.0f}s")
     return total
 
 
@@ -495,7 +565,7 @@ def run(args: argparse.Namespace) -> int:
 
     if args.neighbors_only:
         print("Recomputing related-provision neighbours for the whole corpus (no API calls)...")
-        stats.neighbors_written = recompute_neighbors(client, None)
+        stats.neighbors_written = recompute_neighbors(client, None, start_after=args.start_after)
         print(f"  {stats.neighbors_written:,} neighbour rows written.")
         return 0
 
@@ -593,7 +663,13 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
                         help="Do not recompute provision_neighbors after embedding.")
     parser.add_argument("--neighbors-only", action="store_true",
                         help="Only recompute provision_neighbors for the whole corpus.")
-    return parser.parse_args(argv)
+    parser.add_argument("--start-after", default=None, metavar="PROVISION_ID",
+                        help="With --neighbors-only: skip ids up to and including this one "
+                             "(the 'last=' id from a failed run's log) instead of starting over.")
+    args = parser.parse_args(argv)
+    if args.start_after is not None and not args.neighbors_only:
+        parser.error("--start-after only applies to --neighbors-only")
+    return args
 
 
 def require_env(names: list[str]) -> None:
