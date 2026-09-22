@@ -4,6 +4,10 @@ import type { ReactNode } from "react";
  * Shared shell for the static informational pages (/terms, /privacy,
  * /disclaimer, /about, /contact). Keeps the container, heading, and
  * "Last updated" line consistent so the five pages read as one set.
+ *
+ * The prose column is 720px (--container-reading), sitting inside and
+ * left-aligned to the 1120px shell width the header/footer use — not its
+ * own independently centered column.
  */
 export const LAST_UPDATED = "September 12, 2026";
 
@@ -17,19 +21,21 @@ export function LegalPage({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-        {title}
-      </h1>
-      <p className="mt-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-        Last updated: {LAST_UPDATED}
-      </p>
-      {intro && (
-        <div className="mt-4 text-base leading-relaxed text-zinc-600">
-          {intro}
-        </div>
-      )}
-      <div className="mt-8 flex flex-col gap-8">{children}</div>
+    <div className="mx-auto max-w-shell px-6 py-12">
+      <div className="max-w-reading">
+        <h1 className="font-serif text-section font-bold tracking-tight text-ink">
+          {title}
+        </h1>
+        <p className="mt-2 font-mono text-eyebrow uppercase text-tag">
+          Last updated: {LAST_UPDATED}
+        </p>
+        {intro && (
+          <div className="mt-4 text-base leading-relaxed text-ink-soft">
+            {intro}
+          </div>
+        )}
+        <div className="mt-8 flex flex-col gap-8">{children}</div>
+      </div>
     </div>
   );
 }
@@ -46,15 +52,15 @@ export function LegalSection({
 }) {
   return (
     <section>
-      <h2 className="text-lg font-semibold text-zinc-900">
+      <h2 className="text-lg font-semibold text-ink">
         {number !== undefined && (
-          <span className="mr-2 font-mono text-sm text-emerald-700">
+          <span className="mr-2 font-mono text-sm text-accent">
             {number}.
           </span>
         )}
         {title}
       </h2>
-      <div className="mt-2 flex flex-col gap-3 text-sm leading-relaxed text-zinc-700">
+      <div className="mt-2 flex flex-col gap-3 text-sm leading-relaxed text-ink-soft">
         {children}
       </div>
     </section>
@@ -64,7 +70,7 @@ export function LegalSection({
 /** Bulleted list with the same text styling as section body copy. */
 export function LegalList({ children }: { children: ReactNode }) {
   return (
-    <ul className="list-disc flex flex-col gap-1.5 pl-5 marker:text-zinc-400">
+    <ul className="list-disc flex flex-col gap-1.5 pl-5 marker:text-muted">
       {children}
     </ul>
   );
