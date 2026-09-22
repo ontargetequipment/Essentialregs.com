@@ -128,5 +128,18 @@ begin
 end;
 $function$;
 
+-- GRANTS FIX (2026-09-22): migration 006 ended by revoking EXECUTE on this function from
+-- public, anon and authenticated and granting it to service_role alone. The four-argument
+-- signature created above is a DIFFERENT function object and did not inherit any of that, so
+-- it picked up Supabase's default grants and became callable by anyone holding the publishable
+-- anon key. These two lines restore 006's intent for the new signature. See
+-- supabase/migrations/011_security_grants.sql for the full write-up.
+revoke all on function
+  public.recompute_provision_neighbors(text[], integer, integer, integer)
+  from public, anon, authenticated;
+grant execute on function
+  public.recompute_provision_neighbors(text[], integer, integer, integer)
+  to service_role;
+
 -- Sanity check: should return 5 neighbours for a row that currently has none.
 -- select public.recompute_provision_neighbors(array['sec-3-A-II-A'], 5);
