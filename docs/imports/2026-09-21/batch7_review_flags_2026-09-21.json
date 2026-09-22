@@ -1,0 +1,912 @@
+[
+ {
+  "id": "sec-23-A-II-L",
+  "verdict": "FLAG",
+  "reason": "The summary claims the deciview equation is 'not shown in the available text,' but the text prints it verbatim: 'Deciview haze index=10 lne (bext/10 Mm-1)'.",
+  "corrected_summary": "\"Deciview\" means a measurement of visibility impairment: a haze index derived from calculated light extinction, such that uniform changes in haziness correspond to uniform changes in perception across the entire range from pristine to highly impaired. The deciview haze index is calculated using the equation Deciview haze index = 10 ln(bext/10 Mm\u207b\u00b9), where bext is the atmospheric light extinction coefficient, expressed in inverse megameters (Mm\u207b\u00b9) and calculated from aerosol measurements.",
+  "_slice": "23_01"
+ },
+ {
+  "id": "sec-23-A-V-A-1-b-(iii)-(B)",
+  "verdict": "FLAG",
+  "reason": "The summary says \"The equation itself is not shown in the available text,\" but the text does print the equation (\"Average ER = [(ER4)(HI4)+(ER5)(HI5)] / [(HI4)+(HI5)]\") immediately before the variable definitions.",
+  "corrected_summary": "The owner or operator of CENC Units 4 and 5 must calculate a combined 30-day rolling average NOx emission rate in pounds per MMBtu before the end of each operating day, using data from the previous 30 operating days, per the equation Average ER = [(ER4)(HI4)+(ER5)(HI5)] / [(HI4)+(HI5)]. ER4 is the average NOx emission rate for Unit 4 over the 30 operating days (averaging all valid hours), ER5 is the same for Unit 5, HI4 is the total heat input for Unit 4 over those 30 operating days, and HI5 is the total heat input for Unit 5. The owner or operator must indicate in the excess emission reports required by Section V.E. which compliance demonstration method was followed for the reporting period.",
+  "_slice": "23_02"
+ },
+ {
+  "id": "sec-23-B-I",
+  "verdict": "FLAG",
+  "reason": "The summary calls the whole list of units getting adopted closure dates \"coal-fired units,\" but that list includes \"ColoWyo Coal Mine,\" which the text names as a coal mine, not a coal-fired combustion unit.",
+  "corrected_summary": "This is a rulemaking history entry, not a current requirement. On December 16, 2020, the Commission moved the regional haze requirements from Regulation Number 3, Part F into the new Regulation Number 23, removed outdated provisions, and adopted closure dates for specific units (Cherokee Unit 4, ColoWyo Coal Mine, Comanche Units 1 and 2, Craig Units 2 and 3, Martin Drake Units 6 and 7, Nixon Unit 1, and Rawhide Unit 1) to meet federal regional haze goals for the second 10-year planning period. The statement explains the legal basis, purpose, and policy considerations behind that action but does not itself impose obligations on sources.",
+  "_slice": "23_02"
+ },
+ {
+  "id": "sec-28-A-III-KK",
+  "verdict": "FLAG",
+  "reason": "The summary states the natural gas supplier prong of \"qualifying utility\" requires \"5 or more active commercial and industrial connections,\" but the text reads \"a natural gas supplier with five or more active commercial or industrial connections\" \u2014 the text uses the disjunctive \"or\" (either type of connection qualifies), not the conjunctive \"and\" (both types required).",
+  "corrected_summary": "\"Qualifying utility\" means an electric or gas utility with 5,000 or more active commercial and industrial service connections, accounts, or customers in Colorado, including investor-owned utilities, cooperative electric associations, and municipally owned utilities. It also means a natural gas supplier with 5 or more active commercial or industrial connections, accounts, or customers in Colorado.",
+  "_slice": "28_01"
+ },
+ {
+  "id": "sec-28-D-II-A",
+  "verdict": "FLAG",
+  "reason": "The summary says \"whether the Division has approved any waivers, exemptions, extensions, or adjustments\" but the text just says \"any approved waivers, exemptions, extensions, or adjustments\" without naming an approving agency, and every other row in this slice establishes that CEO (not the Division) approves waivers, exemptions, extensions, and adjustments -- the Division only enforces, so attributing the approval to the Division gives a CEO duty to the Division.",
+  "corrected_summary": "When selling a covered building, the owner must disclose to the prospective buyer, before the sale, the building's compliance status -- including whether it is meeting its performance targets, any waivers, exemptions, extensions, or adjustments that have been approved for it, and any penalties that have been assessed.",
+  "_slice": "28_02"
+ },
+ {
+  "id": "sec-31-A-II-B",
+  "verdict": "FLAG",
+  "reason": "The text says the landfill \"must only comply with the requirement to install and operate a biofilter\" (i.e. this is its sole obligation under the regulation), but the summary drops \"only\" and reads as an ordinary duty, obscuring that this landfill class is otherwise exempt from the rest of Regulation 31.",
+  "corrected_summary": "The owner or operator of a municipal solid waste landfill that closed before November 8, 1987 and has a gas collection and control system installed must comply only with the requirement to install and operate a biofilter (following Part C, Sections III.C.1. through III.C.4. and III.D) when the gas control device at the landfill is removed or permanently shut down \u2014 no other requirement of this regulation applies to it.",
+  "_slice": "31_01"
+ },
+ {
+  "id": "sec-31-B-II-D-3",
+  "verdict": "FLAG",
+  "reason": "The text starts the 90-day monitoring clock \"after the methane generation rate report is required to be submitted to the Division\" (i.e. from the report's due date), but the summary changes this to \"after you submit the methane generation rate report,\" tying the deadline to the actual filing date instead of the required submission date.",
+  "corrected_summary": "If your landfill's methane generation rate is at least 664 metric tons (732 short tons) per year but less than 1,814 metric tons (2,000 short tons) per year, you must conduct quarterly surface emissions monitoring starting no later than 90 calendar days after the methane generation rate report is required to be submitted to the Division, using one of the approved monitoring methods listed in Part D, Sections I.A.1 through I.A.5, and following the requirements in Part D, Sections I.B, I.C, and I.D. Before April 1, 2027, if your landfill does not meet the applicability requirement in Part A, Section II.C, you may conduct surface emissions monitoring at 100-foot spacing, but on and after that date the requirements of Part D, Section I.B.2 apply. For monitoring under this section only, you must notify the Division at least 15 calendar days before each quarterly monitoring event with the planned monitoring date, and submit a surface emissions monitoring demonstration report within 30 calendar days after completing the quarterly monitoring (including any required re-monitoring), as described in Part H, Section II.A.3. Quarterly monitoring events must be separated by at least 15 calendar days unless the Division approves otherwise under Part G.",
+  "_slice": "31_01"
+ },
+ {
+  "id": "sec-31-B-II-D-3-a-(ii)",
+  "verdict": "FLAG",
+  "reason": "This row's own text is simply \"Meet the requirements of Part C to install and operate a gas collection and control system...\" (the second branch of the \"either/or\" begun in sibling clause (i)), but the summary instead prefaces it with the grandparent-level trigger (\"if any measured emissions meet or exceed the limits in Part D, Sections I.C.2. or I.D.2....\") rather than the actual governing condition \u2014 \"if re-monitoring shows a third exceedance\" \u2014 stated in (i), making the option appear available immediately upon any exceedance rather than only after a third exceedance following repair and re-monitoring.",
+  "corrected_summary": "If re-monitoring shows a third exceedance (as described in Part B, Section II.D.3.a.(i)), one option available to the owner or operator, instead of complying with Part B, Section II.D.2. within 180 calendar days, is to meet the requirements of Part C to install and operate a gas collection and control system and meet all other applicable requirements of this regulation.",
+  "_slice": "31_01"
+ },
+ {
+  "id": "sec-31-C-II-I-3-a-(i)",
+  "verdict": "FLAG",
+  "reason": "Summary conditions the unconditional \"Initiate corrective action within 5 calendar days of the measured temperature exceedance\" duty on the 76.7\u00b0C/1,000 ppmv threshold, when the text only conditions the 15-day completion deadline and 24-hour Division report on that threshold.",
+  "corrected_summary": "The owner or operator must initiate corrective action within 5 calendar days of any measured temperature exceedance. If the measured landfill gas temperature is 76.7\u00b0C (170\u00b0F) or higher and the carbon monoxide concentration (measured per Part I, Section V.A.6.) is 1,000 ppmv or higher, the corrective action must be completed within 15 calendar days of the exceedance and a high landfill gas temperature report must be submitted to the Division within 24 hours of the measurement. These 15-day completion and reporting deadlines do not apply if the Division has approved a higher operating temperature for that well.",
+  "_slice": "31_03"
+ },
+ {
+  "id": "sec-31-C-III-B-2-b",
+  "verdict": "FLAG",
+  "reason": "The text cites \"Part C, Section II.B.2.a.\" \u2014 a dangling/nonexistent citation (known source defect, likely meant III.B.2.a.) \u2014 but the summary silently rewrites it to \"Part C, Section III.B.2.a.\" and describes it as \"the comprehensive evaluation\" rather than reporting the citation as printed.",
+  "corrected_summary": "If the gas control device is unable to operate continuously after the requirements cited in Part C, Section II.B.2.a. have been met, the owner or operator must apply to the Division for approval to operate the gas collection and control system intermittently under Part G, Section I.A.1., and must continue operating the gas control device until the requirements in Part C, Sections III.B.3. through III.B.8. are met.",
+  "_slice": "31_03"
+ },
+ {
+  "id": "sec-31-H-I-A-2",
+  "verdict": "FLAG",
+  "reason": "The summary states \"The Division may review and must approve the supporting documentation,\" inventing a discretionary/optional \"may\" for review that the text does not support \u2014 the text says only that adequate supporting documentation \"is subject to Division review and approval,\" not that review is optional while approval is mandatory.",
+  "corrected_summary": "The owner or operator must keep records of the current amount of waste-in-place and the waste composition, along with supporting documentation that includes the waste characterization procedures and recordkeeping format used. This supporting documentation is subject to Division review and approval. These records must be kept for at least five years and provided to the Division upon request.",
+  "_slice": "31_04"
+ },
+ {
+  "id": "sec-4-B-I-A-11",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "A manufacturer is a person who builds a wood-burning stove or pellet stove, or who designs and builds masonry heaters or wood-burning fireplaces.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-13",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "Method 5G and Method 5H are test methods for determining particulate emissions from wood-burning heaters from dilution tunnel sampling and stack locations, as described in 40 CFR Part 60 Subpart AAA Appendix A (2004).",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-14",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "Method 28 is a test method for establishing certification test conditions and particulate matter weighted emission values, as described in 40 CFR Part 60 Subpart AAA, Appendix A (2004).",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-15",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "Method 28A is a test method to measure air-to-fuel ratios and minimum achievable burn rates, as described in 40 CFR Part 60 Subpart AAA, Appendix A (2004).",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-16",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "A model is a group of wood stoves, pellet stoves, wood-burning fireplaces, or masonry heaters that are identical in design, emissions, and heating performance.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-18",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "A pellet stove is a heater that (1) is not advertised or described by the manufacturer as burning cordwood, (2) is safety-listed for pellet fuel only, (3) has an operating manual stating that cordwood use is prohibited by federal law, and (4) is manufactured and sold with a hopper and auger combination as integral parts.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-20",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "Primary source of heat means one or more residential wood-burning stoves, pellet stoves, masonry heaters or wood-burning fireplaces that provide more than half the annual heating demands for the residence.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-22",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "A wood-burning appliance is any stove, fireplace, masonry heater, furnace, fire pit, fixture, or device used or intended to burn only clean, dry, untreated wood.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-23",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "A wood-burning fireplace is an appliance with an open hearth (no inserts, gas logs, or electric devices), is not a masonry heater, may or may not have air-controlling doors, is primarily built of masonry materials like brick, stone, or ceramic, and is installed in a dwelling or building for burning wood.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-24",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "A wood-burning stove is an appliance made mostly of metal that is designed to burn wood (including fireplace inserts) and is intended for heating a home or heating water in a home.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-4",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "A boiler is a solid wood-burning appliance used mainly to heat the space where it sits by circulating a heated gas or fluid through pipes, and it must be tested and listed as a boiler under accepted U.S. or Canadian safety testing codes.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-5",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "Burn down time is the period \u2013 no more than three hours after a high pollution day is declared \u2013 allowed for combustion to stop in any wood-burning stove, pellet stove, masonry heater or wood-burning fireplace under this regulation.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-8",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "An exempt device is a wood-burning device that does not meet EPA's definition of a wood-burning stove under 40 CFR Part 60 Subpart AAA (2015) and is also not a fireplace, masonry heater, or pellet stove as defined in this regulation.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-I-A-9",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "A furnace is a solid wood-burning appliance designed to sit outside normal living areas and heat other spaces by blowing heated air through ducts. It must be tested and listed as a furnace under accepted U.S. or Canadian safety codes.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-II-A",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "No one may advertise, offer to sell, sell, or install a new wood-burning stove in Colorado unless it has been tested, certified, and labeled under 40 CFR Part 60, Subpart AAA and meets the emission standards that follow in this section.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-II-A-1",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "Starting July 1, 1988, no one may advertise, offer to sell, sell, or install a new wood-burning stove in Colorado unless it meets the emission standards in 40 CFR Part 60, Section 60.532(b)(1) or (2) (1988).",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-II-A-2",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "Starting May 15, 2015, no one may advertise, offer to sell, sell, or install a new wood-burning stove in Colorado unless it meets the emission standards in 40 CFR Part 60, Section 60.532(a) (2015).",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-II-B-1",
+  "verdict": "FLAG",
+  "reason": "Summary invents the \"(State Only)\" tag (not printed here or in the II.B chapeau) and fabricates content not in the text: it parenthetically defines the \"certification requirement\" (Phase III Certified/exempt device/approved pellet stove/approved masonry heater) and adds \"whether the seller is inside or outside Colorado\" -- that inside/outside-Colorado language appears only in II.B.2 (sales), not II.B.1 (advertisements/offers), and the certification-requirement definition is not stated anywhere in this row's text.",
+  "corrected_summary": "Advertisements and offers to sell wood-burning stoves communicated by any means to anyone in Colorado -- including offers or ads mailed into Colorado -- must meet the certification requirement.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-II-B-2",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "The certification requirement applies to any sale of a new wood-burning stove that occurs in Colorado, including when a stove is shipped, delivered, or transported to someone in Colorado by a seller located inside or outside the state, and it covers both the initial sale and any later resale of a new stove.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-II-D",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "Starting January 1, 1993, no one may sell or install a used wood-burning device in the parts of Adams, Arapahoe, Boulder, Broomfield, Denver, Douglas, and Jefferson counties that fall within the AIR program area (as defined in \u00a7 42-4-304(20)(a) (2006), C.R.S.) unless the device meets the requirements in Section II.A.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-III-A",
+  "verdict": "FLAG",
+  "reason": "Summary invents the \"(State Only)\" tag (not printed in the text or the generic Section III chapeau) and adds the editorial gloss \"(This deadline has passed.)\" which does not appear in the text.",
+  "corrected_summary": "Before December 31, 2015, no one could advertise, offer to sell, sell, or install a pellet stove unless it had been designated as an approved pellet stove under Sections III.A. through III.F.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-III-B",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "On or after August 1, 1992, a pellet-stove manufacturer who wants a particular model line designated as an approved pellet stove must submit certain information to the Division for review.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-III-D",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "When someone applies for pellet-stove approval, the Division must tell the applicant within 20 working days whether the application is complete, and within 30 working days after receiving a complete application the Division must tell the applicant whether it satisfies all the requirements for approval.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-III-E",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "If the Division denies approval of a pellet stove, it must notify the applicant in writing that they have the right to a hearing before the Commission under \u00a7 24-4-104(9), C.R.S.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-III-F",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "The Division will approve a pellet stove if the manufacturer submits all the information required by Section III.A and the test results show particulate emissions do not exceed 4.1 grams per hour.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-III-G",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "Starting December 31, 2015, no one may advertise, offer to sell, sell, or install a pellet stove in Colorado unless it has been tested, certified, and labeled under 40 CFR Part 60, Subpart AAA (2015) and meets the emission standards that follow in the rest of this paragraph (the specific standards are not shown in the available text).",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-IX",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" though nothing in the text or this row's ancestry prints that label -- this row sits in the Section VII/VIII/IX high-pollution-day / named-jurisdiction scope, a different scope from the genuinely State-Only masonry-heater provisions of Section IV, and the two must not be averaged into one scope.",
+  "corrected_summary": "The local jurisdictions listed in the table must implement and enforce their high pollution day and construction ordinances as they existed on January 1, 1993, and any ordinance adopted under this regulation. If a jurisdiction amends its ordinance it must immediately submit the revision to the Commission and EPA as a State Implementation Plan revision. These ordinances remain in effect until the jurisdiction obtains full approval of a SIP revision.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-V-A",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "The Division may enter and inspect a manufacturer's or dealer's property to investigate actual, suspected, or potential violations of this regulation. At reasonable times, the Division may copy documents, inspect wood-burning stoves, stove components, pellet stoves, wood-burning fireplaces, or testing equipment, and test emissions from any of those appliances to determine compliance.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-VI",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" but neither this row's text nor its parent_chapeau prints that label -- only I.A.12, II.A.3, III.G.2, and Section IV (and its children) carry the printed \"(State Only)\" prefix in this regulation, and this row is outside all of those.",
+  "corrected_summary": "The Division will ask each dealer to make available to customers a list\u2014compiled by the Division\u2014of certified wood-burning stoves, exempt devices, approved pellet stoves, and approved masonry heaters.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-VII-A",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" though nothing in the text or this row's ancestry prints that label -- this row sits in the Section VII/VIII/IX high-pollution-day / named-jurisdiction scope, a different scope from the genuinely State-Only masonry-heater provisions of Section IV, and the two must not be averaged into one scope.",
+  "corrected_summary": "The use restrictions for wood-burning appliances on high pollution days apply only in parts of Adams, Arapahoe, Boulder, Broomfield, Denver, Douglas, and Jefferson counties that fall within the AIR program area as defined in \u00a7 42-4-304(20)(a) (2006), C.R.S., and only below seven thousand feet elevation.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-VII-B",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" though nothing in the text or this row's ancestry prints that label -- this row sits in the Section VII/VIII/IX high-pollution-day / named-jurisdiction scope, a different scope from the genuinely State-Only masonry-heater provisions of Section IV, and the two must not be averaged into one scope.",
+  "corrected_summary": "Local agencies may enforce the high pollution day provisions and are encouraged to create enforcement programs and enter into agreements with the State. Approval of a wood-burning stove or pellet stove under this regulation does not excuse anyone from complying with local ordinances or resolutions that govern installation or use of wood-burning appliances.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-VII-C",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" though nothing in the text or this row's ancestry prints that label -- this row sits in the Section VII/VIII/IX high-pollution-day / named-jurisdiction scope, a different scope from the genuinely State-Only masonry-heater provisions of Section IV, and the two must not be averaged into one scope.",
+  "corrected_summary": "This section does not apply in any municipality that already had an ordinance restricting the use of wood-burning stoves, pellet stoves, and wood-burning fireplaces on high pollution days as of January 1, 1990.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-VII-C-1",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" though nothing in the text or this row's ancestry prints that label -- this row sits in the Section VII/VIII/IX high-pollution-day / named-jurisdiction scope, a different scope from the genuinely State-Only masonry-heater provisions of Section IV, and the two must not be averaged into one scope.",
+  "corrected_summary": "If a municipality is exempt from the high pollution day restrictions because it had its own wood-burning ordinance in effect on January 1, 1990, it must submit a yearly report to the Commission by June 30 describing enforcement actions under that ordinance during the previous heating season.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-VII-D",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" though nothing in the text or this row's ancestry prints that label -- this row sits in the Section VII/VIII/IX high-pollution-day / named-jurisdiction scope, a different scope from the genuinely State-Only masonry-heater provisions of Section IV, and the two must not be averaged into one scope.",
+  "corrected_summary": "On a high pollution day, no one may operate a wood-burning stove, fireplace, furnace, fire pit, fixture, or device unless it is exempt under Section VII.E. A burn down time is allowed before enforcement begins. Using any fuel other than clean, dry, untreated wood in a wood-only appliance does not make it legal to use on a high pollution day.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-VIII-A",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" though nothing in the text or this row's ancestry prints that label -- this row sits in the Section VII/VIII/IX high-pollution-day / named-jurisdiction scope, a different scope from the genuinely State-Only masonry-heater provisions of Section IV, and the two must not be averaged into one scope.",
+  "corrected_summary": "Starting January 1, 1993, no one may install a fireplace in a dwelling in the area defined in Section VII.A. unless it is one of the types listed in the subsections that follow this paragraph.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-VIII-B",
+  "verdict": "FLAG",
+  "reason": "Summary prepends \"(State Only)\" though nothing in the text or this row's ancestry prints that label -- this row sits in the Section VII/VIII/IX high-pollution-day / named-jurisdiction scope, a different scope from the genuinely State-Only masonry-heater provisions of Section IV, and the two must not be averaged into one scope.",
+  "corrected_summary": "If a municipality or county had a provision in effect on January 1, 1993, that the Commission determines is substantially equivalent to Section VIII (fireplace installation requirements), then Section VIII does not apply in that jurisdiction.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-B-X",
+  "verdict": "FLAG",
+  "reason": "Summary tags the entire Section X rulemaking-history table \"(State Only)\", but the table lists revisions spanning the whole regulation (certification fees, wood-stove definitions, pellet-stove provisions, etc.), not only the masonry-heater State-Only entries -- the text nowhere prints \"(State Only)\" for this section as a whole.",
+  "corrected_summary": "Section X is a rulemaking-history table listing the dates on which the Commission adopted and the Division made effective various revisions to Regulation Number 4 from June 1985 through March 2017.",
+  "_slice": "4_01"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.5.10",
+  "verdict": "FLAG",
+  "reason": "The summary invents \"primary heat-transfer direction\" as the expansion of \"PHhd\"; the text here never defines PHhd, and elsewhere in this same document (sec-4-C-APPENDIX-A-5.5.5.2) it is defined as the \"Primary Horizontal Hearth Dimension\" \u2014 a different meaning, and the two rows' expansions even contradict each other.",
+  "corrected_summary": "(State Only) When loading kindling or test-fuel cribs into a masonry heater during laboratory testing, arrange the wood pieces so their lengths run parallel to the designated PHhd, as this test protocol requires.",
+  "_slice": "4_02"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.5.12.1.1",
+  "verdict": "FLAG",
+  "reason": "The summary invents \"primary heat-exchange device\" as the expansion of \"PHhd\"; the text does not define the abbreviation, and it actually means \"Primary Horizontal Hearth Dimension\" per sec-4-C-APPENDIX-A-5.5.5.2 \u2014 a different, and inconsistent, invented meaning from the one given in another row's summary for the same term.",
+  "corrected_summary": "(State Only) The first (bottom) layer of kindling for a masonry heater emissions test consists of two equal-length pieces of 0.75- by 1.5-inch lumber cut to match the length of the fuel crib, placed on their 0.75-inch edge on the hearth parallel to the PHhd.",
+  "_slice": "4_02"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.5.7.1",
+  "verdict": "FLAG",
+  "reason": "The summary glosses \"FCtw\" as \"the firebox test width,\" but the text does not define it in this row, and elsewhere in this document (sec-4-C-APPENDIX-A-5.5.5.8) FCtw is defined as the \"Target Fuel-Crib Width,\" not a firebox measurement.",
+  "corrected_summary": "(State Only) The number of fuel pieces in the bottom layer of the first fuel crib is calculated by a formula (Equation 5.5.7.1.1 or 5.5.7.1.2) that uses FCtw and a spacer placeholder, then rounded to the nearest whole number; when the result ends in .50, round up if the preceding integer is even and down if it is odd.",
+  "_slice": "4_02"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.3.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "If a masonry heater has an add-on emission control device in the flue or chimney downstream of the firebox, the primary ESS flue-gas sampling and temperature measurement points must be moved to immediately downstream of that control device, but still at least 6.0 effective flue diameters upstream from the flue exit to the atmosphere. That repositioned sampling location must meet the flue-gas stratification requirements of Section 5.7.5.2.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.3.1.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "If a masonry heater has an add-on emissions control device that burns additional fuel to operate, a real-time oxygen analyzer must be placed at the original primary ESS sampling location (upstream of the control device). The oxygen readings from that upstream analyzer are used to determine when to refuel, when the test is complete, and the air-to-fuel ratios during the test.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.4",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When preparing to test a masonry heater, place the room temperature probe on the same level as the heater's main air intake, 3 to 6 feet in front of the heater, within a 90-degree arc centered on the front face of the heater.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.5",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Before certification testing begins, operate the masonry heater under normal conditions for at least ten hours using the fuel described in Section 5.5. Record and report the hours of operation and the weight of all fuel burned during this aging, curing, and durability confirmation period.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.5.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Before certification testing, a masonry heater equipped with a catalyst or add-on emissions control device must be operated for at least 50 hours using the fuel described in Section 5.5. During those 50 hours, you must record and report hourly catalyst temperatures, add-on emissions control equipment operating parameters, and the weight of all fuel burned.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.5.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "During the heat-aging and curing period, use the oxygen analyzer and sampling system from Section 5.3.14 to check whether flue gases stratify in the flue or chimney cross-section at the primary emissions sampling and temperature measurement location described in Section 5.7.3.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.5.2.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When checking for stratification of flue-gas oxygen concentrations in a masonry heater's flue or chimney, you must first sample at the center of the flue for at least 15 seconds but not more than one minute, then move the probe to within 1 inch of the flue wall for at least 15 seconds but not more than one minute. Repeat this procedure on at least two horizontal and perpendicular traverses of the flue cross-section. If the oxygen concentration at any sample point differs by more than 15% from the highest oxygen concentration measured at any of the other three cross-section sample points, the flue gas is considered stratified.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.5.2.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "If the oxygen check during heat-aging and curing shows that flue gases are stratified at the emissions sampling location, you must fix it by either redesigning the flue or chimney duct or by switching to sampling and temperature probes that equally and simultaneously sample the center of at least four separate and equal areas of the flue or chimney cross-section.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.6",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "A leak check of the emission sampling system (ESS) and any other alternative flue-gas sampling system must be performed within two hours before each test period begins. The text does not describe how the leak checks are to be performed \u2013 it says only that they \"shall be performed as follows\" but the steps are not shown in the available text.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.6.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Before each test period, seal the probe nozzles of each sampling system or train, use the pump controls to pull a vacuum greater than either twice the maximum vacuum seen during sampling or 5 inches of mercury (whichever is greater), and record the sample flow rate shown by the instrument flow meter at that vacuum, corrected for system pressure if applicable.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.6.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When you perform the leak check on the emission sampling system (ESS) or any alternative flue-gas sampling system before a test run, the leakage rate under vacuum must be less than 2% of the average sample flow rate \u2013 if it's 2% or higher, the test results don't count and you'll need to fix the leak and retest.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.7.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Within 72 hours before each test period, the XAD-2 cartridge must be processed as described in Section 5.8.14.2 to determine an XAD-2 resin blank. No XAD-2 resin blank that exceeds 2 mg per 25 gram batch of XAD-2 resin may be used for any test.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.7.7.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Within 72 hours before each test-burn, the ESS flow rate must be confirmed to within 0.0007 cubic feet (0.02 liters) per minute using the temperature-corrected critical orifice flow calibration curve and a standardized volumetric bubble-type flow meter.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "No fuel may be burned in the test masonry heater, and no other heating method may be used, for 12 hours before the test period begins.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.10",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Any controls for adjusting the masonry heater's combustion air supply may be adjusted only during the 10-minute test-fuel charging periods. If the heater has air supply controls, or if it cannot or is not meant to run at its lowest air supply setting, a permanent instruction label (as described in Section 3.4.4) must be prominently attached to the air supply control mechanism.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.11",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "If the masonry heater comes with heat-exchange blowers (standard or optional), they must be run during all test burns following the manufacturer's or builder's written consumer instruction manual; if no manual is available, run the blower on high or maximum (automatically operated blowers run as designed). Shaker grates, bypass controls, afterburners, or other auxiliary equipment may be adjusted only once per test-fuel charge and only according to the manufacturer's or builder's written instructions. All adjustments to auxiliary equipment during the test must be recorded and reported.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.12",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "A test period (three fuel-crib test-burn) is complete and all sampling and temperature measurements stop at the end of the first five-minute interval after the flue-gas oxygen concentration (measured by the ESS oxygen sensor) has recovered to at least 95% but not more than 97% of the maximum oxygen depression value from the third fuel charge. The ESS and any alternative flue-gas sampling systems must continue operating after test completion for a period equal to each sampling train's response time (determined in Section 5.6.8.1).",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.12.1",
+  "verdict": "FLAG",
+  "reason": "Summary invents \"(State Only)\" (not in text) and also states the test \"ends at the end of the first five-minute interval after\" CO2+CO recovery \u2014 that five-minute-interval framing appears only in the separate provision Section 5.8.12 (the oxygen-based criterion), not in this row's own text, which states only that completion \"shall occur only after\" CO2+CO has recovered to 3-5%.",
+  "corrected_summary": "Instead of watching oxygen levels to decide when a test is finished, you may watch the combined carbon dioxide plus carbon monoxide (CO2 + CO) concentration in the flue gas: test completion occurs only after flue-gas CO2 + CO concentrations have recovered (decreased) back down to at least 3% but not more than 5% of the maximum CO2 + CO value from combustion of the immediately previous kindling or test-fuel charge. After the test ends, keep the emission sampling system and any alternative sampling systems running for a period equal to each system's response time (determined under Section 5.6.8.1).",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.13.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Within 10 minutes after finishing a test run, you must use a low-velocity anemometer to measure and record the air velocity within 2 feet of the masonry heater being tested. That air velocity must not exceed 50 feet per minute (15 meters per minute) when the heater is not operating.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.13.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Within 5 minutes after the test ends, remove and weigh the remaining coals, unburned fuel, and ash to the nearest 0.1 pounds (0.05 kg); subtract that weight from the total test-burn fuel weight when calculating the burn rate. A test-burn is invalid if less than 90% of the total test-fuel charges plus kindling weight has been consumed in the firebox.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.13.4",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Within one hour after finishing a masonry heater emissions test, the emission sampling system (ESS) must be leak-checked at the highest vacuum level that occurred during the test. The leak rate cannot exceed 2 liters per hour at that vacuum level.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.13.5",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "After a test burn is finished but before the emission sampling system (ESS) is taken apart for sample recovery and cleanup, the laboratory must measure the critical-orifice flow rate again. If the pre-test and post-test flow rates differ by more than 0.0007 cubic feet (0.02 liters) per minute, the test-burn emissions results are invalid.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.14.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The glass-fiber filter from the ESS filter housing must be removed, placed in a Petri dish, and processed for desiccation and gravimetric analysis following EPA Method 5 protocols (40 CFR Part 60, Appendix A). This is part of the laboratory test protocol for measuring masonry heater emissions.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.14.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When processing the XAD-2 sorbent-resin cartridge from an ESS particulate emissions sample, extract its contents in a Soxhlet extractor with dichloromethane for 24 hours, transfer the solution to a clean tared glass beaker, evaporate it in a filtered-air dryer at ambient laboratory conditions, then desiccate the beaker with dried residue to constant weight (less than 0.5 mg change within a 2-hour period) and weigh the dry dichloromethane-extractable residues to the nearest 0.1 mg. Follow EPA Method 5 procedures (40 CFR Part 60, Appendix A) for desiccation and weighing-time intervals when processing the ESS XAD-2 emissions residues.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.14.2.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When you extract the emissions residue from the XAD-2 cartridge using dichloromethane solvent, you must run a blank test to measure any background contamination from the solvent itself, then subtract that blank value from your total measured residue to get the true emissions number.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.14.3",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "After each test run, all hardware in the flue-gas sample stream \u2013 the stainless-steel probe, heated sampling line, filter holder, and all Teflon and stainless-steel fittings down through the top of the sorbent-resin cartridge \u2013 must be cleaned with a 50/50 dichloromethane\u2013methanol solvent mixture. The dissolved emissions residue and cleaning solvent must be placed in pre-weighed glass beakers, evaporated in an ambient-air dryer, dried to constant weight (less than 0.5 mg change within two hours), and weighed to the nearest 0.1 mg.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.14.3.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "For each solvent used to clean the emission sampling system components, you must measure a blank value (the amount of residue the solvent itself contributes) and subtract that blank from the total measured emissions residue.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.14.4",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "If ESS samples cannot be processed within two hours after a test is finished, the stainless-steel sampling probe, heated sampling line, filter holder, and XAD-2 sorbent-resin cartridge must be removed from the ESS, placed in a container that keeps them below 50\u00b0 F (10\u00b0 C), and transported to or stored in the laboratory for processing within 48 hours.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.14.5",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "For each complete test period, the ESS must catch at least 5 mg of total particulate material or sample at least 10 cubic feet (275 liters) of flue gases. If that volume cannot be sampled in the test-burn time period, two ESS samplers must be used simultaneously; if their emissions-factor results differ by more than 10% of the higher result, the test-burn is invalid, but if they are within 10% an arithmetic average is calculated.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.14.6",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Before and after analyzing samples from each test period, calibrate combustion-gas analyzers using a three-point procedure: stabilize the instrument per the manufacturer's instructions, zero it with zero gas at normal flow and span it with high-range calibration gas, then introduce zero and mid-range calibration gases and record the responses, and finally calculate and plot a linear least-squares calibration curve (forcing it through the origin if necessary).",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.14.7",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "For the ESS (and any alternative flue-gas sampling system), calculate the average sampling rate over the entire test period using the data recorded under Section 5.8.5, then calculate how much each individual recorded rate deviates from that average. The sampling rate is valid if the average magnitude of all deviations is less than 5% and no single deviation exceeds 10%.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.2.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Before starting a test, use an anemometer to measure and record the air velocity within 2 feet of the masonry heater's air supply duct intake or fuel loading door within one hour before the test begins. The air velocity at those locations must be less than 200 feet per minute (61 meters per minute). During the test, you cannot use fans or other external means to change air velocities within 2 feet of the heater being tested.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.2.3",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "At least one hour before starting a test run, close all air controls and the heater door(s); after that hour and within five minutes before opening the door to light the test fire, measure and record the flue-gas temperature at the sampling location (or upstream of any emission control device, as described in Section 5.7.3).",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.3",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When starting a test burn in a masonry heater, you may use only a match (no torches or other devices), with or without paper and/or kindling. You must finish loading the test fuel and complete any manufacturer or builder start-up steps within 10 minutes of starting the test. Before igniting the fuel charge, you may need to establish a working flue draft (at least 0.02 inches of water column measured at the 8-foot sampling level) by first burning paper and/or kindling so combustion gases exit properly through the chimney rather than out the loading door; the weight of that paper and kindling does not count as part of the fuel load. Test measurements and sampling must begin within 15 seconds of when flue-gas temperature reaches 25\u00b0F above the pre-test flue-gas temperature.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.4",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Flue-gas sampling must begin after the kindling and fuel are lit and within 15 seconds of when the flue-gas temperature at the center of the flue or chimney (or upstream of an emissions control device as provided in Section 5.7.3) reaches 25\u00b0F (14\u00b0C) above the pre-test flue-gas temperature measured in Section 5.8.2.3.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.5",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Once sampling and temperature measurements begin at test start (zero time), you must take readings and record data at 5-minute intervals without interruption until the test ends under Section 5.8.12. Parameters to measure include oxygen in the emissions sampling system (or alternatively real-time CO\u2082 plus CO), temperatures at multiple points (flue-gas sample line if used, heated filter, cooled XAD-2 cartridge, moisture trap, critical orifice), all sampling rates in the flue-gas train, vacuum across the critical orifice, and draft pressure at the primary sampling location.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.6",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "During all test periods, the heated sample line and the glass-fiber filter and holder must be kept between 200 and 250 degrees Fahrenheit, and the XAD-2 cartridge and moisture condensate trap must be kept between 35 and 40 degrees Fahrenheit.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.8",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When testing a masonry heater, you may add the next test-fuel charge only after the flue-gas oxygen level has recovered to at least 70% but not more than 80% of the maximum oxygen drop caused by the previous fuel charge, using 20.9% as the baseline ambient oxygen level.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.8.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When testing a masonry heater, you may use carbon dioxide plus carbon monoxide (CO\u2082 + CO) concentration recovery as an alternative to the oxygen-recovery method for deciding when to add the next test-fuel charge. If you use this alternative, add the next test-fuel charge only after the flue-gas CO\u2082 + CO concentration has dropped back to at least 30% of the peak CO\u2082 + CO value from the previous charge.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.8.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "If the coal bed left after the flue-gas oxygen has recovered to at least 70% of the previous maximum oxygen depression does not look sufficient to restart the next test-fuel charge within the allowed 10-minute fuel-loading period, newspaper and/or kindling may be added and the test-fuel charge repositioned to help ignite the added test fuel.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.8.2.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "If you need to add newspaper or kindling to restart the next test-fuel charge because the coal bed is too small, you must finish loading everything\u2014the newspaper, kindling, and the entire test-fuel charge\u2014within 10.0 minutes from when you put the first piece of test fuel into the firebox. Weigh all the newspaper and kindling to the nearest 0.1 lb (0.05 kg), record it, and add that weight to the total test-fuel weight.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-5.8.9",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "During each test-fuel charge, you may adjust (reposition) the fuel one time, but the adjustment must take 20 seconds or less.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-6.0",
+  "verdict": "FLAG",
+  "reason": "Summary invents \"(State Only)\" (not in text or parent) and invents an actor \u2014 text uses passive voice (\"data sheets... shall be reviewed\") and never says \"the Division\" performs the review.",
+  "corrected_summary": "After a masonry heater test is complete, data sheets are reviewed for completeness and proper equipment operation, and the data sheets, log books, chain-of-custody records, and field and laboratory records are reviewed to ensure sample integrity. The test period data sheets are then used with the ESS particulate samples and flue-gas sample analyses to calculate the test-period burn rate and the particulate emissions factor.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-6.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The total test-period sampling time in minutes is calculated by multiplying the 5-minute data-recording cycle by the number of whole cycles that occurred from when the flue-gas temperature first exceeded 25\u00b0F above the pre-test temperature (test start) until the flue-gas oxygen recovery from the third fuel charge reached 95\u201397% (test end). The equation itself is not shown in the available text, only the variable definitions.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-6.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "Burn rate is the dry weight of all fuel (including spacers and kindling) added during the test-burn period, minus any unburned material and ash left at the end, divided by the total test time and multiplied by 60, giving kilograms per hour.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-6.3.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "This is the equation for calculating the ESS particulate emissions factor (EFESS) in grams per dry kilogram of fuel burned, using the average oxygen concentration measured in the flue gas during the test period; the equation itself and its variables are shown in the text, including total particulate mass collected, the ESS sampling rate, molar carbon content of the fuel, molar volume of ideal gases, test-period average oxygen percentage, and the sum of dry stoichiometric combustion products.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-6.3.1.1",
+  "verdict": "FLAG",
+  "reason": "Summary invents \"(State Only)\" (not in text) and wrongly states \"The equation itself is not shown in the available text\" when the text does print it in full: \"EFESS = (Pm x Fmcc x Mvs) / (ttt x Sr x (YCO2 + YCO))\".",
+  "corrected_summary": "This provision gives an alternate equation for calculating the ESS particulate emissions factor for masonry heaters using CO2 and CO measurements instead of oxygen: EFESS = (Pm x Fmcc x Mvs) / (ttt x Sr x (YCO2 + YCO)). YCO2 and YCO represent the test-period average molar fractions of carbon dioxide and carbon monoxide in the flue gases (each gas's percentage divided by 100). Multiplying the resulting emissions factor by the average burn rate gives the particulate emissions rate in grams per hour.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-6.3.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "This provision gives the equation to convert an ESS particulate emissions factor (EFESS, in grams per kilogram) into a Colorado EPA Method 5H\u2013equivalent emissions factor (CEFM-5). The equation is CEFM-5 = (0.247 + (0.232 \u00d7 EFESS) + (0.00491 \u00d7 EFESS\u00b2)), where EFESS comes from Section 6.3.1.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.0",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When you submit test results for a masonry heater seeking Colorado APCD approval, you must provide both the raw data and the reduced (processed) data from all tests. The Colorado APCD-accredited laboratory that performed the tests must verify and certify all test information and heater drawings you submit.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When submitting test data for a masonry heater seeking Colorado APCD approval, you must report the manufacturer, model (or model line or design), and serial number of the heater that was tested, along with the published installation and operating instructions.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.3",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When submitting test data for a masonry heater seeking Colorado APCD approval, you must report the calibration and audit results for the test-fuel scale, test-fuel moisture meter, analytical balance, and sampling equipment (including volume metering systems and flue-gas analyzers).",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.5",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When submitting particulate emissions data for a masonry heater tested for Colorado APCD approval, you must report a summary of all test-burn results and the arithmetically averaged emission factor for the test-burns used for approval. You must also submit copies of all data sheets and other records collected during testing. If your calculations are not in the format shown in Section 6.0 of this test protocol, you must submit examples of all calculations performed.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.1.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The test report must identify the masonry heater by manufacturer, model name or number, whether it is catalytic or non-catalytic, any emissions control equipment, and any optional equipment, and must include a copy of the heater's installation and operation manuals.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.1.3",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The test report must include the name, address, phone, email, website (if any), and contact information for the Colorado APCD-approved laboratory that performed the testing, plus the names of all test personnel who conducted the test, and copies of the accreditation certificates required by Section 4.1 must be placed in an appendix to the report.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.1.4",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The test report must include when the masonry heater was received (if factory-built) or when construction was finished (if site-built), the date of each test, the sampling methods used, a description of each heater configuration tested as required in Section 5.2, and the number of test burns conducted for each configuration.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.1.5",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "If you deviate from the test method or the masonry heater operating protocol during testing, the report must fully describe the deviation, explain why it was necessary, and document all communications with the Colorado Air Pollution Control Division to get approval for it.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.2.1",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The laboratory test report must include a table showing, for each test burn: the test-burn ID number, the masonry heater configuration, the burn rate, and the particulate emission factor expressed in U.S. EPA Method 5H equivalents. An example table format is provided in Figure 7.6.2.1.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.2.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The test report must include a summary of test facility conditions, average masonry heater surface temperatures, average catalyst temperatures, test-fuel charge weights, average draft pressure measured, and test-burn durations.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.3.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The test report must include laboratory-certified verification of the heater's construction or assembly drawings and photographs that show air supply locations and controls, combustion air pathways, refractory materials and dimensions, catalyst location (if any), and baffle or by-pass configurations and controls.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.3.3",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "If the masonry heater you are submitting for Division approval uses add-on emissions control equipment or a catalytic device to reduce emissions, you must provide a list of brand names and sources for all heater components, plus a complete description of each component including drawings, photographs, and the materials used to make them.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.3.5",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The test report must include the properties of the fuel used in the test: the volume, weight, and average dry-basis moisture content of each fuel load, plus photographs of the kindling crib and each fuel load crib.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.5",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When you submit a test report for a masonry heater, include a brief reference to the operational and sampling procedures you used, any optional or alternative procedures, and details of any parts that differed from the prescribed methods (for example, alternatives approved by the Colorado Air Pollution Control Division).",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.7.2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "When you submit a test report under Appendix A, you must include copies of all original data sheets \u2013 sampling records, parameter measurements, temperature records, sample recovery, burn-rate data, and masonry heater temperature data.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.7.7",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The test report must include copies of original records or logs of activities that are not already captured on the raw data sheets, such as the times when the masonry heater door was opened and how long it stayed open.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.7.8",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "The test report must include the masonry heater manufacturer's written operating instructions for the test periods and copies of the production-ready temporary and permanent labels required in Section 3.4.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.8-2",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "This is an example of how to format a reference citation in the test report for measuring masonry heater emissions \u2013 it shows the author names, year, title in quotes, who the report was prepared for, and the date.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.8-3",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "This is an example citation format showing how to list a reference in a masonry heater emissions test report \u2013 in this case, a 1990 study on pellet stove performance prepared for the U.S. Department of Energy.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-APPENDIX-A-7.6.8-4",
+  "verdict": "FLAG",
+  "reason": "Summary opens with \"(State Only)\" but that label is not printed anywhere in this row's text (or its parent); the brief confirms the printed \"(State Only)\" prefix appears only at I.A.2., I.A.12., II.A.3., III.G.2. and the Section IV heading, not on individual Appendix A test-protocol steps.",
+  "corrected_summary": "This is an example citation format for the references section of a laboratory test report under Appendix A; it shows how to cite a 1989 field-performance study of advanced woodstoves in Glens Falls, New York.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-XI-A",
+  "verdict": "FLAG",
+  "reason": "Summary tags the whole entry \"(State Only)\", but this November 19, 2015 history entry mainly concerns wood-burning-stove and pellet-stove provisions that the text says remain part of Colorado's PM10/CO SIP (federally enforceable); only the masonry heater piece is described as State Only, so a blanket \"(State Only)\" prefix misstates the scope of most of the entry.",
+  "corrected_summary": "This is the Commission's November 19, 2015 statement explaining why it revised Regulation 4 to update definitions, emission standards, certification and labeling requirements, and citation references for consistency with the revised 40 CFR Part 60 Subpart AAA (the federal new residential wood heater standards), which remain part of Colorado's PM10 and CO State Implementation Plans. The Commission updated the Subpart AAA citation for wood-burning stoves and fireplace inserts, kept the 4.1 grams per hour emission standard for pellet stoves, required pellet stoves sold or installed after the federal Step 2 compliance date to meet that future federal standard, and separately clarified that the masonry heater provisions (unlike the wood/pellet stove provisions) are State Only, not part of the SIP. The Commission found that without these revisions, Regulation 4 would effectively prohibit the sale and installation of wood-burning stoves in Colorado after December 31, 2015, because stoves meeting the old 1988 federal standard would no longer be available, and would also prohibit testing of pellet stoves and masonry heaters due to revised federal laboratory accreditation requirements.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-4-C-XI-B",
+  "verdict": "FLAG",
+  "reason": "Summary's \"(State Only)\" prefix mischaracterizes this entry: the text says the restored \"new wood stove\" definition and its testing/certification/labeling requirements apply \"state-wide\" as part of the EPA-approved SIP; the text's only mention of \"State Only\" is an aside about a different, earlier withdrawn revision concerning masonry heaters, not the subject of this entry.",
+  "corrected_summary": "This is a rulemaking-history entry from March 16, 2017 explaining why the Commission re-added a definition of \"new wood stove\" to Regulation Number 4 and clarified that certification, testing, and labeling requirements apply statewide to new wood stoves but only within the Program Area to used wood stoves. The Commission had removed the \"new wood stove\" definition in 2006 for clarity, but state law requires the definition and the EPA-approved SIP still contained it, so the Commission restored it for consistency.",
+  "_slice": "4_03"
+ },
+ {
+  "id": "sec-proc-A-III",
+  "verdict": "FLAG",
+  "reason": "The summary adds \"Part A of the Procedural Rules\" to describe the scope of the definitions; the row's own text reads only \"The definitions of terms used in these regulations shall be in accordance with the Act, the APA, and other applicable regulations of the Commission unless the context requires otherwise\" and never prints \"Part A\" -- batch rule 12 flags any summary that names a part on a row that does not itself print one.",
+  "corrected_summary": "Section III defines the terms used in these regulations in accordance with the Act (\u00a7 25-7-101 et seq., C.R.S.), the APA (\u00a7 24-4-101 et seq., C.R.S.), and other applicable Commission regulations, unless the context requires otherwise.",
+  "_slice": "proc_01"
+ },
+ {
+  "id": "sec-proc-A-V-E-4-b",
+  "verdict": "FLAG",
+  "reason": "The summary states the alternate-proposal proponent is proposing an alternative \"to a rule or revision the Division has put forward,\" but the text says only \"a proposed rule or revision\" and never attributes the underlying proposal to the Division (elsewhere, e.g. V.E.13, proposed rules can originate from a petitioner).",
+  "corrected_summary": "Anyone who wants to propose an alternative to a proposed rule or revision must file the alternative rule text and all the documents listed in V.C.3.a. through V.C.3.k. by the date in the rulemaking notice (or at least 20 days before the hearing if the notice doesn't say), and must file the final economic analysis at least five working days before the hearing. The Commission will consider the alternative only if its subject matter is consistent with and fits within the scope of the notice for that rulemaking. Filing a complete, timely alternate proposal automatically gives you party status, but missing the deadlines may delay or continue the hearing.",
+  "_slice": "proc_02"
+ },
+ {
+  "id": "sec-proc-A-V-F-7",
+  "verdict": "FLAG",
+  "reason": "The summary adds \"(\u00a7 25-7-101 et seq., C.R.S.)\" and \"(\u00a7 24-4-101 et seq., C.R.S.)\" as the citations for \"the Act\" and \"the APA,\" but this provision's text says only \"consistent with the Act and the APA\" and never prints those section numbers.",
+  "corrected_summary": "In any rulemaking hearing, the Commission (or the presiding Commissioner or, where appropriate, the Hearing Officer) may administer oaths, issue subpoenas, control the hearing schedule and location, set filing deadlines, take or order depositions, and issue orders governing how the proceeding will proceed, along with any other action authorized by agency rule that is consistent with the Act and the APA.",
+  "_slice": "proc_02"
+ },
+ {
+  "id": "sec-proc-A-VI-D-2-c",
+  "verdict": "FLAG",
+  "reason": "The summary calls this \u201cthe first step in the order of presentation,\u201d but the text is lettered item (c), following items (a) and (b) (VI.D.2.b., the prehearing-order description, precedes it) \u2014 the text never says this motion-consideration step is first, and the lettering contradicts that claim.",
+  "corrected_summary": "As one of the steps in the order of presentation at an adjudicatory hearing, the Commission will take up any remaining dispositive motions or other motions allowed by the prehearing order, including any party's appeal to the Commission of the prehearing order or other rulings of the Hearing Officer.",
+  "_slice": "proc_03"
+ },
+ {
+  "id": "sec-proc-B-III",
+  "verdict": "FLAG",
+  "reason": "The summary says these definitions are \u201cthe terms used in Part B,\u201d but the row's own text reads only \u201cThe definitions of terms used in these regulations are in accordance with the Act, the APA, and other applicable regulations of the Commission unless the context requires otherwise\u201d \u2014 it never prints \"Part B\", and the brief instructs flagging any proc summary that names a part on a row that does not itself print one.",
+  "corrected_summary": "This section says that the definitions of terms used in these regulations follow the Act, the APA, and other applicable Commission regulations, unless the context requires otherwise.",
+  "_slice": "proc_03"
+ },
+ {
+  "id": "sec-proc-B-V-B-10-b",
+  "verdict": "FLAG",
+  "reason": "The summary states \"The Division must publish the amended notice...\" but the text names no actor at all \u2014 it says only \"Notice thereof will be made in the same manner as the original notice and must be published in the Colorado Register\" \u2014 so attributing the publication duty specifically to the Division is an invented actor not stated in the text.",
+  "corrected_summary": "If an amended rulemaking notice contains substantial changes that would be prejudicial, the Commission will reschedule the hearing to a new date it determines is appropriate. Notice of the change will be made in the same manner as the original notice, including publication in the Colorado Register consistent with Colorado statutes, and on the Commission's website.",
+  "_slice": "proc_04"
+ },
+ {
+  "id": "sec-proc-B-V-D-3-b",
+  "verdict": "FLAG",
+  "reason": "The summary states \"the Division\" must file the Revised Proposal and Response to Initial Comments, but the text names no filer at all (\"The deadline for filing a Revised Proposal and Response to Initial Comments will be established in the notice of proposed rulemaking\"), and the surrounding rows (V.D.3.a and V.D.3.c) make clear it is the Proponent, not the Division, who files it.",
+  "corrected_summary": "The deadline for filing a Revised Proposal and Response to Initial Comments will be established in the notice of proposed rulemaking.",
+  "_slice": "proc_04"
+ },
+ {
+  "id": "sec-proc-B-VI-I-6-a",
+  "verdict": "FLAG",
+  "reason": "The text says the Commission shall act \"No fewer that fifteen days after the petition has been received\" (a floor, i.e., not sooner than 15 days), but the summary inverts this into \"Within fifteen days after receiving a petition ... the Commission must grant the request,\" turning a minimum-wait requirement into a maximum deadline.",
+  "corrected_summary": "No fewer than fifteen days after receiving a petition that appeals a Division determination or compliance schedule under \u00a7 25-7-109.3(3)(a)(IV), C.R.S., the Commission must grant the request and schedule a hearing to be held within ninety days of when the petition was received.",
+  "_slice": "proc_06"
+ },
+ {
+  "id": "sec-proc-B-XII-I",
+  "verdict": "FLAG",
+  "reason": "The summary states the Commission \"directed staff to update guidance and templates by the end of February 2025,\" but the text's February 2025 date is when the Division and Commission staff must begin taking public comment on the revised AQCC Guidance, not a deadline for completing the guidance update itself (which the text states with no deadline).",
+  "corrected_summary": "This is a rulemaking-history section documenting the Commission's December 18, 2024 adoption of a major overhaul of its Procedural Rules. The Commission reorganized the regulation into Part A (old rules for petitions filed before August 1, 2025) and Part B (new rules for petitions filed on or after August 1, 2025), and directed the Division to propose repealing Part A in 2026. The revisions aim to increase public participation, improve transparency, and modernize rulemaking procedures\u2014including new pre-petition outreach requirements, a \"Redlines\" process for proposing changes, revised timelines (typically four months from Rulemaking Request to hearing), mandatory party engagement through Initial Comments, and limits on when substantive changes can be made. The section also explains changes to hearing procedures, public-comment time (three minutes per person unless the crowd is too large), Environmental Justice Act outreach for all proponents, and clarifications to operating-permit procedures to align with EPA review requirements. The Commission directed Division and Commission staff to update the AQCC Rulemaking Guidebook and related forms, and to begin taking public comment on the revised guidance no later than the end of February 2025, with progress reported to the Commission at general meetings.",
+  "_slice": "proc_06"
+ }
+]
