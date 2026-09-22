@@ -104,11 +104,38 @@ Two distinct causes are mixed together here:
 
 All eleven general permits are fully current; they need nothing.
 
-## For the next batch
+## Cleanup executed — September 22, 2026
 
-The Colorado corpus is now current on cross-links for the fifteen documents
-re-linked in Batch 7. Reg 3, 6, 8 and 22 are not, and are the scope of the
-cleanup pass.
+The backlog above was cleared. Reg 3, 6, 8 and 22 were re-linked sequentially
+(`execute=true`, no `regenerate_summaries`, no `embed`). Every rehearsal matched
+the predicted count exactly, every change was markup-only, and all four ran
+0 new / 0 obsolete / 0 visible-text changes with three sanity checks PASS.
+
+| doc | changed rows | rehearsal run | execute run |
+|---|---|---|---|
+| Reg 3 | 73 | 35675179600 | 35675586695 |
+| Reg 8 | 29 | 35675376045 | 35675960091 |
+| Reg 6 | 15 | 35675303770 | 35675840237 |
+| Reg 22 | 11 | 35675501957 | 35676159046 |
+| **total** | **128** | | |
+
+Anchors added, confirmed in the database after execution:
+
+- **Reg 3** — cp ×51, Reg 8 ×22, proc ×19, Reg 6 ×18, Reg 2 ×11, Reg 23 ×8,
+  Reg 1 ×7, Reg 9 ×4, Reg 30 ×3, Reg 24 ×2, Reg 15 ×1, Reg 25 ×1
+- **Reg 8** — proc ×31
+- **Reg 6** — proc ×15
+- **Reg 22** — Reg 27 ×7, proc ×6, cp ×1, Reg 24 ×1, Reg 25 ×1
+
+Every count matches the forecast exactly. A final parse-versus-database anchor
+diff across all four documents returns **zero remaining backlog**, and each
+document's parsed anchor multiset is now identical to its stored one.
+
+**The Colorado corpus is fully current on cross-links.** No document carries a
+backlog: the fifteen re-linked in Batch 7, these four, and the eleven general
+permits all match what the importer produces.
+
+## For the next batch
 
 When a future batch adds a document that existing regulations cite by name or
 number, build the re-link list from the parse rather than from a grep of the new
