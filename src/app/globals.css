@@ -1,25 +1,20 @@
 @import "tailwindcss";
 
+/* This site is light-only: there is no dark theme designed for it. Declaring
+   the color scheme keeps browser-rendered controls (inputs, selects, the
+   scrollbar) light on a phone that is set to dark mode.
+
+   Note for anyone adding colors here: Tailwind 4 puts its utilities in a
+   cascade layer, and UNLAYERED css outranks a layer. A bare `body { ... }`
+   rule in this file therefore beats `bg-zinc-50` / `text-zinc-900` on <body>
+   in layout.tsx. That is what made the whole site render near-black and
+   unreadable in dark mode. Set page colors with utilities in layout.tsx, or
+   wrap any rule you add here in `@layer base`. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
