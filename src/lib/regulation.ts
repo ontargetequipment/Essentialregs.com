@@ -661,13 +661,53 @@ export function escapeHtml(s: string): string {
 }
 
 /**
+ * True when a provision's own text already opens with its citation, so
+ * re-inserting the badge would print the label twice.
+ *
+ * The digit guard is load-bearing, not redundant — do not "simplify" it away.
+ * Measured against the live corpus on 2026-09-22: of the 5,941 rows that open
+ * with their citation, 298 have citations of three characters or fewer ("1.",
+ * "3.", "I.", "V.", "IX."). Without the guard a citation of "2." would match
+ * text reading "2.5 tons per year" and strip a label that was needed. No row
+ * in the corpus today is followed by a digit, so the guard changes nothing
+ * now; it is here so a future import cannot introduce that silently.
+ *
+ * A following space is deliberately NOT required. 76 rows run the citation
+ * straight into the body — "Additional SpecificationsThe useful life of…",
+ * "Table 1 to Subpart IIII of Part 60—Emission Standards…", "Attachment A:
+ * 2/14/2024" — and those are genuine duplicates too.
+ */
+function textAlreadyOpensWithCitation(html: string, label: string): boolean {
+  const text = html
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text.startsWith(label)) return false;
+  return !/[0-9]/.test(text.charAt(label.length));
+}
+
+/**
  * Re-inserts the "I.B.4.a." style badge the importer stripped out of
  * full_text (it's stored separately as `citation` so the app can rebuild
  * navigation/search from structured data instead of scraping HTML). This
  * puts it back inside the opening <p> so it renders inline with the first
  * sentence, matching the original document's layout.
+ *
+ * The importer did not strip it from every row. 5,941 of 36,517 provisions
+ * (16.3%) still carry the citation at the start of their own text — every
+ * heading row and most short leaf items. Re-inserting the badge on those
+ * printed the label twice, and because they cluster at the top of each
+ * document the opening screen of a regulation read "PART A  PART A —
+ * Applicability…", "I.  I. Applicability", "I.A.  I.A." Those rows are
+ * skipped; the other 30,576 are unaffected.
  */
 export function withItemIdBadge(html: string, citation: string): string {
+  const label = citation.trim();
+  if (label && textAlreadyOpensWithCitation(html, label)) {
+    return html;
+  }
   const badge = `<span class="item-id">${escapeHtml(citation)}</span> `;
   const match = html.match(/^\s*<p[^>]*>/);
   if (match) {

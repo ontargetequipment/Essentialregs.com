@@ -202,9 +202,11 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                 className={`item depth-${depth}${isFedRoot ? " fed-block" : ""}`}
                 dangerouslySetInnerHTML={{
                   // promoteHeadingParagraph runs first so a promoted first
-                  // <p> still gets its citation badge (withItemIdBadge always
-                  // targets the first <p>, class attribute or not) -- see
+                  // <p> still gets its citation badge (withItemIdBadge targets
+                  // the first <p>, class attribute or not) -- see
                   // promoteHeadingParagraph's doc comment for the heuristic.
+                  // withItemIdBadge skips the badge entirely when a row's own
+                  // text already opens with its citation.
                   __html: `${withItemIdBadge(promoteHeadingParagraph(p.full_text), p.citation)}${summaryPanelHtml(p, root.source_url)}${containsBoxHtml(children)}`,
                 }}
               />
