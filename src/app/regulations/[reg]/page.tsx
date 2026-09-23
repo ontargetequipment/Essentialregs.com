@@ -7,8 +7,9 @@ import {
   escapeHtml,
   fetchRegulationProvisions,
   kindOf,
+  normalizeCitationLabel,
   promoteHeadingParagraph,
-  stripHtml,
+  snippetAfterCitation,
   summaryPanelHtml,
   withItemIdBadge,
 } from "@/lib/regulation";
@@ -62,7 +63,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
         <div id="sidebar-header">
           <div className="brand-eyebrow">Cross-Referenced Reader</div>
           <h1>{root.citation}</h1>
-          <p>{stripHtml(root.full_text, 160)}</p>
+          <p>{snippetAfterCitation(root.full_text, root.citation, 160)}</p>
         </div>
         <div id="jump-wrap">
           <input
@@ -87,12 +88,24 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
             return topLevel.map((node, i) => {
               const kind = kindOf(node.id);
               if (kind === "appendix") {
+                // node.title is frequently just the bare citation itself, in
+                // which case snippetAfterCitation has nothing left to show and
+                // falls back to returning the citation label unchanged (see
+                // its own empty-strip fallback) -- fall through to full_text
+                // in that case instead of printing the citation twice.
+                const titleSnippet = node.title
+                  ? snippetAfterCitation(node.title, node.citation, 60)
+                  : "";
+                const appendixSub =
+                  titleSnippet && titleSnippet !== normalizeCitationLabel(node.citation)
+                    ? titleSnippet
+                    : snippetAfterCitation(node.full_text, node.citation, 60);
                 return (
                   <div className="nav-part" key={node.id}>
                     <a href={`#${node.id}`} className="nav-link nav-part-link">
                       {node.citation}
                     </a>
-                    <div className="nav-part-sub">{stripHtml(node.title || node.full_text, 60)}</div>
+                    <div className="nav-part-sub">{appendixSub}</div>
                   </div>
                 );
               }
@@ -102,7 +115,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                   <a href={`#${node.id}`} className="nav-link nav-part-link">
                     {node.citation}
                   </a>
-                  <div className="nav-part-sub">{stripHtml(node.full_text, 60)}</div>
+                  <div className="nav-part-sub">{snippetAfterCitation(node.full_text, node.citation, 60)}</div>
                 </>
               );
               if (sections.length === 0) {
@@ -124,7 +137,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                     {sections.map((sec) => (
                       <li key={sec.id}>
                         <a href={`#${sec.id}`} className="nav-link">
-                          {sec.citation} {stripHtml(sec.full_text, 40)}
+                          {sec.citation} {snippetAfterCitation(sec.full_text, sec.citation, 40)}
                         </a>
                       </li>
                     ))}
@@ -200,6 +213,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                 key={p.id}
                 id={p.id}
                 className={`item depth-${depth}${isFedRoot ? " fed-block" : ""}`}
+                data-citation={p.citation}
                 dangerouslySetInnerHTML={{
                   // promoteHeadingParagraph runs first so a promoted first
                   // <p> still gets its citation badge (withItemIdBadge targets

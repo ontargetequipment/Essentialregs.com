@@ -158,6 +158,60 @@ export function stripHtml(html: string, maxLen = 100): string {
   return text.length > maxLen ? text.slice(0, maxLen).trimEnd() + "…" : text;
 }
 
+/**
+ * Normalize a citation for comparison against normalized provision text.
+ * The citation column can carry a non-breaking space (common when the source
+ * was pasted from a PDF — "§ 60.4231(d)"), a doubled space, or an HTML entity,
+ * none of which survive into the normalized text. Without this the comparison
+ * silently fails and the row keeps rendering its label twice.
+ */
+export function normalizeCitationLabel(citation: string | null | undefined): string {
+  return (citation ?? "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Plain-text snippet of a provision for places that already print its
+ * citation right next to it — the sidebar tree, the "contains" boxes and the
+ * jump/search index.
+ *
+ * 5,941 of 36,517 provisions are stored with the citation inside their own
+ * text, so those surfaces rendered it twice ("I.A.1.  I.A.1. The provisions
+ * of this regulation…"). The citation is removed BEFORE truncating, so the
+ * snippet still gets its full `maxLen` of useful text.
+ *
+ * Same digit guard as withItemIdBadge: a citation of "2." must not match text
+ * reading "2.5 tons per year". Do not drop it — see that function's comment
+ * for the measurements behind it.
+ */
+export function snippetAfterCitation(
+  html: string,
+  citation: string | null | undefined,
+  maxLen = 100
+): string {
+  const text = html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const label = normalizeCitationLabel(citation);
+  const stripped =
+    label && text.startsWith(label) && !/[0-9]/.test(text.charAt(label.length))
+      ? text.slice(label.length).replace(/^[\s.:;,\u2014\u2013-]+/, "")
+      : text;
+  // 90 rows in the corpus are exactly their own citation with no other text,
+  // so stripping the label above leaves "". An empty subtitle/snippet is
+  // worse than a repeated one, so fall back to the unstripped text.
+  const body = stripped || text;
+  return body.length > maxLen ? body.slice(0, maxLen).trimEnd() + "…" : body;
+}
+
 const PAGE_SIZE = 1000;
 
 /**
@@ -649,7 +703,12 @@ export function buildSearchIndex(all: Provision[]): SearchRow[] {
     return group;
   }
 
-  return all.map((p) => [p.id, p.citation, stripHtml(p.full_text, 90), topGroupOf(p)]);
+  return all.map((p) => [
+    p.id,
+    p.citation,
+    snippetAfterCitation(p.full_text, p.citation, 90),
+    topGroupOf(p),
+  ]);
 }
 
 export function escapeHtml(s: string): string {
@@ -678,10 +737,12 @@ export function escapeHtml(s: string): string {
  * 2/14/2024" — and those are genuine duplicates too.
  */
 function textAlreadyOpensWithCitation(html: string, label: string): boolean {
+  label = normalizeCitationLabel(label);
   const text = html
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
+    .replace(/\u00A0/g, " ")
     .replace(/\s+/g, " ")
     .trim();
   if (!text.startsWith(label)) return false;
@@ -832,7 +893,7 @@ export function containsBoxHtml(children: Provision[]): string {
         `<li><span class="xref contains-link" data-target="${escapeHtml(
           c.id
         )}">${escapeHtml(c.citation)}</span> <span class="contains-snip">${escapeHtml(
-          stripHtml(c.full_text, 90)
+          snippetAfterCitation(c.full_text, c.citation, 90)
         )}</span></li>`
     )
     .join("");

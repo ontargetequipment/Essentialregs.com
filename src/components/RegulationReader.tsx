@@ -46,6 +46,12 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
     function labelFor(el: Element): string {
       const idSpan = el.querySelector(".item-id");
       if (idSpan?.textContent) return idSpan.textContent.trim();
+      // Rows whose text already opens with their citation carry no
+      // .item-id badge (withItemIdBadge skips them), so read the citation
+      // back off the data attribute instead of falling through to the
+      // raw internal slug below.
+      const dataCitation = el.getAttribute("data-citation");
+      if (dataCitation) return dataCitation.trim();
       const h = el.querySelector("h1, h2");
       if (h?.textContent) return h.textContent.trim();
       return "";
