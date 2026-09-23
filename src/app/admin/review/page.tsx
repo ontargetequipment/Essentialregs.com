@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
-import { sanitizeHtml, stripHtml } from "@/lib/regulation";
+import { sanitizeHtml, stripHtml, titleWithoutCitation } from "@/lib/regulation";
 import { regKeyOf } from "@/lib/changelog";
 import { approveSummary, rejectSummary, saveEditAndApprove } from "./actions";
 
@@ -227,6 +227,7 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
           {rows.map((row) => {
             const reg = regKeyOf(row.id);
             const href = reg ? `/regulations/${reg}#${row.id}` : `/regs/${row.id}`;
+            const heading = titleWithoutCitation(row.title, row.citation);
             return (
               <li key={row.id} className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -243,7 +244,7 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
                     </span>
                   )}
                 </div>
-                {row.title && <p className="mt-0.5 text-sm text-zinc-600">{row.title}</p>}
+                {heading && <p className="mt-0.5 text-sm text-zinc-600">{heading}</p>}
 
                 <details className="mt-3 rounded-md bg-zinc-50 p-3">
                   <summary className="cursor-pointer text-xs font-semibold text-zinc-600">

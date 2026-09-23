@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { fetchRegulationTeaser, summaryParagraphs } from "@/lib/regulation";
+import { fetchRegulationTeaser, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
 import { ANNUAL_PRICE_DISPLAY } from "@/lib/pricing";
 
 // `reg` gets interpolated into a `like "sec-{reg}-%"` filter
@@ -21,9 +21,10 @@ export async function generateMetadata(
   if (!root) {
     notFound();
   }
+  const rootTitle = titleWithoutCitation(root.title, root.citation) || root.title;
   return {
     title: root.citation,
-    description: `${root.title} (${root.citation}) — structure and plain-English summaries on EssentialRegs. Subscribe for the full cross-referenced text.`,
+    description: `${rootTitle} (${root.citation}) — structure and plain-English summaries on EssentialRegs. Subscribe for the full cross-referenced text.`,
   };
 }
 
@@ -45,7 +46,13 @@ export default async function RegulationPreviewPage(
       <p className="text-xs font-mono uppercase tracking-wide text-emerald-700">
         {root.citation}
       </p>
-      <h1 className="mt-1 text-2xl font-bold text-zinc-900">{root.title}</h1>
+      {/* The citation is printed on its own line just above, so the <h1>
+          carries only what the title adds. When the title is nothing but the
+          citation, repeat the citation rather than ship an empty <h1> -- this
+          page is the public SEO surface. */}
+      <h1 className="mt-1 text-2xl font-bold text-zinc-900">
+        {titleWithoutCitation(root.title, root.citation) || root.citation}
+      </h1>
       {root.source_url && (
         <a
           href={root.source_url}
@@ -68,17 +75,20 @@ export default async function RegulationPreviewPage(
             What&apos;s inside
           </h2>
           <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-            {headings.map((h) => (
-              <li
-                key={h.id}
-                className="rounded-md border border-zinc-200 bg-white px-4 py-3 text-sm"
-              >
-                <span className="block font-mono text-xs uppercase tracking-wide text-emerald-700">
-                  {h.citation}
-                </span>
-                <span className="mt-0.5 block text-zinc-700">{h.title}</span>
-              </li>
-            ))}
+            {headings.map((h) => {
+              const heading = titleWithoutCitation(h.title, h.citation);
+              return (
+                <li
+                  key={h.id}
+                  className="rounded-md border border-zinc-200 bg-white px-4 py-3 text-sm"
+                >
+                  <span className="block font-mono text-xs uppercase tracking-wide text-emerald-700">
+                    {h.citation}
+                  </span>
+                  {heading && <span className="mt-0.5 block text-zinc-700">{heading}</span>}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
@@ -89,25 +99,28 @@ export default async function RegulationPreviewPage(
         </h2>
         {summaries.length > 0 ? (
           <div className="mt-4 flex flex-col gap-4">
-            {summaries.map((s) => (
-              <div
-                key={s.id}
-                className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm"
-              >
-                <p className="text-xs font-mono uppercase tracking-wide text-emerald-700">
-                  {s.citation}
-                </p>
-                <p className="mt-1 font-semibold text-zinc-900">{s.title}</p>
-                {summaryParagraphs(s.ai_summary ?? "").map((para, i) => (
-                  <p
-                    key={i}
-                    className="mt-2 text-sm leading-relaxed text-zinc-600"
-                  >
-                    {para}
+            {summaries.map((s) => {
+              const heading = titleWithoutCitation(s.title, s.citation);
+              return (
+                <div
+                  key={s.id}
+                  className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm"
+                >
+                  <p className="text-xs font-mono uppercase tracking-wide text-emerald-700">
+                    {s.citation}
                   </p>
-                ))}
-              </div>
-            ))}
+                  {heading && <p className="mt-1 font-semibold text-zinc-900">{heading}</p>}
+                  {summaryParagraphs(s.ai_summary ?? "").map((para, i) => (
+                    <p
+                      key={i}
+                      className="mt-2 text-sm leading-relaxed text-zinc-600"
+                    >
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         ) : (
           <p className="mt-4 text-sm text-zinc-500">

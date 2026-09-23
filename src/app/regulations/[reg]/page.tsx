@@ -7,7 +7,6 @@ import {
   escapeHtml,
   fetchRegulationProvisions,
   kindOf,
-  normalizeCitationLabel,
   promoteHeadingParagraph,
   snippetAfterCitation,
   summaryPanelHtml,
@@ -54,6 +53,9 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
   const depthCache = new Map<string, number>();
   const searchIndex = buildSearchIndex(all);
   const topLevel = childrenOf.get(root.id) ?? [];
+  // "" when the root's text is nothing but its own citation -- the <h1>
+  // above the blurb already prints that, so render no <p> at all.
+  const rootBlurb = snippetAfterCitation(root.full_text, root.citation, 160);
 
   return (
     <div className="reg-reader">
@@ -63,7 +65,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
         <div id="sidebar-header">
           <div className="brand-eyebrow">Cross-Referenced Reader</div>
           <h1>{root.citation}</h1>
-          <p>{snippetAfterCitation(root.full_text, root.citation, 160)}</p>
+          {rootBlurb && <p>{rootBlurb}</p>}
         </div>
         <div id="jump-wrap">
           <input
@@ -89,33 +91,31 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
               const kind = kindOf(node.id);
               if (kind === "appendix") {
                 // node.title is frequently just the bare citation itself, in
-                // which case snippetAfterCitation has nothing left to show and
-                // falls back to returning the citation label unchanged (see
-                // its own empty-strip fallback) -- fall through to full_text
-                // in that case instead of printing the citation twice.
+                // which case snippetAfterCitation returns "" -- fall through
+                // to full_text then, and render no sub-label at all when that
+                // is empty too, rather than printing the citation twice.
                 const titleSnippet = node.title
                   ? snippetAfterCitation(node.title, node.citation, 60)
                   : "";
                 const appendixSub =
-                  titleSnippet && titleSnippet !== normalizeCitationLabel(node.citation)
-                    ? titleSnippet
-                    : snippetAfterCitation(node.full_text, node.citation, 60);
+                  titleSnippet || snippetAfterCitation(node.full_text, node.citation, 60);
                 return (
                   <div className="nav-part" key={node.id}>
                     <a href={`#${node.id}`} className="nav-link nav-part-link">
                       {node.citation}
                     </a>
-                    <div className="nav-part-sub">{appendixSub}</div>
+                    {appendixSub && <div className="nav-part-sub">{appendixSub}</div>}
                   </div>
                 );
               }
               const sections = childrenOf.get(node.id) ?? [];
+              const partSub = snippetAfterCitation(node.full_text, node.citation, 60);
               const summary = (
                 <>
                   <a href={`#${node.id}`} className="nav-link nav-part-link">
                     {node.citation}
                   </a>
-                  <div className="nav-part-sub">{snippetAfterCitation(node.full_text, node.citation, 60)}</div>
+                  {partSub && <div className="nav-part-sub">{partSub}</div>}
                 </>
               );
               if (sections.length === 0) {
@@ -134,13 +134,17 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                 <details className="nav-part" id={`navgroup-${node.id}`} key={node.id} open={i === firstDetailsIndex}>
                   <summary>{summary}</summary>
                   <ul className="nav-items">
-                    {sections.map((sec) => (
-                      <li key={sec.id}>
-                        <a href={`#${sec.id}`} className="nav-link">
-                          {sec.citation} {snippetAfterCitation(sec.full_text, sec.citation, 40)}
-                        </a>
-                      </li>
-                    ))}
+                    {sections.map((sec) => {
+                      const snip = snippetAfterCitation(sec.full_text, sec.citation, 40);
+                      return (
+                        <li key={sec.id}>
+                          <a href={`#${sec.id}`} className="nav-link">
+                            {sec.citation}
+                            {snip ? ` ${snip}` : ""}
+                          </a>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </details>
               );

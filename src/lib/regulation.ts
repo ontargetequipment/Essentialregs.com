@@ -184,6 +184,10 @@ export function normalizeCitationLabel(citation: string | null | undefined): str
  * of this regulation…"). The citation is removed BEFORE truncating, so the
  * snippet still gets its full `maxLen` of useful text.
  *
+ * May return "": a row whose text is nothing but its own citation has no
+ * snippet, and callers must not render the element in that case (see the
+ * note in the body). It no longer falls back to the unstripped text.
+ *
  * Same digit guard as withItemIdBadge: a citation of "2." must not match text
  * reading "2.5 tons per year". Do not drop it — see that function's comment
  * for the measurements behind it.
@@ -201,15 +205,50 @@ export function snippetAfterCitation(
     .replace(/\s+/g, " ")
     .trim();
   const label = normalizeCitationLabel(citation);
-  const stripped =
+  const body =
     label && text.startsWith(label) && !/[0-9]/.test(text.charAt(label.length))
       ? text.slice(label.length).replace(/^[\s.:;,\u2014\u2013-]+/, "")
       : text;
-  // 90 rows in the corpus are exactly their own citation with no other text,
-  // so stripping the label above leaves "". An empty subtitle/snippet is
-  // worse than a repeated one, so fall back to the unstripped text.
-  const body = stripped || text;
+  // 90 rows in the corpus are exactly their own citation and nothing else,
+  // so stripping the label leaves "". That empty string is returned as is:
+  // every caller already prints the citation right next to the snippet, so
+  // rendering nothing beats rendering the label a second time. Callers MUST
+  // guard on the empty string -- see containsBoxHtml below and the five call
+  // sites in app/regulations/[reg]/page.tsx.
   return body.length > maxLen ? body.slice(0, maxLen).trimEnd() + "…" : body;
+}
+
+/**
+ * The part of a provision's `title` that is NOT already its citation, for
+ * every surface that prints the citation right next to the title.
+ *
+ * Two corpus shapes made those headings say the label twice:
+ *   (a) title IS the citation     -- "II.A.2."  / "II.A.2."
+ *   (b) title OPENS with it       -- "I.G.90."  / "I.G.90. POTENTIAL TO EMIT"
+ *
+ * Returns "" when nothing but the label is left. Callers render the title
+ * element only when the result is non-empty -- same contract as
+ * snippetAfterCitation.
+ *
+ * The matching rule is deliberately identical to snippetAfterCitation and
+ * textAlreadyOpensWithCitation, and is the one proven against all 36,517
+ * rows: compare through normalizeCitationLabel, and only treat the text as
+ * opening with the citation when the character right after it is NOT a
+ * digit -- otherwise a citation of "I.D.3." swallows the prefix of a title
+ * reading "I.D.30. ...". Do not invent a second rule here.
+ */
+export function titleWithoutCitation(
+  title: string | null | undefined,
+  citation: string | null | undefined
+): string {
+  const text = normalizeCitationLabel(title);
+  const label = normalizeCitationLabel(citation);
+  if (!text) return "";
+  if (!label) return text;
+  if (text === label) return "";
+  if (!text.startsWith(label)) return text;
+  if (/[0-9]/.test(text.charAt(label.length))) return text;
+  return text.slice(label.length).replace(/^[\s.:;,—–-]+/, "").trim();
 }
 
 const PAGE_SIZE = 1000;
@@ -374,15 +413,15 @@ export function regulationCardInfo(
   // Federal (or anything else not covered above): the stored title is the
   // citation followed by the subpart's descriptive name ("40 CFR Part 60
   // Subpart JJJJ — Standards of Performance for..."), which repeats the
-  // citation the card already prints on its own line above the title -- so
-  // that leading "<citation> — " is stripped here the same way the CCR
-  // suffix is stripped for AQCC regs, and the bare citation becomes the
-  // subtitle instead of null.
-  const citationPrefix = `${reg.citation} — `;
-  const title = reg.title.startsWith(citationPrefix)
-    ? reg.title.slice(citationPrefix.length)
-    : reg.title;
-  return { title, subtitle: reg.citation };
+  // citation the card already prints on its own line above the title.
+  //
+  // Same de-duplication as every provision heading (titleWithoutCitation):
+  // normalized comparison plus the digit guard, instead of the old exact
+  // "<citation> — " prefix match, which missed the space-separated shape and
+  // missed title === citation entirely. The subtitle is dropped because
+  // RegulationList already prints reg.citation on its own line above.
+  const title = titleWithoutCitation(reg.title, reg.citation);
+  return { title: title || reg.citation, subtitle: null };
 }
 
 export type RegulationGroup<T> = {
@@ -888,14 +927,18 @@ export function summaryPanelHtml(
 export function containsBoxHtml(children: Provision[]): string {
   if (!children.length) return "";
   const items = children
-    .map(
-      (c) =>
-        `<li><span class="xref contains-link" data-target="${escapeHtml(
-          c.id
-        )}">${escapeHtml(c.citation)}</span> <span class="contains-snip">${escapeHtml(
-          snippetAfterCitation(c.full_text, c.citation, 90)
-        )}</span></li>`
-    )
+    .map((c) => {
+      const snip = snippetAfterCitation(c.full_text, c.citation, 90);
+      // A child whose entire text is its own citation has no snippet left --
+      // emit the link alone rather than an empty <span> preceded by a
+      // dangling space. (.contains-link already carries margin-right: 4px.)
+      const snipHtml = snip
+        ? ` <span class="contains-snip">${escapeHtml(snip)}</span>`
+        : "";
+      return `<li><span class="xref contains-link" data-target="${escapeHtml(
+        c.id
+      )}">${escapeHtml(c.citation)}</span>${snipHtml}</li>`;
+    })
     .join("");
   return `<ul class="contains">${items}</ul>`;
 }

@@ -199,12 +199,15 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
         return;
       }
       jumpResults.innerHTML = combined
-        .map(
-          (row) =>
-            `<div class="jr-item" data-slug="${escapeHtml(row[0])}"><span class="jr-id">${escapeHtml(
-              row[1]
-            )}</span><span class="jr-snip">${escapeHtml(row[2])}</span></div>`
-        )
+        .map((row) => {
+          // row[2] is "" for a row whose text is only its own citation
+          // (snippetAfterCitation no longer falls back to the label) --
+          // skip the span rather than emit an empty one.
+          const snip = row[2] ? `<span class="jr-snip">${escapeHtml(row[2])}</span>` : "";
+          return `<div class="jr-item" data-slug="${escapeHtml(row[0])}"><span class="jr-id">${escapeHtml(
+            row[1]
+          )}</span>${snip}</div>`;
+        })
         .join("");
       jumpResults.classList.add("show");
     }
