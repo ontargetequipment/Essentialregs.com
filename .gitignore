@@ -51,3 +51,9 @@ next-env.d.ts
 pipeline/__pycache__/
 pipeline/*.pyc
 pipeline/failed.jsonl
+
+# Cowork writes files it delivers into this folder inside the connected
+# folder, which is this repo root. They are working docs, not source.
+# Ignoring it also stops stale RUN_ME_*.sql copies accumulating alongside
+# the canonical ones in supabase/migrations and docs/imports.
+Claude outputs/
