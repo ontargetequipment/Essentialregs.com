@@ -3,19 +3,15 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ProvisionCard } from "@/components/ProvisionCard";
 import { RelatedProvisions } from "@/components/RelatedProvisions";
-import type { Provision } from "@/lib/types";
-
-// Matches the provision id format used throughout the corpus, e.g.
-// "sec-3-A-PART-A" -- rejecting anything else before it reaches the query
-// is defense-in-depth against the URL segment being used for filter-syntax
-// injection against PostgREST.
-const VALID_ID = /^[A-Za-z0-9_.:-]+$/;
+import { PROVISION_ID, type Provision } from "@/lib/types";
 
 export default async function ProvisionPage(
   props: PageProps<"/regs/[id]">
 ) {
+  // Next decodes the dynamic segment before this runs, so `id` already
+  // holds literal "(" / ")" -- do NOT decodeURIComponent it again.
   const { id } = await props.params;
-  if (!VALID_ID.test(id)) {
+  if (id.length > 200 || !PROVISION_ID.test(id)) {
     notFound();
   }
   const supabase = await createClient();

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { escapeHtml, summaryParagraphs } from "@/lib/regulation";
 import { regBadge, regLabel } from "@/lib/semantic";
+import { PROVISION_ID } from "@/lib/types";
 
 /**
  * "Related provisions" — Phase 4 of the semantic-search plan.
@@ -38,7 +39,9 @@ export type RelatedItem = {
   crossReg: boolean;
 };
 
-export const RELATED_ID = /^[A-Za-z0-9_.:()-]+$/;
+/** @deprecated Use PROVISION_ID from @/lib/types. Kept as an alias so the
+ *  existing import sites (api/related/route.ts) keep working. */
+export const RELATED_ID = PROVISION_ID;
 /** A cross-reg neighbour this close to the best score is promoted to the top. */
 const CROSS_REG_PROMOTE_DELTA = 0.03;
 

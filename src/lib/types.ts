@@ -25,3 +25,17 @@ export type Provision = {
   summary_status?: string | null;
   cross_references?: CrossReference[];
 };
+
+/**
+ * Every character that appears in a provision id. 19,164 of 36,517 ids
+ * (52.5%) contain parentheses -- "sec-7-B-II-C-2-b-(ii)-(D)" -- so a
+ * validator that omits them rejects more than half the corpus.
+ *
+ * This is the ONE definition. It was previously duplicated in
+ * app/regs/[id]/page.tsx and lib/related.ts, the copies drifted, and the
+ * /regs/[id] copy 404'd every paren id in production.
+ *
+ * Validating before the id reaches a query is defense-in-depth against the
+ * URL segment being used for PostgREST filter-syntax injection.
+ */
+export const PROVISION_ID = /^[A-Za-z0-9_.:()-]+$/;
