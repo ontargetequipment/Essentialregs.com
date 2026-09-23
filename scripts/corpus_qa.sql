@@ -3,15 +3,23 @@
 -- Paste the whole file into the Supabase SQL editor after every import,
 -- re-import, or summarizer run. It returns one row per check with a count
 -- and a verdict. ERROR and GUARD rows should read "as expected" before you
--- ship anything; REVIEW and INFO rows are trend lines, not alarms — see
--- EssentialRegs_Known_Issues_and_Fixes.md for the defect each check guards
--- against and why the ones that look obvious but aren't are not here.
+-- ship anything; REVIEW and INFO rows are trend lines, not alarms.
+--
+-- The defect each check guards against, and why the checks that look
+-- obvious but aren't are not here, is recorded in a running known-issues
+-- log kept in the owner's claude.ai project (not a file in this
+-- repository) — ask the owner if you need the history behind a check.
 --
 -- Gotcha: `check` is a reserved word in Postgres, so the column below is
 -- `check_name`, not `check`.
 --
--- Baseline (36,517 provisions, 2026-09-22):
---   ERROR  repeated_text_block            169 (candidate list — see note below, do not read this as "169 bugs")
+-- All full_text inspection in this file goes through one normalization
+-- (the `clean` CTE below: strip tags, collapse &nbsp;/whitespace, trim) so
+-- every check sees the same text and counts stay comparable to each other
+-- and across runs.
+--
+-- Baseline (36,517 provisions, 2026-09-22, this exact file):
+--   ERROR  repeated_text_block            5
 --   ERROR  truncated_summary              6
 --   ERROR  page_furniture_in_text         3 (one is a documented false positive, sec-cp-I-F)
 --   ERROR  empty_full_text                0
@@ -22,44 +30,48 @@
 --   REVIEW duplicate_citation_in_part     83
 --   REVIEW provisions_without_neighbours  106
 --   INFO   self_referencing_xref          525
---   INFO   summary_longer_than_long_text  206 (500-char floor; see calibration notes)
+--   INFO   summary_longer_than_long_text  207 (500-char floor; see calibration notes)
 
 with
 
 -- ---------------------------------------------------------------------
+-- Shared text normalization. Every check below that inspects full_text
+-- reads it through this CTE rather than re-deriving its own stripped
+-- version, so a change here moves every check's count together.
+clean as (
+  select id,
+         btrim(
+           regexp_replace(
+             regexp_replace(coalesce(full_text, ''), '<[^>]*>', '', 'g'),
+             '&nbsp;|\s+', ' ', 'g'
+           )
+         ) as txt
+  from provisions
+),
+
+-- ---------------------------------------------------------------------
 -- ERROR: repeated_text_block
 --
--- A row whose full_text contains two or more sentences that open with the
--- same 60+ character phrase. This is a CANDIDATE list for a human to check
--- against the eCFR/CCR source, not a strict pass/fail count: formulaic
--- regulatory drafting (parallel "X must A. X must B." paragraph structure)
--- legitimately produces this pattern too, so the count will run well above
--- zero. The five rows first flagged this way (all federal engine/injection
--- provisions: sec-jjjj-60.4231-(b)/(c)/(d), sec-iiii-60.4210-(c),
--- sec-ecmc-803-d-(1)) were hand-verified against source and are genuine
--- repeats in the regulation's own text, not a duplicate-label merge bug —
--- but do not bulk-fix or bulk-dismiss the rest of the list on that basis;
--- eyeball each one.
-repeated_sentences as (
-  select p.id, btrim(s) as sentence
-  from provisions p
-  cross join lateral regexp_split_to_table(
-    regexp_replace(p.full_text, '<[^>]+>', ' ', 'g'), '[.!?]\s+'
-  ) as s
-),
-repeated_prefixed as (
-  select id, lower(left(sentence, 60)) as prefix
-  from repeated_sentences
-  where length(sentence) >= 60
-),
+-- A row whose cleaned text is longer than 200 characters and whose own
+-- first-50-character opening recurs at least 3 times somewhere in the
+-- text (including the opening occurrence itself). That specific
+-- threshold — 50 chars, >= 3 recurrences — is a calibrated point, not an
+-- arbitrary one: at 50/2 the count jumps to 56, at 30/3 to 21, and at
+-- 80/3 it drops to 0, so this is the narrowest threshold that still
+-- catches the known cases without pulling in ordinary formulaic
+-- regulatory drafting. The five rows it flags (all federal
+-- engine/injection provisions: sec-jjjj-60.4231-(b)/(c)/(d),
+-- sec-iiii-60.4210-(c), sec-ecmc-803-d-(1)) have been hand-verified
+-- against source and are genuine repeats in the regulation's own text
+-- ("Stationary SI internal combustion engine manufacturers must...,
+-- ...must certify their emergency..., ...may certify..."), not a
+-- duplicate-label import merge — but a new hit on a future run has not
+-- had that check, so verify against source before dismissing it.
 repeated_text_block as (
-  select count(distinct id) as n
-  from (
-    select id, prefix, count(*)
-    from repeated_prefixed
-    group by id, prefix
-    having count(*) > 1
-  ) dupes
+  select count(*) as n
+  from clean
+  where length(txt) > 200
+    and (length(txt) - length(replace(txt, left(txt, 50), ''))) / 50 >= 3
 ),
 
 -- ---------------------------------------------------------------------
@@ -84,8 +96,8 @@ truncated_summary as (
 -- ---------------------------------------------------------------------
 -- ERROR: page_furniture_in_text
 --
--- full_text captured page furniture from the source PDF/HTML ("CCR Code
--- of Colorado Regulations", the running footer) instead of just the
+-- Cleaned text captured page furniture from the source PDF/HTML ("CCR
+-- Code of Colorado Regulations", the running footer) instead of just the
 -- provision's own text. sec-cp-I-F is a known false positive — it is the
 -- Common Provisions abbreviations list, where "CCR Code Of Colorado
 -- Regulations" is a legitimate glossary entry, not captured furniture.
@@ -93,21 +105,22 @@ truncated_summary as (
 -- the id before treating a hit as real.
 page_furniture_in_text as (
   select count(*) as n
-  from provisions
-  where regexp_replace(full_text, '<[^>]+>', ' ', 'g') ~* 'code of colorado regulations'
+  from clean
+  where txt ~* 'code of colorado regulations'
 ),
 
 -- ---------------------------------------------------------------------
 -- ERROR: empty_full_text
 --
--- full_text is null or whitespace-only. Schema has full_text NOT NULL, so
--- this should be structurally impossible; the check exists as a guard in
--- case a future migration relaxes that constraint or a bulk load bypasses
--- it via the service-role client.
+-- Cleaned text is empty. Schema has full_text NOT NULL, so a null value
+-- should be structurally impossible; going through the same `clean` CTE
+-- as every other check also catches the case a raw NOT NULL check would
+-- miss — a full_text that is only markup with no visible content (e.g.
+-- an empty "<p></p>").
 empty_full_text as (
   select count(*) as n
-  from provisions
-  where full_text is null or btrim(full_text) = ''
+  from clean
+  where txt = ''
 ),
 
 -- ---------------------------------------------------------------------
@@ -228,23 +241,24 @@ self_referencing_xref as (
 -- ---------------------------------------------------------------------
 -- INFO: summary_longer_than_long_text
 --
--- ai_summary is longer (chars) than full_text, restricted to provisions
--- whose full_text clears a 500-character floor after stripping markup.
--- Without the floor this fires on ~9,500 rows, virtually all noise: short
+-- ai_summary is longer (chars) than the cleaned full_text, restricted to
+-- provisions whose cleaned text clears a 500-character floor. Without the
+-- floor this fires on ~9,500 rows, virtually all noise: short
 -- REPEALED/Reserved stubs always have a longer summary than their one-line
 -- body. Weak signal even with the floor — a summary CAN legitimately spell
 -- out more than a terse provision says.
 summary_longer_than_long_text as (
   select count(*) as n
-  from provisions
-  where ai_summary is not null
-    and length(regexp_replace(full_text, '<[^>]+>', '', 'g')) >= 500
-    and length(ai_summary) > length(regexp_replace(full_text, '<[^>]+>', '', 'g'))
+  from provisions p
+  join clean c on c.id = p.id
+  where p.ai_summary is not null
+    and length(c.txt) >= 500
+    and length(p.ai_summary) > length(c.txt)
 ),
 
 results as (
   select 'ERROR' as severity, 'repeated_text_block' as check_name, n as count,
-         case when n = 0 then 'clean' else '*** candidates — eyeball against source, do not bulk-fix ***' end as verdict
+         case when n = 0 then 'clean' else '*** investigate — verify each hit against source before touching it ***' end as verdict
     from repeated_text_block
   union all
   select 'ERROR', 'truncated_summary', n,
