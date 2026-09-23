@@ -42,7 +42,7 @@ export default async function FederalIndexPage() {
         <Link href="/regulations/6" className="font-medium text-zinc-900 underline underline-offset-2">
           Colorado Regulation Number 6 Part A
         </Link>
-        . Also included: 49 CFR Parts 190 through 196 and 199, PHMSA's
+        . Also included: 49 CFR Parts 190 through 196 and 199, PHMSA&apos;s
         federal pipeline safety standards for gas, hazardous liquid and LNG
         facilities, its enforcement procedures and its excavation damage
         prevention rule, administered by the US DOT.

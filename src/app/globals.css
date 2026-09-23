@@ -1,23 +1,99 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Design tokens.
+
+   These are the regulation reader's own palette (src/app/regulations/reader.css)
+   promoted to the whole site, so the marketing shell and the product read as
+   one thing instead of handing the visitor a cool-zinc shell wrapped around a
+   warm-paper reader.
+
+   Two values deliberately differ from reader.css and must not be "corrected"
+   back to match it:
+     --tag    #7a5f30, not the reader's #8a6d3b. The reader's brass measures
+              4.45:1 on paper, just under the 4.5:1 floor for small text;
+              #7a5f30 measures 5.50:1.
+     --muted  new here. The reader has no token for small secondary text, and
+              every lighter grey tested failed against paper. 5.23:1.
+
+   Verified pairs: accent on paper 6.88, white on accent 7.49, ink-soft on
+   paper 7.19. Keep anything you add at 4.5:1 or better (3:1 at 24px+).
+
+   Declaring them in `@theme` gives both the CSS custom properties and the
+   matching Tailwind utilities (bg-paper, text-ink, border-line, ...).
+--------------------------------------------------------------------------- */
+@theme {
+  --color-paper: #f7f5f0; /* page background */
+  --color-panel: #ffffff; /* header, footer, cards */
+  --color-line: #d9d3c4; /* all borders */
+  --color-ink: #1e2422; /* headings, body */
+  --color-ink-soft: #4b544f; /* secondary body */
+  --color-muted: #5c6a60; /* small print, captions */
+  --color-accent: #2f5d50; /* pine — buttons, links */
+  --color-accent-soft: #e4ece8; /* tinted panels */
+  --color-tag: #7a5f30; /* brass — mono eyebrows, citation labels */
+
+  /* Body/UI copy stays on the system sans; the serif carries display
+     headings and regulation text, the mono carries citations and eyebrows.
+     next/font generates a hashed family name and does NOT register the
+     literal "Source Serif 4" / "IBM Plex Mono", so these point at the
+     variables layout.tsx puts on <html> — see the same note in reader.css. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  --font-serif: var(--font-source-serif), "Iowan Old Style", Georgia, serif;
+  --font-mono: var(--font-ibm-plex-mono), "SF Mono", Consolas, monospace;
+
+  /* Typographic scale: display / section / card in the serif, body 16 in the
+     sans (Tailwind's own text-base), eyebrow 11 in the mono. */
+  --text-display: 52px;
+  --text-display--line-height: 1.08;
+  --text-display--letter-spacing: -0.015em;
+  --text-section: 30px;
+  --text-section--line-height: 1.2;
+  --text-section--letter-spacing: -0.01em;
+  --text-card: 19px;
+  --text-card--line-height: 1.35;
+  --text-eyebrow: 11px;
+  --text-eyebrow--line-height: 1.4;
+  --text-eyebrow--letter-spacing: 0.11em;
+
+  /* 1120px for the shell (header, footer, column layouts), 720px for a prose
+     column, which sits inside the shell width and left-aligns to it. */
+  --container-shell: 1120px;
+  --container-reading: 720px;
+}
+
 /* This site is light-only: there is no dark theme designed for it. Declaring
    the color scheme keeps browser-rendered controls (inputs, selects, the
    scrollbar) light on a phone that is set to dark mode.
 
    Note for anyone adding colors here: Tailwind 4 puts its utilities in a
    cascade layer, and UNLAYERED css outranks a layer. A bare `body { ... }`
-   rule in this file therefore beats `bg-zinc-50` / `text-zinc-900` on <body>
+   rule in this file therefore beats `bg-paper` / `text-ink` on <body>
    in layout.tsx. That is what made the whole site render near-black and
    unreadable in dark mode. Set page colors with utilities in layout.tsx, or
    wrap any rule you add here in `@layer base`. */
 :root {
   color-scheme: light;
+
+  /* Plain aliases so components and hand-written css can use --ink / --line /
+     --accent directly, the same names reader.css uses. */
+  --paper: var(--color-paper);
+  --panel: var(--color-panel);
+  --line: var(--color-line);
+  --ink: var(--color-ink);
+  --ink-soft: var(--color-ink-soft);
+  --muted: var(--color-muted);
+  --accent: var(--color-accent);
+  --accent-soft: var(--color-accent-soft);
+  --tag: var(--color-tag);
 }
 
-body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
 }
 
 /* Provision cards outside the reader (/sample, /regs/[id]) render the
@@ -32,7 +108,7 @@ body {
 }
 .card-text .xref,
 .card-text a.xref-external-reg {
-  color: #2f5d50;
+  color: var(--accent);
   text-decoration: underline dotted;
   text-underline-offset: 2px;
 }
@@ -43,7 +119,7 @@ body {
 }
 .card-text td,
 .card-text th {
-  border: 1px solid #d9d3c4;
+  border: 1px solid var(--line);
   padding: 3px 6px;
   vertical-align: top;
 }
