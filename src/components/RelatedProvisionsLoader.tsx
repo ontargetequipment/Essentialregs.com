@@ -44,7 +44,7 @@ export function RelatedProvisionsLoader({ currentReg }: { currentReg: string }) 
           const link = sameReg
             ? `<span class="xref related-link" data-target="${esc(it.id)}">${esc(it.citation)}</span>`
             : `<a class="related-link" href="/regulations/${esc(it.reg_key ?? "")}#${esc(it.id)}">${esc(it.citation)}</a>`;
-          const title = it.title && it.title !== it.citation ? `<span class="related-title">${esc(it.title)}</span>` : "";
+          const title = it.title ? `<span class="related-title">${esc(it.title)}</span>` : "";
           const path = it.path ? `<span class="related-path">${esc(it.path)}</span>` : "";
           const summary = it.summary ? `<span class="related-snip">${esc(it.summary)}</span>` : "";
           return (

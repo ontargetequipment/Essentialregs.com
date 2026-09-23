@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
-import { fetchRegulationList, summaryParagraphs } from "@/lib/regulation";
+import { fetchRegulationList, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
 import {
   MAX_QUERY_LENGTH,
   sanitizeHeadline,
@@ -288,35 +288,38 @@ export default async function SearchPage(props: PageProps<"/search">) {
             {hits.length} result{hits.length === 1 ? "" : "s"} for &ldquo;{q}&rdquo;
           </p>
           <ol className="mt-3 flex flex-col gap-3">
-            {hits.map((hit) => (
-              <li key={hit.id}>
-                <Link
-                  href={hrefFor(hit)}
-                  className="block rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
-                >
-                  <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
-                    {hit.reg_key && (
-                      <>
-                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-700">
-                          {regBadge(hit.reg_key, jurisdictionOfKey(hit.reg_key))}
-                        </span>
-                        <span className="font-medium text-zinc-500">{regLabel(hit.reg_key)}</span>
-                        <span className="text-zinc-300">·</span>
-                      </>
+            {hits.map((hit) => {
+              const heading = titleWithoutCitation(hit.title, hit.citation);
+              return (
+                <li key={hit.id}>
+                  <Link
+                    href={hrefFor(hit)}
+                    className="block rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+                  >
+                    <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
+                      {hit.reg_key && (
+                        <>
+                          <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-700">
+                            {regBadge(hit.reg_key, jurisdictionOfKey(hit.reg_key))}
+                          </span>
+                          <span className="font-medium text-zinc-500">{regLabel(hit.reg_key)}</span>
+                          <span className="text-zinc-300">·</span>
+                        </>
+                      )}
+                      <span className="font-mono uppercase tracking-wide text-emerald-700">{hit.citation}</span>
+                    </p>
+                    {hit.path && <p className="mt-1 text-xs leading-snug text-zinc-500">{hit.path}</p>}
+                    {heading && (
+                      <p className="mt-1 font-semibold text-zinc-900">{heading}</p>
                     )}
-                    <span className="font-mono uppercase tracking-wide text-emerald-700">{hit.citation}</span>
-                  </p>
-                  {hit.path && <p className="mt-1 text-xs leading-snug text-zinc-500">{hit.path}</p>}
-                  {hit.title && (
-                    <p className="mt-1 font-semibold text-zinc-900">{hit.title}</p>
-                  )}
-                  <p
-                    className="mt-2 text-sm leading-relaxed text-zinc-600 [&_mark]:rounded-sm [&_mark]:bg-amber-100 [&_mark]:px-0.5 [&_mark]:text-zinc-900"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHeadline(hit.headline) }}
-                  />
-                </Link>
-              </li>
-            ))}
+                    <p
+                      className="mt-2 text-sm leading-relaxed text-zinc-600 [&_mark]:rounded-sm [&_mark]:bg-amber-100 [&_mark]:px-0.5 [&_mark]:text-zinc-900"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHeadline(hit.headline) }}
+                    />
+                  </Link>
+                </li>
+              );
+            })}
           </ol>
         </>
       )}
@@ -338,6 +341,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
             {askHits.map((hit) => {
               const paras = summaryParagraphs(hit.summary ?? "");
               const badge = regBadge(hit.reg_key, hit.jurisdiction_level);
+              const heading = titleWithoutCitation(hit.title, hit.citation);
               return (
                 <li key={hit.id}>
                   <Link
@@ -371,8 +375,8 @@ export default async function SearchPage(props: PageProps<"/search">) {
                     <p className="mt-1 font-mono text-xs uppercase tracking-wide text-emerald-700">
                       {hit.citation}
                     </p>
-                    {hit.title && hit.title !== hit.citation && (
-                      <p className="mt-1 font-semibold text-zinc-900">{hit.title}</p>
+                    {heading && (
+                      <p className="mt-1 font-semibold text-zinc-900">{heading}</p>
                     )}
                     {paras.length > 0 ? (
                       <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-zinc-600">{paras[0]}</p>

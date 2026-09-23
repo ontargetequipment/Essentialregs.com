@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { escapeHtml, summaryParagraphs } from "@/lib/regulation";
+import { escapeHtml, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
 import { regBadge, regLabel } from "@/lib/semantic";
 import { PROVISION_ID } from "@/lib/types";
 
@@ -24,6 +24,7 @@ import { PROVISION_ID } from "@/lib/types";
 export type RelatedItem = {
   id: string;
   citation: string;
+  /** Already citation-stripped (titleWithoutCitation): "" when the stored title was nothing but this row's own citation. */
   title: string;
   reg_key: string | null;
   jurisdiction_level: string;
@@ -72,7 +73,9 @@ function toItem(anchorId: string, row: NeighborRow): RelatedItem | null {
   return {
     id: n.id,
     citation: n.citation,
-    title: n.title,
+    // "" when the stored title is nothing but this row's own citation, or
+    // opens with it -- both render sites print the citation already.
+    title: titleWithoutCitation(n.title, n.citation),
     reg_key: key,
     jurisdiction_level: n.jurisdiction_level,
     path: n.context_path ?? null,
