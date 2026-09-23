@@ -184,6 +184,10 @@ export function normalizeCitationLabel(citation: string | null | undefined): str
  * of this regulation…"). The citation is removed BEFORE truncating, so the
  * snippet still gets its full `maxLen` of useful text.
  *
+ * May return "": a row whose text is nothing but its own citation has no
+ * snippet, and callers must not render the element in that case (see the
+ * note in the body). It no longer falls back to the unstripped text.
+ *
  * Same digit guard as withItemIdBadge: a citation of "2." must not match text
  * reading "2.5 tons per year". Do not drop it — see that function's comment
  * for the measurements behind it.
@@ -201,14 +205,16 @@ export function snippetAfterCitation(
     .replace(/\s+/g, " ")
     .trim();
   const label = normalizeCitationLabel(citation);
-  const stripped =
+  const body =
     label && text.startsWith(label) && !/[0-9]/.test(text.charAt(label.length))
       ? text.slice(label.length).replace(/^[\s.:;,\u2014\u2013-]+/, "")
       : text;
-  // 90 rows in the corpus are exactly their own citation with no other text,
-  // so stripping the label above leaves "". An empty subtitle/snippet is
-  // worse than a repeated one, so fall back to the unstripped text.
-  const body = stripped || text;
+  // 90 rows in the corpus are exactly their own citation and nothing else,
+  // so stripping the label leaves "". That empty string is returned as is:
+  // every caller already prints the citation right next to the snippet, so
+  // rendering nothing beats rendering the label a second time. Callers MUST
+  // guard on the empty string -- see containsBoxHtml below and the five call
+  // sites in app/regulations/[reg]/page.tsx.
   return body.length > maxLen ? body.slice(0, maxLen).trimEnd() + "…" : body;
 }
 
@@ -921,14 +927,18 @@ export function summaryPanelHtml(
 export function containsBoxHtml(children: Provision[]): string {
   if (!children.length) return "";
   const items = children
-    .map(
-      (c) =>
-        `<li><span class="xref contains-link" data-target="${escapeHtml(
-          c.id
-        )}">${escapeHtml(c.citation)}</span> <span class="contains-snip">${escapeHtml(
-          snippetAfterCitation(c.full_text, c.citation, 90)
-        )}</span></li>`
-    )
+    .map((c) => {
+      const snip = snippetAfterCitation(c.full_text, c.citation, 90);
+      // A child whose entire text is its own citation has no snippet left --
+      // emit the link alone rather than an empty <span> preceded by a
+      // dangling space. (.contains-link already carries margin-right: 4px.)
+      const snipHtml = snip
+        ? ` <span class="contains-snip">${escapeHtml(snip)}</span>`
+        : "";
+      return `<li><span class="xref contains-link" data-target="${escapeHtml(
+        c.id
+      )}">${escapeHtml(c.citation)}</span>${snipHtml}</li>`;
+    })
     .join("");
   return `<ul class="contains">${items}</ul>`;
 }
