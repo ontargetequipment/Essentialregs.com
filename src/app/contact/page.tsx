@@ -21,17 +21,17 @@ export default function ContactPage() {
         </p>
       }
     >
-      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+      <section className="rounded-lg border border-line bg-panel p-6 shadow-sm">
+        <p className="font-mono text-eyebrow uppercase text-tag">
           Support email
         </p>
         <a
           href={`mailto:${SUPPORT_EMAIL}`}
-          className="mt-1 block break-all text-xl font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800"
+          className="mt-1 block break-all text-xl font-semibold text-accent underline underline-offset-4 hover:text-accent/80"
         >
           {SUPPORT_EMAIL}
         </a>
-        <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+        <p className="mt-3 text-sm leading-relaxed text-ink-soft">
           We aim to reply within <strong>two business days</strong> (Mountain
           Time, Monday through Friday). Billing and account-access problems
           are handled first.
