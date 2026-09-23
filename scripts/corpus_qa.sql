@@ -14,8 +14,118 @@
 -- Calibration note: several obvious-looking checks were tried and rejected
 -- because they cried wolf. They are documented at the bottom so nobody
 -- "helpfully" adds them back.
+--
+-- Checks 13 and 14 are different in kind: they test GRANTS and RLS, not the
+-- corpus. They exist because this suite runs as postgres and therefore
+-- scored the 19 Sep 2026 keyword-search outage (42501 inside
+-- search_provisions) as healthy for three days. Run the whole file, top to
+-- bottom, in one go: Step 0 must run before the main query.
 -- ============================================================================
 
+-- ============================================================================
+-- Step 0 — role-aware smoke test (runs BEFORE the main query below)
+-- ============================================================================
+-- Everything else in this file runs as postgres, a superuser. A superuser
+-- holds EXECUTE on every function and bypasses RLS, so it cannot see a grant
+-- bug. That is exactly how keyword search stayed "healthy" here for three
+-- days (19-22 Sep 2026) while every real user got
+--   42501 permission denied for function provision_path
+-- from search_provisions(). This step executes the two user-facing RPCs as
+-- the roles real callers actually use. Failures are recorded as rows, never
+-- raised, so the suite always finishes. Check 14 reports the result.
+--
+-- Cases (want_min / want_max = acceptable row count from the probe):
+--   anon            search_provisions must run and see the sample rows;
+--                   context_path must run on the sample rows;
+--                   provision_path on a paywalled id must be NULL (RLS bypass
+--                   guard - provision_path is SECURITY DEFINER).
+--   authenticated   a signed-in NON-subscriber: same three expectations.
+--   authenticated   an entitled profile: search returns paths, and
+--                   provision_path on a paywalled id is non-NULL.
+drop table if exists pg_temp.rpc_smoke_results;
+create temp table rpc_smoke_results (caller text, what text, verdict text);
+
+do $smoke$
+declare
+  c            record;
+  n            bigint;
+  entitled_sub text;
+  paywalled_id text;
+  claims       text;
+begin
+  select id::text into entitled_sub
+  from public.profiles
+  where access_granted or subscription_status in ('active', 'trialing')
+  order by id limit 1;
+
+  -- A paywalled row whose parent is a real titled heading (not the regulation's
+  -- top row, not bare numbering), so an entitled caller is guaranteed a
+  -- non-NULL path. Rows like sec-cp-I-G-90, whose ancestors are all bare
+  -- numbering, return NULL for everyone and would be a false alarm here.
+  select p.id into paywalled_id
+  from public.provisions p
+  join public.provisions a on a.id = p.parent_id
+  where not p.is_public
+    and a.parent_id is not null
+    and btrim(a.title) is distinct from btrim(a.citation)
+    and nullif(btrim(a.title), '') is not null
+  order by p.id limit 1;
+
+  for c in
+    select * from (values
+      -- anonymous visitor -------------------------------------------------
+      ('anon', '{"role":"anon"}', false,
+       'search_provisions(''emissions'')',
+       $q$select count(*) from public.search_provisions('emissions', 25)$q$, 1, null),
+      ('anon', '{"role":"anon"}', false,
+       'context_path on sample rows',
+       $q$select count(public.context_path(p)) from public.provisions p where p.is_public$q$, 1, null),
+      ('anon', '{"role":"anon"}', false,
+       'provision_path(paywalled id) must be NULL',
+       $q$select count(*) from (select 1 where public.provision_path(%L) is not null) x$q$, 0, 0),
+      -- signed in, not entitled --------------------------------------------
+      ('authenticated', '{"role":"authenticated","sub":"00000000-0000-4000-8000-000000000000"}', false,
+       'search_provisions(''emissions'') as non-subscriber',
+       $q$select count(*) from public.search_provisions('emissions', 25)$q$, 1, null),
+      ('authenticated', '{"role":"authenticated","sub":"00000000-0000-4000-8000-000000000000"}', false,
+       'provision_path(paywalled id) must be NULL as non-subscriber',
+       $q$select count(*) from (select 1 where public.provision_path(%L) is not null) x$q$, 0, 0),
+      -- signed in, entitled ------------------------------------------------
+      ('authenticated', '{"role":"authenticated","sub":"<SUB>"}', true,
+       'search_provisions(''setback'') rows with a path as subscriber',
+       $q$select count(path) from public.search_provisions('setback', 25)$q$, 1, null),
+      ('authenticated', '{"role":"authenticated","sub":"<SUB>"}', true,
+       'provision_path(paywalled id) must be non-NULL as subscriber',
+       $q$select count(*) from (select 1 where public.provision_path(%L) is not null) x$q$, 1, 1)
+    ) v(role, claims, needs_entitled, what, sql, want_min, want_max)
+  loop
+    if c.needs_entitled and entitled_sub is null then
+      insert into rpc_smoke_results values (c.role, c.what, 'skipped: no entitled profile to test with');
+      continue;
+    end if;
+    claims := replace(c.claims, '<SUB>', coalesce(entitled_sub, ''));
+    begin
+      perform set_config('request.jwt.claims', claims, true);
+      execute format('set local role %I', c.role);
+      execute format(c.sql, paywalled_id) into n;
+      reset role;
+      if (c.want_min is not null and n < c.want_min) or (c.want_max is not null and n > c.want_max) then
+        insert into rpc_smoke_results values (c.role, c.what, format('FAIL: %s rows, wanted %s..%s', n, coalesce(c.want_min::text, '-'), coalesce(c.want_max::text, '-')));
+      else
+        insert into rpc_smoke_results values (c.role, c.what, format('ok (%s rows)', n));
+      end if;
+    exception when others then
+      reset role;  -- the failed subtransaction already restored it; belt and braces
+      insert into rpc_smoke_results values (c.role, c.what, format('FAIL %s: %s', sqlstate, sqlerrm));
+    end;
+  end loop;
+  reset role;
+end
+$smoke$;
+
+-- ============================================================================
+-- Main query — one row per check
+-- ============================================================================
 with plain as (
   select
     id, citation, parent_id, ai_summary, summary_status, is_public,
@@ -104,6 +214,43 @@ checks as (
   from plain
   where ai_summary is not null and length(txt) > 500
     and length(btrim(ai_summary)) > length(txt)
+
+  -- ---- GUARDS that need to run as a real role, not as postgres -----------
+
+  union all
+  select 13, 'GUARD', 'broken_privilege_chain', count(*), 0,
+         'Any SECURITY INVOKER function that anon or authenticated may call, which calls a SECURITY DEFINER function they lack EXECUTE on. This is exactly the shape that took keyword search down on 19 Sep 2026 and went unnoticed because the rest of this suite runs as postgres. Expect 0.'
+         || coalesce(' Offenders: ' || string_agg(b.invoker_fn || ' -> ' || b.calls_definer, '; '), '')
+  from (
+    with defs as (
+      select p.oid, n.nspname||'.'||p.proname as fq, p.proname
+      from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+      where p.prokind='f' and p.prosecdef
+    ),
+    invokers as (
+      select p.oid, n.nspname, p.proname,
+             pg_get_function_identity_arguments(p.oid) as args, p.prosrc,
+             has_function_privilege('anon',          p.oid,'EXECUTE') as anon_x,
+             has_function_privilege('authenticated', p.oid,'EXECUTE') as auth_x
+      from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+      where p.prokind='f' and not p.prosecdef and n.nspname='public'
+        and (has_function_privilege('anon',          p.oid,'EXECUTE')
+          or has_function_privilege('authenticated', p.oid,'EXECUTE'))
+    )
+    select 'broken_privilege_chain' as check_name,
+           i.nspname||'.'||i.proname||'('||i.args||')' as invoker_fn,
+           d.fq as calls_definer
+    from invokers i
+    join defs d on i.prosrc ~ ('\m'||d.proname||'\s*\(')
+    where (i.anon_x and not has_function_privilege('anon',          d.oid,'EXECUTE'))
+       or (i.auth_x and not has_function_privilege('authenticated', d.oid,'EXECUTE'))
+  ) b
+
+  union all
+  select 14, 'GUARD', 'rpc_smoke_as_real_roles', count(*) filter (where r.verdict !~ '^ok'), 0,
+         'Step 0 above actually executed search_provisions / context_path / provision_path as anon and as authenticated (subscriber and non-subscriber). Counts rows that did not come back ok. Results: '
+         || string_agg(r.caller || ' | ' || r.what || ' | ' || r.verdict, ' ;; ')
+  from pg_temp.rpc_smoke_results r
 )
 select severity, check_name, n,
        case when severity in ('ERROR','GUARD') and n <> expected then '*** CHECK ***'
