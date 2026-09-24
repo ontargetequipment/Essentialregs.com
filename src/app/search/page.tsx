@@ -112,7 +112,8 @@ function snippetWithoutTitle(html: string, labels: string[]): string {
     if (!label) continue;
     if (text === label) return "";
     if (!text.startsWith(label)) continue;
-    if (/[0-9]/.test(text.charAt(label.length))) continue;
+    // Titles must end at a word boundary (unlike titleWithoutCitation's digit-only guard for citations).
+    if (/[A-Za-z0-9]/.test(text.charAt(label.length))) continue;
     return stripLeadingLabel(html, label);
   }
   return html;
