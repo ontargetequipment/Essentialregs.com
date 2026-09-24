@@ -4,7 +4,7 @@ import Link from "next/link";
 import { fetchRegulationTeaser, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
 import { ANNUAL_PRICE_DISPLAY } from "@/lib/pricing";
 
-// `reg` gets interpolated into a `like "sec-{reg}-%"` filter
+// `reg` goes straight into an `eq("reg_key", reg)` filter
 // (fetchRegulationTeaser) -- restricting it to alphanumerics before it ever
 // reaches that query closes off PostgREST filter-syntax injection via the
 // URL segment, same as the gated reader at ../page.tsx.

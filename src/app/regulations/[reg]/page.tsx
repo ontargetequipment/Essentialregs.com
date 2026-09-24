@@ -15,7 +15,7 @@ import {
 import { RegulationReader } from "@/components/RegulationReader";
 import "../reader.css";
 
-// `reg` gets interpolated straight into a `like "sec-{reg}-%"` filter
+// `reg` goes straight into an `eq("reg_key", reg)` filter
 // (fetchRegulationProvisions) -- restricting it to alphanumerics before it
 // ever reaches that query closes off any PostgREST filter-syntax injection
 // via the URL segment, on top of just being a legitimate 404 for garbage input.

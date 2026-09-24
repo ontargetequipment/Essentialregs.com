@@ -254,8 +254,9 @@ export function titleWithoutCitation(
 const PAGE_SIZE = 1000;
 
 /**
- * Fetches every provision belonging to a regulation (id prefix "sec-{reg}-"),
- * paginating past PostgREST's default 1000-row cap. A regulation like
+ * Fetches every provision belonging to a regulation (stored `reg_key`, the
+ * "<reg>" of "sec-<reg>-..."), paginating past PostgREST's default 1000-row
+ * cap. A regulation like
  * Colorado Reg 3 has 2,000+ rows, so a single .select() would silently
  * truncate without this.
  */
@@ -272,7 +273,9 @@ export async function fetchRegulationProvisions(
       .select(
         "id, citation, title, jurisdiction_level, issuing_body, parent_id, full_text, ai_summary, summary_status, source_url, last_verified_date, is_public, sort_order"
       )
-      .like("id", `sec-${regNumber}-%`)
+      // `reg_key` + `sort_order` is a composite index; `id like 'sec-<reg>-%'`
+      // was a seq scan + disk sort of the whole regulation on every page.
+      .eq("reg_key", regNumber)
       .order("sort_order", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
 
@@ -613,7 +616,7 @@ export async function fetchRegulationTeaser(
 ): Promise<RegulationTeaser> {
   const supabase = createAdminClient();
   const scopedToReg = () =>
-    supabase.from("provisions").select(TEASER_COLUMNS).like("id", `sec-${regNumber}-%`);
+    supabase.from("provisions").select(TEASER_COLUMNS).eq("reg_key", regNumber);
 
   const [rootResult, headingsResult, summariesResult] = await Promise.all([
     // The regulation's own top-level row (id contains "-top-REG-").

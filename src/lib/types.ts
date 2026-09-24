@@ -10,6 +10,8 @@ export type CrossReference = {
 
 export type Provision = {
   id: string;
+  /** Stored generated column: the "<reg>" of "sec-<reg>-...". Absent wherever a caller hasn't selected it. */
+  reg_key?: string;
   citation: string;
   title: string;
   jurisdiction_level: JurisdictionLevel;
