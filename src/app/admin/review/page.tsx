@@ -118,7 +118,7 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
   const pageRaw = Number(firstParam(sp.page) ?? "1");
   const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
   const offset = (page - 1) * PAGE_SIZE;
-  const idPrefix = regFilter ? `sec-${regFilter}-%` : null;
+  const regKey = regFilter || null;
 
   // Reads go through the cookie-scoped client (an admin is just a
   // subscriber whose email happens to be on the allowlist — RLS already
@@ -137,7 +137,7 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
         .select("id", { count: "exact", head: true })
         .eq("summary_status", s)
         .not("ai_summary", "is", null);
-      if (idPrefix) q = q.like("id", idPrefix);
+      if (regKey) q = q.eq("reg_key", regKey);
       const { count, error } = await q;
       if (error) throw new Error(error.message);
       return [s, count ?? 0] as const;
@@ -155,7 +155,7 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
     .order("sort_order", { ascending: true })
     // One extra row beyond PAGE_SIZE, just to know whether a next page exists.
     .range(offset, offset + PAGE_SIZE);
-  if (idPrefix) listQuery = listQuery.like("id", idPrefix);
+  if (regKey) listQuery = listQuery.eq("reg_key", regKey);
 
   const { data, error } = await listQuery;
   if (error) throw new Error(error.message);
