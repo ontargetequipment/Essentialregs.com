@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
-import { fetchRegulationList, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
+import { fetchRegulationList, normalizeCitationLabel, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
 import {
   MAX_QUERY_LENGTH,
   sanitizeHeadline,
@@ -45,6 +45,77 @@ function isWeakMatch(hits: SemanticHit[]): boolean {
   if (hits.some((h) => h.keyword_hit)) return false;
   const best = Math.max(...hits.map((h) => h.score ?? 0));
   return best < WEAK_SCORE;
+}
+
+/** Leading separators dropped after a citation or title is cut off the front of a string; same set as titleWithoutCitation. */
+const LEADING_SEPARATORS = /^[\s.:;,—–-]+/;
+
+/**
+ * Plain text of a sanitized headline: only <mark> tags survive
+ * sanitizeHeadline, so removing those is enough.
+ */
+function headlineText(html: string): string {
+  return normalizeCitationLabel(html.replace(/<\/?mark>/g, ""));
+}
+
+/**
+ * Cuts the first `label` (already normalized) off the front of the headline
+ * HTML, walking past <mark> tags so the highlighting on whatever remains is
+ * kept. A <mark> that was open at the cut is re-opened, so the remainder
+ * never starts with a stray closing tag. Returns "" if nothing is left.
+ */
+function stripLeadingLabel(html: string, label: string): string {
+  let plain = "";
+  let inMark = false;
+  let i = 0;
+  let matched = false;
+  while (i < html.length) {
+    if (html[i] === "<") {
+      const end = html.indexOf(">", i);
+      if (end === -1) break;
+      inMark = html[i + 1] !== "/";
+      i = end + 1;
+      continue;
+    }
+    plain += html[i];
+    i += 1;
+    if (normalizeCitationLabel(plain) === label) {
+      matched = true;
+      break;
+    }
+  }
+  if (!matched) return html;
+  let rest = html.slice(i);
+  if (inMark && rest.startsWith("</mark>")) {
+    rest = rest.slice("</mark>".length);
+    inMark = false;
+  }
+  rest = rest.replace(LEADING_SEPARATORS, "");
+  if (inMark) rest = `<mark>${rest}`;
+  return headlineText(rest) ? rest : "";
+}
+
+/**
+ * ts_headline's one fragment for a row whose text is nothing but its heading
+ * is that heading, so the card printed the title line and then the same words
+ * again as the snippet. This drops a leading title (the stored title, or the
+ * heading as displayed) from the sanitized headline HTML. Returns "" when the
+ * snippet was only the title; the caller then skips the <p> entirely.
+ *
+ * Same test and digit guard as titleWithoutCitation: the label must match at
+ * the very start of the plain text and not be followed by a digit.
+ */
+function snippetWithoutTitle(html: string, labels: string[]): string {
+  const text = headlineText(html);
+  for (const raw of labels) {
+    const label = normalizeCitationLabel(raw);
+    if (!label) continue;
+    if (text === label) return "";
+    if (!text.startsWith(label)) continue;
+    if (/[0-9]/.test(text.charAt(label.length))) continue;
+    return stripLeadingLabel(html, label);
+  }
+  return html;
 }
 
 function regKeyOfId(id: string): string {
@@ -290,6 +361,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           <ol className="mt-3 flex flex-col gap-3">
             {hits.map((hit) => {
               const heading = titleWithoutCitation(hit.title, hit.citation);
+              const snippet = snippetWithoutTitle(sanitizeHeadline(hit.headline), [hit.title, heading]);
               return (
                 <li key={hit.id}>
                   <Link
@@ -312,10 +384,12 @@ export default async function SearchPage(props: PageProps<"/search">) {
                     {heading && (
                       <p className="mt-1 font-semibold text-zinc-900">{heading}</p>
                     )}
-                    <p
-                      className="mt-2 text-sm leading-relaxed text-zinc-600 [&_mark]:rounded-sm [&_mark]:bg-amber-100 [&_mark]:px-0.5 [&_mark]:text-zinc-900"
-                      dangerouslySetInnerHTML={{ __html: sanitizeHeadline(hit.headline) }}
-                    />
+                    {snippet && (
+                      <p
+                        className="mt-2 text-sm leading-relaxed text-zinc-600 [&_mark]:rounded-sm [&_mark]:bg-amber-100 [&_mark]:px-0.5 [&_mark]:text-zinc-900"
+                        dangerouslySetInnerHTML={{ __html: snippet }}
+                      />
+                    )}
                   </Link>
                 </li>
               );
