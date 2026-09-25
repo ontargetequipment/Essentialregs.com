@@ -115,7 +115,42 @@ const VALID_ID = /^[A-Za-z0-9_.:-]+$/;
  * that problem at all.
  */
 export function sanitizeHtml(html: string): string {
+  return sanitizeHtmlLib(html, sanitizeOptions());
+}
+
+// The importer links a citation of another regulation in the corpus as
+// `<a class="xref-external-reg" href="/regulations/<reg>">` (see
+// pipeline/import_ccr.py), i.e. straight at the gated reader.
+const EXTERNAL_REG_HREF = /^\/regulations\/([^/?#]+)$/;
+
+/**
+ * sanitizeHtml for a ProvisionCard (/sample, /regs/[id]). Those pages are
+ * read logged out, and the reader an `xref-external-reg` link points at
+ * 404s for anyone without access, so each such href is routed through
+ * regulationCardHref: the reader for a subscriber, the public
+ * /regulations/<reg>/preview teaser for everyone else. The reader itself
+ * keeps using sanitizeHtml, since only entitled users ever see it.
+ */
+export function sanitizeCardHtml(html: string, hasAccess: boolean): string {
+  const base = sanitizeOptions();
   return sanitizeHtmlLib(html, {
+    ...base,
+    transformTags: {
+      ...base.transformTags,
+      a: (tagName, attribs) => {
+        const out: sanitizeHtmlLib.Attributes = { ...attribs, rel: "noopener noreferrer" };
+        const reg = /(^|\s)xref-external-reg(\s|$)/.test(attribs.class ?? "")
+          ? EXTERNAL_REG_HREF.exec(attribs.href ?? "")?.[1]
+          : undefined;
+        if (reg) out.href = regulationCardHref(reg, hasAccess);
+        return { tagName, attribs: out };
+      },
+    },
+  });
+}
+
+function sanitizeOptions(): sanitizeHtmlLib.IOptions {
+  return {
     allowedTags: ALLOWED_TAGS,
     allowedAttributes: ALLOWED_ATTRIBUTES,
     allowedStyles: ALLOWED_STYLES,
@@ -140,7 +175,7 @@ export function sanitizeHtml(html: string): string {
         return { tagName, attribs };
       },
     },
-  });
+  };
 }
 
 /**
