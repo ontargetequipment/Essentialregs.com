@@ -17,6 +17,8 @@ import {
   regulationNumber,
   rootIdOf,
   sampleCards,
+  sanitizeCardHtml,
+  sanitizeHtml,
 } from "../src/lib/regulation-pure";
 
 // The four public sample rows as stored (id, bare citation, title).
@@ -112,4 +114,21 @@ test("/general-permits shows every APCD general permit, whoever is looking", () 
   // The page's own filter (GP_KEY there) over what fetchRegulationRoots returns.
   const gps = ROOTS.filter((r) => /^gp\d\d$/.test(regulationNumber(r.id) ?? ""));
   assert.equal(gps.length, 11);
+});
+
+test("card xref-external-reg links go to the preview logged out and the reader for a subscriber", () => {
+  const html =
+    '<p>See <a class="xref-external-reg" href="/regulations/3">Regulation Number 3</a>, ' +
+    '<a class="xref-external-reg" data-provision-id="sec-cp-I-G-90" href="/regulations/cp">Section I.G.90</a> ' +
+    'and <a href="https://www.ecfr.gov/">eCFR</a>.</p>';
+  const anon = sanitizeCardHtml(html, false);
+  assert.match(anon, /href="\/regulations\/3\/preview"/);
+  assert.match(anon, /href="\/regulations\/cp\/preview"/);
+  assert.match(anon, /href="https:\/\/www\.ecfr\.gov\/"/);
+  assert.match(anon, /rel="noopener noreferrer"/);
+  const sub = sanitizeCardHtml(html, true);
+  assert.match(sub, /href="\/regulations\/3"/);
+  assert.doesNotMatch(sub, /\/preview/);
+  // The reader (entitled only) keeps the stored href.
+  assert.match(sanitizeHtml(html), /href="\/regulations\/3"/);
 });

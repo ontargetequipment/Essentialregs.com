@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { sanitizeHtml, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
+import { cache } from "react";
+import { getAccessStatus } from "@/lib/access";
+import { sanitizeCardHtml, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
 import type { Provision } from "@/lib/types";
 
 // Renders one regulation entry: citation/title, the plain-English summary in
@@ -7,7 +9,13 @@ import type { Provision } from "@/lib/types";
 // regulatory text, and every cross-reference as a real link — internal ones
 // jump to another provision inside the site, external ones go to the
 // canonical government source in a new tab.
-export function ProvisionCard({ provision }: { provision: Provision }) {
+// /sample renders several cards per request; look the visitor up once.
+const cardAccess = cache(getAccessStatus);
+
+export async function ProvisionCard({ provision }: { provision: Provision }) {
+  // Links in full_text to another regulation go to the reader for a
+  // subscriber and to its public preview for everyone else.
+  const { hasAccess } = await cardAccess();
   // Many rows store their own label as the whole title ("II.A.2.") or as the
   // opening of it ("I.G.90. POTENTIAL TO EMIT"), so printing citation + title
   // said the label twice. "" means the title added nothing -- drop the span.
@@ -54,7 +62,7 @@ export function ProvisionCard({ provision }: { provision: Provision }) {
             reader-only feature). */}
         <div
           className="card-text mt-2 text-sm leading-relaxed text-zinc-700"
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(provision.full_text) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeCardHtml(provision.full_text, hasAccess) }}
         />
       </details>
 
