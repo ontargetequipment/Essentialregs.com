@@ -799,3 +799,16 @@ export function sampleCards<T extends Pick<Provision, "id" | "citation" | "title
     })
     .sort((a, b) => rank(a.id) - rank(b.id) || a.id.localeCompare(b.id));
 }
+
+/**
+ * Where a regulation index card opens. An entitled reader goes to the
+ * gated reader at /regulations/<reg> (the federal subparts live at the
+ * same reader URLs as the Colorado regulations, so stored cross-reference
+ * hrefs keep working); anyone else goes to the public teaser at
+ * /regulations/<reg>/preview -- the reader 404s for them by design, so a
+ * card that linked there would look broken to the one audience an index
+ * page is marketing to.
+ */
+export function regulationCardHref(reg: string, hasAccess: boolean): string {
+  return hasAccess ? `/regulations/${reg}` : `/regulations/${reg}/preview`;
+}

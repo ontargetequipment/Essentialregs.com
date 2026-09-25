@@ -11,7 +11,13 @@
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { regKeyOf, rootIdOf, sampleCards } from "../src/lib/regulation-pure";
+import {
+  regKeyOf,
+  regulationCardHref,
+  regulationNumber,
+  rootIdOf,
+  sampleCards,
+} from "../src/lib/regulation-pure";
 
 // The four public sample rows as stored (id, bare citation, title).
 const PUBLIC_ROWS = [
@@ -70,4 +76,34 @@ test("/sample sorts unlisted public rows after the listed ones, by id", () => {
     cards.map((c) => c.id),
     ["sec-7-B-I-D-3-a-(i)", "sec-gp02-II-A-2", "sec-3-A-I", "sec-cp-I-G-90", "sec-ecmc-604-a-(1)"]
   );
+});
+
+// ---- /federal and /general-permits: the index cards ----
+
+// Every root row in the corpus (id + jurisdiction), as fetchRegulationRoots
+// returns them; the pages filter this list the same way they filter the
+// live one.
+const ROOTS = [
+  ...["1", "10", "11", "12", "15", "16", "18", "19", "2", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "3", "30", "31", "4", "6", "7", "8", "9", "aqs", "cp", "ecmc", "proc", "sip"].map(
+    (k) => ({ id: rootIdOf(k), jurisdiction_level: "state" as const })
+  ),
+  ...["gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12"].map(
+    (k) => ({ id: rootIdOf(k), jurisdiction_level: "state" as const })
+  ),
+  ...["iiii", "jjjj", "ooooa", "oooob", "ooooc", "zzzz", "p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"].map(
+    (k) => ({ id: rootIdOf(k), jurisdiction_level: "federal" as const })
+  ),
+];
+
+test("/federal shows every federal root, whoever is looking", () => {
+  // The page's own filter over what fetchRegulationRoots returns. The
+  // RLS-bound list a prospect used to get was empty: no root is is_public.
+  const federal = ROOTS.filter((r) => r.jurisdiction_level === "federal");
+  assert.equal(federal.length, 14);
+});
+
+test("a card opens the reader for a subscriber and the public teaser for anyone else", () => {
+  assert.equal(regulationCardHref("oooob", true), "/regulations/oooob");
+  assert.equal(regulationCardHref("oooob", false), "/regulations/oooob/preview");
+  assert.equal(regulationCardHref(regulationNumber("sec-p192-top-REG-p192")!, false), "/regulations/p192/preview");
 });

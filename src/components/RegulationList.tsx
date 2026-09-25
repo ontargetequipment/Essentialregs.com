@@ -6,6 +6,7 @@ import type { Provision } from "@/lib/types";
 import {
   groupColoradoRegulations,
   groupFederalRegulations,
+  regulationCardHref,
   regulationCardInfo,
   regulationNumber,
   type RegulationGroup,
@@ -17,9 +18,9 @@ export type RegulationListRow = Pick<Provision, "id" | "citation" | "title" | "i
  * The card list shared by the /regulations (Colorado) and /federal index
  * pages: the subscribe prompt for visitors without access, one card per
  * regulation root, and the "nothing loaded" note for subscribers when the
- * list is empty. Every card links to the gated reader at
- * /regulations/<reg> -- the federal subparts live at the same reader URLs
- * as the Colorado regulations, so stored cross-reference hrefs keep working.
+ * list is empty. A card links to the gated reader at /regulations/<reg>
+ * for an entitled reader and to the public /regulations/<reg>/preview
+ * teaser for everyone else (see regulationCardHref).
  *
  * `mode` controls grouping: "state" groups by issuing_body with the AQCC/
  * GP/ECMC headings and AQCC ordering (see groupColoradoRegulations),
@@ -107,7 +108,7 @@ export function RegulationList({
               return (
                 <Link
                   key={r.id}
-                  href={`/regulations/${reg}`}
+                  href={regulationCardHref(reg, access.hasAccess)}
                   className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
                 >
                   <p className="text-xs font-mono uppercase tracking-wide text-emerald-700">

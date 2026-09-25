@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchRegulationList } from "@/lib/regulation";
+import { fetchRegulationRoots } from "@/lib/regulation";
 import { getAccessStatus } from "@/lib/access";
 import { RegulationList } from "@/components/RegulationList";
 
@@ -23,12 +23,15 @@ const APPLIES_TO: Record<string, string> = {
 };
 
 export default async function FederalIndexPage() {
-  // Same fetch and access handling as the Colorado index at /regulations;
-  // only the jurisdiction filter differs. The cards still open the shared
-  // /regulations/<reg> reader, so no reader URL changes.
+  // The index of what is covered is marketing, not paywalled content, so
+  // the roots come from the anonymous-safe fetchRegulationRoots (citation
+  // and title, service-role) rather than the RLS-bound fetchRegulationList
+  // that /regulations uses: a logged-out visitor used to get zero cards
+  // here. Entitlement only decides where a card links (RegulationList:
+  // the reader for a subscriber, the public /preview teaser otherwise).
   const [access, allRegs] = await Promise.all([
     getAccessStatus(),
-    fetchRegulationList(),
+    fetchRegulationRoots(),
   ]);
   const regs = allRegs.filter((r) => r.jurisdiction_level === "federal");
 
