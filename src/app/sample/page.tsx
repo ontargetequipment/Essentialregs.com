@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProvisionCard } from "@/components/ProvisionCard";
 import { RelatedProvisions } from "@/components/RelatedProvisions";
-import { titleWithoutCitation } from "@/lib/regulation";
+import { fetchRegulationRoots, regKeyOf, rootIdOf, sampleCards } from "@/lib/regulation";
 import type { Provision } from "@/lib/types";
 
 export const metadata = {
@@ -34,45 +34,20 @@ export default async function SamplePage() {
   // Each sample row is labelled with its regulation's name (the root row's
   // citation, e.g. "Code of Colorado Regulations · Regulation Number 7"), so
   // a visitor sees which document a section comes from. The root rows are
-  // not public, so read them with the same client: RLS returns nothing for
-  // an anonymous visitor and the label falls back to the reg key.
-  const regKeys = Array.from(
-    new Set((data ?? []).map((p) => p.id.match(/^sec-([^-]+)-/)?.[1]).filter(Boolean))
-  ) as string[];
-  const rootIds = regKeys.map((k) => `sec-${k}-top-REG-${k}`);
-  const { data: roots } = rootIds.length
-    ? await supabase.from("provisions").select("id, citation").in("id", rootIds)
-    : { data: [] as { id: string; citation: string }[] };
-  const regLabel = new Map<string, string>();
-  for (const r of roots ?? []) {
-    const key = r.id.match(/^sec-([^-]+)-top-REG-/)?.[1];
-    if (key) regLabel.set(key, r.citation.replace(/^Code of Colorado Regulations · /, ""));
-  }
+  // not public, so they are NOT read with the client above: RLS would return
+  // nothing for an anonymous visitor and the label would fall back to the
+  // raw reg key ("7 ·", "GP02 ·") -- the one audience a sample page is for
+  // would be the one audience seeing it wrong. fetchRegulationRoots reads
+  // citation and title only, through the service-role client, so a prospect
+  // sees exactly what a subscriber sees.
+  const regKeys = Array.from(new Set((data ?? []).map((p) => regKeyOf(p.id)).filter(Boolean))) as string[];
+  const roots = await fetchRegulationRoots(regKeys.map(rootIdOf));
 
-  const provisions = (data ?? [])
-    .map((p) => {
-      const key = p.id.match(/^sec-([^-]+)-/)?.[1];
-      const label = key ? regLabel.get(key) ?? key.toUpperCase() : null;
-      // Corpus rows carry the bare label ("I.D.3.a.(i).") as the whole title
-      // on some rows and as the OPENING of the title on others ("I.G.90.
-      // POTENTIAL TO EMIT"). Strip it against the BARE citation here, before
-      // the regulation label is prefixed on below: once `citation` reads
-      // "Common Provisions · I.G.90." the title no longer starts with it and
-      // ProvisionCard's own call would match nothing.
-      const heading = titleWithoutCitation(p.title, p.citation);
-      return {
-        ...p,
-        citation: label ? `${label} · ${p.citation}` : p.citation,
-        title: heading || null,
-        cross_references: p.cross_references ?? [],
-      };
-    })
-    .sort((a, b) => {
-      const ia = SAMPLE_ORDER.indexOf(a.id);
-      const ib = SAMPLE_ORDER.indexOf(b.id);
-      if (ia !== -1 || ib !== -1) return (ia === -1 ? 1e9 : ia) - (ib === -1 ? 1e9 : ib);
-      return a.id.localeCompare(b.id);
-    }) as Provision[];
+  const provisions = sampleCards(
+    (data ?? []).map((p) => ({ ...p, cross_references: p.cross_references ?? [] })),
+    roots,
+    SAMPLE_ORDER
+  ) as Provision[];
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">

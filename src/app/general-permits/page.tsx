@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchRegulationList, regulationNumber } from "@/lib/regulation";
+import { fetchRegulationRoots, regulationNumber } from "@/lib/regulation";
 import { getAccessStatus } from "@/lib/access";
 import { RegulationList } from "@/components/RegulationList";
 
@@ -31,12 +31,15 @@ const APPLIES_TO: Record<string, string> = {
 };
 
 export default async function GeneralPermitsIndexPage() {
-  // Same RLS-safe fetch/access pattern as /regulations and /federal --
-  // fetchRegulationList() is bound by RLS, getAccessStatus() just tells us
-  // whether an empty result means "not subscribed" or "nothing loaded".
+  // Same anonymous-safe fetch as /federal: the permit index is marketing
+  // (citation and title per permit), so it comes from fetchRegulationRoots
+  // (service-role) rather than the RLS-bound fetchRegulationList that
+  // /regulations uses -- a logged-out visitor used to get zero cards here.
+  // Entitlement only decides where a card links (RegulationList: the
+  // reader for a subscriber, the public /preview teaser otherwise).
   const [access, allRegs] = await Promise.all([
     getAccessStatus(),
-    fetchRegulationList(),
+    fetchRegulationRoots(),
   ]);
   const regs = allRegs.filter((r) => GP_KEY.test(regulationNumber(r.id) ?? ""));
 

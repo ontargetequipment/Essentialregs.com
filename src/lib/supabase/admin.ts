@@ -7,7 +7,8 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 // there is no user session to act as — the Stripe webhook, which runs on
 // Stripe's request, not the subscriber's, and needs to write subscription
 // state onto `profiles` (a table users can't update themselves); the
-// anonymous-safe teaser/sitemap reads in lib/regulation.ts; and the
+// anonymous-safe teaser, regulation-index and sitemap reads in
+// lib/regulation.ts; and the
 // cross-request reader body cache (fetchRenderedReader there), which is
 // filled inside a cache scope that cannot read cookies and is reachable
 // only behind the entitlement gate in lib/reader-page.ts.

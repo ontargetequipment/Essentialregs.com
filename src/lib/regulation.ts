@@ -231,24 +231,45 @@ export async function fetchRegulationTeaser(
   };
 }
 
+/** Columns the public regulation index may read. Never add full_text here. */
+const ROOT_COLUMNS = "id, citation, title, jurisdiction_level, issuing_body";
+
+/** Row shape returned by fetchRegulationRoots -- deliberately excludes full_text. */
+export type RegulationRoot = Pick<
+  Provision,
+  "id" | "citation" | "title" | "jurisdiction_level" | "issuing_body"
+>;
+
 /**
- * Reg-number list for enumerating /regulations/[reg]/preview URLs in
- * src/app/sitemap.ts. NOTE: this deliberately does NOT reuse the ordinary
- * (RLS-bound) fetchRegulationList() above -- that function is subject to the
- * same anon-role RLS policy described on fetchRegulationTeaser (only
- * `is_public` rows are visible), and none of the real regulations are
- * `is_public`. Sitemap generation runs with no user session, so calling the
- * RLS-bound version here would silently enumerate zero regulations and the
- * teaser pages would never get linked/indexed. Bypasses RLS the same way,
- * with the same full_text-free column list.
+ * Public, anonymous-safe read of the regulation ROOT rows (id contains
+ * "-top-REG-"): the index of what the corpus covers, which is marketing,
+ * not paywalled content. The roots are not `is_public` (see
+ * supabase/schema.sql), so the RLS-bound fetchRegulationList() above
+ * returns nothing for an anonymous visitor -- /sample then labelled its
+ * cards with the raw reg key and /federal showed no cards at all. Like
+ * fetchRegulationTeaser, this deliberately bypasses RLS with the
+ * service-role client so a prospect sees exactly what a subscriber sees.
+ *
+ * With `ids`, only those roots (the four /sample cards); without, every
+ * root (the /federal and /general-permits indexes, the sitemap).
+ *
+ * It may NEVER return a non-root row (the "-top-REG-" filter is applied
+ * even when `ids` is given, so a section id passed in returns nothing) and
+ * NEVER selects `full_text`: ROOT_COLUMNS is citation and title plus the
+ * two grouping columns the index cards need. Do not widen this into a
+ * general-purpose fetch or add columns beyond ROOT_COLUMNS -- write a
+ * new, separately-scoped function instead.
  */
-export async function fetchRegulationRootsForSitemap(): Promise<TeaserProvision[]> {
+export async function fetchRegulationRoots(ids?: string[]): Promise<RegulationRoot[]> {
+  if (ids && ids.length === 0) return [];
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("provisions")
-    .select(TEASER_COLUMNS)
+    .select(ROOT_COLUMNS)
     .like("id", "sec-%-top-REG-%")
     .order("id", { ascending: true });
+  if (ids) query = query.in("id", ids);
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []) as TeaserProvision[];
+  return (data ?? []) as RegulationRoot[];
 }

@@ -731,3 +731,84 @@ export function containsBoxHtml(children: Provision[]): string {
     }))
   );
 }
+
+/**
+ * The regulation-name prefix a /sample card carries in front of its own
+ * citation ("Regulation Number 7 · I.D.3.a.(i)."): the root row's citation
+ * with the "Code of Colorado Regulations · " series prefix dropped, since
+ * every AQCC document shares it and the card has no room to say it four
+ * times. Federal and permit roots have no such prefix and pass through.
+ */
+export function regulationLabel(rootCitation: string): string {
+  return rootCitation.replace(/^Code of Colorado Regulations · /, "");
+}
+
+/** The "<reg>" of a provision id "sec-<reg>-...", or null for anything else. */
+export function regKeyOf(id: string): string | null {
+  return id.match(/^sec-([^-]+)-/)?.[1] ?? null;
+}
+
+/** The id of a regulation's root row, as stored: "sec-<reg>-top-REG-<reg>". */
+export function rootIdOf(regKey: string): string {
+  return `sec-${regKey}-top-REG-${regKey}`;
+}
+
+/**
+ * The /sample cards: each public row relabelled with its regulation's name
+ * (regulationLabel of the matching root's citation) in front of its own
+ * citation, its title reduced to what it adds beyond that citation, and
+ * the rows put in `order` (anything public but unlisted sorts after, by
+ * id). Pure so scripts/marketing-index.test.ts can prove the labels are
+ * the same whoever fetched `roots`.
+ *
+ * `roots` is expected to hold every regulation the rows belong to; a
+ * missing root falls back to the upper-cased reg key ("GP02"), which is
+ * exactly the wrong label an anonymous visitor used to see when the roots
+ * were read through the RLS-bound client.
+ */
+export function sampleCards<T extends Pick<Provision, "id" | "citation" | "title">>(
+  rows: T[],
+  roots: Pick<Provision, "id" | "citation">[],
+  order: string[]
+): Array<Omit<T, "title"> & { title: string | null }> {
+  const labelByKey = new Map<string, string>();
+  for (const r of roots) {
+    const key = r.id.match(/^sec-([^-]+)-top-REG-/)?.[1];
+    if (key) labelByKey.set(key, regulationLabel(r.citation));
+  }
+  const rank = (id: string) => {
+    const i = order.indexOf(id);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return rows
+    .map((p) => {
+      const key = regKeyOf(p.id);
+      const label = key ? labelByKey.get(key) ?? key.toUpperCase() : null;
+      // Corpus rows carry the bare label ("I.D.3.a.(i).") as the whole title
+      // on some rows and as the OPENING of the title on others ("I.G.90.
+      // POTENTIAL TO EMIT"). Strip it against the BARE citation here, before
+      // the regulation label is prefixed on: once `citation` reads "Common
+      // Provisions Regulation · I.G.90." the title no longer starts with it
+      // and ProvisionCard's own call would match nothing.
+      const heading = titleWithoutCitation(p.title, p.citation);
+      return {
+        ...p,
+        citation: label ? `${label} · ${p.citation}` : p.citation,
+        title: heading || null,
+      };
+    })
+    .sort((a, b) => rank(a.id) - rank(b.id) || a.id.localeCompare(b.id));
+}
+
+/**
+ * Where a regulation index card opens. An entitled reader goes to the
+ * gated reader at /regulations/<reg> (the federal subparts live at the
+ * same reader URLs as the Colorado regulations, so stored cross-reference
+ * hrefs keep working); anyone else goes to the public teaser at
+ * /regulations/<reg>/preview -- the reader 404s for them by design, so a
+ * card that linked there would look broken to the one audience an index
+ * page is marketing to.
+ */
+export function regulationCardHref(reg: string, hasAccess: boolean): string {
+  return hasAccess ? `/regulations/${reg}` : `/regulations/${reg}/preview`;
+}

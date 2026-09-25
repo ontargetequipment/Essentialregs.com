@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
-import { fetchRegulationRootsForSitemap } from "@/lib/regulation";
+import { fetchRegulationRoots } from "@/lib/regulation";
 
 /**
  * Static, public routes only. The gated full reader (/regulations/[reg])
@@ -29,8 +29,8 @@ const STATIC_ROUTES: Array<{
   { path: "/signup", changeFrequency: "yearly", priority: 0.5 },
 ];
 
-// fetchRegulationRootsForSitemap() reads with the service-role client (no
-// cookies()/other Next.js "dynamic API" the framework can detect), so
+// fetchRegulationRoots() reads with the service-role client (no cookies()/
+// other Next.js "dynamic API" the framework can detect), so
 // without this it would be treated as static and evaluated once at build
 // time -- when the service-role secret may not yet be configured. Forcing
 // dynamic rendering matches how every other Supabase-backed route in this
@@ -49,9 +49,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // A transient DB/config problem here should degrade to "the static routes
   // still get crawled" rather than take the whole sitemap down with a 500.
+  // fetchRegulationRoots is the same anonymous-safe root read the /federal
+  // and /general-permits indexes use: sitemap generation runs with no user
+  // session, so the RLS-bound fetchRegulationList() would enumerate zero
+  // regulations here and the teaser pages would never get linked/indexed.
   let previewEntries: MetadataRoute.Sitemap = [];
   try {
-    const roots = await fetchRegulationRootsForSitemap();
+    const roots = await fetchRegulationRoots();
     previewEntries = roots.map((r) => {
       const regNumber = r.id.match(/^sec-(.+)-top-REG-/)?.[1] ?? r.id;
       return {
