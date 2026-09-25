@@ -60,3 +60,8 @@ Claude outputs/
 
 # reader harness fixtures: real corpus rows pulled from the database (see scripts/reader-harness.ts)
 /scripts/fixtures/
+
+# playwright smoke output
+/test-results/
+/playwright-report/
+/blob-report/
