@@ -20,6 +20,18 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Tests
+
+CI (`.github/workflows/ci.yml`) has three jobs:
+
+- **check**, on every PR and push to `main`: `npm run lint`, `npm run typecheck`, `npm test` (`scripts/*.test.ts`) and the pipeline's pytest suite. No secrets.
+- **smoke**, when Vercel reports a successful deployment (or by hand with a `base_url`): the Playwright tests in `e2e/` against that deployment. Read-only; never signs up or pays. Production deployments run the anonymous group only. Repository secrets it uses:
+  - `VERCEL_AUTOMATION_BYPASS_SECRET` (the project's Protection Bypass for Automation secret). Without it the job skips.
+  - `SMOKE_EMAIL` / `SMOKE_PASSWORD` (an existing subscribed account). Without them the signed-in group skips.
+- **qa**, manual only: `scripts/corpus_qa.sql` against the database, using the `SUPABASE_DB_URL` secret.
+
+To run the smoke locally against any deployment: `BASE_URL=https://<deployment> npm run smoke` (after `npx playwright install chromium`).
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

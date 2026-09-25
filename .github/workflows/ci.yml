@@ -1,0 +1,192 @@
+name: CI
+
+# Three jobs, each with its own trigger:
+#
+#   check -- every pull request and every push to main. No secrets: nothing
+#            here talks to Supabase, Stripe or Voyage. `next build` is left
+#            to Vercel, which builds every PR with the project's environment
+#            (it prerenders from the database, so it cannot run without the
+#            service-role key).
+#   smoke -- Playwright against a deployed copy (e2e/). Fires when Vercel
+#            reports a deployment succeeded (deployment_status), or by hand
+#            with a base_url. Read-only: never signs up, never pays.
+#   qa    -- scripts/corpus_qa.sql against the database. Manual only.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Smoke: deployment URL to test (e.g. https://essentialregs-com-abc123.vercel.app). Leave blank to skip smoke."
+        required: false
+        default: ""
+      scope:
+        description: "Smoke: 'all' runs the signed-in group too (if its secrets exist); 'anonymous' does not."
+        type: choice
+        options: [all, anonymous]
+        default: all
+      qa:
+        description: "QA: run scripts/corpus_qa.sql against the database (needs the SUPABASE_DB_URL secret)."
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.event.deployment.id || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        # next typegen writes the PageProps/LayoutProps globals the pages use.
+        run: npm run typecheck
+
+      - name: Unit tests (web)
+        # scripts/*.test.ts: reader helpers, reader gate, mobile nav,
+        # marketing index. Fixture-backed cases skip (fixtures are git-ignored).
+        run: npm test
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+
+      - name: Install pipeline dependencies
+        run: pip install -r pipeline/requirements.txt pytest==9.1.1
+
+      - name: Unit tests (pipeline)
+        # No network, no database: in-memory rows and committed fixtures.
+        working-directory: pipeline
+        run: python -m pytest -q
+
+  smoke:
+    name: smoke
+    if: >-
+      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success') ||
+      (github.event_name == 'workflow_dispatch' && inputs.base_url != '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_URL: ${{ github.event.deployment_status.environment_url || inputs.base_url }}
+      # Production deployments run the anonymous group only.
+      SMOKE_SCOPE: >-
+        ${{ (github.event_name == 'deployment_status' && (github.event.deployment.production_environment || startsWith(github.event.deployment.environment, 'Production'))) && 'anonymous'
+        || (github.event_name == 'workflow_dispatch' && inputs.scope) || 'all' }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      SMOKE_EMAIL: ${{ secrets.SMOKE_EMAIL }}
+      SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+    steps:
+      - name: Check for the Vercel protection-bypass secret
+        id: gate
+        run: |
+          echo "Deployment: $BASE_URL (environment: ${{ github.event.deployment.environment || 'manual' }}, scope: $SMOKE_SCOPE)"
+          if [ -z "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then
+            msg="VERCEL_AUTOMATION_BYPASS_SECRET is not set, so the deployment's login wall would answer every request with 401. Smoke skipped (not failed). Add the project's Protection Bypass for Automation secret as a repository secret to run it."
+            echo "::notice title=Smoke skipped::$msg"
+            echo "### Smoke skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            if [ "$SMOKE_SCOPE" != "anonymous" ] && { [ -z "$SMOKE_EMAIL" ] || [ -z "$SMOKE_PASSWORD" ]; }; then
+              echo "::notice title=Signed-in smoke skipped::SMOKE_EMAIL / SMOKE_PASSWORD are not set; only the anonymous group will run."
+            fi
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          # deployment_status runs on the deployed commit; check out exactly it.
+          ref: ${{ github.event.deployment.sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: npm ci
+
+      - name: Install Chromium
+        if: steps.gate.outputs.run == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke tests
+        if: steps.gate.outputs.run == 'true'
+        run: npm run smoke
+
+      - name: Upload report
+        if: failure() && steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  qa:
+    name: qa
+    if: github.event_name == 'workflow_dispatch' && inputs.qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Check for the database URL secret
+        id: gate
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            msg="SUPABASE_DB_URL is not set. QA skipped (not failed). Add the database's postgres connection string as a repository secret to run it."
+            echo "::notice title=QA skipped::$msg"
+            echo "### QA skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - name: Run corpus QA
+        # Reads only; its one write is a session temp table (Step 0's results).
+        # Fails when any ERROR or GUARD check reads "*** CHECK ***".
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          psql "$SUPABASE_DB_URL" -X -q -v ON_ERROR_STOP=1 --csv -f scripts/corpus_qa.sql > qa.csv
+          {
+            echo "### Corpus QA"
+            echo '```'
+            cut -d, -f1-5 qa.csv
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat qa.csv
+          if grep -q '\*\*\* CHECK \*\*\*' qa.csv; then
+            echo "::error title=Corpus QA::One or more ERROR/GUARD checks moved off their baseline; see the job summary."
+            exit 1
+          fi
