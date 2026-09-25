@@ -107,3 +107,9 @@ test("a card opens the reader for a subscriber and the public teaser for anyone 
   assert.equal(regulationCardHref("oooob", false), "/regulations/oooob/preview");
   assert.equal(regulationCardHref(regulationNumber("sec-p192-top-REG-p192")!, false), "/regulations/p192/preview");
 });
+
+test("/general-permits shows every APCD general permit, whoever is looking", () => {
+  // The page's own filter (GP_KEY there) over what fetchRegulationRoots returns.
+  const gps = ROOTS.filter((r) => /^gp\d\d$/.test(regulationNumber(r.id) ?? ""));
+  assert.equal(gps.length, 11);
+});
