@@ -15,11 +15,11 @@
 -- because they cried wolf. They are documented at the bottom so nobody
 -- "helpfully" adds them back.
 --
--- Checks 13 and 14 are different in kind: they test GRANTS and RLS, not the
--- corpus. They exist because this suite runs as postgres and therefore
--- scored the 19 Sep 2026 keyword-search outage (42501 inside
--- search_provisions) as healthy for three days. Run the whole file, top to
--- bottom, in one go: Step 0 must run before the main query.
+-- Checks 13, 14 and 15 are different in kind: they test GRANTS, RLS and the
+-- entitlement guard, not the corpus. They exist because this suite runs as
+-- postgres and therefore scored the 19 Sep 2026 keyword-search outage (42501
+-- inside search_provisions) as healthy for three days. Run the whole file,
+-- top to bottom, in one go: Step 0 must run before the main query.
 -- ============================================================================
 
 -- ============================================================================
@@ -30,18 +30,28 @@
 -- bug. That is exactly how keyword search stayed "healthy" here for three
 -- days (19-22 Sep 2026) while every real user got
 --   42501 permission denied for function provision_path
--- from search_provisions(). This step executes the two user-facing RPCs as
--- the roles real callers actually use. Failures are recorded as rows, never
+-- from search_provisions(). This step executes the user-facing RPCs as the
+-- roles real callers actually use. Failures are recorded as rows, never
 -- raised, so the suite always finishes. Check 14 reports the result.
 --
--- Cases (want_min / want_max = acceptable row count from the probe):
+-- Cases (want_min / want_max = acceptable row count from the probe; want_err
+-- = the probe MUST fail, with "SQLSTATE: message" matching this regex):
 --   anon            search_provisions must run and see the sample rows;
 --                   context_path must run on the sample rows;
 --                   provision_path on a paywalled id must be NULL (RLS bypass
---                   guard - provision_path is SECURITY DEFINER).
---   authenticated   a signed-in NON-subscriber: same three expectations.
---   authenticated   an entitled profile: search returns paths, and
---                   provision_path on a paywalled id is non-NULL.
+--                   guard - provision_path is SECURITY DEFINER);
+--                   match_provisions / match_provisions_hybrid must fail with
+--                   "permission denied for function" (no EXECUTE for anon).
+--   authenticated   a signed-in NON-subscriber: the first three expectations,
+--                   and match_provisions / match_provisions_hybrid must raise
+--                   42501. Both are SECURITY DEFINER (RLS bypassed) and the
+--                   has_full_access() line at the top of each body is their
+--                   entire paywall; this is the case that catches its removal.
+--   authenticated   an entitled profile: search returns paths, provision_path
+--                   on a paywalled id is non-NULL, and both Ask RPCs run.
+-- The Ask RPCs are called with a zero vector of the embedding column's
+-- dimension (<DIM>, read from the catalog): enough to reach the guard, and
+-- the entitled call proves the negative cases are not passing by accident.
 drop table if exists pg_temp.rpc_smoke_results;
 create temp table rpc_smoke_results (caller text, what text, verdict text);
 
@@ -52,7 +62,14 @@ declare
   entitled_sub text;
   paywalled_id text;
   claims       text;
+  embed_dim    integer;
+  probe_sql    text;
 begin
+  -- pgvector stores the dimension as the column's typmod.
+  select a.atttypmod into embed_dim
+  from pg_attribute a
+  where a.attrelid = 'public.provision_embeddings'::regclass and a.attname = 'embedding';
+
   select id::text into entitled_sub
   from public.profiles
   where access_granted or subscription_status in ('active', 'trialing')
@@ -76,47 +93,78 @@ begin
       -- anonymous visitor -------------------------------------------------
       ('anon', '{"role":"anon"}', false,
        'search_provisions(''emissions'')',
-       $q$select count(*) from public.search_provisions('emissions', 25)$q$, 1, null),
+       $q$select count(*) from public.search_provisions('emissions', 25)$q$, 1, null, null),
       ('anon', '{"role":"anon"}', false,
        'context_path on sample rows',
-       $q$select count(public.context_path(p)) from public.provisions p where p.is_public$q$, 1, null),
+       $q$select count(public.context_path(p)) from public.provisions p where p.is_public$q$, 1, null, null),
       ('anon', '{"role":"anon"}', false,
        'provision_path(paywalled id) must be NULL',
-       $q$select count(*) from (select 1 where public.provision_path(%L) is not null) x$q$, 0, 0),
+       $q$select count(*) from (select 1 where public.provision_path(%L) is not null) x$q$, 0, 0, null),
+      ('anon', '{"role":"anon"}', false,
+       'match_provisions must be unexecutable (no EXECUTE for anon)',
+       $q$select count(*) from public.match_provisions(('[' || rtrim(repeat('0,', <DIM>), ',') || ']')::extensions.vector, 5)$q$, null, null,
+       '^42501: permission denied for function match_provisions$'),
+      ('anon', '{"role":"anon"}', false,
+       'match_provisions_hybrid must be unexecutable (no EXECUTE for anon)',
+       $q$select count(*) from public.match_provisions_hybrid('setback', ('[' || rtrim(repeat('0,', <DIM>), ',') || ']')::extensions.vector, 5)$q$, null, null,
+       '^42501: permission denied for function match_provisions_hybrid$'),
       -- signed in, not entitled --------------------------------------------
       ('authenticated', '{"role":"authenticated","sub":"00000000-0000-4000-8000-000000000000"}', false,
        'search_provisions(''emissions'') as non-subscriber',
-       $q$select count(*) from public.search_provisions('emissions', 25)$q$, 1, null),
+       $q$select count(*) from public.search_provisions('emissions', 25)$q$, 1, null, null),
       ('authenticated', '{"role":"authenticated","sub":"00000000-0000-4000-8000-000000000000"}', false,
        'provision_path(paywalled id) must be NULL as non-subscriber',
-       $q$select count(*) from (select 1 where public.provision_path(%L) is not null) x$q$, 0, 0),
+       $q$select count(*) from (select 1 where public.provision_path(%L) is not null) x$q$, 0, 0, null),
+      -- The entitlement guard on the SECURITY DEFINER Ask RPCs. Any 42501 is
+      -- the paywall holding (the in-body raise, or a revoked EXECUTE).
+      ('authenticated', '{"role":"authenticated","sub":"00000000-0000-4000-8000-000000000000"}', false,
+       'match_provisions must raise 42501 as non-subscriber',
+       $q$select count(*) from public.match_provisions(('[' || rtrim(repeat('0,', <DIM>), ',') || ']')::extensions.vector, 5)$q$, null, null,
+       '^42501: '),
+      ('authenticated', '{"role":"authenticated","sub":"00000000-0000-4000-8000-000000000000"}', false,
+       'match_provisions_hybrid must raise 42501 as non-subscriber',
+       $q$select count(*) from public.match_provisions_hybrid('setback', ('[' || rtrim(repeat('0,', <DIM>), ',') || ']')::extensions.vector, 5)$q$, null, null,
+       '^42501: '),
       -- signed in, entitled ------------------------------------------------
       ('authenticated', '{"role":"authenticated","sub":"<SUB>"}', true,
        'search_provisions(''setback'') rows with a path as subscriber',
-       $q$select count(path) from public.search_provisions('setback', 25)$q$, 1, null),
+       $q$select count(path) from public.search_provisions('setback', 25)$q$, 1, null, null),
       ('authenticated', '{"role":"authenticated","sub":"<SUB>"}', true,
        'provision_path(paywalled id) must be non-NULL as subscriber',
-       $q$select count(*) from (select 1 where public.provision_path(%L) is not null) x$q$, 1, 1)
-    ) v(role, claims, needs_entitled, what, sql, want_min, want_max)
+       $q$select count(*) from (select 1 where public.provision_path(%L) is not null) x$q$, 1, 1, null),
+      ('authenticated', '{"role":"authenticated","sub":"<SUB>"}', true,
+       'match_provisions runs as subscriber',
+       $q$select count(*) from public.match_provisions(('[' || rtrim(repeat('0,', <DIM>), ',') || ']')::extensions.vector, 5)$q$, 1, null, null),
+      ('authenticated', '{"role":"authenticated","sub":"<SUB>"}', true,
+       'match_provisions_hybrid(''setback'') runs as subscriber',
+       $q$select count(*) from public.match_provisions_hybrid('setback', ('[' || rtrim(repeat('0,', <DIM>), ',') || ']')::extensions.vector, 5)$q$, 1, null, null)
+    ) v(role, claims, needs_entitled, what, sql, want_min, want_max, want_err)
   loop
     if c.needs_entitled and entitled_sub is null then
       insert into rpc_smoke_results values (c.role, c.what, 'skipped: no entitled profile to test with');
       continue;
     end if;
     claims := replace(c.claims, '<SUB>', coalesce(entitled_sub, ''));
+    probe_sql := replace(c.sql, '<DIM>', coalesce(embed_dim::text, '0'));
     begin
       perform set_config('request.jwt.claims', claims, true);
       execute format('set local role %I', c.role);
-      execute format(c.sql, paywalled_id) into n;
+      execute format(probe_sql, paywalled_id) into n;
       reset role;
-      if (c.want_min is not null and n < c.want_min) or (c.want_max is not null and n > c.want_max) then
+      if c.want_err is not null then
+        insert into rpc_smoke_results values (c.role, c.what, format('FAIL: ran without error (%s rows); wanted an error matching %s', n, c.want_err));
+      elsif (c.want_min is not null and n < c.want_min) or (c.want_max is not null and n > c.want_max) then
         insert into rpc_smoke_results values (c.role, c.what, format('FAIL: %s rows, wanted %s..%s', n, coalesce(c.want_min::text, '-'), coalesce(c.want_max::text, '-')));
       else
         insert into rpc_smoke_results values (c.role, c.what, format('ok (%s rows)', n));
       end if;
     exception when others then
       reset role;  -- the failed subtransaction already restored it; belt and braces
-      insert into rpc_smoke_results values (c.role, c.what, format('FAIL %s: %s', sqlstate, sqlerrm));
+      if c.want_err is not null and (sqlstate || ': ' || sqlerrm) ~ c.want_err then
+        insert into rpc_smoke_results values (c.role, c.what, format('ok (raised %s: %s)', sqlstate, sqlerrm));
+      else
+        insert into rpc_smoke_results values (c.role, c.what, format('FAIL %s: %s', sqlstate, sqlerrm));
+      end if;
     end;
   end loop;
   reset role;
@@ -248,9 +296,23 @@ checks as (
 
   union all
   select 14, 'GUARD', 'rpc_smoke_as_real_roles', count(*) filter (where r.verdict !~ '^ok'), 0,
-         'Step 0 above actually executed search_provisions / context_path / provision_path as anon and as authenticated (subscriber and non-subscriber). Counts rows that did not come back ok. Results: '
+         'Step 0 above actually executed search_provisions / context_path / provision_path / match_provisions / match_provisions_hybrid as anon and as authenticated (subscriber and non-subscriber), including the cases that MUST fail: the Ask RPCs as anon (no EXECUTE) and as a non-subscriber (42501 from the has_full_access() guard). Counts rows that did not come back ok. Results: '
          || string_agg(r.caller || ' | ' || r.what || ' | ' || r.verdict, ' ;; ')
   from pg_temp.rpc_smoke_results r
+
+  union all
+  select 15, 'GUARD', 'definer_without_entitlement_check', count(*), 0,
+         'Any SECURITY DEFINER function in public that authenticated may execute, whose body reads provisions or provision_embeddings (so RLS is bypassed) and does NOT call has_full_access(). Today those functions are match_provisions and match_provisions_hybrid, and the one has_full_access() line at the top of each body is the entire paywall on the Ask tab (see the PAYWALL comment in each body). provision_path is exempt: its guard is inlined and documented (20260923035949). Comment lines are stripped before matching so the warning comment cannot satisfy the check. Expect 0.'
+         || coalesce(' Offenders: ' || string_agg(o.fn, '; '), '')
+  from (
+    select n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' as fn
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.prokind = 'f' and p.prosecdef
+      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+      and regexp_replace(p.prosrc, '--[^\n]*', '', 'g') ~ '\m(provisions|provision_embeddings)\M'
+      and regexp_replace(p.prosrc, '--[^\n]*', '', 'g') !~ '\mhas_full_access\s*\(\s*\)'
+      and p.proname <> 'provision_path'
+  ) o
 )
 select severity, check_name, n,
        case when severity in ('ERROR','GUARD') and n <> expected then '*** CHECK ***'
