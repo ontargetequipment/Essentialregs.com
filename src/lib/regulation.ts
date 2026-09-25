@@ -1,7 +1,10 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Provision } from "@/lib/types";
 import { sanitizeHtml } from "@/lib/regulation-pure";
+import { renderReaderBody, type RenderedReader } from "@/lib/reader-render";
 
 // Everything that does NOT talk to the database lives in regulation-pure.ts
 // (so scripts/ and tests can import it without a Supabase client, `next/headers`
@@ -10,45 +13,138 @@ export * from "@/lib/regulation-pure";
 
 const PAGE_SIZE = 1000;
 
+const PROVISION_COLUMNS =
+  "id, citation, title, jurisdiction_level, issuing_body, parent_id, full_text, ai_summary, summary_status, source_url, last_verified_date, is_public, sort_order";
+
 /**
  * Fetches every provision belonging to a regulation (stored `reg_key`, the
  * "<reg>" of "sec-<reg>-..."), paginating past PostgREST's default 1000-row
- * cap. A regulation like
- * Colorado Reg 3 has 2,000+ rows, so a single .select() would silently
- * truncate without this.
+ * cap. A regulation like Colorado Reg 3 has 2,000+ rows, so a single
+ * .select() would silently truncate without this.
+ *
+ * Page 0 is fetched alone and asks for the exact count; every remaining
+ * page is then requested at once (Promise.all) instead of one awaited
+ * round-trip per 1,000 rows -- ECMC is seven pages.
+ *
+ * Reads through the request's cookie-scoped client by default, so RLS
+ * decides what comes back. `supabase` is for fetchRenderedReader, which
+ * runs inside the cross-request cache with the service-role client and
+ * must never be reachable except through the gate in reader-page.ts.
  */
 export async function fetchRegulationProvisions(
-  regNumber: string
+  regNumber: string,
+  supabase?: SupabaseClient
 ): Promise<Provision[]> {
-  const supabase = await createClient();
-  const all: Provision[] = [];
-  let from = 0;
-
-  for (;;) {
-    const { data, error } = await supabase
+  const client = supabase ?? (await createClient());
+  const page = (from: number, withCount: boolean) =>
+    client
       .from("provisions")
-      .select(
-        "id, citation, title, jurisdiction_level, issuing_body, parent_id, full_text, ai_summary, summary_status, source_url, last_verified_date, is_public, sort_order"
-      )
+      .select(PROVISION_COLUMNS, withCount ? { count: "exact" } : undefined)
       // `reg_key` + `sort_order` is a composite index; `id like 'sec-<reg>-%'`
       // was a seq scan + disk sort of the whole regulation on every page.
       .eq("reg_key", regNumber)
       .order("sort_order", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
 
-    if (error) throw new Error(error.message);
-    if (!data || data.length === 0) break;
-    all.push(
-      ...(data as Provision[]).map((p) => ({
-        ...p,
-        full_text: sanitizeHtml(p.full_text),
-      }))
-    );
-    if (data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
-  }
+  const first = await page(0, true);
+  if (first.error) throw new Error(first.error.message);
+  const total = first.count ?? first.data?.length ?? 0;
+  const rest: ReturnType<typeof page>[] = [];
+  for (let from = PAGE_SIZE; from < total; from += PAGE_SIZE) rest.push(page(from, false));
 
+  const all: Provision[] = [];
+  for (const result of [first, ...(await Promise.all(rest))]) {
+    if (result.error) throw new Error(result.error.message);
+    for (const p of (result.data ?? []) as Provision[]) {
+      all.push({ ...p, full_text: sanitizeHtml(p.full_text) });
+    }
+  }
   return all;
+}
+
+/**
+ * The data version of one regulation: "<row count>:<max updated_at>". Both
+ * change on any import, edit or delete (provisions.updated_at defaults to
+ * now() on insert and the provisions_set_updated_at trigger bumps it on
+ * update), so it is the cache key for the rendered body -- see
+ * fetchRenderedReader. One cheap request: PostgREST's exact count header
+ * plus the single newest row (aggregates are not enabled on this project,
+ * so max() has to be an ORDER BY ... LIMIT 1).
+ *
+ * Cookie-scoped, like every other read on the subscriber's behalf.
+ */
+export async function fetchReaderVersion(regNumber: string): Promise<string> {
+  const supabase = await createClient();
+  const { data, count, error } = await supabase
+    .from("provisions")
+    .select("updated_at", { count: "exact" })
+    .eq("reg_key", regNumber)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (error) throw new Error(error.message);
+  const newest = (data?.[0] as { updated_at: string | null } | undefined)?.updated_at ?? "";
+  return `${count ?? 0}:${newest}`;
+}
+
+// The cached body is stored in pieces this long (JS string length), so no
+// single entry approaches the per-item size limit of the data cache
+// behind unstable_cache (Vercel's is small; ECMC's body is ~4 MB).
+const CACHE_CHUNK_CHARS = 800_000;
+
+/**
+ * The rendered reader body for a regulation, cached across requests and
+ * deployments with Next's data cache, keyed by reg plus the data version
+ * from fetchReaderVersion. Fetches with the service-role client, because a
+ * cache scope cannot read cookies() and the body is the same for every
+ * entitled subscriber anyway.
+ *
+ * THE GATE IS NOT HERE. Call this only through loadReaderPage
+ * (reader-page.ts), after getAccessStatus() has said yes on this request;
+ * see the invariant there and scripts/reader-gate.test.ts.
+ *
+ * Stored as one small "meta" entry (title, blurb, sidebar tree, chunk
+ * count) plus N chunk entries of docHtml, all under the same key parts. On
+ * a miss the regulation is fetched and rendered ONCE per request (`load`
+ * is memoised) however many entries need filling; a partial hit (an
+ * evicted chunk) recomputes once and refills only what is missing.
+ */
+export async function fetchRenderedReader(
+  regNumber: string,
+  version: string
+): Promise<RenderedReader | null> {
+  let loading: Promise<RenderedReader | null> | null = null;
+  const load = () =>
+    (loading ??= fetchRegulationProvisions(regNumber, createAdminClient()).then(renderReaderBody));
+
+  const meta = await unstable_cache(
+    async () => {
+      const r = await load();
+      if (!r) return null;
+      return {
+        title: r.title,
+        blurb: r.blurb,
+        navHtml: r.navHtml,
+        chunks: Math.ceil(r.docHtml.length / CACHE_CHUNK_CHARS),
+      };
+    },
+    ["reader-meta", regNumber, version],
+    { tags: ["reader-body"] }
+  )();
+  if (!meta) return null;
+
+  const chunks = await Promise.all(
+    Array.from({ length: meta.chunks }, (_, i) =>
+      unstable_cache(
+        async () => {
+          const r = await load();
+          return r ? r.docHtml.slice(i * CACHE_CHUNK_CHARS, (i + 1) * CACHE_CHUNK_CHARS) : "";
+        },
+        ["reader-chunk", regNumber, version, String(i)],
+        { tags: ["reader-body"] }
+      )()
+    )
+  );
+  return { title: meta.title, blurb: meta.blurb, navHtml: meta.navHtml, docHtml: chunks.join("") };
 }
 
 /** Every top-level regulation currently in the corpus (for the /regulations index). */
