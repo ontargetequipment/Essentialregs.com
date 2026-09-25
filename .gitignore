@@ -57,3 +57,6 @@ pipeline/failed.jsonl
 # Ignoring it also stops stale RUN_ME_*.sql copies accumulating alongside
 # the canonical ones in supabase/migrations and docs/imports.
 Claude outputs/
+
+# reader harness fixtures: real corpus rows pulled from the database (see scripts/reader-harness.ts)
+/scripts/fixtures/
