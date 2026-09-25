@@ -8,8 +8,12 @@ export type SearchHit = {
   title: string;
   /** The "{reg}" segment of a "sec-{reg}-..." id, or null for ids that don't follow that shape. */
   reg_key: string | null;
-  /** ts_headline output: plain text with <mark>…</mark> around query terms. Sanitize before rendering. */
-  headline: string;
+  /**
+   * ts_headline output: plain text with <mark>…</mark> around query terms. Sanitize before rendering.
+   * null for rows whose text is nothing but their own title or citation (search_provisions decides
+   * that server-side, 2026-09-25); render no snippet for those.
+   */
+  headline: string | null;
   rank: number;
   /** Ancestor headings below the regulation ("PART B — … › II. …"); null when the provision sits directly under it. */
   path: string | null;

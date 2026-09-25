@@ -28,16 +28,23 @@ reproduce production instead of reproducing the outage.
   2026-09-24": they were applied by hand before the folder was reconciled, and their
   version numbers are bounds or commit times, chosen so that replay order matches the
   order they actually ran. Each header says how the number was derived. Do not renumber
-  them.
+  them. One more, `20260914120000_reimport_backup_tables.sql`, begins "Reconstructed
+  2026-09-25": it recreates, from the catalog, two tables that were made by hand and
+  never recorded (see below). Same rule: do not renumber it.
 - `20260922030526_security_grants.sql` must stay between
   `20260921185135_neighbors_rpc_fallback_probe.sql` (creates the function it revokes on)
   and `20260923035949_guard_provision_path_and_restore_keyword_search.sql` (undoes its
   `provision_path` revoke).
-- `20260918040242_security_housekeeping_backups_and_trigger_fns.sql` alters two backup
-  tables (`provisions_backup_reg7_20260914`, `provision_changes_backup_20260914`) that
-  no migration creates; they came from the 2026-09-14 Reg 7 re-import. A replay onto an
-  empty database fails there unless those tables are created first. This is a known gap
-  in the record, not something to fix by editing a recorded migration.
+- The two backup tables from the 2026-09-14 Reg 7 re-import
+  (`provisions_backup_reg7_20260914`, `provision_changes_backup_20260914`) were made by
+  hand with `create table ... as select` and never recorded, so
+  `20260918040242_security_housekeeping_backups_and_trigger_fns.sql`, which enables RLS
+  on them, failed on a from-scratch replay. `20260914120000_reimport_backup_tables.sql`
+  now creates them (empty, with production's exact column list; its header explains the
+  reconstruction) and is recorded in `schema_migrations` with that version. Replay
+  order: `20260914120000` creates, `20260918040242` enables RLS,
+  `20260925013349_archive_backup_tables.sql` moves them to schema `archive`, which is
+  not in PostgREST's exposed schema list. Nothing is dropped.
 - `../schema.sql` is the original hand-run bootstrap (the "001" the numbered series
   never had). Its content is what `20260902021254_initial_schema`,
   `20260909235329_add_profiles_and_access_granted` and
