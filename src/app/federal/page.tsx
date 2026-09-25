@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchRegulationRoots } from "@/lib/regulation";
+import { fetchRegulationRoots, regulationCardHref } from "@/lib/regulation";
 import { getAccessStatus } from "@/lib/access";
 import { RegulationList } from "@/components/RegulationList";
 
@@ -42,7 +42,12 @@ export default async function FederalIndexPage() {
         40 CFR Part 60 (New Source Performance Standards) and Part 63
         (NESHAP) subparts as printed in the eCFR, incorporated by
         reference in{" "}
-        <Link href="/regulations/6" className="font-medium text-zinc-900 underline underline-offset-2">
+        {/* Same anonymous-vs-entitled target as the cards below: the reader
+            404s for a logged-out visitor, so they get the public teaser. */}
+        <Link
+          href={regulationCardHref("6", access.hasAccess)}
+          className="font-medium text-zinc-900 underline underline-offset-2"
+        >
           Colorado Regulation Number 6 Part A
         </Link>
         . Also included: 49 CFR Parts 190 through 196 and 199, PHMSA&apos;s
