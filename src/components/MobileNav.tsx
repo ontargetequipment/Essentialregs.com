@@ -202,13 +202,23 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
 
   return (
     <>
+      {/* Hamburger. Its accessible name stays "Menu" in both states and
+          aria-expanded carries open/closed (the disclosure pattern); it used
+          to flip to "Close menu" while open, which double-encoded the state
+          aria-expanded already conveys and left two controls -- this and the
+          drawer's own close button -- both named "Close menu". While the
+          drawer is open this button is also behind the scrim and `inert`
+          (see the focus-management effect), so it's out of the tab order
+          and unexposed to assistive tech until the drawer closes and
+          focus returns here, announcing "Menu, collapsed". */}
       <button
         ref={toggleRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="-mr-2 flex h-10 w-10 items-center justify-center rounded-md text-ink-soft hover:bg-accent-soft hover:text-ink sm:hidden"
-        aria-label={open ? "Close menu" : "Open menu"}
+        aria-label="Menu"
         aria-expanded={open}
+        aria-controls="site-menu"
       >
         <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
           <path d="M2.5 5h15M2.5 10h15M2.5 15h15" />
@@ -236,6 +246,7 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
           would still be in the tab order (and read by screen readers). */}
       <div
         ref={drawerRef}
+        id="site-menu"
         role="dialog"
         aria-modal="true"
         aria-label="Menu"

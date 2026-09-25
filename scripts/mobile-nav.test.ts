@@ -102,6 +102,8 @@ test("mobile drawer: focus trap, inert page, focus return", async (t) => {
 
   await t.test("closed drawer: page is live, drawer is inert", () => {
     assert.equal(toggle.getAttribute("aria-expanded"), "false");
+    assert.equal(toggle.getAttribute("aria-label"), "Menu");
+    assert.equal(toggle.getAttribute("aria-controls"), drawer.id);
     assert.ok(drawer.hasAttribute("inert"), "closed drawer is inert");
     for (const el of behindScrim()) assert.ok(!isInert(el), `${el.id || el.tagName} is not inert while closed`);
   });
@@ -110,6 +112,8 @@ test("mobile drawer: focus trap, inert page, focus return", async (t) => {
     toggle.focus();
     await click(toggle);
     assert.equal(toggle.getAttribute("aria-expanded"), "true");
+    assert.equal(toggle.getAttribute("aria-label"), "Menu", "name is stable; aria-expanded carries the state");
+    assert.equal(document.querySelectorAll('[aria-label="Close menu"]').length, 1, "only the drawer's close button is named Close menu");
     assert.ok(!drawer.hasAttribute("inert"));
     for (const el of behindScrim()) assert.ok(el.hasAttribute("inert"), `${el.id || el.tagName} is inert while open`);
     assert.ok(!scrim.hasAttribute("inert"), "scrim stays clickable");
