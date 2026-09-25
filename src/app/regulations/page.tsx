@@ -10,6 +10,9 @@ export const metadata = {
 export default async function RegulationsIndexPage() {
   // RLS decides what fetchRegulationList() returns; getAccessStatus() just
   // tells us whether an empty list means "not subscribed" or "corpus empty".
+  // Deliberately NOT the anonymous-safe fetchRegulationRoots that /federal
+  // and /general-permits use: a logged-out visitor's /regulations is the
+  // subscribe page (the prompt in RegulationList, no cards), by design.
   const [access, allRegs] = await Promise.all([
     getAccessStatus(),
     fetchRegulationList(),
