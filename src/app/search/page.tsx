@@ -362,7 +362,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           <ol className="mt-3 flex flex-col gap-3">
             {hits.map((hit) => {
               const heading = titleWithoutCitation(hit.title, hit.citation);
-              const snippet = snippetWithoutTitle(sanitizeHeadline(hit.headline), [hit.title, heading]);
+              const snippet = snippetWithoutTitle(sanitizeHeadline(hit.headline ?? ""), [hit.title, heading]);
               return (
                 <li key={hit.id}>
                   <Link
