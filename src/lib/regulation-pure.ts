@@ -1,5 +1,19 @@
 import sanitizeHtmlLib from "sanitize-html";
 import type { Provision } from "@/lib/types";
+import {
+  containsBoxFromRows,
+  escapeHtml,
+  normalizeCitationLabel,
+  SNIPPET_LEN,
+  snippetAfterCitation,
+  type SearchRow,
+} from "@/lib/snippet";
+
+// The text helpers the browser also needs (snippets, escaping, the contains
+// box and summary-link templates) live in snippet.ts so RegulationReader can
+// import them without dragging sanitize-html into the client bundle. They
+// are re-exported here so server callers keep one import path.
+export * from "@/lib/snippet";
 
 export type ProvisionKind = "reg" | "part" | "appendix" | "item";
 
@@ -154,66 +168,6 @@ export function stripHtml(html: string, maxLen = 100): string {
     .replace(/\s+/g, " ")
     .trim();
   return text.length > maxLen ? text.slice(0, maxLen).trimEnd() + "…" : text;
-}
-
-/**
- * Normalize a citation for comparison against normalized provision text.
- * The citation column can carry a non-breaking space (common when the source
- * was pasted from a PDF — "§ 60.4231(d)"), a doubled space, or an HTML entity,
- * none of which survive into the normalized text. Without this the comparison
- * silently fails and the row keeps rendering its label twice.
- */
-export function normalizeCitationLabel(citation: string | null | undefined): string {
-  return (citation ?? "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\u00A0/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * Plain-text snippet of a provision for places that already print its
- * citation right next to it — the sidebar tree, the "contains" boxes and the
- * jump/search index.
- *
- * 5,941 of 36,517 provisions are stored with the citation inside their own
- * text, so those surfaces rendered it twice ("I.A.1.  I.A.1. The provisions
- * of this regulation…"). The citation is removed BEFORE truncating, so the
- * snippet still gets its full `maxLen` of useful text.
- *
- * May return "": a row whose text is nothing but its own citation has no
- * snippet, and callers must not render the element in that case (see the
- * note in the body). It no longer falls back to the unstripped text.
- *
- * Same digit guard as withItemIdBadge: a citation of "2." must not match text
- * reading "2.5 tons per year". Do not drop it — see that function's comment
- * for the measurements behind it.
- */
-export function snippetAfterCitation(
-  html: string,
-  citation: string | null | undefined,
-  maxLen = 100
-): string {
-  const text = html
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\u00A0/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const label = normalizeCitationLabel(citation);
-  const body =
-    label && text.startsWith(label) && !/[0-9]/.test(text.charAt(label.length))
-      ? text.slice(label.length).replace(/^[\s.:;,\u2014\u2013-]+/, "")
-      : text;
-  // 90 rows in the corpus are exactly their own citation and nothing else,
-  // so stripping the label leaves "". That empty string is returned as is:
-  // every caller already prints the citation right next to the snippet, so
-  // rendering nothing beats rendering the label a second time. Callers MUST
-  // guard on the empty string -- see containsBoxHtml below and the five call
-  // sites in app/regulations/[reg]/page.tsx.
-  return body.length > maxLen ? body.slice(0, maxLen).trimEnd() + "…" : body;
 }
 
 /**
@@ -567,16 +521,6 @@ export function depthOf(
   return depth;
 }
 
-/**
- * [id, citation, snippet, topGroupId] tuples for the client-side jump/search
- * box. The 4th element (added for the collapsible sidebar -- see
- * RegulationReader.tsx) is the id of this provision's top-level ancestor
- * (the Part/Appendix/series node whose sidebar entry is a <details> group),
- * so a hash-jump or popup "go to" can find and open the right group without
- * shipping a second lookup table alongside this one.
- */
-export type SearchRow = [id: string, citation: string, snippet: string, topGroupId: string];
-
 export function buildSearchIndex(all: Provision[]): SearchRow[] {
   const byId = new Map(all.map((p) => [p.id, p]));
   const groupCache = new Map<string, string>();
@@ -597,17 +541,9 @@ export function buildSearchIndex(all: Provision[]): SearchRow[] {
   return all.map((p) => [
     p.id,
     p.citation,
-    snippetAfterCitation(p.full_text, p.citation, 90),
+    snippetAfterCitation(p.full_text, p.citation, SNIPPET_LEN),
     topGroupOf(p),
   ]);
-}
-
-export function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 /**
@@ -760,12 +696,16 @@ export function summaryPanelHtml(
   // review, and the Disclaimer page already covers that summaries are
   // AI-generated. A link to the source document lets a reader verify
   // directly instead.
+  //
+  // The link itself is no longer in the string: with one URL per regulation
+  // it was the same 150 bytes under every one of thousands of panels (511 KB
+  // of ECMC's HTML, shipped twice). The row is emitted empty and the browser
+  // fills it from the regulation's source link (reader-client.ts,
+  // fillSummaryLinks), using summarySourceLinkHtml for the identical markup.
+  // A row whose own source_url differs from the root's gets a data-src on
+  // its wrapper (reader-render.ts) so the browser still uses that one.
   const sourceUrl = p.source_url ?? fallbackSourceUrl ?? null;
-  const sourceLinkHtml = sourceUrl
-    ? `<div class="summary-status"><a href="${escapeHtml(
-        sourceUrl
-      )}" target="_blank" rel="noopener noreferrer">View official source ↗</a></div>`
-    : "";
+  const sourceLinkHtml = sourceUrl ? `<div class="summary-status"></div>` : "";
   return (
     `<details class="summary-panel">` +
     `<summary>Plain-English summary</summary>` +
@@ -775,22 +715,19 @@ export function summaryPanelHtml(
   );
 }
 
-/** The mini "here's what's inside this section" box shown under items/parts that have children. */
+/**
+ * The contains box for one provision's children, built on the server. The
+ * page no longer ships this (RegulationReader builds the same markup in the
+ * browser from the DOM through containsBoxFromRows); it stays here as the
+ * reference the harness measures and scripts/reader-client.test.ts
+ * compares the browser-built box against.
+ */
 export function containsBoxHtml(children: Provision[]): string {
-  if (!children.length) return "";
-  const items = children
-    .map((c) => {
-      const snip = snippetAfterCitation(c.full_text, c.citation, 90);
-      // A child whose entire text is its own citation has no snippet left --
-      // emit the link alone rather than an empty <span> preceded by a
-      // dangling space. (.contains-link already carries margin-right: 4px.)
-      const snipHtml = snip
-        ? ` <span class="contains-snip">${escapeHtml(snip)}</span>`
-        : "";
-      return `<li><span class="xref contains-link" data-target="${escapeHtml(
-        c.id
-      )}">${escapeHtml(c.citation)}</span>${snipHtml}</li>`;
-    })
-    .join("");
-  return `<ul class="contains">${items}</ul>`;
+  return containsBoxFromRows(
+    children.map((c) => ({
+      id: c.id,
+      citation: c.citation,
+      snippet: snippetAfterCitation(c.full_text, c.citation, SNIPPET_LEN),
+    }))
+  );
 }

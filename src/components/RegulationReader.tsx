@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import type { SearchRow } from "@/lib/regulation";
+import {
+  buildSearchIndexFromDom,
+  fillContainsBoxes,
+  fillSummaryLinks,
+  readReaderModel,
+} from "@/lib/reader-client";
+import type { SearchRow } from "@/lib/snippet";
 
 /**
  * Client-side behavior for the regulation reader: mobile sidebar toggle,
@@ -14,8 +20,9 @@ import type { SearchRow } from "@/lib/regulation";
  * DOM-event-delegation approach the original used, run once on mount,
  * rather than re-modeling all of this as React state.
  */
-export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) {
+export function RegulationReader() {
   useEffect(() => {
+    const doc = document.getElementById("doc");
     const backdrop = document.getElementById("backdrop");
     const popupEyebrow = document.getElementById("popup-eyebrow");
     const popupTitle = document.getElementById("popup-title");
@@ -27,18 +34,31 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
     const jumpbox = document.getElementById("jumpbox") as HTMLInputElement | null;
     const jumpResults = document.getElementById("jump-results");
 
-    if (!backdrop || !popupTitle || !popupBody || !sidebar || !jumpbox || !jumpResults) {
+    if (!backdrop || !popupTitle || !popupBody || !sidebar || !jumpbox || !jumpResults || !doc) {
       return;
     }
 
-    // id -> containing sidebar <details> group id, built once from
-    // searchIndex's 4th column (see buildSearchIndex in regulation.ts).
-    // Used so a hash-load or a "go to" jump opens the sidebar group the
-    // target provision actually lives in, instead of leaving it collapsed.
-    const groupById = new Map(searchIndex.map((row) => [row[0], row[3]]));
+    // The page ships the provisions and nothing else; the furniture around
+    // them is rebuilt here from the DOM (see reader-client.ts): the tree
+    // from document order, then every item's contains box and every summary
+    // panel's source link, right now, so a hash jump below lands on a
+    // finished page and a popup's clone of an item is complete. The search
+    // index is the same rows again, built on first use or when idle.
+    const model = readReaderModel(doc);
+    fillSummaryLinks(model);
+    fillContainsBoxes(model);
+    let searchIndex: SearchRow[] | null = null;
+    const getSearchIndex = () => (searchIndex ??= buildSearchIndexFromDom(model));
+    const idle =
+      "requestIdleCallback" in window ? window.requestIdleCallback(() => getSearchIndex()) : null;
+
+    // id -> containing sidebar <details> group id (the 4th column of the
+    // search index rows). Used so a hash-load or a "go to" jump opens the
+    // sidebar group the target provision actually lives in, instead of
+    // leaving it collapsed.
     function openGroupFor(slug: string) {
-      const groupId = groupById.get(slug);
-      if (!groupId) return;
+      if (!model.byId.has(slug)) return;
+      const groupId = model.topGroupOf(slug);
       const details = document.getElementById(`navgroup-${groupId}`);
       if (details instanceof HTMLDetailsElement) details.open = true;
     }
@@ -183,7 +203,7 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
       }
       const idMatches: SearchRow[] = [];
       const textMatches: SearchRow[] = [];
-      for (const row of searchIndex) {
+      for (const row of getSearchIndex()) {
         const idLower = row[1].toLowerCase();
         if (idLower.indexOf(q) === 0) {
           idMatches.push(row);
@@ -237,6 +257,7 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
     }
 
     return () => {
+      if (idle !== null) window.cancelIdleCallback(idle);
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onKeydown);
       window.removeEventListener("hashchange", onHashChange);
@@ -247,7 +268,6 @@ export function RegulationReader({ searchIndex }: { searchIndex: SearchRow[] }) 
       jumpbox.removeEventListener("focus", onJumpFocus);
       jumpResults.removeEventListener("click", onJumpResultsClick);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
