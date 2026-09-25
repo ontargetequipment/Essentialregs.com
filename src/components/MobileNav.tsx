@@ -91,6 +91,93 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
+  // Keyboard/assistive-tech containment while the drawer is open.
+  // aria-modal="true" on the dialog only *tells* screen readers the rest of
+  // the page is off limits; it does nothing for the keyboard, so on its own
+  // Tab walked straight out through the scrim into the page behind. While
+  // open:
+  //   - every element outside the drawer gets the `inert` attribute (walk
+  //     from the drawer up to <body>, marking each level's siblings: the
+  //     header's logo and hamburger, then <main> and <footer>). The scrim
+  //     is skipped — it has to stay clickable to close. Anything already
+  //     inert is left alone so it isn't un-inerted on cleanup;
+  //   - Tab from the last focusable wraps to the first and Shift+Tab from
+  //     the first wraps to the last, so focus never leaves for the browser
+  //     chrome. Tabs in between are left to the browser, which — with the
+  //     rest of the page inert — can only land inside the drawer anyway;
+  //   - focus lands on the close button on open, and goes back to the
+  //     hamburger on close, unless something else already moved it: after
+  //     a drawer link navigates, Next's layout router focuses the new
+  //     segment, and that must win.
+  // The closed drawer is itself `inert` (see the JSX) so its off-screen
+  // links aren't in the tab order either.
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const scrimRef = useRef<HTMLDivElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+    const opener = toggleRef.current;
+
+    const madeInert: Element[] = [];
+    for (let node: Element = drawer; node !== document.body; ) {
+      const parent = node.parentElement;
+      if (!parent) break;
+      for (const sibling of parent.children) {
+        if (sibling === node || sibling === scrimRef.current) continue;
+        if (sibling.hasAttribute("inert")) continue;
+        sibling.setAttribute("inert", "");
+        madeInert.push(sibling);
+      }
+      node = parent;
+    }
+
+    const focusables = () =>
+      Array.from(
+        drawer.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+    // First focusable is the close button (first control in the drawer's
+    // header row): a safe landing spot that doesn't pop the soft keyboard
+    // the way the search input would.
+    focusables()[0]?.focus({ preventScroll: true });
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      const inside = active !== null && drawer.contains(active);
+      const atEdge = e.shiftKey ? active === first : active === last;
+      if (atEdge || !inside) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus({ preventScroll: true });
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      for (const el of madeInert) el.removeAttribute("inert");
+      // Restore focus to the hamburger only if it's still in the drawer (or
+      // was dropped on <body> by the scrim click that closed it). If a
+      // navigation already put it somewhere useful, leave it there.
+      // preventScroll: the header isn't sticky, and closing the menu
+      // shouldn't yank a scrolled-down page back to the top.
+      const active = document.activeElement;
+      if (!active || active === document.body || drawer.contains(active)) {
+        opener?.focus({ preventScroll: true });
+      }
+    };
+  }, [open]);
+
   // Desktop "Regulations" dropdown: click to open (not hover, so it works
   // the same for keyboard, touch and mouse), closes on outside click, Escape
   // or navigation. Listeners are only attached while it's open.
@@ -115,12 +202,23 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
 
   return (
     <>
+      {/* Hamburger. Its accessible name stays "Menu" in both states and
+          aria-expanded carries open/closed (the disclosure pattern); it used
+          to flip to "Close menu" while open, which double-encoded the state
+          aria-expanded already conveys and left two controls -- this and the
+          drawer's own close button -- both named "Close menu". While the
+          drawer is open this button is also behind the scrim and `inert`
+          (see the focus-management effect), so it's out of the tab order
+          and unexposed to assistive tech until the drawer closes and
+          focus returns here, announcing "Menu, collapsed". */}
       <button
+        ref={toggleRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="-mr-2 flex h-10 w-10 items-center justify-center rounded-md text-ink-soft hover:bg-accent-soft hover:text-ink sm:hidden"
-        aria-label={open ? "Close menu" : "Open menu"}
+        aria-label="Menu"
         aria-expanded={open}
+        aria-controls="site-menu"
       >
         <svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
           <path d="M2.5 5h15M2.5 10h15M2.5 15h15" />
@@ -132,6 +230,7 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
           the DOM at all times so it can transition; pointer-events-none and
           aria-hidden keep it inert while closed. */}
       <div
+        ref={scrimRef}
         aria-hidden="true"
         onClick={() => setOpen(false)}
         className={[
@@ -142,11 +241,16 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
 
       {/* Mobile off-canvas drawer. Fixed (not absolute) so it's positioned
           against the viewport and reaches full height regardless of where
-          in the header it's mounted. */}
+          in the header it's mounted. `inert` while closed: it's only
+          translated off-screen, not display:none, so without this its links
+          would still be in the tab order (and read by screen readers). */}
       <div
+        ref={drawerRef}
+        id="site-menu"
         role="dialog"
         aria-modal="true"
         aria-label="Menu"
+        inert={!open}
         className={[
           "fixed inset-y-0 right-0 z-[60] flex w-80 flex-col bg-panel shadow-[0_0_40px_rgba(0,0,0,0.2)] transition-transform duration-200 ease-out sm:hidden",
           open ? "translate-x-0" : "translate-x-full",

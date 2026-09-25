@@ -130,12 +130,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                   <p className="font-mono text-eyebrow uppercase text-tag">
                     {group.label}
                   </p>
-                  <ul className="mt-3 flex flex-col gap-2 text-sm">
+                  {/* Below `sm` each link is a 44px-tall full-width row
+                      (tap target) with no gap between rows, and the list's
+                      top margin is dropped because the row's own vertical
+                      centering already leaves 12px above the first label.
+                      `sm:` restores the inline links, 8px gap and mt-3 the
+                      desktop footer has always had. */}
+                  <ul className="flex flex-col text-sm sm:mt-3 sm:gap-2">
                     {group.links.map((l) => (
                       <li key={l.href}>
                         <Link
                           href={l.href}
-                          className="text-ink-soft hover:text-accent hover:underline underline-offset-2"
+                          className="flex min-h-11 items-center text-ink-soft hover:text-accent hover:underline underline-offset-2 sm:inline sm:min-h-0"
                         >
                           {l.label}
                         </Link>
