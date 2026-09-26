@@ -78,6 +78,18 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
       </nav>
 
       <div id="main-scroll">
+        {/* Return trail (backlog #18): after a "go to" (popup, sidebar,
+            jump box) this sticks to the top of the reading pane with a way
+            back to the provision the reader left. RegulationReader fills
+            the label and shows/hides it; hidden until the first goto. */}
+        <div id="return-trail" hidden>
+          <button id="return-trail-back" type="button">
+            ← Back to <span id="return-trail-label" />
+          </button>
+          <button id="return-trail-dismiss" type="button" aria-label="Dismiss">
+            ✕
+          </button>
+        </div>
         <div id="doc" dangerouslySetInnerHTML={{ __html: reader.docHtml }} />
       </div>
     </div>

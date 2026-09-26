@@ -12,6 +12,10 @@ import { expect, test, withProtectionBypass } from "./fixtures";
 /** The four is_public rows; a signed-in search must find something else. */
 const PUBLIC_IDS = ["sec-7-B-I-D-3-a-(i)", "sec-gp02-II-A-2", "sec-ecmc-604-a-(1)", "sec-cp-I-G-90"];
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /** The provision id a search result links to (/regulations/<reg>#<id> or /regs/<id>). */
 function idFromHref(href: string): string {
   const hash = href.indexOf("#");
@@ -81,9 +85,30 @@ test.describe("signed in", () => {
       await page.locator("[data-smoke-xref]").click();
       await expect(page.locator("#backdrop")).toHaveClass(/\bshow\b/, { timeout: 2_000 });
     }).toPass({ timeout: 30_000 });
-    await expect(page.locator("#popup-eyebrow")).toHaveText(slug!);
+    // The eyebrow is the regulation's display name, then the target's
+    // ancestor labels ("Regulation 7 · Part B · I. · I.D."), never the id.
+    await expect(page.locator("#popup-eyebrow")).toHaveText(/^Regulation 7( · .+)?$/);
+    await expect(page.locator("#popup-eyebrow")).not.toContainText(slug!);
     await expect(page.locator("#popup-title")).not.toBeEmpty();
     await expect(page.locator(`#popup-body [id="${slug}"]`)).toHaveCount(1);
+
+    // "Go to full section": the popup closes, the hash names the target, the
+    // target itself (the #doc row, not the popup's clone) is in the viewport,
+    // and the return trail offers the way back to the row the reference was in.
+    const originId = await page.locator("[data-smoke-xref]").evaluate((el) => el.closest("#doc > [id]")?.id ?? null);
+    await page.locator("#popup-goto").click();
+    await expect(page.locator("#backdrop")).not.toHaveClass(/\bshow\b/);
+    await expect(page).toHaveURL(new RegExp(`#${escapeRegExp(slug!)}$`));
+    await expect(page.locator(`#doc [id="${slug}"]`)).toBeInViewport();
+    await expect(page.locator("#return-trail")).toBeVisible();
+    if (originId) {
+      const originLabel = await page.locator(`#doc [id="${originId}"]`).evaluate((el) => el.getAttribute("data-citation"));
+      await expect(page.locator("#return-trail-back")).toHaveText(`← Back to ${originLabel}`);
+      await page.locator("#return-trail-back").click();
+      await expect(page).toHaveURL(new RegExp(`#${escapeRegExp(originId)}$`));
+      await expect(page.locator(`#doc [id="${originId}"]`)).toBeInViewport();
+    }
+    await expect(page.locator("#return-trail")).toBeHidden();
   });
 
   test("search returns provisions beyond the public sample", async ({ page }) => {
