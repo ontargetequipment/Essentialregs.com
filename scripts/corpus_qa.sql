@@ -18,8 +18,11 @@
 -- Checks 13, 14 and 15 are different in kind: they test GRANTS, RLS and the
 -- entitlement guard, not the corpus. They exist because this suite runs as
 -- postgres and therefore scored the 19 Sep 2026 keyword-search outage (42501
--- inside search_provisions) as healthy for three days. Run the whole file,
--- top to bottom, in one go: Step 0 must run before the main query.
+-- inside search_provisions) as healthy for three days. Check 16 tests the
+-- keyword RANKING (backlog #15): it exists because for two weeks every
+-- "requirements" search returned a first page of Statements of Basis and
+-- nobody had a query that would have said so. Run the whole file, top to
+-- bottom, in one go: Step 0 must run before the main query.
 -- ============================================================================
 
 -- ============================================================================
@@ -313,6 +316,33 @@ checks as (
       and regexp_replace(p.prosrc, '--[^\n]*', '', 'g') !~ '\mhas_full_access\s*\(\s*\)'
       and p.proname <> 'provision_path'
   ) o
+
+  -- ---- RANKING: keyword search must put the rules first -------------------
+
+  union all
+  select 16, 'GUARD', 'keyword_ranking_operative_first', count(*), 0,
+         'Backlog #15 (20260926045912). Five subscriber searches that used to return a first page of Statements of Basis: "APEN requirements", "storage tank requirements", "well production facility", "produced water tank", and "OOOOb" (which put Table 5 ahead of the subpart). Each must return results; with include_basis=true no Statement of Basis may sit in the top 5; with include_basis=false (the page default) none may be returned at all; and "OOOOb" must return the subpart root sec-oooob-top-REG-oooob first. Runs as postgres, so RLS is bypassed (every row is visible) and provision_path() returns NULL, which makes the Definitions multiplier inert here; the basis and citation rules do not depend on it. Counts queries that break any of these. Expect 0.'
+         || coalesce(' Offenders: ' || string_agg(k.q || ' -> ' || k.why, '; '), '')
+  from (
+    select v.q, string_agg(f.problem, ', ') as why
+    from (values ('APEN requirements'), ('storage tank requirements'), ('well production facility'),
+                 ('produced water tank'), ('OOOOb')) v(q)
+    cross join lateral (
+      select 'no results' as problem
+      where not exists (select 1 from public.search_provisions(v.q, 1, false))
+      union all
+      select 'Statement of Basis in top 5 with include_basis=true'
+      where exists (select 1 from public.search_provisions(v.q, 5, true) s where s.is_basis)
+      union all
+      select 'Statement of Basis returned with include_basis=false'
+      where exists (select 1 from public.search_provisions(v.q, 25, false) s where s.is_basis)
+      union all
+      select 'first hit is not the subpart root'
+      where v.q = 'OOOOb'
+        and (select s.id from public.search_provisions(v.q, 1, false) s) is distinct from 'sec-oooob-top-REG-oooob'
+    ) f
+    group by v.q
+  ) k
 )
 select severity, check_name, n,
        case when severity in ('ERROR','GUARD') and n <> expected then '*** CHECK ***'
