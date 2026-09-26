@@ -21,8 +21,12 @@
 -- inside search_provisions) as healthy for three days. Check 16 tests the
 -- keyword RANKING (backlog #15): it exists because for two weeks every
 -- "requirements" search returned a first page of Statements of Basis and
--- nobody had a query that would have said so. Run the whole file, top to
--- bottom, in one go: Step 0 must run before the main query.
+-- nobody had a query that would have said so. Check 17 tests the
+-- oil-and-gas tie-break on that ranking (backlog #21) and, unlike 16, takes
+-- its probe from Step 0b, which runs as the subscriber: the pool-stage
+-- multipliers only mean anything for a caller who gets breadcrumbs. Run the
+-- whole file, top to bottom, in one go: Steps 0 and 0b must run before the
+-- main query.
 -- ============================================================================
 
 -- ============================================================================
@@ -173,6 +177,58 @@ begin
   reset role;
 end
 $smoke$;
+
+-- ============================================================================
+-- Step 0b — keyword ranking as the subscriber (runs BEFORE the main query)
+-- ============================================================================
+-- Check 16 runs its searches as postgres, where provision_path() returns NULL
+-- and the pool-stage multipliers in search_provisions() (the Definitions
+-- x0.8, the other-sector x0.7 from 20260926230949) are either inert or
+-- unobservable next to what a real subscriber sees. The reviewer's failing
+-- case for backlog #21, "fugitive emissions", is decided by exactly those
+-- rows (a Common Provisions definition, Reg 25, Reg 1 against GP09/GP10/
+-- GP12), so this probe runs search_provisions('fugitive emissions', 10,
+-- false) as the same entitled profile Step 0 uses and records the top 3 for
+-- check 17. Rows are collected while the role is set and written after it
+-- is reset (the temp table belongs to postgres). Failures are recorded, not
+-- raised, so the suite always finishes.
+drop table if exists pg_temp.keyword_oil_gas_top3;
+create temp table keyword_oil_gas_top3 (ord integer, id text, reg_key text, citation text, note text);
+
+do $oilgas$
+declare
+  entitled_sub text;
+  top3         jsonb;
+begin
+  select id::text into entitled_sub
+  from public.profiles
+  where access_granted or subscription_status in ('active', 'trialing')
+  order by id limit 1;
+
+  if entitled_sub is null then
+    insert into keyword_oil_gas_top3 (ord, note) values (0, 'skipped: no entitled profile to test with');
+    return;
+  end if;
+
+  begin
+    perform set_config('request.jwt.claims',
+      json_build_object('role', 'authenticated', 'sub', entitled_sub)::text, true);
+    set local role authenticated;
+    select jsonb_agg(jsonb_build_object('ord', s.ord, 'id', s.id, 'reg_key', s.reg_key, 'citation', s.citation) order by s.ord)
+      into top3
+    from public.search_provisions('fugitive emissions', 10, false)
+         with ordinality as s(id, citation, title, reg_key, headline, rank, path, is_basis, ord)
+    where s.ord <= 3;
+    reset role;
+    insert into keyword_oil_gas_top3 (ord, id, reg_key, citation)
+    select r.ord, r.id, r.reg_key, r.citation
+    from jsonb_to_recordset(coalesce(top3, '[]'::jsonb)) as r(ord integer, id text, reg_key text, citation text);
+  exception when others then
+    reset role;
+    insert into keyword_oil_gas_top3 (ord, note) values (0, format('FAIL %s: %s', sqlstate, sqlerrm));
+  end;
+end
+$oilgas$;
 
 -- ============================================================================
 -- Main query — one row per check
@@ -343,6 +399,29 @@ checks as (
     ) f
     group by v.q
   ) k
+
+  union all
+  select 17, 'GUARD', 'keyword_ranking_oil_gas_first', count(*), 0,
+         'Backlog #21 (20260926230949). Step 0b ran search_provisions(''fugitive emissions'', 10, false) as the entitled subscriber and kept the top 3. For this ambiguous industry term the oil-and-gas requirement must win: the top 3 must contain at least one row from Regulation 7, the ECMC rules or a general permit (GP01-GP12), and none from a regulation non_oil_gas_reg_keys() down-weights (Regulation 25 surface coating and Regulation 1 fugitive dust were the reviewer''s two examples). Counts violations, plus a probe that did not run. Expect 0.'
+         || coalesce(' Top 3: ' || (select string_agg(t.reg_key || ' ' || t.citation, ', ' order by t.ord) from pg_temp.keyword_oil_gas_top3 t where t.note is null), '')
+         || coalesce(' Problems: ' || string_agg(p.problem, '; '), '')
+  from (
+    select 'probe did not run (' || t.note || ')' as problem
+    from pg_temp.keyword_oil_gas_top3 t where t.note is not null
+    union all
+    select 'fewer than 3 rows returned (' || count(*) || ')'
+    from pg_temp.keyword_oil_gas_top3 t where t.note is null
+    having count(*) between 1 and 2
+    union all
+    select 'no Regulation 7 / ECMC / general permit row in the top 3'
+    where exists (select 1 from pg_temp.keyword_oil_gas_top3 t where t.note is null)
+      and not exists (select 1 from pg_temp.keyword_oil_gas_top3 t
+                      where t.note is null and (t.reg_key in ('7', 'ecmc') or t.reg_key ~ '^gp\d\d$'))
+    union all
+    select 'down-weighted regulation in the top 3: ' || t.reg_key || ' ' || t.citation
+    from pg_temp.keyword_oil_gas_top3 t
+    where t.note is null and t.reg_key = any (public.non_oil_gas_reg_keys())
+  ) p
 )
 select severity, check_name, n,
        case when severity in ('ERROR','GUARD') and n <> expected then '*** CHECK ***'
