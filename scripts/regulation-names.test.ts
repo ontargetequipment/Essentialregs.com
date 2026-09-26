@@ -26,6 +26,16 @@ test("Reg 22 card: a stored title that already opens with the label is not doubl
     "Regulation Number 22 — Colorado Greenhouse Gas Reporting and Emission Reduction Requirements"
   );
   assert.equal(info.subtitle, "5 CCR 1001-26");
+  // As stored since migration 20260926040857_reg22_root_title (sibling shape);
+  // the strip above stays as a guard against a re-import of the old shape.
+  const stored = regulationCardInfo({
+    id: "sec-22-top-REG-22",
+    citation: "Regulation 22",
+    title: "COLORADO GREENHOUSE GAS REPORTING AND EMISSION REDUCTION REQUIREMENTS 5 CCR 1001-26",
+    issuing_body: "CDPHE-APCD",
+  });
+  assert.equal(stored.title, "Regulation Number 22 — COLORADO GREENHOUSE GAS REPORTING AND EMISSION REDUCTION REQUIREMENTS");
+  assert.equal(stored.subtitle, "5 CCR 1001-26");
 });
 
 test("Reg 7 card: the old placeholder title collapses to the label; the printed title reads like Reg 3's", () => {

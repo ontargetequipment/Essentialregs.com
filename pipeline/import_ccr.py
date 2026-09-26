@@ -4126,11 +4126,15 @@ REG_META: dict[str, dict] = {
     "22": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
         "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        # root_citation stays the short "Regulation 22" (reader <h1>, sidebar
+        # and preview eyebrow read it); the title is the printed one in the
+        # same shape as every other numbered regulation. The old value,
+        # "Regulation Number 22 — Colorado Greenhouse Gas ... (5 CCR
+        # 1001-26)", folded the label into the title and printed it twice on
+        # the catalog card and the public preview (replaced by migration
+        # 20260926040857_reg22_root_title).
         "root_citation": "Regulation 22",
-        "root_title": (
-            "Regulation Number 22 — Colorado Greenhouse Gas Reporting and "
-            "Emission Reduction Requirements (5 CCR 1001-26)"
-        ),
+        "root_title": "COLORADO GREENHOUSE GAS REPORTING AND EMISSION REDUCTION REQUIREMENTS 5 CCR 1001-26",
     },
     "26": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
