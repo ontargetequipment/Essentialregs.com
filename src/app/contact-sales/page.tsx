@@ -32,7 +32,7 @@ export default function ContactSalesPage() {
         </p>
         <a
           href={MAILTO_HREF}
-          className="mt-1 block break-all font-serif text-card font-semibold text-accent underline underline-offset-4 hover:text-ink"
+          className="mt-1 flex min-h-11 items-center break-all font-serif text-card font-semibold text-accent underline underline-offset-4 hover:text-ink sm:block sm:min-h-0"
         >
           {SUPPORT_EMAIL}
         </a>
@@ -56,14 +56,14 @@ export default function ContactSalesPage() {
           You don&apos;t need to wait on us —{" "}
           <Link
             href="/signup"
-            className="font-medium text-ink underline underline-offset-2"
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0"
           >
             subscribe directly
           </Link>{" "}
           for {PRICE_SUMMARY}, or see the plan details on the{" "}
           <Link
             href="/regulations"
-            className="font-medium text-ink underline underline-offset-2"
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0"
           >
             regulations
           </Link>{" "}

@@ -65,7 +65,7 @@ export function RegulationList({
             The complete corpus — Colorado and federal, linked
             cross-references, updates included — is {PRICE_SUMMARY}. Not sure
             yet?{" "}
-            <Link href="/sample" className="font-medium text-ink underline underline-offset-2">
+            <Link href="/sample" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
               See a free sample entry
             </Link>{" "}
             first.
@@ -95,7 +95,7 @@ export function RegulationList({
                   intro copy + "Applies to" lines); every other heading here
                   is a plain label. */}
               {mode === "state" && group.key === "gp" ? (
-                <Link href="/general-permits" className="hover:text-accent hover:underline">
+                <Link href="/general-permits" className="inline-flex min-h-11 items-center hover:text-accent hover:underline sm:inline sm:min-h-0">
                   {group.heading}
                 </Link>
               ) : (

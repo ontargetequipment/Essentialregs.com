@@ -112,7 +112,7 @@ export async function ProvisionCard({ provision }: { provision: Provision }) {
             href={provision.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:text-ink"
+            className="inline-flex min-h-11 items-center underline hover:text-ink sm:inline sm:min-h-0"
           >
             View official source ↗
           </a>

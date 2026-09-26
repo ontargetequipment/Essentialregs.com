@@ -39,7 +39,7 @@ export default async function RegulationsIndexPage() {
         </p>
         <p className="mt-2 text-sm text-ink-soft">
           Looking for the federal EPA subparts and PHMSA parts? See{" "}
-          <Link href="/federal" className="font-medium text-ink underline underline-offset-2">
+          <Link href="/federal" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
             Federal regulations
           </Link>
           .

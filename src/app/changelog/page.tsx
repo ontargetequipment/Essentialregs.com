@@ -78,18 +78,18 @@ export default async function ChangelogPage() {
         {!user && (
           <div className="mt-6 rounded-lg border border-line bg-accent-soft p-5 text-sm text-ink">
             <p className="font-medium">
-              <Link href="/login" className="underline hover:text-accent">
+              <Link href="/login" className="inline-flex min-h-11 items-center underline hover:text-accent sm:inline sm:min-h-0">
                 Log in
               </Link>{" "}
               to see the full update history.
             </p>
             <p className="mt-2 text-ink-soft">
               The{" "}
-              <Link href="/regulations" className="underline hover:text-accent">
+              <Link href="/regulations" className="inline-flex min-h-11 items-center underline hover:text-accent sm:inline sm:min-h-0">
                 Colorado
               </Link>{" "}
               and{" "}
-              <Link href="/federal" className="underline hover:text-accent">
+              <Link href="/federal" className="inline-flex min-h-11 items-center underline hover:text-accent sm:inline sm:min-h-0">
                 federal
               </Link>{" "}
               indexes list what the corpus covers today.

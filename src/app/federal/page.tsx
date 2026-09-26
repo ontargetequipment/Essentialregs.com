@@ -47,7 +47,7 @@ export default async function FederalIndexPage() {
               404s for a logged-out visitor, so they get the public teaser. */}
           <Link
             href={regulationCardHref("6", access.hasAccess)}
-            className="font-medium text-ink underline underline-offset-2"
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0"
           >
             Colorado Regulation Number 6 Part A
           </Link>

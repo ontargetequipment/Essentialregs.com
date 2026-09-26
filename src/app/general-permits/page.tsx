@@ -61,7 +61,7 @@ export default async function GeneralPermitsIndexPage() {
         </p>
         <p className="mt-2 text-sm text-ink-soft">
           Looking for the numbered AQCC regulations or ECMC rules? See{" "}
-          <Link href="/regulations" className="font-medium text-ink underline underline-offset-2">
+          <Link href="/regulations" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
             Colorado regulations
           </Link>
           .
@@ -79,7 +79,7 @@ export default async function GeneralPermitsIndexPage() {
             href="https://cdphe.colorado.gov/apcd/general-air-permits"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-ink-soft underline underline-offset-2 hover:text-accent"
+            className="inline-flex min-h-11 items-center font-medium text-ink-soft underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
           >
             General Air Permits page
           </a>{" "}
