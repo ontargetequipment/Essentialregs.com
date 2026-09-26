@@ -19,7 +19,7 @@ recording, and outreach messages.
   language beyond what's in these drafts** — there are zero paying customers
   today, and inventing that kind of proof is the fastest way to lose trust
   with exactly the compliance-minded audience you're selling to.
-- The site's current $299/year price is a placeholder (see
+- The site's displayed price ($25/month or $250/year) is not yet wired to Stripe (see
   `src/lib/pricing.ts`) pending the pricing-validation calls in the outreach
   section below. None of the LinkedIn posts quote a specific price — that's
   intentional. If someone asks in a comment or DM, it's fine to say "we're
@@ -337,7 +337,7 @@ brodykerr95@gmail.com
   sending — a template with an actual scheduling ask converts better
   than "let me know when works."
 - If someone takes the call, the goal is to learn their real budget
-  range and priorities, not to pitch $299/year at them — that number is
+  range and priorities, not to pitch $25/month or $250/year at them — that number is
   still a placeholder and these calls are how you replace it with a real
   one.
 - None of these mention price. If a call taker asks directly, it's fine

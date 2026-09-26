@@ -44,7 +44,7 @@ function hrefFor(hit: SearchHit): string {
  * glance (backlog #16). "Plain-English summary" is the reader panel's own
  * heading, so the vocabulary is one thing everywhere.
  */
-const PROVENANCE_LABEL_CLASS = "text-[10px] font-semibold uppercase tracking-wide text-zinc-500";
+const PROVENANCE_LABEL_CLASS = "font-mono text-eyebrow uppercase text-tag";
 
 /**
  * The line an Ask card prints for a heading-only row (a section, not a
@@ -249,14 +249,14 @@ export default async function SearchPage(props: PageProps<"/search">) {
 
   const tabClass = (active: boolean) =>
     `rounded-md px-3 py-1.5 text-sm font-medium transition ${
-      active ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+      active ? "bg-accent text-white" : "text-ink-soft hover:bg-accent-soft hover:text-ink"
     }`;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-2xl font-bold text-zinc-900">Search</h1>
+      <h1 className="font-serif text-section font-bold tracking-tight text-ink">Search</h1>
 
-      <div className="mt-4 inline-flex gap-1 rounded-lg border border-zinc-200 bg-white p-1" role="tablist">
+      <div className="mt-4 inline-flex gap-1 rounded-lg border border-line bg-panel p-1" role="tablist">
         <Link href={keywordHref(q, includeBasis)} className={tabClass(mode === "keyword")} role="tab" aria-selected={mode === "keyword"}>
           Keyword
         </Link>
@@ -266,14 +266,14 @@ export default async function SearchPage(props: PageProps<"/search">) {
       </div>
 
       {mode === "keyword" ? (
-        <p className="mt-3 text-sm text-zinc-600">
-          Full-text search across every regulation in the corpus. Use quotes for
+        <p className="mt-3 text-sm text-ink-soft">
+          Full-text search across the whole corpus. Use quotes for
           an exact phrase, a leading <code className="font-mono">-</code> to
           exclude a word, and <code className="font-mono">or</code> between
           alternatives.
         </p>
       ) : (
-        <p className="mt-3 text-sm text-zinc-600">
+        <p className="mt-3 text-sm text-ink-soft">
           Describe the situation in your own words — a tank, a piece of equipment, a
           deadline, a question you&apos;d ask a coworker. Ask finds the provisions most{" "}
           <em>about</em> your question, across Colorado, ECMC and federal rules, even when
@@ -300,19 +300,19 @@ export default async function SearchPage(props: PageProps<"/search">) {
             aria-label={mode === "ask" ? "Ask a question about the regulations" : "Search regulations"}
             autoComplete="off"
             autoFocus={!q}
-            className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
+            className="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
           <button
             type="submit"
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90"
           >
             {mode === "ask" ? "Ask" : "Search"}
           </button>
         </div>
 
         {mode === "ask" && access.hasAccess && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-600">
-            <span className="inline-flex gap-1 rounded-md border border-zinc-200 bg-white p-0.5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ink-soft">
+            <span className="inline-flex gap-1 rounded-md border border-line bg-panel p-0.5">
               {(
                 [
                   ["", "All"],
@@ -322,7 +322,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
               ).map(([val, label]) => (
                 <label
                   key={val}
-                  className={`cursor-pointer rounded px-2.5 py-1 has-[:checked]:bg-zinc-900 has-[:checked]:text-white`}
+                  className={`cursor-pointer rounded px-2.5 py-1 has-[:checked]:bg-accent has-[:checked]:text-white`}
                 >
                   <input type="radio" name="j" value={val} defaultChecked={(jurisdiction ?? "") === val} className="sr-only" />
                   {label}
@@ -334,7 +334,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
               <select
                 name="reg"
                 defaultValue={regFilter}
-                className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900"
+                className="rounded-md border border-line bg-panel px-2 py-1 text-sm text-ink"
               >
                 <option value="">Any</option>
                 {regOptions.map((r) => (
@@ -398,7 +398,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
       )}
 
       {!q && (
-        <p className="mt-10 text-sm text-zinc-500">
+        <p className="mt-10 text-sm text-muted">
           {mode === "ask"
             ? "Type a question above. Examples: “inspection frequency for a well pad with 20 wells”, “setback from a school for a new well”, “when is a flowline abandonment notice due”."
             : "Type a word, phrase, or citation above to search."}
@@ -406,13 +406,13 @@ export default async function SearchPage(props: PageProps<"/search">) {
       )}
 
       {mode === "keyword" && q && !searchError && hits.length === 0 && (
-        <p className="mt-10 text-sm text-zinc-500">
-          No results for <span className="font-medium text-zinc-700">&ldquo;{q}&rdquo;</span>.
+        <p className="mt-10 text-sm text-muted">
+          No results for <span className="font-medium text-ink-soft">&ldquo;{q}&rdquo;</span>.
           Try fewer or different words{!user ? ", or log in to search beyond the sample" : ""}.
           {user && access.hasAccess && (
             <>
               {" "}Or try the same words on the{" "}
-              <Link href={`/search?mode=ask&q=${encodeURIComponent(q)}`} className="font-medium text-zinc-700 underline">
+              <Link href={`/search?mode=ask&q=${encodeURIComponent(q)}`} className="font-medium text-ink-soft underline">
                 Ask tab
               </Link>
               .
@@ -422,25 +422,25 @@ export default async function SearchPage(props: PageProps<"/search">) {
       )}
 
       {mode === "ask" && q && access.hasAccess && !askError && askHits.length === 0 && (
-        <p className="mt-10 text-sm text-zinc-500">
+        <p className="mt-10 text-sm text-muted">
           Nothing close enough for that question{regFilter || jurisdiction ? " with those filters" : ""}. Try rephrasing, or
           widen the filters.
         </p>
       )}
 
       {mode === "keyword" && q && user && !searchError && (
-        <p className="mt-8 text-xs text-zinc-500">
+        <p className="mt-8 text-xs text-muted">
           {includeBasis ? (
             <>
               Statements of basis (rulemaking history) are included, ranked below the rules.{" "}
-              <Link href={keywordHref(q, false)} className="font-medium text-zinc-700 underline">
+              <Link href={keywordHref(q, false)} className="font-medium text-ink-soft underline">
                 Hide them
               </Link>
             </>
           ) : (
             <>
               Statements of basis (rulemaking history) are hidden.{" "}
-              <Link href={keywordHref(q, true)} className="font-medium text-zinc-700 underline">
+              <Link href={keywordHref(q, true)} className="font-medium text-ink-soft underline">
                 Include them
               </Link>
             </>
@@ -450,7 +450,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
 
       {mode === "keyword" && hits.length > 0 && (
         <>
-          <p className="mt-6 text-xs uppercase tracking-wide text-zinc-500">
+          <p className="mt-6 font-mono text-eyebrow uppercase text-tag">
             {`${hits.length} ${hits.length === 1 ? "result" : "results"} for \u201c${q}\u201d`}
           </p>
           <ol className="mt-3 flex flex-col gap-3">
@@ -461,34 +461,34 @@ export default async function SearchPage(props: PageProps<"/search">) {
                 <li key={hit.id}>
                   <Link
                     href={hrefFor(hit)}
-                    className="block rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+                    className="block rounded-lg border border-line bg-panel p-5 shadow-sm transition hover:border-accent hover:shadow-md"
                   >
                     <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
                       {hit.reg_key && (
                         <>
-                          <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-700">
+                          <span className="rounded bg-accent-soft px-1.5 py-0.5 font-medium text-ink-soft">
                             {regBadge(hit.reg_key, jurisdictionOfKey(hit.reg_key))}
                           </span>
-                          <span className="font-medium text-zinc-500">{nameOf(hit.reg_key)}</span>
-                          <span className="text-zinc-300">·</span>
+                          <span className="font-medium text-muted">{nameOf(hit.reg_key)}</span>
+                          <span className="text-muted">·</span>
                         </>
                       )}
-                      <span className="font-mono uppercase tracking-wide text-emerald-700">{hit.citation}</span>
+                      <span className="font-mono text-eyebrow uppercase text-tag">{hit.citation}</span>
                       {hit.is_basis && (
-                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
+                        <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
                           Statement of basis
                         </span>
                       )}
                     </p>
-                    {hit.path && <p className="mt-1 text-xs leading-snug text-zinc-500">{hit.path}</p>}
+                    {hit.path && <p className="mt-1 text-xs leading-snug text-muted">{hit.path}</p>}
                     {heading && (
-                      <p className="mt-1 font-semibold text-zinc-900">{heading}</p>
+                      <p className="mt-1 font-semibold text-ink">{heading}</p>
                     )}
                     {snippet && (
                       <>
                         <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>From the official text</p>
                         <p
-                          className="mt-1 text-sm leading-relaxed text-zinc-600 [&_mark]:rounded-sm [&_mark]:bg-amber-100 [&_mark]:px-0.5 [&_mark]:text-zinc-900"
+                          className="mt-1 text-sm leading-relaxed text-ink-soft [&_mark]:rounded-sm [&_mark]:bg-amber-100 [&_mark]:px-0.5 [&_mark]:text-ink"
                           dangerouslySetInnerHTML={{ __html: snippet }}
                         />
                       </>
@@ -511,7 +511,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
 
       {mode === "ask" && askHits.length > 0 && (
         <>
-          <p className="mt-8 text-xs uppercase tracking-wide text-zinc-500">
+          <p className="mt-8 font-mono text-eyebrow uppercase text-tag">
             {`${askHits.length} ${askHits.length === 1 ? "provision" : "provisions"} most about \u201c${q}\u201d`}
           </p>
           <ol className="mt-3 flex flex-col gap-3">
@@ -523,7 +523,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                 <li key={hit.id}>
                   <Link
                     href={hrefForHit(hit)}
-                    className="block rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+                    className="block rounded-lg border border-line bg-panel p-5 shadow-sm transition hover:border-accent hover:shadow-md"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span
@@ -532,45 +532,45 @@ export default async function SearchPage(props: PageProps<"/search">) {
                             ? "bg-blue-50 text-blue-700"
                             : badge === "ECMC"
                               ? "bg-violet-50 text-violet-700"
-                              : "bg-emerald-50 text-emerald-700"
+                              : "bg-accent-soft text-accent"
                         }`}
                       >
                         {badge}
                       </span>
-                      <span className="text-xs text-zinc-500">{nameOf(hit.reg_key)}</span>
+                      <span className="text-xs text-muted">{nameOf(hit.reg_key)}</span>
                       {hit.is_basis && (
-                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
+                        <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
                           Statement of basis
                         </span>
                       )}
-                      <span className="ml-auto text-xs tabular-nums text-zinc-400" title={hit.keyword_hit ? "Matched your words and your meaning" : "How close this provision's meaning is to your question"}>
+                      <span className="ml-auto text-xs tabular-nums text-muted" title={hit.keyword_hit ? "Matched your words and your meaning" : "How close this provision's meaning is to your question"}>
                         {hit.score == null ? "keyword match" : `${Math.round(hit.score * 100)}% match`}
                         {hit.keyword_hit && hit.score != null ? " · words" : ""}
                       </span>
                     </div>
-                    {hit.path && <p className="mt-2 text-xs leading-snug text-zinc-500">{hit.path}</p>}
-                    <p className="mt-1 font-mono text-xs uppercase tracking-wide text-emerald-700">
+                    {hit.path && <p className="mt-2 text-xs leading-snug text-muted">{hit.path}</p>}
+                    <p className="mt-1 font-mono text-eyebrow uppercase text-tag">
                       {hit.citation}
                     </p>
                     {heading && (
-                      <p className="mt-1 font-semibold text-zinc-900">{heading}</p>
+                      <p className="mt-1 font-semibold text-ink">{heading}</p>
                     )}
                     {paras.length > 0 ? (
                       <>
                         <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>Plain-English summary</p>
-                        <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-zinc-600">{paras[0]}</p>
+                        <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-ink-soft">{paras[0]}</p>
                       </>
                     ) : headingChildren.has(hit.id) ? (
-                      <p className="mt-2 text-sm text-zinc-500">{headingLine(headingChildren.get(hit.id) ?? null)}</p>
+                      <p className="mt-2 text-sm text-muted">{headingLine(headingChildren.get(hit.id) ?? null)}</p>
                     ) : (
-                      <p className="mt-2 text-sm italic text-zinc-400">No plain-English summary yet — read the official text.</p>
+                      <p className="mt-2 text-sm italic text-muted">No plain-English summary yet — read the official text.</p>
                     )}
                   </Link>
                 </li>
               );
             })}
           </ol>
-          <p className="mt-6 text-xs text-zinc-400">
+          <p className="mt-6 text-xs text-muted">
             Results are the regulation&apos;s own provisions, ranked by meaning and by your words together;
             statements of basis (rulemaking history) are shown but ranked below the rules. They are not legal advice; read the full
             text and check the official source before relying on them.

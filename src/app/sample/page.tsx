@@ -50,39 +50,41 @@ export default async function SamplePage() {
   ) as Provision[];
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-2xl font-bold text-zinc-900">
-        Sample: real entries from the corpus
-      </h1>
-      <p className="mt-2 text-sm text-zinc-600">
-        A few sections exactly as subscribers see them: the official text, a
-        reviewed plain-English summary, and the cross-references resolved. The
-        full corpus covers the Colorado AQCC regulations, the ECMC rules, the
-        APCD general permits, and the federal rules they cite, in the same
-        format.
-      </p>
-
-      {error && (
-        <p className="mt-6 rounded-md bg-red-50 p-4 text-sm text-red-700">
-          Couldn&apos;t load sample content: {error.message}.
+    <div className="mx-auto max-w-shell px-6 py-12">
+      <div className="max-w-reading">
+        <h1 className="font-serif text-section font-bold tracking-tight text-ink">
+          Sample: real entries from the corpus
+        </h1>
+        <p className="mt-2 text-sm text-ink-soft">
+          A few sections exactly as subscribers see them: the official text, a
+          reviewed plain-English summary, and the cross-references resolved. The
+          full corpus covers the Colorado AQCC regulations, the ECMC rules, the
+          APCD general permits, and the federal rules they cite, in the same
+          format.
         </p>
-      )}
 
-      <div className="mt-8 flex flex-col gap-6">
-        {provisions.map((provision) => (
-          <div key={provision.id} className="flex flex-col gap-3">
-            <ProvisionCard provision={provision} />
-            {/* Public teaser: citation/title/reviewed summary only, links to /preview. */}
-            <RelatedProvisions provisionId={provision.id} teaser />
-          </div>
-        ))}
+        {error && (
+          <p className="mt-6 rounded-md bg-red-50 p-4 text-sm text-red-700">
+            Couldn&apos;t load sample content: {error.message}.
+          </p>
+        )}
+
+        <div className="mt-8 flex flex-col gap-6">
+          {provisions.map((provision) => (
+            <div key={provision.id} className="flex flex-col gap-3">
+              <ProvisionCard provision={provision} />
+              {/* Public teaser: citation/title/reviewed summary only, links to /preview. */}
+              <RelatedProvisions provisionId={provision.id} teaser />
+            </div>
+          ))}
+        </div>
+
+        {!error && provisions.length === 0 && (
+          <p className="mt-8 text-sm text-muted">
+            No public sample entries are marked yet.
+          </p>
+        )}
       </div>
-
-      {!error && provisions.length === 0 && (
-        <p className="mt-8 text-sm text-zinc-500">
-          No public sample entries are marked yet.
-        </p>
-      )}
     </div>
   );
 }

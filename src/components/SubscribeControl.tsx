@@ -2,9 +2,10 @@ import Link from "next/link";
 import type { AccessStatus } from "@/lib/access";
 
 const PRIMARY =
-  "inline-block rounded-md bg-emerald-700 text-center text-sm font-semibold text-white hover:bg-emerald-800";
-const SECONDARY =
-  "inline-block rounded-md bg-zinc-900 text-center text-sm font-semibold text-white hover:bg-zinc-800";
+  "inline-block rounded-md bg-accent text-center text-sm font-semibold text-white hover:bg-accent/90";
+// The logged-out "create an account" step is the card's one call to action
+// too, so it gets the same accent button rather than a second colour.
+const SECONDARY = PRIMARY;
 const SIZE = { normal: "px-5 py-3", compact: "px-4 py-2" } as const;
 
 /**
