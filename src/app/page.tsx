@@ -113,13 +113,13 @@ export default async function Home() {
               <Price display={MONTHLY_PRICE_DISPLAY} />
             </div>
             <div className="rounded-md border border-accent bg-accent-soft p-4">
-              <p className="flex flex-wrap items-center gap-2 font-mono text-eyebrow uppercase text-tag">
-                {ANNUAL_PLAN_NAME}
-                <span className="rounded-full bg-accent px-2 py-0.5 font-sans text-[11px] font-semibold normal-case tracking-normal text-white">
+              <p className="font-mono text-eyebrow uppercase text-tag">{ANNUAL_PLAN_NAME}</p>
+              <Price display={ANNUAL_PRICE_DISPLAY} />
+              <p className="mt-2">
+                <span className="inline-block whitespace-nowrap rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-white">
                   Best value · {ANNUAL_SAVINGS_NOTE}
                 </span>
               </p>
-              <Price display={ANNUAL_PRICE_DISPLAY} />
             </div>
           </div>
 
