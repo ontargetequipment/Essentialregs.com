@@ -95,11 +95,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-paper text-ink">
         {/* Restyle freely, but this row must measure exactly 66px — the
             regulation reader's sticky sidebar (reader.css) is pinned to
-            `top: 66px` / `height: calc(100vh - 66px)` and misaligns on every
-            regulation page if this height drifts. h-[66px] on the row itself
-            (rather than padding that happens to add up to 66px) keeps that
-            true regardless of font metrics. */}
-        <header className="relative h-[66px] border-b border-line bg-panel">
+            `top: 66px` / `height: calc(100vh - 66px)`, its return bar to
+            `top: 66px`, and its landing offsets (scroll-margin-top 130px,
+            PANE_TOP_Y 138 in RegulationReader.tsx) all include this height;
+            every regulation page misaligns if it drifts. h-[66px] on the row
+            itself (rather than padding that happens to add up to 66px) keeps
+            that true regardless of font metrics.
+            Sticky site-wide so the catalog / home links stay reachable deep
+            in a regulation. z-[45]: over the reader's body, desktop sidebar,
+            return bar (30) and jump results (40); under its mobile sidebar
+            scrim (50), mobile sidebar (55), #mobile-toggle (60) and the
+            cross-reference popup #backdrop (100). The header's own drawer
+            and scrim (z-60 / z-50 in MobileNav) live inside this stacking
+            context, so on the page they paint at the header's level. */}
+        <header className="sticky top-0 z-[45] h-[66px] border-b border-line bg-panel">
           <div className="mx-auto flex h-full max-w-shell items-center justify-between px-6">
             <Link
               href="/"

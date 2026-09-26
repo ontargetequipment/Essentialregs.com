@@ -169,8 +169,8 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
       // Restore focus to the hamburger only if it's still in the drawer (or
       // was dropped on <body> by the scrim click that closed it). If a
       // navigation already put it somewhere useful, leave it there.
-      // preventScroll: the header isn't sticky, and closing the menu
-      // shouldn't yank a scrolled-down page back to the top.
+      // preventScroll: the header is sticky so the hamburger is always in
+      // view, but focusing it must not nudge a scrolled-down page either.
       const active = document.activeElement;
       if (!active || active === document.body || drawer.contains(active)) {
         opener?.focus({ preventScroll: true });
