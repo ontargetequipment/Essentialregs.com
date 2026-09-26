@@ -41,6 +41,15 @@ function first(v: string | string[] | undefined): string {
   return (Array.isArray(v) ? v[0] : v) ?? "";
 }
 
+/** Keyword-tab URL for a query, keeping the Statements-of-Basis toggle (?basis=1) only when it is on. */
+function keywordHref(q: string, includeBasis: boolean): string {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (includeBasis) params.set("basis", "1");
+  const qs = params.toString();
+  return qs ? `/search?${qs}` : "/search";
+}
+
 /**
  * A good Ask hit scores ~0.6–0.9 cosine similarity. When the best result is
  * below this and nothing matched the visitor's words, the corpus probably
@@ -133,6 +142,10 @@ export default async function SearchPage(props: PageProps<"/search">) {
   const jParam = first(params.j);
   const jurisdiction: Jurisdiction | null = jParam === "state" || jParam === "federal" ? jParam : null;
   const regParam = first(params.reg).toLowerCase();
+  // Keyword search leaves Statements of Basis (rulemaking history) out unless
+  // asked: they are the longest rows in the corpus and used to fill the whole
+  // first page (backlog #15). ?basis=1 brings them back, ranked below the rules.
+  const includeBasis = first(params.basis) === "1";
 
   const supabase = await createClient();
   const {
@@ -165,7 +178,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
 
   if (q && mode === "keyword") {
     try {
-      hits = await searchProvisions(q);
+      hits = await searchProvisions(q, { includeBasis });
     } catch (e) {
       // Most likely cause: supabase/migrations/003_search.sql hasn't been
       // applied yet, so the RPC doesn't exist. Surface it rather than 500.
@@ -197,7 +210,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
       <h1 className="text-2xl font-bold text-zinc-900">Search</h1>
 
       <div className="mt-4 inline-flex gap-1 rounded-lg border border-zinc-200 bg-white p-1" role="tablist">
-        <Link href={q ? `/search?q=${encodeURIComponent(q)}` : "/search"} className={tabClass(mode === "keyword")} role="tab" aria-selected={mode === "keyword"}>
+        <Link href={keywordHref(q, includeBasis)} className={tabClass(mode === "keyword")} role="tab" aria-selected={mode === "keyword"}>
           Keyword
         </Link>
         <Link href={q ? `/search?mode=ask&q=${encodeURIComponent(q)}` : "/search?mode=ask"} className={tabClass(mode === "ask")} role="tab" aria-selected={mode === "ask"}>
@@ -224,6 +237,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
 
       <form action="/search" method="get" role="search" className="mt-6 flex flex-col gap-3">
         {mode === "ask" && <input type="hidden" name="mode" value="ask" />}
+        {mode === "keyword" && includeBasis && <input type="hidden" name="basis" value="1" />}
         <div className="flex gap-2">
           <input
             type="search"
@@ -366,9 +380,29 @@ export default async function SearchPage(props: PageProps<"/search">) {
         </p>
       )}
 
+      {mode === "keyword" && q && user && !searchError && (
+        <p className="mt-8 text-xs text-zinc-500">
+          {includeBasis ? (
+            <>
+              Statements of basis (rulemaking history) are included, ranked below the rules.{" "}
+              <Link href={keywordHref(q, false)} className="font-medium text-zinc-700 underline">
+                Hide them
+              </Link>
+            </>
+          ) : (
+            <>
+              Statements of basis (rulemaking history) are hidden.{" "}
+              <Link href={keywordHref(q, true)} className="font-medium text-zinc-700 underline">
+                Include them
+              </Link>
+            </>
+          )}
+        </p>
+      )}
+
       {mode === "keyword" && hits.length > 0 && (
         <>
-          <p className="mt-8 text-xs uppercase tracking-wide text-zinc-500">
+          <p className="mt-6 text-xs uppercase tracking-wide text-zinc-500">
             {`${hits.length} ${hits.length === 1 ? "result" : "results"} for \u201c${q}\u201d`}
           </p>
           <ol className="mt-3 flex flex-col gap-3">
@@ -392,6 +426,11 @@ export default async function SearchPage(props: PageProps<"/search">) {
                         </>
                       )}
                       <span className="font-mono uppercase tracking-wide text-emerald-700">{hit.citation}</span>
+                      {hit.is_basis && (
+                        <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
+                          Statement of basis
+                        </span>
+                      )}
                     </p>
                     {hit.path && <p className="mt-1 text-xs leading-snug text-zinc-500">{hit.path}</p>}
                     {heading && (

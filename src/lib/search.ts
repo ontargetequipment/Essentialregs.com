@@ -1,7 +1,7 @@
 import sanitizeHtmlLib from "sanitize-html";
 import { createClient } from "@/lib/supabase/server";
 
-/** One row from the search_provisions() RPC (supabase/migrations/003_search.sql). */
+/** One row from the search_provisions() RPC (supabase/migrations/20260926045912_keyword_search_operative_first.sql). */
 export type SearchHit = {
   id: string;
   citation: string;
@@ -14,13 +14,25 @@ export type SearchHit = {
    * that server-side, 2026-09-25); render no snippet for those.
    */
   headline: string | null;
+  /** Length-normalised ts_rank times the ranking multipliers; only meaningful relative to the other hits of the same search. */
   rank: number;
   /** Ancestor headings below the regulation ("PART B — … › II. …"); null when the provision sits directly under it. */
   path: string | null;
+  /** Statement of basis / rulemaking history rather than an operative rule. Only present in results when includeBasis was true. */
+  is_basis: boolean;
 };
 
 /** Longest query we'll pass to Postgres; anything past this is noise, not a search. */
 export const MAX_QUERY_LENGTH = 200;
+
+export type SearchOptions = {
+  limit?: number;
+  /**
+   * true also returns Statements of Basis (rulemaking history), ranked below
+   * the rules at half weight. Default false: the operative provisions only.
+   */
+  includeBasis?: boolean;
+};
 
 /**
  * Site-wide full-text search. Goes through the cookie-based server client so
@@ -28,7 +40,8 @@ export const MAX_QUERY_LENGTH = 200;
  * they can see: only is_public rows when logged out, everything when logged
  * in. Returns [] for a blank query without touching the database.
  */
-export async function searchProvisions(q: string, limit = 25): Promise<SearchHit[]> {
+export async function searchProvisions(q: string, options: SearchOptions = {}): Promise<SearchHit[]> {
+  const { limit = 25, includeBasis = false } = options;
   const query = q.trim().slice(0, MAX_QUERY_LENGTH);
   if (!query) return [];
 
@@ -36,6 +49,7 @@ export async function searchProvisions(q: string, limit = 25): Promise<SearchHit
   const { data, error } = await supabase.rpc("search_provisions", {
     q: query,
     lim: limit,
+    include_basis: includeBasis,
   });
   if (error) throw new Error(error.message);
   return (data ?? []) as SearchHit[];
