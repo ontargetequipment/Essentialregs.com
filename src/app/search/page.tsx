@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
 import {
   fetchRegulationList,
+  isHeadingOnlyText,
   normalizeCitationLabel,
   regKeyOf,
   regulationDisplayName,
@@ -35,6 +36,24 @@ type Mode = "keyword" | "ask";
 /** Where a keyword hit links: the reader (scroll + flash on the hash) when the id belongs to a regulation, else the standalone card. */
 function hrefFor(hit: SearchHit): string {
   return hit.reg_key ? `/regulations/${hit.reg_key}#${hit.id}` : `/regs/${hit.id}`;
+}
+
+/**
+ * The provenance label above prose on a result card. Text, not styling
+ * alone, so a reader can tell generated prose from regulatory text at a
+ * glance (backlog #16). "Plain-English summary" is the reader panel's own
+ * heading, so the vocabulary is one thing everywhere.
+ */
+const PROVENANCE_LABEL_CLASS = "text-[10px] font-semibold uppercase tracking-wide text-zinc-500";
+
+/**
+ * The line an Ask card prints for a heading-only row (a section, not a
+ * provision) in place of its missing summary. `children` is the count of
+ * rows whose parent_id is the heading; null when the count failed.
+ */
+function headingLine(children: number | null): string {
+  if (children == null || children === 0) return "Section heading — open it to read the provisions inside.";
+  return `Section heading — ${children} ${children === 1 ? "provision" : "provisions"} inside. Open it to read them.`;
 }
 
 function first(v: string | string[] | undefined): string {
@@ -200,6 +219,34 @@ export default async function SearchPage(props: PageProps<"/search">) {
     }
   }
 
+  // Heading-only rows among the Ask hits (a section, not a provision: its
+  // text is nothing but its heading, the same test search_provisions uses to
+  // null a keyword headline) and how many rows sit directly under each. Only
+  // the hits without a summary are looked at -- a heading has nothing to
+  // summarise -- and those rows' text is short (642 bytes at most on
+  // 2026-09-26), so this is one small read plus one count per heading hit,
+  // capped by the hits on the page. Any failure leaves the map empty and the
+  // card falls back to its "No plain-English summary yet" line.
+  const headingChildren = new Map<string, number | null>();
+  if (askHits.length > 0) {
+    const unsummarised = askHits.filter((h) => summaryParagraphs(h.summary ?? "").length === 0).map((h) => h.id);
+    if (unsummarised.length > 0) {
+      const { data: rows, error: rowsErr } = await supabase
+        .from("provisions")
+        .select("id, citation, title, full_text")
+        .in("id", unsummarised);
+      if (rowsErr) console.error("ask: heading lookup failed", rowsErr.message);
+      const headings = (rows ?? []).filter((r) => isHeadingOnlyText(r.full_text ?? "", r.title, r.citation));
+      const counts = await Promise.all(
+        headings.map((h) => supabase.from("provisions").select("id", { count: "exact", head: true }).eq("parent_id", h.id))
+      );
+      headings.forEach((h, i) => {
+        if (counts[i].error) console.error("ask: child count failed", counts[i].error.message);
+        headingChildren.set(h.id, counts[i].error ? null : counts[i].count);
+      });
+    }
+  }
+
   const tabClass = (active: boolean) =>
     `rounded-md px-3 py-1.5 text-sm font-medium transition ${
       active ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
@@ -230,8 +277,10 @@ export default async function SearchPage(props: PageProps<"/search">) {
           Describe the situation in your own words — a tank, a piece of equipment, a
           deadline, a question you&apos;d ask a coworker. Ask finds the provisions that
           are <em>about</em> that, across Colorado, ECMC and federal rules, even when
-          they don&apos;t use the same words. It returns real provisions only; it never
-          writes an answer.
+          they don&apos;t use the same words. Ask finds the provisions most about your
+          question and shows their plain-English summaries, clearly labelled. It does not
+          decide what applies to you and it is not legal advice — open each provision and
+          read the official text.
         </p>
       )}
 
@@ -437,10 +486,13 @@ export default async function SearchPage(props: PageProps<"/search">) {
                       <p className="mt-1 font-semibold text-zinc-900">{heading}</p>
                     )}
                     {snippet && (
-                      <p
-                        className="mt-2 text-sm leading-relaxed text-zinc-600 [&_mark]:rounded-sm [&_mark]:bg-amber-100 [&_mark]:px-0.5 [&_mark]:text-zinc-900"
-                        dangerouslySetInnerHTML={{ __html: snippet }}
-                      />
+                      <>
+                        <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>From the official text</p>
+                        <p
+                          className="mt-1 text-sm leading-relaxed text-zinc-600 [&_mark]:rounded-sm [&_mark]:bg-amber-100 [&_mark]:px-0.5 [&_mark]:text-zinc-900"
+                          dangerouslySetInnerHTML={{ __html: snippet }}
+                        />
+                      </>
                     )}
                   </Link>
                 </li>
@@ -505,9 +557,14 @@ export default async function SearchPage(props: PageProps<"/search">) {
                       <p className="mt-1 font-semibold text-zinc-900">{heading}</p>
                     )}
                     {paras.length > 0 ? (
-                      <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-zinc-600">{paras[0]}</p>
+                      <>
+                        <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>Plain-English summary</p>
+                        <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-zinc-600">{paras[0]}</p>
+                      </>
+                    ) : headingChildren.has(hit.id) ? (
+                      <p className="mt-2 text-sm text-zinc-500">{headingLine(headingChildren.get(hit.id) ?? null)}</p>
                     ) : (
-                      <p className="mt-2 text-sm italic text-zinc-400">No plain-English summary yet — open the provision to read the text.</p>
+                      <p className="mt-2 text-sm italic text-zinc-400">No plain-English summary yet — read the official text.</p>
                     )}
                   </Link>
                 </li>

@@ -542,8 +542,20 @@
   background: var(--accent-soft);
   color: var(--ink);
 }
+.reg-reader #popup-text-label {
+  padding: 14px 20px 0;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tag);
+}
 .reg-reader #popup-body {
   padding: 16px 20px 8px;
+}
+.reg-reader #popup-text-label:not([hidden]) + #popup-body {
+  padding-top: 6px;
 }
 .reg-reader #popup-body .item {
   margin: 0;
