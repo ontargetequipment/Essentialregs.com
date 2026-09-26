@@ -46,7 +46,11 @@ export function RelatedProvisionsLoader({ currentReg }: { currentReg: string }) 
             : `<a class="related-link" href="/regulations/${esc(it.reg_key ?? "")}#${esc(it.id)}">${esc(it.citation)}</a>`;
           const title = it.title ? `<span class="related-title">${esc(it.title)}</span>` : "";
           const path = it.path ? `<span class="related-path">${esc(it.path)}</span>` : "";
-          const summary = it.summary ? `<span class="related-snip">${esc(it.summary)}</span>` : "";
+          // Same "Plain-English summary" label as the Ask cards (backlog #16), so the
+          // excerpt is never unlabelled prose next to the provision's own words.
+          const summary = it.summary
+            ? `<span class="related-label">Plain-English summary</span><span class="related-snip">${esc(it.summary)}</span>`
+            : "";
           return (
             `<li><span class="related-badge related-badge-${esc(it.badge.toLowerCase())}">${esc(it.badge)}</span>` +
             `<span class="related-reg">${esc(it.regLabel)}</span> ${link} ${path}${title}${summary}</li>`

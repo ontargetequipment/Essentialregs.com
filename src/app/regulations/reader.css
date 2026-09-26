@@ -827,6 +827,16 @@
   font-weight: 600;
   font-size: 12.5px;
 }
+.reg-reader .related-label {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
 .reg-reader .related-snip {
   display: block;
   margin-top: 1px;
