@@ -4114,8 +4114,14 @@ REG_META: dict[str, dict] = {
     "7": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
         "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        # root_citation is deliberately the short "Regulation 7" (the reader
+        # <h1>, the /sample labels and e2e SAMPLE_HEADINGS read it); the
+        # title is the printed one in the same shape as every other numbered
+        # regulation (migration 20260926035205_reg7_root_title replaced the old
+        # "Regulation 7" placeholder, which the /regulations card printed as
+        # "Regulation Number 7 — Regulation 7").
         "root_citation": "Regulation 7",
-        "root_title": "Regulation 7",
+        "root_title": "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9",
     },
     "22": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",

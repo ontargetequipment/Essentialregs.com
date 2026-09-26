@@ -135,7 +135,7 @@ export default async function RegulationPreviewPage(
           Read the full text of {root.citation}
         </h2>
         <p className="mt-2 text-sm text-zinc-600">
-          Subscribers get every section, every cross-reference resolved, and
+          Subscribers get every section, linked cross-references, and
           plain-English summaries as they&apos;re reviewed —{" "}
           {ANNUAL_PRICE_DISPLAY}.
         </p>

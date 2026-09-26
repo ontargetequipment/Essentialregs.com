@@ -62,8 +62,8 @@ export function RegulationList({
             Subscribe to open the full regulations
           </h2>
           <p className="mt-2 text-sm text-zinc-600">
-            The complete Colorado corpus — every section, every cross-reference
-            resolved, updates included — is {ANNUAL_PRICE_DISPLAY}. Not sure
+            The complete Colorado corpus — every section, linked
+            cross-references, updates included — is {ANNUAL_PRICE_DISPLAY}. Not sure
             yet?{" "}
             <Link href="/sample" className="font-medium text-zinc-900 underline underline-offset-2">
               See a free sample entry

@@ -13,14 +13,14 @@ export default async function Home() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
       <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
-        Colorado oil &amp; gas regulations, in plain English — with every
-        cross-reference already resolved.
+        Colorado oil &amp; gas regulations, in plain English — with linked
+        cross-references throughout.
       </h1>
       <p className="mt-4 text-lg text-zinc-600">
-        Federal (OSHA), Colorado state (ECMC, CDPHE-APCD), and — coming soon —
-        county building code requirements for oil &amp; gas operations, each
-        with a plain-English summary and working links to every section it
-        references.
+        Federal EPA NSPS/NESHAP subparts and PHMSA pipeline rules, and the
+        Colorado AQCC regulations, ECMC rules and APCD General Permits for
+        oil &amp; gas operations, each with a plain-English summary and links
+        to the sections it references.
       </p>
 
       <div className="mt-8 flex flex-wrap gap-4">
@@ -47,8 +47,8 @@ export default async function Home() {
       <section id="pricing" className="mt-20 scroll-mt-8 border-t border-zinc-200 pt-10">
         <h2 className="text-xl font-semibold text-zinc-900">Pricing</h2>
         <p className="mt-2 text-sm text-zinc-600">
-          One plan. Every regulation in the corpus, every cross-reference
-          resolved, and every update as the rules change.
+          One plan. Every regulation in the corpus, linked cross-references,
+          and every update as the rules change.
         </p>
 
         <div className="mt-6 max-w-md rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
@@ -62,7 +62,7 @@ export default async function Home() {
             {ANNUAL_PRICE_DISPLAY}
           </p>
           <ul className="mt-4 space-y-1.5 text-sm text-zinc-600">
-            <li>Full text of every Colorado regulation loaded</li>
+            <li>Full text of the Colorado air-quality and oil &amp; gas regulations in the corpus</li>
             <li>Click-to-preview citations and a searchable sidebar</li>
             <li>New regulations and revisions as they&apos;re added</li>
             <li>Cancel any time from your account page</li>

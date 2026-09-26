@@ -1,7 +1,14 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
-import { fetchRegulationList, normalizeCitationLabel, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
+import {
+  fetchRegulationList,
+  normalizeCitationLabel,
+  regKeyOf,
+  regulationDisplayName,
+  summaryParagraphs,
+  titleWithoutCitation,
+} from "@/lib/regulation";
 import {
   MAX_QUERY_LENGTH,
   sanitizeHeadline,
@@ -14,7 +21,6 @@ import {
   hrefForHit,
   jurisdictionOfKey,
   regBadge,
-  regLabel,
   semanticSearch,
   type Jurisdiction,
   type SemanticHit,
@@ -119,11 +125,6 @@ function snippetWithoutTitle(html: string, labels: string[]): string {
   return html;
 }
 
-function regKeyOfId(id: string): string {
-  const m = /^sec-([^-]+)-/.exec(id);
-  return m ? m[1].toLowerCase() : "";
-}
-
 export default async function SearchPage(props: PageProps<"/search">) {
   const params = await props.searchParams;
   const mode: Mode = first(params.mode) === "ask" ? "ask" : "keyword";
@@ -138,12 +139,23 @@ export default async function SearchPage(props: PageProps<"/search">) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Only needed for Ask (gate + reg dropdown); cheap enough to always fetch.
+  // The root rows: the Ask filter's options, and the regulation name on
+  // every hit. Cheap enough to always fetch. RLS-bound, so an anonymous
+  // visitor gets none; regulationDisplayName then derives the same names
+  // from the key alone (a user never sees a raw reg_key).
   const [access, regs] = await Promise.all([getAccessStatus(), fetchRegulationList()]);
-  const regOptions = regs
-    .map((r) => ({ key: regKeyOfId(r.id), label: regLabel(regKeyOfId(r.id)), jurisdiction: r.jurisdiction_level }))
-    .filter((r) => r.key)
-    .sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
+  const rootByKey = new Map<string, (typeof regs)[number]>();
+  for (const r of regs) {
+    const key = regKeyOf(r.id)?.toLowerCase();
+    if (key) rootByKey.set(key, r);
+  }
+  const nameOf = (regKey: string | null) =>
+    regKey ? regulationDisplayName(regKey, rootByKey.get(regKey.toLowerCase())) : "";
+  const regOptions = Array.from(rootByKey, ([key, r]) => ({
+    key,
+    label: nameOf(key),
+    jurisdiction: r.jurisdiction_level,
+  })).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
   const regFilter = regOptions.some((r) => r.key === regParam) ? regParam : "";
 
   let hits: SearchHit[] = [];
@@ -357,7 +369,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
       {mode === "keyword" && hits.length > 0 && (
         <>
           <p className="mt-8 text-xs uppercase tracking-wide text-zinc-500">
-            {hits.length} result{hits.length === 1 ? "" : "s"} for &ldquo;{q}&rdquo;
+            {`${hits.length} ${hits.length === 1 ? "result" : "results"} for \u201c${q}\u201d`}
           </p>
           <ol className="mt-3 flex flex-col gap-3">
             {hits.map((hit) => {
@@ -375,7 +387,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                           <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-medium text-zinc-700">
                             {regBadge(hit.reg_key, jurisdictionOfKey(hit.reg_key))}
                           </span>
-                          <span className="font-medium text-zinc-500">{regLabel(hit.reg_key)}</span>
+                          <span className="font-medium text-zinc-500">{nameOf(hit.reg_key)}</span>
                           <span className="text-zinc-300">·</span>
                         </>
                       )}
@@ -410,7 +422,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
       {mode === "ask" && askHits.length > 0 && (
         <>
           <p className="mt-8 text-xs uppercase tracking-wide text-zinc-500">
-            {askHits.length} provision{askHits.length === 1 ? "" : "s"} most about &ldquo;{q}&rdquo;
+            {`${askHits.length} ${askHits.length === 1 ? "provision" : "provisions"} most about \u201c${q}\u201d`}
           </p>
           <ol className="mt-3 flex flex-col gap-3">
             {askHits.map((hit) => {
@@ -435,7 +447,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                       >
                         {badge}
                       </span>
-                      <span className="text-xs text-zinc-500">{regLabel(hit.reg_key)}</span>
+                      <span className="text-xs text-zinc-500">{nameOf(hit.reg_key)}</span>
                       {hit.is_basis && (
                         <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
                           Statement of basis

@@ -6,7 +6,7 @@ import { LegalPage, LegalSection } from "@/components/LegalPage";
 export const metadata: Metadata = {
   title: "Disclaimer",
   description:
-    "EssentialRegs is an informational reference only. Not legal advice, not affiliated with OSHA, EPA, ECMC, CDPHE, or any agency. The official regulatory text always controls.",
+    "EssentialRegs is an informational reference only. Not legal advice, not affiliated with EPA, PHMSA, ECMC, CDPHE, or any agency. The official regulatory text always controls.",
 };
 
 const SUPPORT_EMAIL = "support@essentialregs.com";
