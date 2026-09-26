@@ -108,9 +108,8 @@ export default function AboutPage() {
           </li>
         </LegalList>
         <p>
-          More is coming: additional CDPHE and ECMC rules, the federal OSHA
-          and EPA provisions that apply to oil and gas, and county-level
-          requirements. The{" "}
+          More is coming: additional CDPHE and ECMC rules and further
+          federal EPA and PHMSA provisions that apply to oil and gas. The{" "}
           <Link href="/regulations" className="underline underline-offset-2">
             Regulations
           </Link>{" "}
@@ -157,7 +156,7 @@ export default function AboutPage() {
 
       <LegalSection title="Independent and ad-free">
         <p>
-          EssentialRegs is not affiliated with OSHA, EPA, ECMC, CDPHE, or any
+          EssentialRegs is not affiliated with EPA, PHMSA, ECMC, CDPHE, or any
           other government agency. It is funded entirely by subscriptions:
           no advertising, no sponsored content, and no selling of subscriber
           data. See the{" "}

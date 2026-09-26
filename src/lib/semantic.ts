@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccessStatus } from "@/lib/access";
 import { expandAcronyms, keywordQuery } from "@/lib/acronyms";
+import { regulationDisplayName } from "@/lib/regulation-pure";
 
 /**
  * Semantic ("Ask") search — Phase 3 of the semantic-search plan.
@@ -70,23 +71,22 @@ export function regBadge(regKey: string | null, jurisdiction: string): string {
   return "Colorado";
 }
 
-/** Federal reg keys: 40 CFR 60 Subparts OOOO, OOOOa/b/c, JJJJ, IIII and 40 CFR 63 Subpart ZZZZ. */
-const FEDERAL_KEY = /^(oooo[abc]?|jjjj|iiii|zzzz)$/;
+/** Federal reg keys: 40 CFR 60 Subparts OOOO, OOOOa/b/c, JJJJ, IIII, 40 CFR 63 Subpart ZZZZ and the 49 CFR PHMSA parts (p190..p199). */
+const FEDERAL_KEY = /^(oooo[abc]?|jjjj|iiii|zzzz|p\d{3})$/;
 
 /** "state" | "federal" from the reg key alone (for rows that don't carry jurisdiction_level). */
 export function jurisdictionOfKey(regKey: string | null): "state" | "federal" {
   return regKey && FEDERAL_KEY.test(regKey) ? "federal" : "state";
 }
 
-/** Short display name for a reg key: "Reg 7", "Subpart OOOOb", "ECMC rules", "Common Provisions", "GP02". */
+/**
+ * Display name for a hit's reg key ("Regulation 7", "40 CFR Part 60 Subpart
+ * OOOOb", "2 CCR 404-1 (ECMC Rules)", "APCD General Permit GP02"); "" for a
+ * row outside any regulation. Hits do not carry their root row, so this is
+ * regulationDisplayName's derived path -- never the raw key.
+ */
 export function regLabel(regKey: string | null): string {
-  if (!regKey) return "";
-  if (regKey.startsWith("oooo")) return "Subpart " + regKey.replace("oooo", "OOOO");
-  if (FEDERAL_KEY.test(regKey)) return "Subpart " + regKey.toUpperCase();
-  if (/^gp\d\d$/.test(regKey)) return "General permit " + regKey.toUpperCase();
-  if (regKey === "ecmc") return "ECMC rules";
-  if (regKey === "cp") return "Common Provisions";
-  return `Reg ${regKey}`;
+  return regKey ? regulationDisplayName(regKey) : "";
 }
 
 /** Reader link for a hit; mirrors hrefFor() on the keyword search page. */

@@ -2,7 +2,8 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { escapeHtml, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
-import { regBadge, regLabel } from "@/lib/semantic";
+import { regBadge } from "@/lib/semantic";
+import { regulationDisplayName } from "@/lib/regulation-pure";
 import { PROVISION_ID } from "@/lib/types";
 
 /**
@@ -83,7 +84,8 @@ function toItem(anchorId: string, row: NeighborRow): RelatedItem | null {
     score: row.score,
     rank: row.rank,
     badge: regBadge(key, n.jurisdiction_level),
-    regLabel: regLabel(key),
+    // Display name, never the raw key: "Regulation 7", "49 CFR Part 192".
+    regLabel: key ? regulationDisplayName(key) : "",
     crossReg: key !== regKeyOf(anchorId),
   };
 }

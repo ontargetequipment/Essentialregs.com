@@ -10,7 +10,7 @@ import "./globals.css";
 
 const SITE_NAME = "EssentialRegs";
 const SITE_DESCRIPTION =
-  "Federal, Colorado state, and county oil & gas regulations with plain-English summaries and working cross-reference links.";
+  "Federal and Colorado oil & gas regulations with plain-English summaries and linked cross-references.";
 
 // Display headings and regulation text; citations and eyebrow labels. Body/UI
 // copy stays on the system sans stack (see --font-sans in globals.css).
