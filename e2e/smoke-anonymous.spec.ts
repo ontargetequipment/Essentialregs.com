@@ -27,6 +27,17 @@ test.describe("anonymous", () => {
     await expect(page.locator("article > h2")).toHaveText(SAMPLE_HEADINGS);
   });
 
+  test("/regulations lists the Colorado regulations for a logged-out visitor", async ({ page }) => {
+    // The list is the same for a prospect as for a subscriber; only the card
+    // targets differ (the public /preview teaser here, the reader when
+    // entitled). The reader route itself stays 404 anonymously (below).
+    const res = await page.goto("/regulations");
+    expect(res?.status()).toBe(200);
+    const cards = page.locator('a[href^="/regulations/"][href$="/preview"]');
+    expect(await cards.count()).toBeGreaterThan(10);
+    await expect(page.getByRole("heading", { name: "Subscribe to open the full regulations" })).toBeVisible();
+  });
+
   test("a regulation preview returns 200", async ({ page }) => {
     const res = await page.goto("/regulations/7/preview");
     expect(res?.status()).toBe(200);
