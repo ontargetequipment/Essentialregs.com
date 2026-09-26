@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { AccessStatus } from "@/lib/access";
-import { ANNUAL_PRICE_DISPLAY } from "@/lib/pricing";
+import { PRICE_SUMMARY } from "@/lib/pricing";
 import { SubscribeControl } from "@/components/SubscribeControl";
 import type { Provision } from "@/lib/types";
 import {
@@ -15,12 +15,12 @@ import {
 export type RegulationListRow = Pick<Provision, "id" | "citation" | "title" | "issuing_body">;
 
 /**
- * The card list shared by the /regulations (Colorado) and /federal index
- * pages: the subscribe prompt for visitors without access, one card per
- * regulation root, and the "nothing loaded" note for subscribers when the
- * list is empty. A card links to the gated reader at /regulations/<reg>
- * for an entitled reader and to the public /regulations/<reg>/preview
- * teaser for everyone else (see regulationCardHref).
+ * The card list shared by the /regulations (Colorado), /federal and
+ * /general-permits index pages: the subscribe prompt for visitors without
+ * access, one card per regulation root, and the "nothing loaded" note for
+ * subscribers when the list is empty. A card links to the gated reader at
+ * /regulations/<reg> for an entitled reader and to the public
+ * /regulations/<reg>/preview teaser for everyone else (see regulationCardHref).
  *
  * `mode` controls grouping: "state" groups by issuing_body with the AQCC/
  * GP/ECMC headings and AQCC ordering (see groupColoradoRegulations),
@@ -57,25 +57,27 @@ export function RegulationList({
   return (
     <>
       {!access.hasAccess && (
-        <div className="mt-8 rounded-lg border border-emerald-200 bg-emerald-50 p-6">
-          <h2 className="text-lg font-semibold text-zinc-900">
+        <div className="mt-8 rounded-lg border border-line bg-accent-soft p-6">
+          <h2 className="font-serif text-card font-semibold text-ink">
             Subscribe to open the full regulations
           </h2>
-          <p className="mt-2 text-sm text-zinc-600">
-            The complete Colorado corpus — every section, linked
-            cross-references, updates included — is {ANNUAL_PRICE_DISPLAY}. Not sure
+          <p className="mt-2 text-sm text-ink-soft">
+            The complete corpus — Colorado and federal, linked
+            cross-references, updates included — is {PRICE_SUMMARY}. Not sure
             yet?{" "}
-            <Link href="/sample" className="font-medium text-zinc-900 underline underline-offset-2">
+            <Link href="/sample" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
               See a free sample entry
             </Link>{" "}
             first.
           </p>
           <SubscribeControl access={access} className="mt-5" />
-          <p className="mt-4 text-xs text-zinc-500">
+          <p className="mt-4 text-xs text-muted">
             Need multiple seats for your team?{" "}
+            {/* inline-flex + min-h-11 below `sm` grows this inline link to a
+                44px-tall tap target; `sm:` puts it back to a plain inline link. */}
             <Link
               href="/contact-sales"
-              className="font-medium text-zinc-700 underline underline-offset-2 hover:text-emerald-700"
+              className="inline-flex min-h-11 items-center font-medium text-ink-soft underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
             >
               Contact sales
             </Link>
@@ -87,13 +89,13 @@ export function RegulationList({
       {groups.map((group) => (
         <div className="mt-8" key={group.key}>
           {group.heading && (
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <h2 className="mb-3 font-mono text-eyebrow uppercase text-tag">
               {/* The Colorado index's "APCD General Permits" group heading
                   links out to the dedicated /general-permits page (its own
                   intro copy + "Applies to" lines); every other heading here
                   is a plain label. */}
               {mode === "state" && group.key === "gp" ? (
-                <Link href="/general-permits" className="hover:text-zinc-700 hover:underline">
+                <Link href="/general-permits" className="inline-flex min-h-11 items-center hover:text-accent hover:underline sm:inline sm:min-h-0">
                   {group.heading}
                 </Link>
               ) : (
@@ -109,17 +111,17 @@ export function RegulationList({
                 <Link
                   key={r.id}
                   href={regulationCardHref(reg, access.hasAccess)}
-                  className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+                  className="rounded-lg border border-line bg-panel p-5 shadow-sm transition hover:border-accent hover:shadow-md"
                 >
-                  <p className="text-xs font-mono uppercase tracking-wide text-emerald-700">
+                  <p className="font-mono text-eyebrow uppercase text-tag">
                     {r.citation}
                   </p>
-                  <p className="mt-1 font-semibold text-zinc-900">{info.title}</p>
+                  <p className="mt-1 font-serif text-card font-semibold text-ink">{info.title}</p>
                   {info.subtitle && (
-                    <p className="mt-0.5 text-xs text-zinc-500">{info.subtitle}</p>
+                    <p className="mt-0.5 text-xs text-muted">{info.subtitle}</p>
                   )}
                   {appliesTo?.[reg] && (
-                    <p className="mt-2 text-sm text-zinc-600">Applies to {appliesTo[reg]}.</p>
+                    <p className="mt-2 text-sm text-ink-soft">Applies to {appliesTo[reg]}.</p>
                   )}
                 </Link>
               );
@@ -129,7 +131,7 @@ export function RegulationList({
       ))}
 
       {access.hasAccess && regs.length === 0 && (
-        <p className="mt-8 text-sm text-zinc-500">
+        <p className="mt-8 text-sm text-muted">
           No regulations loaded yet.
         </p>
       )}

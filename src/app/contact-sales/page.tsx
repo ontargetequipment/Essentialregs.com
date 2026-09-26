@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalList, LegalPage, LegalSection } from "@/components/LegalPage";
-import { ANNUAL_PRICE_DISPLAY } from "@/lib/pricing";
+import { PRICE_SUMMARY } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Contact Sales",
@@ -19,24 +19,24 @@ export default function ContactSalesPage() {
       title="Contact Sales"
       intro={
         <p>
-          The {ANNUAL_PRICE_DISPLAY} plan is built for one person. If you need
+          The {PRICE_SUMMARY} subscription is built for one person. If you need
           it for a whole team — several EHS or compliance staff, a
           multi-facility group — email us and we&apos;ll work out seat
           pricing together.
         </p>
       }
     >
-      <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+      <section className="rounded-lg border border-line bg-panel p-6 shadow-sm">
+        <p className="font-mono text-eyebrow uppercase text-tag">
           Sales email
         </p>
         <a
           href={MAILTO_HREF}
-          className="mt-1 block break-all text-xl font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800"
+          className="mt-1 flex min-h-11 items-center break-all font-serif text-card font-semibold text-accent underline underline-offset-4 hover:text-ink sm:block sm:min-h-0"
         >
           {SUPPORT_EMAIL}
         </a>
-        <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+        <p className="mt-3 text-sm leading-relaxed text-ink-soft">
           A real person replies — usually within two business days (Mountain
           Time, Monday through Friday).
         </p>
@@ -56,14 +56,14 @@ export default function ContactSalesPage() {
           You don&apos;t need to wait on us —{" "}
           <Link
             href="/signup"
-            className="font-medium text-zinc-900 underline underline-offset-2"
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0"
           >
             subscribe directly
           </Link>{" "}
-          for {ANNUAL_PRICE_DISPLAY}, or see the plan details on the{" "}
+          for {PRICE_SUMMARY}, or see the plan details on the{" "}
           <Link
             href="/regulations"
-            className="font-medium text-zinc-900 underline underline-offset-2"
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0"
           >
             regulations
           </Link>{" "}

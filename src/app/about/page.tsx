@@ -16,14 +16,14 @@ export default function AboutPage() {
         <p>
           EssentialRegs is a subscription reference for the federal and
           Colorado regulations that govern oil and gas operations — with the
-          cross-references already resolved and a plain-English summary next
-          to every section.
+          cross-references linked and a plain-English summary beside the
+          official text.
         </p>
       }
     >
       <LegalSection title="What it is">
         <p>
-          Every regulation on EssentialRegs is broken into its individual
+          Each regulation on EssentialRegs is broken into its individual
           provisions and presented in a browsable reader with a sidebar table
           of contents, the full official text, a short plain-English summary,
           and clickable links for every citation the section makes to another

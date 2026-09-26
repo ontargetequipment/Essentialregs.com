@@ -36,27 +36,29 @@ export default async function FederalIndexPage() {
   const regs = allRegs.filter((r) => r.jurisdiction_level === "federal");
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-2xl font-bold text-zinc-900">Federal regulations</h1>
-      <p className="mt-2 text-sm text-zinc-600">
-        40 CFR Part 60 (New Source Performance Standards) and Part 63
-        (NESHAP) subparts as printed in the eCFR, incorporated by
-        reference in{" "}
-        {/* Same anonymous-vs-entitled target as the cards below: the reader
-            404s for a logged-out visitor, so they get the public teaser. */}
-        <Link
-          href={regulationCardHref("6", access.hasAccess)}
-          className="font-medium text-zinc-900 underline underline-offset-2"
-        >
-          Colorado Regulation Number 6 Part A
-        </Link>
-        . Also included: 49 CFR Parts 190 through 196 and 199, PHMSA&apos;s
-        federal pipeline safety standards for gas, hazardous liquid and LNG
-        facilities, its enforcement procedures and its excavation damage
-        prevention rule, administered by the US DOT.
-      </p>
+    <div className="mx-auto max-w-shell px-6 py-12">
+      <div className="max-w-reading">
+        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Federal regulations</h1>
+        <p className="mt-2 text-sm text-ink-soft">
+          40 CFR Part 60 (New Source Performance Standards) and Part 63
+          (NESHAP) subparts as printed in the eCFR, incorporated by
+          reference in{" "}
+          {/* Same anonymous-vs-entitled target as the cards below: the reader
+              404s for a logged-out visitor, so they get the public teaser. */}
+          <Link
+            href={regulationCardHref("6", access.hasAccess)}
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0"
+          >
+            Colorado Regulation Number 6 Part A
+          </Link>
+          . Also included: 49 CFR Parts 190 through 196 and 199, PHMSA&apos;s
+          federal pipeline safety standards for gas, hazardous liquid and LNG
+          facilities, its enforcement procedures and its excavation damage
+          prevention rule, administered by the US DOT.
+        </p>
 
-      <RegulationList regs={regs} access={access} mode="federal" appliesTo={APPLIES_TO} />
+        <RegulationList regs={regs} access={access} mode="federal" appliesTo={APPLIES_TO} />
+      </div>
     </div>
   );
 }

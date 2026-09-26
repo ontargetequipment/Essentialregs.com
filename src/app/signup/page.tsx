@@ -9,14 +9,14 @@ export default async function SignupPage(props: PageProps<"/signup">) {
 
   return (
     <div className="mx-auto max-w-sm px-6 py-16">
-      <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Create an account</h1>
-      <p className="mt-2 text-sm text-zinc-600">
+      <h1 className="font-serif text-section font-bold tracking-tight text-ink">Create an account</h1>
+      <p className="mt-2 text-sm text-ink-soft">
         Already have one?{" "}
-        <Link href="/login" className="font-medium text-zinc-900 underline underline-offset-2">
+        <Link href="/login" className="font-medium text-ink underline underline-offset-2">
           Log in
         </Link>
       </p>
-      <p className="mt-4 text-sm text-zinc-600">
+      <p className="mt-4 text-sm text-ink-soft">
         An account is free and includes the sample content. Subscribe from
         your account page to unlock the full regulations.
       </p>

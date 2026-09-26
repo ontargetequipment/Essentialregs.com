@@ -7,15 +7,19 @@ Do everything below in Stripe's **Test mode** first (toggle at the top right of
 the Stripe dashboard), confirm it works with the test card in step 7, then
 repeat steps 1, 2, 3 and 5 in **Live mode** and swap the live keys into Vercel.
 
-## 1. Create the product and annual price
+## 1. Create the product and its two prices
 
 1. Stripe dashboard → **Product catalog** → **+ Add product**.
-2. Name: `EssentialRegs Annual` (this is what appears on the customer's receipt).
-3. Under pricing choose **Recurring**, billing period **Yearly**, and enter the
-   price. (The site currently displays a placeholder of `$299 / year` — if you
-   pick a different amount, tell Claude to update `src/lib/pricing.ts` to match.)
-4. Save. On the product page, click the price you just made and copy its id —
-   it starts with `price_`. That's `STRIPE_PRICE_ID_ANNUAL`.
+2. Name: `EssentialRegs` (this is what appears on the customer's receipt).
+3. Under pricing choose **Recurring** and add two prices: **Monthly** at
+   `$25.00` and **Yearly** at `$250.00`. These must match what the site
+   displays (`src/lib/pricing.ts`: `$25 / month` or `$250 / year`, set by the
+   owner on 26 Sep 2026) — if you pick different amounts, tell Claude to update
+   that file to match.
+4. Save. On the product page, click the yearly price and copy its id — it
+   starts with `price_`. That's `STRIPE_PRICE_ID_ANNUAL`. (The checkout route
+   only knows the annual price today; wiring the monthly price in is part of
+   the Stripe workstream.)
 
 ## 2. Get your API keys
 

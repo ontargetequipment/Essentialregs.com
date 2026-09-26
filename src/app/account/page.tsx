@@ -62,13 +62,13 @@ export default async function AccountPage(props: PageProps<"/account">) {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="text-2xl font-bold tracking-tight text-zinc-900">Your account</h1>
+      <h1 className="font-serif text-section font-bold tracking-tight text-ink">Your account</h1>
 
       {justCheckedOut && (
-        <div className="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div className="mt-6 rounded-md border border-line bg-accent-soft px-4 py-3 text-sm text-ink">
           <p className="font-medium">Thanks — your subscription is being set up.</p>
           {!access.hasAccess && (
-            <p className="mt-1 text-emerald-700">
+            <p className="mt-1 text-ink-soft">
               Stripe is confirming the payment. This usually takes a few
               seconds; refresh this page if the status below hasn&apos;t updated yet.
             </p>
@@ -77,17 +77,17 @@ export default async function AccountPage(props: PageProps<"/account">) {
       )}
 
       <dl className="mt-6 space-y-3 text-sm">
-        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-zinc-200 pb-3">
-          <dt className="text-zinc-500">Email</dt>
-          <dd className="break-all font-medium text-zinc-900">{access.user.email}</dd>
+        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
+          <dt className="text-muted">Email</dt>
+          <dd className="break-all font-medium text-ink">{access.user.email}</dd>
         </div>
-        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-zinc-200 pb-3">
-          <dt className="text-zinc-500">Plan</dt>
-          <dd className="font-medium text-zinc-900">{planSummary(access)}</dd>
+        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
+          <dt className="text-muted">Plan</dt>
+          <dd className="font-medium text-ink">{planSummary(access)}</dd>
         </div>
-        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-zinc-200 pb-3">
-          <dt className="text-zinc-500">Access</dt>
-          <dd className="font-medium text-zinc-900">
+        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
+          <dt className="text-muted">Access</dt>
+          <dd className="font-medium text-ink">
             {access.hasAccess ? "Full access — all regulations" : "Sample content only"}
           </dd>
         </div>
@@ -100,7 +100,7 @@ export default async function AccountPage(props: PageProps<"/account">) {
           <form method="post" action="/api/stripe/portal">
             <button
               type="submit"
-              className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
+              className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink-soft hover:bg-accent-soft"
             >
               Manage billing
             </button>
@@ -110,7 +110,7 @@ export default async function AccountPage(props: PageProps<"/account">) {
         <form action={logout}>
           <button
             type="submit"
-            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100"
+            className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink-soft hover:bg-accent-soft"
           >
             Log out
           </button>
@@ -118,7 +118,7 @@ export default async function AccountPage(props: PageProps<"/account">) {
       </div>
 
       {access.stripeCustomerId && (
-        <p className="mt-3 text-xs text-zinc-500">
+        <p className="mt-3 text-xs text-muted">
           Manage billing opens Stripe&apos;s customer portal to update your
           card, download invoices, or cancel.
         </p>

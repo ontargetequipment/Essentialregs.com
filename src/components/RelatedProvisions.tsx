@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { fetchRelated, fetchRelatedTeaser, hrefForRelated, type RelatedItem } from "@/lib/related";
 
+// Jurisdiction badges. Federal and ECMC keep the blue/violet the reader's own
+// related panel uses (.related-badge-federal / -ecmc in reader.css) so the
+// same badge reads the same in both places; Colorado is the site's accent.
 const BADGE_CLASS: Record<string, string> = {
   Federal: "bg-blue-50 text-blue-700",
   ECMC: "bg-violet-50 text-violet-700",
-  Colorado: "bg-emerald-50 text-emerald-700",
+  Colorado: "bg-accent-soft text-accent",
 };
 
 /**
@@ -31,12 +34,12 @@ export async function RelatedProvisions({
   if (items.length === 0) return null;
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Related provisions</h3>
-      <p className="mt-1 text-xs text-zinc-400">
-        Closest in meaning across every regulation — not necessarily cited by this one.
+    <section className="rounded-lg border border-line bg-panel p-5 shadow-sm">
+      <h3 className="font-mono text-eyebrow uppercase text-tag">Related provisions</h3>
+      <p className="mt-1 text-xs text-muted">
+        Closest in meaning across the corpus — not necessarily cited by this one.
       </p>
-      <ol className="mt-3 divide-y divide-zinc-100">
+      <ol className="mt-3 divide-y divide-line">
         {items.map((item) => (
           <li key={item.id} className="py-2.5">
             <Link href={hrefForRelated(item, teaser)} className="group block">
@@ -48,30 +51,30 @@ export async function RelatedProvisions({
                 >
                   {item.badge}
                 </span>
-                <span className="text-xs text-zinc-500">{item.regLabel}</span>
-                <span className="font-mono text-xs text-emerald-700 group-hover:underline">{item.citation}</span>
+                <span className="text-xs text-muted">{item.regLabel}</span>
+                <span className="font-mono text-xs text-tag group-hover:underline">{item.citation}</span>
               </div>
-              {item.path && <p className="mt-0.5 text-xs leading-snug text-zinc-400">{item.path}</p>}
+              {item.path && <p className="mt-0.5 text-xs leading-snug text-muted">{item.path}</p>}
               {item.title && (
-                <p className="mt-0.5 text-sm font-medium text-zinc-900">{item.title}</p>
+                <p className="mt-0.5 text-sm font-medium text-ink">{item.title}</p>
               )}
               {item.summary ? (
                 <>
                   {/* Same label and style as the Ask cards (backlog #16): no summary prose goes unlabelled. */}
-                  <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                  <p className="mt-1.5 font-mono text-eyebrow uppercase text-tag">
                     Plain-English summary
                   </p>
-                  <p className="mt-0.5 line-clamp-2 text-sm text-zinc-600">{item.summary}</p>
+                  <p className="mt-0.5 line-clamp-2 text-sm text-ink-soft">{item.summary}</p>
                 </>
               ) : teaser ? (
-                <p className="mt-0.5 text-xs italic text-zinc-400">Summary available to subscribers.</p>
+                <p className="mt-0.5 text-xs italic text-muted">Summary available to subscribers.</p>
               ) : null}
             </Link>
           </li>
         ))}
       </ol>
       {teaser && (
-        <p className="mt-3 text-xs text-zinc-400">
+        <p className="mt-3 text-xs text-muted">
           Subscribers open any of these directly in the cross-referenced reader.
         </p>
       )}
