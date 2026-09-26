@@ -512,12 +512,15 @@
 .reg-reader #popup-head-text {
   font-family: var(--sans);
 }
+/* "Regulation 3 · Part A · II. · II.B." -- the display name and the
+   ancestors' labels (reader-nav.ts), so no upper-casing: it used to print
+   the internal id in caps. */
 .reg-reader #popup-eyebrow {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--tag);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
 }
 .reg-reader #popup-title {
   font-family: var(--serif);
@@ -615,6 +618,73 @@
   }
 }
 
+/* Every goto (goToProvision in RegulationReader.tsx) and the browser's own
+   hash jump land a row this far below the top of the viewport: under the
+   return bar, with some air. Focus moves to the row as well (tabindex=-1);
+   the flash above is its indicator, not an outline round a whole section. */
+.reg-reader #doc > [id] {
+  scroll-margin-top: 64px;
+}
+.reg-reader #doc > [id]:focus {
+  outline: none;
+}
+
+/* ---------- Return trail ----------
+   Sticky at the top of the reading pane after a goto (the markup is in
+   [reg]/page.tsx). The bar itself lets clicks through and paints nothing;
+   only its two pills sit over the text, and a landed target starts below
+   them (scroll-margin-top above). Under the jump results (40), the mobile
+   sidebar (55) and the popup (100). */
+.reg-reader #return-trail {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 10px 48px 0;
+  pointer-events: none;
+  font-family: var(--sans);
+}
+.reg-reader #return-trail[hidden] {
+  display: none;
+}
+.reg-reader #return-trail button {
+  pointer-events: auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fffdf9;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 9px 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(20, 30, 25, 0.14);
+}
+.reg-reader #return-trail-back {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reg-reader #return-trail-dismiss {
+  flex: none;
+  color: var(--ink-soft);
+  padding: 9px 12px;
+}
+.reg-reader #return-trail button:hover {
+  background: var(--accent-soft);
+}
+.reg-reader #return-trail button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .reg-reader #mobile-toggle {
   display: none;
 }
@@ -670,6 +740,9 @@
   .reg-reader #doc {
     padding: 32px 22px 120px;
   }
+  .reg-reader #return-trail {
+    padding: 8px 22px 0;
+  }
 }
 
 /* Phones narrower than ~480px: the 860px breakpoint above already switches
@@ -679,6 +752,9 @@
 @media (max-width: 480px) {
   .reg-reader #doc {
     padding: 26px 14px 110px;
+  }
+  .reg-reader #return-trail {
+    padding: 8px 14px 0;
   }
   .reg-reader .reg-block h1 {
     font-size: 22px;
