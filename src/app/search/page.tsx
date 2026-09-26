@@ -275,7 +275,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
       ) : (
         <p className="mt-3 text-sm text-zinc-600">
           Describe the situation in your own words — a tank, a piece of equipment, a
-          deadline, a question you&apos;d ask a coworker. Ask finds the provisions most
+          deadline, a question you&apos;d ask a coworker. Ask finds the provisions most{" "}
           <em>about</em> your question, across Colorado, ECMC and federal rules, even when
           they don&apos;t use the same words, and shows their plain-English summaries,
           clearly labelled. It does not decide what applies to you and it is not legal
