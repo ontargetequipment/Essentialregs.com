@@ -56,7 +56,13 @@ export async function RelatedProvisions({
                 <p className="mt-0.5 text-sm font-medium text-zinc-900">{item.title}</p>
               )}
               {item.summary ? (
-                <p className="mt-0.5 line-clamp-2 text-sm text-zinc-600">{item.summary}</p>
+                <>
+                  {/* Same label and style as the Ask cards (backlog #16): no summary prose goes unlabelled. */}
+                  <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    Plain-English summary
+                  </p>
+                  <p className="mt-0.5 line-clamp-2 text-sm text-zinc-600">{item.summary}</p>
+                </>
               ) : teaser ? (
                 <p className="mt-0.5 text-xs italic text-zinc-400">Summary available to subscribers.</p>
               ) : null}

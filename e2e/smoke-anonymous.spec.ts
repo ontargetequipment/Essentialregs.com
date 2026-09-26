@@ -53,6 +53,14 @@ test.describe("anonymous", () => {
     const res = await page.goto("/regs/sec-7-B-I-D-3-a-(i)");
     expect(res?.status()).toBe(200);
     await expect(page.locator("article > h2")).toContainText("I.D.3.a.(i).");
+    // Provenance (backlog #16): the title names the provision and its
+    // regulation, and the summary and the official text are each labelled.
+    await expect(page).toHaveTitle(/^I\.D\.3\.a\.\(i\)\. · Regulation 7 — /);
+    await expect(page.locator("article details > summary")).toHaveText([
+      "Plain-English summary",
+      "Original regulatory text",
+    ]);
+    await expect(page.getByRole("link", { name: "← Back to sample" })).toBeVisible();
   });
 
   test("an injection-shaped /regs/<id> returns 404", async ({ page }) => {

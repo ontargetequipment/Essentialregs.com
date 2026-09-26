@@ -770,12 +770,50 @@ export function promoteHeadingParagraph(html: string): string {
   return newOpenTag + inner + "</p>" + rest;
 }
 
-/** Splits plain-text summary into paragraphs on blank lines (drops empties). */
+/**
+ * Drops the Markdown emphasis a summary can carry from the model that wrote
+ * it: `**bold**`, `__bold__` and `code` markers are removed and their text
+ * kept (a fenced block keeps its body too). A stray, unpaired `**` or
+ * backtick is removed as well -- neither means anything in plain English.
+ * 251 stored summaries carried `**` on 2026-09-26 (backlog #16); this is the
+ * one renderer every surface goes through (summaryParagraphs), so the
+ * markers never reach a reader whether or not the rows are cleaned later.
+ */
+export function stripSummaryMarkdown(text: string): string {
+  return text
+    .replace(/```[^\n`]*\n?([\s\S]*?)```/g, "$1")
+    .replace(/`([^`\n]*)`/g, "$1")
+    .replace(/\*\*([^*]+?)\*\*/g, "$1")
+    .replace(/__([^_]+?)__/g, "$1")
+    .replace(/\*\*|`/g, "");
+}
+
+/**
+ * Splits plain-text summary into paragraphs on blank lines (drops empties),
+ * with the Markdown markers stripped (stripSummaryMarkdown). Every surface
+ * that shows summary prose -- the reader panel and its popup clone, the
+ * Ask cards, the related panels, /regs, /sample, the previews -- renders
+ * through this, so it is the one place the text is cleaned.
+ */
 export function summaryParagraphs(summary: string): string[] {
-  return summary
+  return stripSummaryMarkdown(summary)
     .split(/\n\s*\n/)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+/**
+ * True for a row whose text is nothing but its own heading: a section, not
+ * a provision. The same test search_provisions applies server-side to null
+ * the keyword headline (migration 20260925013538): tags stripped, then the
+ * text compared with the title and the citation after
+ * normalizeCitationLabel's normalisation. Ask hits do not carry full_text,
+ * so the search page reads it for the rows without a summary and asks here.
+ */
+export function isHeadingOnlyText(fullText: string, title: string | null, citation: string | null): boolean {
+  const text = normalizeCitationLabel(fullText.replace(/<[^>]*>/g, ""));
+  if (!text) return false;
+  return text === normalizeCitationLabel(title) || text === normalizeCitationLabel(citation);
 }
 
 /**

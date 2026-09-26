@@ -27,6 +27,7 @@ export function RegulationReader() {
     const popupEyebrow = document.getElementById("popup-eyebrow");
     const popupTitle = document.getElementById("popup-title");
     const popupBody = document.getElementById("popup-body");
+    const popupTextLabel = document.getElementById("popup-text-label");
     const popupGoto = document.getElementById("popup-goto") as HTMLAnchorElement | null;
     const sidebar = document.getElementById("sidebar");
     const toggle = document.getElementById("mobile-toggle");
@@ -85,6 +86,10 @@ export function RegulationReader() {
       const clone = el.cloneNode(true) as HTMLElement;
       popupBody.innerHTML = "";
       popupBody.appendChild(clone);
+      // The clone carries the row's "Plain-English summary" panel when it
+      // has one; only then does the text above it need its own label, so a
+      // reader can tell which is which (backlog #16). Text alone: no label.
+      if (popupTextLabel) popupTextLabel.hidden = !clone.querySelector("details.summary-panel");
       if (popupGoto) {
         popupGoto.onclick = (e) => {
           e.preventDefault();
@@ -286,6 +291,9 @@ export function RegulationReader() {
             <button id="popup-close" aria-label="Close" type="button">
               &times;
             </button>
+          </div>
+          <div id="popup-text-label" hidden>
+            Official text
           </div>
           <div id="popup-body" />
           <div id="popup-footer">

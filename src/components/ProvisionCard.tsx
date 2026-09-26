@@ -10,7 +10,9 @@ import type { Provision } from "@/lib/types";
 // jump to another provision inside the site, external ones go to the
 // canonical government source in a new tab.
 // /sample renders several cards per request; look the visitor up once.
-const cardAccess = cache(getAccessStatus);
+// Exported so /regs/[id] (which decides where its back link goes) shares
+// the same per-request lookup instead of adding a second one.
+export const cardAccess = cache(getAccessStatus);
 
 export async function ProvisionCard({ provision }: { provision: Provision }) {
   // Links in full_text to another regulation go to the reader for a
