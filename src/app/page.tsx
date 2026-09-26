@@ -93,7 +93,8 @@ export default async function Home() {
         </ul>
       </section>
 
-      <section id="pricing" className="scroll-mt-8 border-t border-line py-14">
+      {/* scroll-mt: the 66px sticky site header plus the 32px this had before. */}
+      <section id="pricing" className="scroll-mt-[98px] border-t border-line py-14">
         <h2 className="font-serif text-section font-bold tracking-tight text-ink">Pricing</h2>
         <p className="mt-2 max-w-reading text-sm text-ink-soft">
           One plan, billed monthly or yearly: the full corpus, linked

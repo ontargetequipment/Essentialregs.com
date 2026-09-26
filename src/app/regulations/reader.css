@@ -620,24 +620,26 @@
 
 /* Every goto (goToProvision in RegulationReader.tsx) and the browser's own
    hash jump land a row this far below the top of the viewport: under the
-   return bar, with some air. Focus moves to the row as well (tabindex=-1);
-   the flash above is its indicator, not an outline round a whole section. */
+   66px sticky site header (layout.tsx) plus 64px of room for the return bar
+   and some air. PANE_TOP_Y in RegulationReader.tsx (138) moves with this.
+   Focus moves to the row as well (tabindex=-1); the flash above is its
+   indicator, not an outline round a whole section. */
 .reg-reader #doc > [id] {
-  scroll-margin-top: 64px;
+  scroll-margin-top: 130px;
 }
 .reg-reader #doc > [id]:focus {
   outline: none;
 }
 
 /* ---------- Return trail ----------
-   Sticky at the top of the reading pane after a goto (the markup is in
+   Sticky directly under the 66px site header after a goto (the markup is in
    [reg]/page.tsx). The bar itself lets clicks through and paints nothing;
    only its two pills sit over the text, and a landed target starts below
-   them (scroll-margin-top above). Under the jump results (40), the mobile
-   sidebar (55) and the popup (100). */
+   them (scroll-margin-top above). Under the jump results (40), the site
+   header (45), the mobile sidebar (55) and the popup (100). */
 .reg-reader #return-trail {
   position: sticky;
-  top: 0;
+  top: 66px;
   z-index: 30;
   display: flex;
   align-items: center;
@@ -736,6 +738,13 @@
   }
   .reg-reader #sidebar-scrim.show {
     display: block;
+  }
+  /* The site header's own menu drawer (MobileNav) paints inside the
+     header's stacking context (45), below this FAB (60), so while that
+     drawer is open -- it marks <main> inert -- hide the FAB rather than let
+     "Contents" float over the drawer's bottom-right corner. */
+  main[inert] .reg-reader #mobile-toggle {
+    visibility: hidden;
   }
   .reg-reader #doc {
     padding: 32px 22px 120px;

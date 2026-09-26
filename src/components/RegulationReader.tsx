@@ -30,11 +30,12 @@ export type GoToOptions = { push: boolean; from?: string | null };
 type ReaderHistoryState = { readerAnchor?: string } | null;
 
 /**
- * Viewport y of "the top of the reading pane": just under the return bar,
- * where goToProvision lands a target (scroll-margin-top on #doc's rows in
- * reader.css). Used to tell which provision the reader is on.
+ * Viewport y of "the top of the reading pane": just under the sticky site
+ * header (66px, layout.tsx) and the return bar, where goToProvision lands a
+ * target (scroll-margin-top: 130px on #doc's rows in reader.css, plus 8px of
+ * air). Used to tell which provision the reader is on.
  */
-const PANE_TOP_Y = 72;
+const PANE_TOP_Y = 138;
 
 function decodeHash(raw: string): string {
   try {
