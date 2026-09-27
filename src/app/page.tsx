@@ -1,14 +1,7 @@
 import Link from "next/link";
 import { getAccessStatus } from "@/lib/access";
-import {
-  ANNUAL_PLAN_NAME,
-  ANNUAL_PRICE_DISPLAY,
-  ANNUAL_SAVINGS_NOTE,
-  MONTHLY_PLAN_NAME,
-  MONTHLY_PRICE_DISPLAY,
-  PLAN_TAGLINE,
-  TRIAL_DAYS,
-} from "@/lib/pricing";
+import { PLAN_TAGLINE } from "@/lib/pricing";
+import { PlanChoice } from "@/components/PlanChoice";
 import { SubscribeControl } from "@/components/SubscribeControl";
 
 // Hero buttons. Full-width 44px rows below `sm` (tap targets), inline from
@@ -34,23 +27,8 @@ const FEATURES = [
   { lead: "Official sources", detail: "Verify every provision through its official agency source." },
 ] as const;
 
-/** "$25 / month" as a big serif amount and a small period. */
-function Price({ display }: { display: string }) {
-  const [amount, period] = display.split(" / ");
-  return (
-    <p className="mt-1 font-serif text-section font-bold tracking-tight text-ink">
-      {amount}
-      {period && <span className="text-base font-normal tracking-normal text-muted"> / {period}</span>}
-    </p>
-  );
-}
-
 export default async function Home() {
   const access = await getAccessStatus();
-  // The checkout grants the free trial to an account that has never had a
-  // subscription (see /api/stripe/checkout); a visitor who isn't logged in
-  // is treated as new. Only then does the card promise a trial.
-  const trialOffered = !access.hasAccess && !access.stripeSubscriptionId;
 
   return (
     <div className="mx-auto max-w-shell px-6">
@@ -110,39 +88,11 @@ export default async function Home() {
           <p className="font-mono text-eyebrow uppercase text-tag">Subscription</p>
           <p className="mt-1 font-serif text-card font-semibold text-ink">{PLAN_TAGLINE}</p>
 
-          {/* One SubscribeControl per price box: the hidden `interval`
-              field on its form picks the Stripe Price the checkout sells
-              (src/lib/pricing.ts PRICE_LOOKUP). */}
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="flex flex-col rounded-md border border-line bg-paper p-4">
-              <p className="font-mono text-eyebrow uppercase text-tag">{MONTHLY_PLAN_NAME}</p>
-              <Price display={MONTHLY_PRICE_DISPLAY} />
-              {/* flex-1 + justify-end: both boxes' buttons sit on the same
-                  baseline at `sm` even though only the annual box has a badge. */}
-              <div className="mt-4 flex flex-1 flex-col justify-end">
-                <SubscribeControl access={access} interval="month" fullWidth />
-              </div>
-            </div>
-            <div className="flex flex-col rounded-md border border-accent bg-accent-soft p-4">
-              <p className="font-mono text-eyebrow uppercase text-tag">{ANNUAL_PLAN_NAME}</p>
-              <Price display={ANNUAL_PRICE_DISPLAY} />
-              <p className="mt-2">
-                <span className="inline-block whitespace-nowrap rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-white">
-                  Best value · {ANNUAL_SAVINGS_NOTE}
-                </span>
-              </p>
-              <div className="mt-4 flex flex-1 flex-col justify-end">
-                <SubscribeControl access={access} interval="year" fullWidth />
-              </div>
-            </div>
-          </div>
-          {trialOffered && (
-            <p className="mt-3 text-xs text-muted">
-              {TRIAL_DAYS} days free, then the price you picked. We ask for a
-              card up front and charge it when the trial ends; cancel before
-              then from your account page and you pay nothing.
-            </p>
-          )}
+          {/* The two plans (src/components/PlanChoice.tsx), shared with the
+              account page and the /regulations panel. A subscriber gets the
+              one "open the regulations" link instead. */}
+          <PlanChoice access={access} anonymousCta="per-plan" className="mt-5" />
+          {access.hasAccess && <SubscribeControl access={access} interval="year" className="mt-5" />}
 
           <ul className="mt-5 space-y-1.5 text-sm text-ink-soft">
             <li>Full text of the Colorado air-quality and oil &amp; gas regulations in the corpus</li>
