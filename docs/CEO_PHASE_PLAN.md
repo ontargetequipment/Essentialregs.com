@@ -15,7 +15,7 @@ Operating model the owner (Brody) set: Claude acts as CEO — plans in phases, d
 ## Owner tasks still open (Brody does these; Claude guides)
 
 1. **Summary pipeline (most valuable, ~$4):** add GitHub repo secrets `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (Settings → Secrets and variables → Actions), then Actions → "Generate summaries" → dry run → `reg=7 limit=25` → full run. Details: `pipeline/README.md`. Estimated cost $3.85 on Sonnet batch.
-2. **Stripe:** `docs/stripe-setup.md` — product + annual price, 5 env vars in Vercel (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_ANNUAL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`), webhook endpoint, Customer Portal on.
+2. **Stripe:** `docs/stripe-setup.md` — `npm run stripe:setup` creates the product and its monthly/annual Prices by lookup key (no Price id env var), the Customer Portal configuration and the webhook endpoint, and writes the ids to `stripe-setup.local.txt`; then 3 env vars in Vercel (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_SITE_URL`; `SUPABASE_SERVICE_ROLE_KEY` is already there) and a redeploy.
 3. **Resend SMTP for Supabase Auth** — launch blocker: Supabase's built-in sender cannot deliver signup/reset emails to the public. Steps in `docs/security-next-steps.md`.
 4. Review Reg 7 summaries in `/admin/review?reg=7` once generated.
 

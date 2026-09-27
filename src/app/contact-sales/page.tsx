@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalList, LegalPage, LegalSection } from "@/components/LegalPage";
-import { PRICE_SUMMARY } from "@/lib/pricing";
+import { PRICE_SUMMARY, TRIAL_DAYS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Contact Sales",
@@ -60,7 +60,7 @@ export default function ContactSalesPage() {
           >
             subscribe directly
           </Link>{" "}
-          for {PRICE_SUMMARY}, or see the plan details on the{" "}
+          for {PRICE_SUMMARY} (the first {TRIAL_DAYS} days are free), or see the plan details on the{" "}
           <Link
             href="/regulations"
             className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0"

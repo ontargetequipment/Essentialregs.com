@@ -6,6 +6,7 @@
  * rows (is_public) or the regulation roots change, update them here.
  */
 import { expect, test } from "./fixtures";
+import { ANNUAL_PRICE_DISPLAY, MONTHLY_PRICE_DISPLAY } from "../src/lib/pricing";
 
 /** Each /sample card's heading, in SAMPLE_ORDER: regulation label · citation [— title]. */
 const SAMPLE_HEADINGS = [
@@ -19,6 +20,38 @@ test.describe("anonymous", () => {
   test("home page returns 200", async ({ page }) => {
     const res = await page.goto("/");
     expect(res?.status()).toBe(200);
+  });
+
+  test("the pricing card offers both prices, each with its own call to action", async ({ page }) => {
+    await page.goto("/#pricing");
+    const card = page.locator("#pricing");
+    // Each amount and its period share one <p> ("$25" + " / month"), so
+    // match the whole display string, which is also what pricing.ts promises.
+    await expect(card.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toBeVisible();
+    await expect(card.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
+    // Logged out, each price box carries the create-an-account link (which
+    // returns to #pricing) rather than the checkout form; no stray third
+    // button below the boxes.
+    const ctas = card.getByRole("link", { name: "Create an account to subscribe" });
+    await expect(ctas).toHaveCount(2);
+    for (const cta of await ctas.all()) {
+      await expect(cta).toHaveAttribute("href", "/signup?next=/%23pricing");
+    }
+    await expect(card.getByText(/^7 days free, then the price you picked\./)).toBeVisible();
+  });
+
+  test("the checkout endpoint refuses an anonymous POST", async ({ page }) => {
+    // Read-only: a 401 before Stripe is ever contacted. Sent from the page
+    // so the deployment-protection bypass (fixtures.ts) applies.
+    await page.goto("/");
+    const status = await page.evaluate(async () => {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        body: new URLSearchParams({ interval: "year" }),
+      });
+      return res.status;
+    });
+    expect(status).toBe(401);
   });
 
   test("/sample shows the four sample cards with their regulation labels", async ({ page }) => {

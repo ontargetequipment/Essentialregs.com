@@ -66,7 +66,8 @@ jobs:
 
       - name: Unit tests (web)
         # scripts/*.test.ts: reader helpers, reader gate, mobile nav,
-        # marketing index. Fixture-backed cases skip (fixtures are git-ignored).
+        # marketing index, Stripe billing helpers (pricing.ts). Fixture-backed
+        # cases skip (fixtures are git-ignored).
         run: npm test
 
       - uses: actions/setup-python@v5

@@ -19,7 +19,10 @@ export type AccessStatus = {
   manualOverride: boolean;
   /** Stripe customer id, used to decide whether the billing portal is available. */
   stripeCustomerId: string | null;
-  /** Stripe Price nickname/id the subscription is on, or null. */
+  /** Stripe subscription id (current or most recent), or null if this account
+   *  has never had one. The checkout uses "never had one" as the trial test. */
+  stripeSubscriptionId: string | null;
+  /** Stripe Price lookup key (or, for older subscriptions, nickname/id) the subscription is on, or null. */
   plan: string | null;
 };
 
@@ -30,6 +33,7 @@ const NO_ACCESS: Omit<AccessStatus, "user"> = {
   cancelAtPeriodEnd: false,
   manualOverride: false,
   stripeCustomerId: null,
+  stripeSubscriptionId: null,
   plan: null,
 };
 
@@ -55,7 +59,7 @@ export async function getAccessStatus(): Promise<AccessStatus> {
   const { data: profile, error } = await supabase
     .from("profiles")
     .select(
-      "access_granted, subscription_status, current_period_end, cancel_at_period_end, stripe_customer_id, plan"
+      "access_granted, subscription_status, current_period_end, cancel_at_period_end, stripe_customer_id, stripe_subscription_id, plan"
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -81,6 +85,7 @@ export async function getAccessStatus(): Promise<AccessStatus> {
     cancelAtPeriodEnd: Boolean(profile.cancel_at_period_end),
     manualOverride,
     stripeCustomerId: profile.stripe_customer_id ?? null,
+    stripeSubscriptionId: profile.stripe_subscription_id ?? null,
     plan: profile.plan ?? null,
   };
 }
