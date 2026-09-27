@@ -1,66 +1,99 @@
 /**
- * One-shot, re-runnable Stripe setup: makes sure the Stripe account behind
- * STRIPE_SECRET_KEY has the product and the two recurring Prices the
- * checkout sells, found by the lookup keys in src/lib/pricing.ts
- * (PRICE_LOOKUP) with the amounts in the display strings there.
+ * One-shot, re-runnable Stripe setup for everything the site needs from the
+ * account behind STRIPE_SECRET_KEY:
  *
- *   STRIPE_SECRET_KEY=sk_test_... npm run stripe:setup
- *   npx tsx --env-file=.env.local scripts/stripe-setup.ts   (same, reading the key from .env.local)
+ *   1. the EssentialRegs product and its two recurring Prices, found by the
+ *      lookup keys in src/lib/pricing.ts (PRICE_LOOKUP) with the amounts in
+ *      the display strings there;
+ *   2. a Customer Portal configuration (invoice history, card update, cancel
+ *      at period end, switch between the two prices with proration);
+ *   3. the webhook endpoint at <site>/api/stripe/webhook with the three
+ *      events the webhook route handles.
  *
- * Run it once with a test-mode key and once with the live key (docs/
- * stripe-setup.md, step 1). Safe to repeat: an existing Price with the right
- * amount and interval is left alone and reported.
+ * Run from the repo root after `npm ci`, with the key in .env.local:
+ *
+ *   npm run stripe:setup                 test-mode key (sk_test_...)
+ *   npm run stripe:setup -- --live       live key (sk_live_...); refused without the flag
  *
  * Flags:
- *   --dry-run   print what would change and exit without writing anything
- *   --replace   when a Price under a lookup key has the wrong amount or
- *               interval (the copy in pricing.ts changed), create a new
- *               Price with those values, move the lookup key onto it and
- *               archive the old one. Existing subscriptions stay on the old
- *               Price; only new checkouts see the new amount.
+ *   --dry-run        print what would change; write nothing (not even the file below)
+ *   --replace        when a Price under a lookup key has the wrong amount or
+ *                    interval (the copy in pricing.ts changed), create a new
+ *                    Price with those values, move the lookup key onto it and
+ *                    archive the old one. Existing subscriptions stay on the
+ *                    old Price; only new checkouts see the new amount.
+ *   --live           required with a live key, refused with a test key
+ *   --site <origin>  the deployed site, default https://www.essentialregs.com;
+ *                    sets the webhook URL and the portal return URL
  *
- * Nothing here touches the database or the site; the checkout route finds
- * the Prices at request time (src/lib/stripe-prices.ts).
+ * Output goes to ./stripe-setup.local.txt (git-ignored): the mode, every id,
+ * and — only when the webhook endpoint was created on this run — its signing
+ * secret, which Stripe returns exactly once. Stdout gets the ids and nothing
+ * secret. Safe to repeat: everything that already exists is left or updated
+ * in place.
+ *
+ * Nothing here touches the database or the site; the checkout and portal
+ * routes find the Prices and the portal configuration at request time
+ * (src/lib/stripe-prices.ts, src/lib/stripe-portal.ts).
  */
+import { writeFileSync } from "node:fs";
 import Stripe from "stripe";
+import { PLAN_TAGLINE } from "../src/lib/pricing";
 import {
-  PLAN_NAMES,
-  PLAN_TAGLINE,
-  PRICE_DISPLAY,
-  PRICE_LOOKUP,
-  parsePriceDisplay,
-  type BillingInterval,
-} from "../src/lib/pricing";
+  WEBHOOK_EVENTS,
+  checkMode,
+  decidePrice,
+  parseArgs,
+  portalReturnUrl,
+  wantedPrices,
+  webhookEventsMatch,
+  webhookUrl,
+  type WantedPrice,
+} from "./stripe-setup-lib";
 
 const PRODUCT_NAME = "EssentialRegs";
 /** Marks the product this script owns, so a rename in the dashboard doesn't lose it. */
 const PRODUCT_METADATA_KEY = "essentialregs_product";
 const PRODUCT_METADATA_VALUE = "individual";
+/** Marks the portal configuration this script owns; src/lib/stripe-portal.ts finds it by this too. */
+export const PORTAL_METADATA = { app: "essentialregs" } as const;
+const OUTPUT_FILE = "stripe-setup.local.txt";
 
-const INTERVALS = Object.keys(PRICE_LOOKUP) as BillingInterval[];
+// --- arguments, env, mode ----------------------------------------------------
 
-const args = new Set(process.argv.slice(2));
-const dryRun = args.has("--dry-run");
-const replace = args.has("--replace");
-for (const a of args) {
-  if (a !== "--dry-run" && a !== "--replace") {
-    console.error(`Unknown flag ${a}. Flags: --dry-run, --replace`);
-    process.exit(2);
-  }
-}
-
-const key = process.env.STRIPE_SECRET_KEY;
-if (!key) {
-  console.error(
-    "STRIPE_SECRET_KEY is not set. Run as\n" +
-      "  STRIPE_SECRET_KEY=sk_test_... npm run stripe:setup\n" +
-      "or, with the key in .env.local,\n" +
-      "  npx tsx --env-file=.env.local scripts/stripe-setup.ts"
-  );
+let args;
+try {
+  args = parseArgs(process.argv.slice(2));
+} catch (err) {
+  console.error(err instanceof Error ? err.message : err);
   process.exit(2);
 }
-const mode = key.startsWith("sk_live_") || key.startsWith("rk_live_") ? "LIVE" : "test";
-const stripe = new Stripe(key, { appInfo: { name: "EssentialRegs setup script" } });
+
+// .env.local is where the owner keeps the key (docs/stripe-setup.md). Missing
+// file or no loadEnvFile (Node < 20.12): fall through to the environment.
+try {
+  process.loadEnvFile(".env.local");
+} catch {
+  // ignore
+}
+
+const modeCheck = checkMode(process.env.STRIPE_SECRET_KEY, args.live);
+if ("error" in modeCheck) {
+  console.error(modeCheck.error);
+  process.exit(2);
+}
+const { mode } = modeCheck;
+const { dryRun, replace, site } = args;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { appInfo: { name: "EssentialRegs setup script" } });
+
+/** Lines for stripe-setup.local.txt; may include the webhook secret, so never echoed. */
+const report: string[] = [];
+/** Lines for stdout: ids and decisions, never secrets. */
+const summary: string[] = [];
+function note(line: string) {
+  report.push(line);
+  summary.push(line);
+}
 
 function money(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -71,6 +104,8 @@ function describe(price: Stripe.Price): string {
   const interval = price.recurring?.interval ?? "(one-time)";
   return `${price.id} ${amount} / ${interval}${price.active ? "" : " (archived)"}`;
 }
+
+// --- product and prices -------------------------------------------------------
 
 async function findPriceByLookupKey(lookupKey: string): Promise<Stripe.Price | null> {
   const { data } = await stripe.prices.list({ lookup_keys: [lookupKey], active: true, limit: 1 });
@@ -95,116 +130,203 @@ async function findOrCreateProduct(hint: Stripe.Price | null): Promise<Stripe.Pr
     query: `active:'true' AND name:'${PRODUCT_NAME}'`,
     limit: 1,
   });
-  if (named.data[0]) {
-    console.log(`Product: using existing "${named.data[0].name}" (${named.data[0].id}) found by name`);
-    return named.data[0];
-  }
+  if (named.data[0]) return named.data[0];
 
-  console.log(`Product: ${dryRun ? "would create" : "creating"} "${PRODUCT_NAME}"`);
   if (dryRun) {
+    note(`product: would create "${PRODUCT_NAME}"`);
     return { id: "prod_DRYRUN", name: PRODUCT_NAME } as Stripe.Product;
   }
-  return stripe.products.create({
+  const created = await stripe.products.create({
     name: PRODUCT_NAME,
     description: PLAN_TAGLINE,
     metadata: { [PRODUCT_METADATA_KEY]: PRODUCT_METADATA_VALUE },
   });
+  note(`product: created ${created.id} "${created.name}"`);
+  return created;
 }
 
-async function createPrice(
-  product: Stripe.Product,
-  interval: BillingInterval,
-  cents: number,
-  transferLookupKey: boolean
-): Promise<Stripe.Price | null> {
-  const lookupKey = PRICE_LOOKUP[interval];
-  const label = `${PLAN_NAMES[interval]} ${money(cents)} / ${interval} (lookup key ${lookupKey})`;
+async function createPrice(product: Stripe.Product, w: WantedPrice, transferLookupKey: boolean): Promise<string> {
+  const label = `${w.name} ${money(w.cents)} / ${w.interval} (lookup key ${w.lookupKey})`;
   if (dryRun) {
-    console.log(`  would create ${label}`);
-    return null;
+    note(`price ${w.lookupKey}: would create ${label}`);
+    return `price_DRYRUN_${w.interval}`;
   }
   const price = await stripe.prices.create({
     product: product.id,
     currency: "usd",
-    unit_amount: cents,
-    recurring: { interval },
-    lookup_key: lookupKey,
+    unit_amount: w.cents,
+    recurring: { interval: w.interval },
+    lookup_key: w.lookupKey,
     transfer_lookup_key: transferLookupKey,
-    nickname: PLAN_NAMES[interval],
+    nickname: w.name,
   });
-  console.log(`  created ${describe(price)} as ${label}`);
-  return price;
+  note(`price ${w.lookupKey}: created ${describe(price)}`);
+  return price.id;
 }
 
-async function main() {
-  console.log(`Stripe ${mode} mode${dryRun ? " (dry run: nothing will be written)" : ""}`);
-  if (mode === "LIVE" && !dryRun) {
-    console.log("This is the LIVE account: Prices created here can be sold for real money.");
-  }
-
-  const wanted = INTERVALS.map((interval) => {
-    const parsed = parsePriceDisplay(PRICE_DISPLAY[interval]);
-    if (parsed.interval !== interval) {
-      throw new Error(
-        `pricing.ts: PRICE_DISPLAY.${interval} is "${PRICE_DISPLAY[interval]}", which is not a per-${interval} price.`
-      );
-    }
-    return { interval, cents: parsed.cents, lookupKey: PRICE_LOOKUP[interval] };
-  });
-
-  const existing = new Map<BillingInterval, Stripe.Price | null>();
-  for (const w of wanted) existing.set(w.interval, await findPriceByLookupKey(w.lookupKey));
+/** Returns the two price ids (keyed by lookup key) or throws after reporting mismatches. */
+async function ensurePrices(): Promise<{ product: Stripe.Product; priceIds: string[] }> {
+  const wanted = wantedPrices();
+  const existing = new Map<string, Stripe.Price | null>();
+  for (const w of wanted) existing.set(w.lookupKey, await findPriceByLookupKey(w.lookupKey));
 
   const product = await findOrCreateProduct([...existing.values()].find((p) => p) ?? null);
-  console.log(`Product: "${product.name}" (${product.id})`);
+  note(`product: ${product.id} "${product.name}"`);
 
-  let problems = 0;
+  const priceIds: string[] = [];
+  const mismatches: string[] = [];
   for (const w of wanted) {
-    const current = existing.get(w.interval) ?? null;
-    console.log(`${PLAN_NAMES[w.interval]} (${w.lookupKey}): want ${money(w.cents)} / ${w.interval}`);
-
-    if (!current) {
-      await createPrice(product, w.interval, w.cents, false);
-      continue;
+    const current = existing.get(w.lookupKey) ?? null;
+    const decision = decidePrice(current, w, product.id, replace);
+    switch (decision.action) {
+      case "create":
+        priceIds.push(await createPrice(product, w, false));
+        break;
+      case "keep":
+        note(`price ${w.lookupKey}: ok ${describe(current!)}`);
+        priceIds.push(current!.id);
+        break;
+      case "replace": {
+        note(`price ${w.lookupKey}: ${describe(current!)} does not match ${money(w.cents)} / ${w.interval}`);
+        const id = await createPrice(product, w, true);
+        if (dryRun) {
+          note(`price ${w.lookupKey}: would move the lookup key to the new Price and archive ${decision.oldId}`);
+        } else {
+          await stripe.prices.update(decision.oldId, { active: false });
+          note(`price ${w.lookupKey}: archived ${decision.oldId}`);
+        }
+        priceIds.push(id);
+        break;
+      }
+      case "mismatch":
+        note(`price ${w.lookupKey}: MISMATCH ${describe(current!)}, wanted ${money(w.cents)} / ${w.interval}`);
+        mismatches.push(w.lookupKey);
+        priceIds.push(current!.id);
+        break;
     }
+  }
+  if (mismatches.length) {
+    throw new Error(
+      `${mismatches.length} price(s) do not match src/lib/pricing.ts (${mismatches.join(", ")}). Nothing was changed.\n` +
+        "Either change src/lib/pricing.ts back to match Stripe, or re-run with --replace to create a Price at\n" +
+        "the new amount, move the lookup key to it and archive the old one."
+    );
+  }
+  return { product, priceIds };
+}
 
-    const matches =
-      current.unit_amount === w.cents &&
-      current.currency === "usd" &&
-      current.recurring?.interval === w.interval &&
-      (typeof current.product === "string" ? current.product : current.product.id) === product.id;
-    if (matches) {
-      console.log(`  ok: ${describe(current)}`);
-      continue;
-    }
+// --- customer portal ----------------------------------------------------------
 
-    console.log(`  MISMATCH: lookup key is on ${describe(current)}`);
-    if (!replace) {
-      problems += 1;
-      console.log(
-        "  Either change src/lib/pricing.ts back to match Stripe, or re-run with --replace to\n" +
-          "  create a Price at the new amount, move the lookup key to it and archive this one."
-      );
-      continue;
+function portalParams(productId: string, priceIds: string[]): Stripe.BillingPortal.ConfigurationCreateParams {
+  return {
+    business_profile: { headline: "EssentialRegs" },
+    default_return_url: portalReturnUrl(site),
+    features: {
+      invoice_history: { enabled: true },
+      payment_method_update: { enabled: true },
+      subscription_cancel: { enabled: true, mode: "at_period_end" },
+      subscription_update: {
+        enabled: true,
+        default_allowed_updates: ["price"],
+        proration_behavior: "create_prorations",
+        products: [{ product: productId, prices: priceIds }],
+      },
+    },
+    metadata: PORTAL_METADATA,
+  };
+}
+
+async function ensurePortal(productId: string, priceIds: string[]): Promise<string> {
+  const { data } = await stripe.billingPortal.configurations.list({ limit: 100 });
+  // Ours by marker first; else the account's default (the one the dashboard
+  // manages), which gets our features and the marker; else a new one. The
+  // API cannot flip is_default, so src/lib/stripe-portal.ts pins the marked
+  // configuration on every portal session instead of relying on the default.
+  const mine =
+    data.find((c) => c.metadata?.app === PORTAL_METADATA.app) ?? data.find((c) => c.is_default) ?? null;
+  const params = portalParams(productId, priceIds);
+
+  if (mine) {
+    if (dryRun) {
+      note(`portal: would update ${mine.id}${mine.is_default ? " (account default)" : ""}`);
+      return mine.id;
     }
-    const created = await createPrice(product, w.interval, w.cents, true);
-    if (created) {
-      await stripe.prices.update(current.id, { active: false });
-      console.log(`  archived ${current.id}`);
+    const updated = await stripe.billingPortal.configurations.update(mine.id, { ...params, active: true });
+    note(`portal: updated ${updated.id}${updated.is_default ? " (account default)" : ""}`);
+    return updated.id;
+  }
+  if (dryRun) {
+    note("portal: would create a configuration");
+    return "bpc_DRYRUN";
+  }
+  const created = await stripe.billingPortal.configurations.create(params);
+  note(`portal: created ${created.id}`);
+  return created.id;
+}
+
+// --- webhook endpoint ---------------------------------------------------------
+
+async function ensureWebhook(): Promise<void> {
+  const url = webhookUrl(site);
+  const { data } = await stripe.webhookEndpoints.list({ limit: 100 });
+  const existing = data.find((e) => e.url === url) ?? null;
+  const events = [...WEBHOOK_EVENTS];
+
+  if (existing) {
+    const eventsOk = webhookEventsMatch(existing.enabled_events);
+    const enabledOk = existing.status === "enabled";
+    if (eventsOk && enabledOk) {
+      note(`webhook: ok ${existing.id} ${url}`);
+    } else if (dryRun) {
+      note(`webhook: would update ${existing.id} ${url} (events/enabled)`);
     } else {
-      console.log(`  would move lookup key ${w.lookupKey} to the new Price and archive ${current.id}`);
+      await stripe.webhookEndpoints.update(existing.id, { enabled_events: events, disabled: false });
+      note(`webhook: updated ${existing.id} ${url}`);
     }
+    report.push(
+      "webhook signing secret: not available — Stripe returns it only when the endpoint is created. If",
+      "  STRIPE_WEBHOOK_SECRET in Vercel is missing or wrong, roll the secret in the Stripe dashboard",
+      `  (Developers → Webhooks → ${url} → Signing secret → Roll) and copy the new value from there.`
+    );
+    return;
   }
+  if (dryRun) {
+    note(`webhook: would create ${url} for ${events.join(", ")}`);
+    return;
+  }
+  const created = await stripe.webhookEndpoints.create({
+    url,
+    enabled_events: events,
+    description: "EssentialRegs site (created by scripts/stripe-setup.ts)",
+  });
+  note(`webhook: created ${created.id} ${url}`);
+  if (created.secret) {
+    report.push(`STRIPE_WEBHOOK_SECRET=${created.secret}`);
+    summary.push("webhook: signing secret written to the file (not shown here)");
+  } else {
+    report.push("webhook signing secret: Stripe did not return one; roll it in the dashboard.");
+  }
+}
 
-  if (problems) {
-    console.error(`\n${problems} price(s) do not match src/lib/pricing.ts. Nothing was changed for them.`);
-    process.exit(1);
+// --- main ---------------------------------------------------------------------
+
+async function main() {
+  note(`mode: ${mode}${dryRun ? " (dry run: nothing written)" : ""}`);
+  note(`site: ${site}`);
+
+  const { product, priceIds } = await ensurePrices();
+  await ensurePortal(product.id, priceIds);
+  await ensureWebhook();
+
+  if (dryRun) {
+    console.log(summary.join("\n"));
+    console.log("\nDry run finished; nothing was written.");
+    return;
   }
-  console.log(
-    dryRun
-      ? "\nDry run finished."
-      : `\nDone. The checkout resolves these by lookup key; no Price id needs to go into Vercel.`
-  );
+  report.push("", `written ${new Date().toISOString()} by scripts/stripe-setup.ts`);
+  writeFileSync(OUTPUT_FILE, report.join("\n") + "\n", { mode: 0o600 });
+  console.log(`Wrote ${OUTPUT_FILE}`);
+  console.log(summary.join("\n"));
 }
 
 main().catch((err) => {

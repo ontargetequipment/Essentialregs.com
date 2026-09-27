@@ -85,7 +85,14 @@ export default async function AccountPage(props: PageProps<"/account">) {
         </div>
         <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
           <dt className="text-muted">Plan</dt>
-          <dd className="font-medium text-ink">{planSummary(access)}</dd>
+          <dd className="font-medium text-ink">
+            {planSummary(access)}
+            {access.status === "trialing" && (
+              <span className="mt-1 block text-xs font-normal text-muted">
+                Cancel before then from Manage billing and you won&apos;t be charged.
+              </span>
+            )}
+          </dd>
         </div>
         <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
           <dt className="text-muted">Access</dt>
