@@ -73,7 +73,9 @@ import {
   WEBHOOK_EVENTS,
   checkMode,
   decidePrice,
+  PORTAL_METADATA,
   parseArgs,
+  portalParams,
   portalReturnUrl,
   wantedPrices,
   webhookEventsMatch,
@@ -161,4 +163,27 @@ test("webhook and portal URLs derive from --site, and the event list is exact", 
   assert.ok(!webhookEventsMatch([...WEBHOOK_EVENTS, "invoice.paid"]));
   assert.ok(!webhookEventsMatch(WEBHOOK_EVENTS.slice(1)));
   assert.ok(!webhookEventsMatch(["*"]));
+});
+
+test("portalParams: cancel at period end, downgrades scheduled for period end, upgrades prorated", () => {
+  const params = portalParams(DEFAULT_SITE, "prod_1", ["price_m", "price_y"]);
+  assert.equal(params.default_return_url, "https://www.essentialregs.com/account");
+  assert.deepEqual(params.metadata, PORTAL_METADATA);
+  assert.deepEqual(params.business_profile, { headline: "EssentialRegs" });
+
+  const f = params.features!;
+  assert.deepEqual(f.invoice_history, { enabled: true });
+  assert.deepEqual(f.payment_method_update, { enabled: true });
+  assert.deepEqual(f.subscription_cancel, { enabled: true, mode: "at_period_end" });
+
+  const update = f.subscription_update!;
+  assert.equal(update.enabled, true);
+  assert.deepEqual(update.default_allowed_updates, ["price"]);
+  assert.equal(update.proration_behavior, "create_prorations");
+  // Owner decision (27 Sep 2026): annual → monthly waits for the paid year to
+  // end; both ways Stripe can express "downgrade" are listed.
+  assert.deepEqual(update.schedule_at_period_end, {
+    conditions: [{ type: "shortening_interval" }, { type: "decreasing_item_amount" }],
+  });
+  assert.deepEqual(update.products, [{ product: "prod_1", prices: ["price_m", "price_y"] }]);
 });

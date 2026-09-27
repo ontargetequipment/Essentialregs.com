@@ -128,10 +128,18 @@ export default async function AccountPage(props: PageProps<"/account">) {
       </div>
 
       {access.stripeCustomerId && (
-        <p className="mt-3 text-xs text-muted">
-          Manage billing opens Stripe&apos;s customer portal to update your
-          card, download invoices, or cancel.
-        </p>
+        <>
+          <p className="mt-3 text-xs text-muted">
+            Manage billing opens Stripe&apos;s customer portal to update your
+            card, download invoices, or cancel.
+          </p>
+          {/* Owner decision, 27 Sep 2026: the portal schedules a downgrade
+              for the period end (scripts/stripe-setup-lib.ts portalParams). */}
+          <p className="mt-1 text-xs text-muted">
+            Switching from annual to monthly takes effect at the end of your
+            paid year — no refunds or partial credits.
+          </p>
+        </>
       )}
     </div>
   );

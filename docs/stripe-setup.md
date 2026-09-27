@@ -53,7 +53,11 @@ pass `--live`, and then, idempotently:
   same keys.
 - creates (or adopts the account's default and updates) a **Customer Portal
   configuration**: invoice history, update card, cancel at the end of the
-  period, and switch between the two prices with proration. It is tagged
+  period, and switch between the two prices. An upgrade (monthly → annual)
+  happens at once and the customer pays the prorated difference; a downgrade
+  (annual → monthly) is **scheduled for the end of the paid period**, so
+  nobody who paid for a year is refunded or credited for switching (owner
+  decision, 27 Sep 2026). It is tagged
   `metadata.app = essentialregs`; the site's *Manage billing* button opens the
   portal with that configuration by id.
 - creates the **webhook endpoint** `https://www.essentialregs.com/api/stripe/webhook`
@@ -98,7 +102,9 @@ variables only take effect on a new deployment.
 
 ## 4. The Customer Portal, briefly
 
-The script configured it; nothing to click. If you ever open **Settings** →
+The script configured it; nothing to click. Downgrades are scheduled for the
+end of the paid period and upgrades are immediate with proration; the account
+page tells subscribers so under *Manage billing*. If you ever open **Settings** →
 **Billing** → **Customer portal** in the dashboard, note that the dashboard
 edits the account's *default* configuration, which may or may not be the one
 the script tagged. The site pins the tagged configuration by id, so re-run the
@@ -130,10 +136,11 @@ on their `profiles` row) keeps full access regardless of Stripe.
    Reload `/account`: the Plan line flips to **Annual — active, renews
    <date a year out>**.
 5. Click **Manage billing**. In the portal, **Update plan** → switch to
-   Monthly: Stripe shows the prorated credit; confirm. Back on `/account` the
-   Plan line reads **Monthly — active, renews <date a month out>**. Then in the
-   portal **Cancel plan**: the Plan line reads **Canceled — access until
-   <date>**.
+   Monthly. The portal says the change is **scheduled for the end of the
+   current period** and shows **no charge and no credit**; confirm. Back on
+   `/account` the Plan line still reads **Annual — active, renews <date a year
+   out>** (the switch hasn't happened yet). Then in the portal **Cancel
+   plan**: the Plan line reads **Canceled — access until <date>**.
 6. Card that fails at conversion: create another fresh account and subscribe
    with `4000 0000 0000 0341`. The trial starts fine (Plan line shows the
    trial). **End trial now** in the dashboard: the charge fails, the
