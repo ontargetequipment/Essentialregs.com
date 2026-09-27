@@ -6,6 +6,7 @@
  * rows (is_public) or the regulation roots change, update them here.
  */
 import { expect, test } from "./fixtures";
+import { ANNUAL_PRICE_DISPLAY, MONTHLY_PRICE_DISPLAY } from "../src/lib/pricing";
 
 /** Each /sample card's heading, in SAMPLE_ORDER: regulation label · citation [— title]. */
 const SAMPLE_HEADINGS = [
@@ -24,8 +25,10 @@ test.describe("anonymous", () => {
   test("the pricing card offers both prices, each with its own call to action", async ({ page }) => {
     await page.goto("/#pricing");
     const card = page.locator("#pricing");
-    await expect(card.getByText("$25", { exact: true })).toBeVisible();
-    await expect(card.getByText("$250", { exact: true })).toBeVisible();
+    // Each amount and its period share one <p> ("$25" + " / month"), so
+    // match the whole display string, which is also what pricing.ts promises.
+    await expect(card.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toBeVisible();
+    await expect(card.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
     // Logged out, each price box carries the create-an-account link (which
     // returns to #pricing) rather than the checkout form; no stray third
     // button below the boxes.
