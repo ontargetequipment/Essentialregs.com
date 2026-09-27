@@ -177,7 +177,9 @@ function subscriptionFields(subscription: Stripe.Subscription): ProfileSubscript
     subscription_status: subscription.status,
     current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
     cancel_at_period_end: subscription.cancel_at_period_end,
-    plan: price ? (price.nickname ?? price.id) : null,
+    // The lookup key is what src/lib/pricing.ts (PRICE_LOOKUP) knows the plan
+    // by; nickname/id are fallbacks for Prices created without one.
+    plan: price ? (price.lookup_key ?? price.nickname ?? price.id) : null,
   };
 }
 

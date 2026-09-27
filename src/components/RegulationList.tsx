@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { AccessStatus } from "@/lib/access";
-import { PRICE_SUMMARY } from "@/lib/pricing";
+import { PRICE_SUMMARY, TRIAL_DAYS } from "@/lib/pricing";
 import { SubscribeControl } from "@/components/SubscribeControl";
 import type { Provision } from "@/lib/types";
 import {
@@ -63,14 +63,18 @@ export function RegulationList({
           </h2>
           <p className="mt-2 text-sm text-ink-soft">
             The complete corpus — Colorado and federal, linked
-            cross-references, updates included — is {PRICE_SUMMARY}. Not sure
+            cross-references, updates included — is {PRICE_SUMMARY}
+            {!access.stripeSubscriptionId && `, with ${TRIAL_DAYS} days free to start`}. Not sure
             yet?{" "}
             <Link href="/sample" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
               See a free sample entry
             </Link>{" "}
             first.
           </p>
-          <SubscribeControl access={access} className="mt-5" />
+          {/* Annual (the best-value price) here; the homepage card offers
+              both, and its #pricing anchor is where the "Create an account"
+              link returns to. */}
+          <SubscribeControl access={access} interval="year" className="mt-5" />
           <p className="mt-4 text-xs text-muted">
             Need multiple seats for your team?{" "}
             {/* inline-flex + min-h-11 below `sm` grows this inline link to a

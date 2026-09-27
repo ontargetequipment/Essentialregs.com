@@ -21,6 +21,36 @@ test.describe("anonymous", () => {
     expect(res?.status()).toBe(200);
   });
 
+  test("the pricing card offers both prices, each with its own call to action", async ({ page }) => {
+    await page.goto("/#pricing");
+    const card = page.locator("#pricing");
+    await expect(card.getByText("$25", { exact: true })).toBeVisible();
+    await expect(card.getByText("$250", { exact: true })).toBeVisible();
+    // Logged out, each price box carries the create-an-account link (which
+    // returns to #pricing) rather than the checkout form; no stray third
+    // button below the boxes.
+    const ctas = card.getByRole("link", { name: "Create an account to subscribe" });
+    await expect(ctas).toHaveCount(2);
+    for (const cta of await ctas.all()) {
+      await expect(cta).toHaveAttribute("href", "/signup?next=/%23pricing");
+    }
+    await expect(card.getByText(/^7 days free, then the price you picked\./)).toBeVisible();
+  });
+
+  test("the checkout endpoint refuses an anonymous POST", async ({ page }) => {
+    // Read-only: a 401 before Stripe is ever contacted. Sent from the page
+    // so the deployment-protection bypass (fixtures.ts) applies.
+    await page.goto("/");
+    const status = await page.evaluate(async () => {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        body: new URLSearchParams({ interval: "year" }),
+      });
+      return res.status;
+    });
+    expect(status).toBe(401);
+  });
+
   test("/sample shows the four sample cards with their regulation labels", async ({ page }) => {
     const res = await page.goto("/sample");
     expect(res?.status()).toBe(200);

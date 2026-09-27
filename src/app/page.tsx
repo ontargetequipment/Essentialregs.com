@@ -7,6 +7,7 @@ import {
   MONTHLY_PLAN_NAME,
   MONTHLY_PRICE_DISPLAY,
   PLAN_TAGLINE,
+  TRIAL_DAYS,
 } from "@/lib/pricing";
 import { SubscribeControl } from "@/components/SubscribeControl";
 
@@ -46,6 +47,10 @@ function Price({ display }: { display: string }) {
 
 export default async function Home() {
   const access = await getAccessStatus();
+  // The checkout grants the free trial to an account that has never had a
+  // subscription (see /api/stripe/checkout); a visitor who isn't logged in
+  // is treated as new. Only then does the card promise a trial.
+  const trialOffered = !access.hasAccess && !access.stripeSubscriptionId;
 
   return (
     <div className="mx-auto max-w-shell px-6">
@@ -105,15 +110,20 @@ export default async function Home() {
           <p className="font-mono text-eyebrow uppercase text-tag">Subscription</p>
           <p className="mt-1 font-serif text-card font-semibold text-ink">{PLAN_TAGLINE}</p>
 
-          {/* Display only: Stripe is not configured yet, and the checkout
-              behind SubscribeControl is unchanged. The Stripe workstream
-              must create Price objects matching these two amounts. */}
+          {/* One SubscribeControl per price box: the hidden `interval`
+              field on its form picks the Stripe Price the checkout sells
+              (src/lib/pricing.ts PRICE_LOOKUP). */}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-md border border-line bg-paper p-4">
+            <div className="flex flex-col rounded-md border border-line bg-paper p-4">
               <p className="font-mono text-eyebrow uppercase text-tag">{MONTHLY_PLAN_NAME}</p>
               <Price display={MONTHLY_PRICE_DISPLAY} />
+              {/* flex-1 + justify-end: both boxes' buttons sit on the same
+                  baseline at `sm` even though only the annual box has a badge. */}
+              <div className="mt-4 flex flex-1 flex-col justify-end">
+                <SubscribeControl access={access} interval="month" fullWidth />
+              </div>
             </div>
-            <div className="rounded-md border border-accent bg-accent-soft p-4">
+            <div className="flex flex-col rounded-md border border-accent bg-accent-soft p-4">
               <p className="font-mono text-eyebrow uppercase text-tag">{ANNUAL_PLAN_NAME}</p>
               <Price display={ANNUAL_PRICE_DISPLAY} />
               <p className="mt-2">
@@ -121,8 +131,18 @@ export default async function Home() {
                   Best value · {ANNUAL_SAVINGS_NOTE}
                 </span>
               </p>
+              <div className="mt-4 flex flex-1 flex-col justify-end">
+                <SubscribeControl access={access} interval="year" fullWidth />
+              </div>
             </div>
           </div>
+          {trialOffered && (
+            <p className="mt-3 text-xs text-muted">
+              {TRIAL_DAYS} days free, then the price you picked. We ask for a
+              card up front and charge it when the trial ends; cancel before
+              then from your account page and you pay nothing.
+            </p>
+          )}
 
           <ul className="mt-5 space-y-1.5 text-sm text-ink-soft">
             <li>Full text of the Colorado air-quality and oil &amp; gas regulations in the corpus</li>
@@ -130,9 +150,8 @@ export default async function Home() {
             <li>New regulations and revisions as they&apos;re added</li>
             <li>Cancel any time from your account page</li>
           </ul>
-          <SubscribeControl access={access} className="mt-6" />
           {access.user && !access.hasAccess && (
-            <p className="mt-3 text-xs text-muted">
+            <p className="mt-4 text-xs text-muted">
               You&apos;ll be taken to Stripe&apos;s secure checkout and returned here.
             </p>
           )}

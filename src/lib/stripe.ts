@@ -25,10 +25,7 @@ export function getStripe(): Stripe {
 
 /** Read a required Stripe-related env var, failing with a pointer to the setup doc. */
 export function requireEnv(
-  name:
-    | "STRIPE_WEBHOOK_SECRET"
-    | "STRIPE_PRICE_ID_ANNUAL"
-    | "NEXT_PUBLIC_SITE_URL"
+  name: "STRIPE_WEBHOOK_SECRET" | "NEXT_PUBLIC_SITE_URL"
 ): string {
   const value = process.env[name];
   if (!value) {

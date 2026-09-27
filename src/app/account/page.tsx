@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAccessStatus, type AccessStatus } from "@/lib/access";
-import { ANNUAL_PLAN_NAME } from "@/lib/pricing";
+import { ANNUAL_PLAN_NAME, planDisplayName } from "@/lib/pricing";
 import { logout } from "@/app/auth/actions";
 import { SubscribeControl } from "@/components/SubscribeControl";
 
@@ -21,7 +21,9 @@ function formatDate(iso: string | null): string | null {
 /** One-line description of where the subscription stands. */
 function planSummary(access: AccessStatus): string {
   const end = formatDate(access.currentPeriodEnd);
-  const plan = access.plan ?? ANNUAL_PLAN_NAME;
+  // profiles.plan holds the Price's lookup key (individual_monthly /
+  // individual_annual); older rows may hold a nickname or raw id.
+  const plan = planDisplayName(access.plan) ?? ANNUAL_PLAN_NAME;
 
   switch (access.status) {
     case "active":
@@ -94,7 +96,8 @@ export default async function AccountPage(props: PageProps<"/account">) {
       </dl>
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
-        {!access.hasAccess && <SubscribeControl access={access} size="compact" />}
+        {/* Annual is the default here; the pricing card offers both. */}
+        {!access.hasAccess && <SubscribeControl access={access} interval="year" size="compact" />}
 
         {access.stripeCustomerId && (
           <form method="post" action="/api/stripe/portal">
