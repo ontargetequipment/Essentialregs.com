@@ -2,6 +2,7 @@
  * The pure decisions behind scripts/stripe-setup.ts, kept free of I/O so
  * scripts/stripe-billing.test.ts can exercise them without a Stripe client.
  */
+import type Stripe from "stripe";
 import { PLAN_NAMES, PRICE_DISPLAY, PRICE_LOOKUP, parsePriceDisplay, type BillingInterval } from "../src/lib/pricing";
 
 export const DEFAULT_SITE = "https://www.essentialregs.com";
@@ -152,4 +153,41 @@ export function portalReturnUrl(site: string): string {
 export function webhookEventsMatch(enabled: readonly string[]): boolean {
   const want = new Set<string>(WEBHOOK_EVENTS);
   return enabled.length === want.size && enabled.every((e) => want.has(e));
+}
+
+/** Marks the portal configuration the setup script owns; src/lib/stripe-portal.ts finds it by this too. */
+export const PORTAL_METADATA = { app: "essentialregs" } as const;
+
+/**
+ * The Customer Portal configuration the site needs. Owner decision, 27 Sep
+ * 2026: a downgrade (annual → monthly, i.e. a shorter interval or a smaller
+ * amount) is scheduled for the end of the paid period, so a subscriber who
+ * paid for a year is never refunded or credited for switching; an upgrade
+ * (monthly → annual) still happens at once, and proration_behavior then
+ * charges the difference. Cancel is likewise at period end.
+ */
+export function portalParams(
+  site: string,
+  productId: string,
+  priceIds: string[]
+): Stripe.BillingPortal.ConfigurationCreateParams {
+  return {
+    business_profile: { headline: "EssentialRegs" },
+    default_return_url: portalReturnUrl(site),
+    features: {
+      invoice_history: { enabled: true },
+      payment_method_update: { enabled: true },
+      subscription_cancel: { enabled: true, mode: "at_period_end" },
+      subscription_update: {
+        enabled: true,
+        default_allowed_updates: ["price"],
+        proration_behavior: "create_prorations",
+        schedule_at_period_end: {
+          conditions: [{ type: "shortening_interval" }, { type: "decreasing_item_amount" }],
+        },
+        products: [{ product: productId, prices: priceIds }],
+      },
+    },
+    metadata: PORTAL_METADATA,
+  };
 }

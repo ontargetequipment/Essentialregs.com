@@ -6,7 +6,8 @@
  *      lookup keys in src/lib/pricing.ts (PRICE_LOOKUP) with the amounts in
  *      the display strings there;
  *   2. a Customer Portal configuration (invoice history, card update, cancel
- *      at period end, switch between the two prices with proration);
+ *      at period end, switch between the two prices: upgrades at once with
+ *      proration, downgrades scheduled for the end of the paid period);
  *   3. the webhook endpoint at <site>/api/stripe/webhook with the three
  *      events the webhook route handles.
  *
@@ -40,11 +41,12 @@ import { writeFileSync } from "node:fs";
 import Stripe from "stripe";
 import { PLAN_TAGLINE } from "../src/lib/pricing";
 import {
+  PORTAL_METADATA,
   WEBHOOK_EVENTS,
   checkMode,
   decidePrice,
   parseArgs,
-  portalReturnUrl,
+  portalParams,
   wantedPrices,
   webhookEventsMatch,
   webhookUrl,
@@ -55,8 +57,6 @@ const PRODUCT_NAME = "EssentialRegs";
 /** Marks the product this script owns, so a rename in the dashboard doesn't lose it. */
 const PRODUCT_METADATA_KEY = "essentialregs_product";
 const PRODUCT_METADATA_VALUE = "individual";
-/** Marks the portal configuration this script owns; src/lib/stripe-portal.ts finds it by this too. */
-export const PORTAL_METADATA = { app: "essentialregs" } as const;
 const OUTPUT_FILE = "stripe-setup.local.txt";
 
 // --- arguments, env, mode ----------------------------------------------------
@@ -217,25 +217,6 @@ async function ensurePrices(): Promise<{ product: Stripe.Product; priceIds: stri
 
 // --- customer portal ----------------------------------------------------------
 
-function portalParams(productId: string, priceIds: string[]): Stripe.BillingPortal.ConfigurationCreateParams {
-  return {
-    business_profile: { headline: "EssentialRegs" },
-    default_return_url: portalReturnUrl(site),
-    features: {
-      invoice_history: { enabled: true },
-      payment_method_update: { enabled: true },
-      subscription_cancel: { enabled: true, mode: "at_period_end" },
-      subscription_update: {
-        enabled: true,
-        default_allowed_updates: ["price"],
-        proration_behavior: "create_prorations",
-        products: [{ product: productId, prices: priceIds }],
-      },
-    },
-    metadata: PORTAL_METADATA,
-  };
-}
-
 async function ensurePortal(productId: string, priceIds: string[]): Promise<string> {
   const { data } = await stripe.billingPortal.configurations.list({ limit: 100 });
   // Ours by marker first; else the account's default (the one the dashboard
@@ -244,7 +225,7 @@ async function ensurePortal(productId: string, priceIds: string[]): Promise<stri
   // configuration on every portal session instead of relying on the default.
   const mine =
     data.find((c) => c.metadata?.app === PORTAL_METADATA.app) ?? data.find((c) => c.is_default) ?? null;
-  const params = portalParams(productId, priceIds);
+  const params = portalParams(site, productId, priceIds);
 
   if (mine) {
     if (dryRun) {
