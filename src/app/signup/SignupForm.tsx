@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { BillingInterval } from "@/lib/pricing";
+import { ACCEPT_FIELD, ACCEPT_VALUE, DISCLAIMER_VERSION, VERSION_FIELD } from "@/lib/disclaimer";
 import { signup } from "../auth/actions";
 
 export function SignupForm({ plan }: { plan: BillingInterval }) {
@@ -12,6 +13,12 @@ export function SignupForm({ plan }: { plan: BillingInterval }) {
       {/* The plan chosen on /signup (step 1): the signup action turns it into
           the confirmation link's `next` (/pricing?plan=<plan>). */}
       <input type="hidden" name="plan" value={plan} />
+      {/* This form only renders once the disclaimer gate (SignupSteps) has
+          been passed; these say so, and which revision of the text was
+          accepted. The signup action refuses to create an account without
+          them (src/lib/disclaimer.ts). */}
+      <input type="hidden" name={ACCEPT_FIELD} value={ACCEPT_VALUE} />
+      <input type="hidden" name={VERSION_FIELD} value={DISCLAIMER_VERSION} />
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-ink-soft">
           Email
@@ -56,7 +63,6 @@ export function SignupForm({ plan }: { plan: BillingInterval }) {
       </div>
 
       {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state?.message && <p className="text-sm text-accent">{state.message}</p>}
 
       <button
         type="submit"

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getStripe, siteUrl } from "@/lib/stripe";
 import { getPriceId } from "@/lib/stripe-prices";
 import { getAccessStatus } from "@/lib/access";
-import { parseBillingInterval, TRIAL_DAYS, type BillingInterval } from "@/lib/pricing";
+import { parseBillingInterval, type BillingInterval } from "@/lib/pricing";
+import { checkoutSessionParams, isMissingTermsUrlError, withoutTermsConsent } from "@/lib/stripe-checkout";
 
 export const runtime = "nodejs";
 
@@ -35,35 +36,33 @@ export async function POST(request: Request) {
     // One trial per customer: only an account that has never had a
     // subscription (no stripe_subscription_id on its profile) gets the
     // TRIAL_DAYS free days. A lapsed subscriber coming back pays from day
-    // one. Checkout always collects a card (payment_method_collection
-    // "always"), so Stripe charges it itself when the trial ends —
-    // trial_settings.end_behavior only applies when no card was collected,
-    // so it is deliberately left out.
-    const firstSubscription = !access.stripeSubscriptionId;
+    // one. The rest of what Checkout is asked for, the card up front and
+    // Stripe's own terms-of-service checkbox included, is in
+    // src/lib/stripe-checkout.ts.
+    const params = checkoutSessionParams({
+      userId: access.user.id,
+      email: access.user.email ?? null,
+      stripeCustomerId: access.stripeCustomerId,
+      firstSubscription: !access.stripeSubscriptionId,
+      priceId: await getPriceId(interval),
+      base,
+    });
 
     const stripe = getStripe();
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      line_items: [{ price: await getPriceId(interval), quantity: 1 }],
-      payment_method_collection: "always",
-      // Reuse the Stripe customer if this account has one (e.g. a lapsed
-      // subscriber coming back), otherwise let Checkout create one keyed to
-      // the account's email.
-      ...(access.stripeCustomerId
-        ? { customer: access.stripeCustomerId }
-        : { customer_email: access.user.email ?? undefined }),
-      // Both of these carry the Supabase user id back to us: the webhook
-      // reads client_reference_id off checkout.session.completed, and the
-      // subscription metadata survives on every later subscription event.
-      client_reference_id: access.user.id,
-      subscription_data: {
-        metadata: { supabase_user_id: access.user.id },
-        ...(firstSubscription ? { trial_period_days: TRIAL_DAYS } : {}),
-      },
-      success_url: `${base}/account?checkout=success`,
-      cancel_url: `${base}/pricing`,
-      allow_promotion_codes: true,
-    });
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create(params);
+    } catch (err) {
+      // Stripe won't show its terms checkbox until the account has a Terms
+      // of Service URL (Settings → Public details, per mode). Until that
+      // is set, sell without the checkbox rather than turn everyone away;
+      // the site's own disclaimer gate still stands. Loud in the logs.
+      if (!isMissingTermsUrlError(err)) throw err;
+      console.error(
+        "stripe checkout: no Terms of Service URL set in this Stripe account (Settings → Public details); created the session without consent_collection. Set the URL to get the checkbox back."
+      );
+      session = await stripe.checkout.sessions.create(withoutTermsConsent(params));
+    }
 
     if (!session.url) {
       throw new Error("Stripe returned a Checkout session without a URL.");

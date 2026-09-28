@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { PLAN_NAMES, PRICE_DISPLAY, TRIAL_DAYS, parseBillingInterval } from "@/lib/pricing";
 import { PlanCards, TrialNote } from "@/components/PlanChoice";
-import { SignupForm } from "./SignupForm";
+import { DisclaimerIntro, DisclaimerSections } from "@/components/DisclaimerText";
+import { SignupSteps } from "./SignupSteps";
 
 export const metadata = { title: "Sign up" };
 
@@ -9,12 +10,15 @@ const INLINE_LINK = "font-medium text-ink underline underline-offset-2";
 const CHOOSE =
   "block w-full rounded-md bg-accent px-5 py-3 text-center text-sm font-semibold text-white hover:bg-accent/90";
 
-// Signing up is two steps (owner, 28 Sep 2026): pick a plan, then create the
-// account. Step 1 is /signup (no valid ?plan=): the two plan boxes, each
-// with a "Choose ..." link to step 2. Step 2 is /signup?plan=<month|year>:
-// the email/password form with the chosen plan named above it and carried
-// as a hidden field, so the confirmation link brings the user back to
-// /pricing with that plan already highlighted (src/app/auth/actions.ts).
+// Signing up is three screens (owner, 28 Sep 2026): pick a plan, read the
+// disclaimer, then create the account. Screen 1 is /signup (no valid
+// ?plan=): the two plan boxes, each with a "Choose ..." link. Screens 2 and
+// 3 are both /signup?plan=<month|year> (SignupSteps): first the full
+// disclaimer with an acceptance checkbox that only unlocks once it has been
+// scrolled to the end, then the email/password form with the chosen plan
+// named above it and carried as a hidden field, so the confirmation link
+// brings the user back to /pricing with that plan already highlighted
+// (src/app/auth/actions.ts).
 export default async function SignupPage(props: PageProps<"/signup">) {
   const { plan } = await props.searchParams;
   const interval = parseBillingInterval(plan);
@@ -48,7 +52,7 @@ export default async function SignupPage(props: PageProps<"/signup">) {
   }
 
   return (
-    <div className="mx-auto max-w-sm px-6 py-16">
+    <div className="mx-auto max-w-md px-6 py-10 sm:py-14">
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">Create an account</h1>
       <p className="mt-2 text-sm text-ink-soft">
         Already have one?{" "}
@@ -68,12 +72,19 @@ export default async function SignupPage(props: PageProps<"/signup">) {
           </Link>
         </p>
       </div>
-      <p className="mt-4 text-sm text-ink-soft">
-        Confirm your email, then add a card to start the trial. Cancel before
-        it ends and you pay nothing.
-      </p>
 
-      <SignupForm plan={interval} />
+      {/* The disclaimer is rendered here, on the server, from the same
+          components /disclaimer uses, and handed to the client gate as
+          children -- one source for the text. */}
+      <SignupSteps
+        plan={interval}
+        disclaimer={
+          <div className="flex flex-col gap-6">
+            <DisclaimerIntro />
+            <DisclaimerSections />
+          </div>
+        }
+      />
     </div>
   );
 }

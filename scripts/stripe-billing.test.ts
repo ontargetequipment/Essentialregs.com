@@ -187,3 +187,85 @@ test("portalParams: cancel at period end, downgrades scheduled for period end, u
   });
   assert.deepEqual(update.products, [{ product: "prod_1", prices: ["price_m", "price_y"] }]);
 });
+
+// --- src/lib/stripe-checkout.ts: what the checkout route asks Stripe for ---
+
+import { checkoutSessionParams, isMissingTermsUrlError, withoutTermsConsent } from "../src/lib/stripe-checkout";
+
+const newSubscriber = {
+  userId: "user_1",
+  email: "new@example.com",
+  stripeCustomerId: null,
+  firstSubscription: true,
+  priceId: "price_y",
+  base: "https://www.essentialregs.com",
+};
+
+test("checkoutSessionParams: a first subscription gets the trial, a card up front and Stripe's terms checkbox", () => {
+  const params = checkoutSessionParams(newSubscriber);
+  assert.equal(params.mode, "subscription");
+  assert.deepEqual(params.line_items, [{ price: "price_y", quantity: 1 }]);
+  assert.equal(params.payment_method_collection, "always");
+  assert.equal(params.customer_email, "new@example.com");
+  assert.equal(params.customer, undefined);
+  assert.equal(params.client_reference_id, "user_1");
+  assert.deepEqual(params.subscription_data, {
+    metadata: { supabase_user_id: "user_1" },
+    trial_period_days: TRIAL_DAYS,
+  });
+  // Owner decision (28 Sep 2026): Stripe's own "I agree to the terms"
+  // checkbox as a second layer under the site's disclaimer gate.
+  assert.deepEqual(params.consent_collection, { terms_of_service: "required" });
+  assert.equal(params.success_url, "https://www.essentialregs.com/account?checkout=success");
+  assert.equal(params.cancel_url, "https://www.essentialregs.com/pricing");
+  assert.equal(params.allow_promotion_codes, true);
+  // Left out on purpose: with a card collected, Stripe charges it itself.
+  assert.equal("trial_settings" in (params.subscription_data ?? {}), false);
+});
+
+test("checkoutSessionParams: a returning subscriber reuses the customer and gets no trial", () => {
+  const params = checkoutSessionParams({
+    ...newSubscriber,
+    stripeCustomerId: "cus_1",
+    firstSubscription: false,
+  });
+  assert.equal(params.customer, "cus_1");
+  assert.equal(params.customer_email, undefined);
+  assert.deepEqual(params.subscription_data, { metadata: { supabase_user_id: "user_1" } });
+  assert.deepEqual(params.consent_collection, { terms_of_service: "required" });
+});
+
+test("withoutTermsConsent drops only the checkbox", () => {
+  const params = checkoutSessionParams(newSubscriber);
+  const fallback = withoutTermsConsent(params);
+  assert.equal("consent_collection" in fallback, false);
+  const { consent_collection: _c, ...rest } = params;
+  void _c;
+  assert.deepEqual(fallback, rest);
+  // The original is untouched.
+  assert.deepEqual(params.consent_collection, { terms_of_service: "required" });
+});
+
+test("isMissingTermsUrlError recognises Stripe's refusal and nothing else", () => {
+  assert.ok(
+    isMissingTermsUrlError({
+      type: "StripeInvalidRequestError",
+      param: "consent_collection[terms_of_service]",
+      message: "You must set a terms of service URL before collecting consent.",
+    })
+  );
+  assert.ok(isMissingTermsUrlError({ type: "StripeInvalidRequestError", param: "consent_collection" }));
+  assert.ok(
+    isMissingTermsUrlError({
+      type: "StripeInvalidRequestError",
+      message: "In order to collect consent for your Terms of Service, you must set a URL in the Dashboard.",
+    })
+  );
+  // A different invalid request, a different error class, or no error at all.
+  assert.ok(!isMissingTermsUrlError({ type: "StripeInvalidRequestError", param: "line_items[0][price]", message: "No such price" }));
+  assert.ok(!isMissingTermsUrlError({ type: "StripeCardError", param: "consent_collection", message: "terms of service" }));
+  assert.ok(!isMissingTermsUrlError({ type: "StripeAPIError", message: "terms of service" }));
+  assert.ok(!isMissingTermsUrlError(new Error("terms of service")));
+  assert.ok(!isMissingTermsUrlError(null));
+  assert.ok(!isMissingTermsUrlError("terms of service"));
+});
