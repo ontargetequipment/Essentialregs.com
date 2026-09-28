@@ -3,7 +3,12 @@ import { LoginForm } from "./LoginForm";
 
 export const metadata = { title: "Log in" };
 
-export default function LoginPage() {
+// A login lands on the homepage, unless the page was opened with a safe
+// same-site ?next= to return to (validated in the login action).
+export default async function LoginPage(props: PageProps<"/login">) {
+  const { next } = await props.searchParams;
+  const nextPath = typeof next === "string" ? next : undefined;
+
   return (
     <div className="mx-auto max-w-sm px-6 py-16">
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">Log in</h1>
@@ -14,7 +19,7 @@ export default function LoginPage() {
         </Link>
       </p>
 
-      <LoginForm />
+      <LoginForm next={nextPath} />
 
       <p className="mt-4 text-sm text-ink-soft">
         <Link

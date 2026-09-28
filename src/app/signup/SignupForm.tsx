@@ -1,15 +1,17 @@
 "use client";
 
 import { useActionState } from "react";
+import type { BillingInterval } from "@/lib/pricing";
 import { signup } from "../auth/actions";
 
-export function SignupForm({ next }: { next?: string }) {
+export function SignupForm({ plan }: { plan: BillingInterval }) {
   const [state, formAction, pending] = useActionState(signup, undefined);
 
   return (
     <form action={formAction} className="mt-8 space-y-4">
-      {/* Where to send the user once their email is confirmed (e.g. back to #pricing). */}
-      {next && <input type="hidden" name="next" value={next} />}
+      {/* The plan chosen on /signup (step 1): the signup action turns it into
+          the confirmation link's `next` (/pricing?plan=<plan>). */}
+      <input type="hidden" name="plan" value={plan} />
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-ink-soft">
           Email
