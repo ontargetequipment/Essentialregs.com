@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      redirect(explicitNext || (await defaultDestination()));
+      redirect(await destination(explicitNext));
     }
   } else {
     const token_hash = searchParams.get("token_hash");
@@ -44,12 +44,23 @@ export async function GET(request: NextRequest) {
     if (token_hash && type) {
       const { error } = await supabase.auth.verifyOtp({ type, token_hash });
       if (!error) {
-        redirect(explicitNext || (await defaultDestination()));
+        redirect(await destination(explicitNext));
       }
     }
   }
 
   redirect("/login?error=confirmation-failed");
+}
+
+/**
+ * Where a confirmed user goes: the explicit safe `next` if there was one,
+ * else the default below. Either way, a plain "/pricing" (the normal signup
+ * path: SubscribeControl's link carries next=/pricing) gets ?confirmed=1 so
+ * the confirmation notice shows there too.
+ */
+async function destination(explicitNext: string): Promise<string> {
+  const target = explicitNext || (await defaultDestination());
+  return target === "/pricing" ? "/pricing?confirmed=1" : target;
 }
 
 /** Where a confirmed user goes when the link carried no safe `next`. */

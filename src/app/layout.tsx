@@ -64,7 +64,7 @@ const FOOTER_GROUPS = [
     label: "Product",
     links: [
       { href: "/sample", label: "Sample" },
-      { href: "/#pricing", label: "Pricing" },
+      { href: "/pricing", label: "Pricing" },
       { href: "/search", label: "Search" },
     ],
   },
