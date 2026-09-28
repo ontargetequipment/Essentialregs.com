@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { confirmedDestination } from "@/lib/signup-plan";
 
 // Landing point for whatever link Supabase's auth email sends the user to
 // (emailRedirectTo / resetPasswordForEmail's redirectTo in auth/actions.ts).
@@ -22,7 +23,9 @@ import { safeNextPath } from "@/lib/safe-redirect";
 // plan choice (/pricing?confirmed=1, the plans above the fold on a phone)
 // rather than /account, so the first thing after confirming is picking
 // monthly or annual (owner, 27 Sep 2026); anyone already entitled (comped,
-// or a returning subscriber) goes to /account.
+// or a returning subscriber) goes to /account. The normal signup path sets
+// next=/pricing?plan=<month|year> (the plan chosen on /signup), which comes
+// out as /pricing?confirmed=1&plan=<month|year> so that card is highlighted.
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   // `next` comes back off the confirmation link's query string, which is
@@ -54,13 +57,14 @@ export async function GET(request: NextRequest) {
 
 /**
  * Where a confirmed user goes: the explicit safe `next` if there was one,
- * else the default below. Either way, a plain "/pricing" (the normal signup
- * path: SubscribeControl's link carries next=/pricing) gets ?confirmed=1 so
- * the confirmation notice shows there too.
+ * else the default below. Either way, a `next` on /pricing (the normal
+ * signup path: the signup action sets next=/pricing?plan=<interval>) gets
+ * ?confirmed=1 so the confirmation notice shows, and keeps a valid `plan`
+ * (an unknown one is stripped) -- see confirmedDestination.
  */
 async function destination(explicitNext: string): Promise<string> {
   const target = explicitNext || (await defaultDestination());
-  return target === "/pricing" ? "/pricing?confirmed=1" : target;
+  return confirmedDestination(target);
 }
 
 /** Where a confirmed user goes when the link carried no safe `next`. */

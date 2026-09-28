@@ -91,7 +91,7 @@ export default async function Home() {
           {/* The two plans (src/components/PlanChoice.tsx), shared with the
               account page and the /regulations panel. A subscriber gets the
               one "open the regulations" link instead. */}
-          <PlanChoice access={access} anonymousCta="per-plan" className="mt-5" />
+          <PlanChoice access={access} className="mt-5" />
           {access.hasAccess && <SubscribeControl access={access} interval="year" className="mt-5" />}
 
           <ul className="mt-5 space-y-1.5 text-sm text-ink-soft">

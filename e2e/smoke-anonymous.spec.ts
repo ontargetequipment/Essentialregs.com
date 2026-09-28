@@ -8,6 +8,23 @@
 import { expect, test } from "./fixtures";
 import { ANNUAL_PRICE_DISPLAY, MONTHLY_PRICE_DISPLAY } from "../src/lib/pricing";
 
+/**
+ * The plan-first signup: logged out, every plan box's "Create an account"
+ * link goes to /signup?plan=<that box's interval> (the account step), so
+ * the plan the visitor clicked survives to /pricing after confirmation.
+ */
+async function expectPlanCtas(scope: import("@playwright/test").Locator | import("@playwright/test").Page) {
+  const ctas = scope.getByRole("link", { name: "Create an account to subscribe" });
+  await expect(ctas).toHaveCount(2);
+  for (const plan of ["month", "year"]) {
+    const box = scope.locator(`[data-plan="${plan}"]`);
+    await expect(box.getByRole("link", { name: "Create an account to subscribe" })).toHaveAttribute(
+      "href",
+      `/signup?plan=${plan}`,
+    );
+  }
+}
+
 /** Each /sample card's heading, in SAMPLE_ORDER: regulation label · citation [— title]. */
 const SAMPLE_HEADINGS = [
   "Regulation 7 · I.D.3.a.(i).",
@@ -29,14 +46,10 @@ test.describe("anonymous", () => {
     // match the whole display string, which is also what pricing.ts promises.
     await expect(card.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toBeVisible();
     await expect(card.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
-    // Logged out, each price box carries the create-an-account link (which
-    // returns to /pricing) rather than the checkout form; no stray third
-    // button below the boxes.
-    const ctas = card.getByRole("link", { name: "Create an account to subscribe" });
-    await expect(ctas).toHaveCount(2);
-    for (const cta of await ctas.all()) {
-      await expect(cta).toHaveAttribute("href", "/signup?next=/pricing");
-    }
+    // Logged out, each price box carries the create-an-account link for its
+    // own plan rather than the checkout form; no stray third button below
+    // the boxes.
+    await expectPlanCtas(card);
     await expect(card.getByText(/^7 days free, then the price you picked\./)).toBeVisible();
   });
 
@@ -48,8 +61,48 @@ test.describe("anonymous", () => {
     await expect(page.getByRole("heading", { name: "Choose your plan" })).toBeVisible();
     await expect(page.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toBeVisible();
     await expect(page.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
-    // Logged out: the prices and one create-an-account link.
-    await expect(page.getByRole("link", { name: "Create an account to subscribe" })).toHaveCount(1);
+    // Logged out: the prices and a create-an-account link per plan.
+    await expectPlanCtas(page);
+    // No plan picked yet: neither box is marked as the choice.
+    await expect(page.getByText("Your choice")).toHaveCount(0);
+  });
+
+  test("/pricing?plan=month highlights the monthly box and keeps the annual one", async ({ page }) => {
+    // Where /auth/confirm lands a new account that chose monthly on /signup.
+    await page.goto("/pricing?plan=month");
+    await expect(page.locator('[data-plan="month"]').getByText("Your choice")).toBeVisible();
+    await expect(page.locator('[data-plan="year"]').getByText("Your choice")).toHaveCount(0);
+    await expect(page.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
+    await expectPlanCtas(page);
+  });
+
+  test("/signup asks for a plan first", async ({ page }) => {
+    const res = await page.goto("/signup");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "Choose your plan" })).toBeVisible();
+    await expect(page.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toBeVisible();
+    await expect(page.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Choose Monthly" })).toHaveAttribute("href", "/signup?plan=month");
+    await expect(page.getByRole("link", { name: "Choose Annual" })).toHaveAttribute("href", "/signup?plan=year");
+    await expect(page.getByText(/^7 days free, then the price you picked\./)).toBeVisible();
+    // No account form on this step.
+    await expect(page.getByLabel("Email")).toHaveCount(0);
+  });
+
+  test("/signup?plan=year shows the account form with the chosen plan", async ({ page }) => {
+    const res = await page.goto("/signup?plan=year");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "Create an account" })).toBeVisible();
+    await expect(page.getByText("Your plan: Annual")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Change plan" })).toHaveAttribute("href", "/signup");
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page.locator('input[name="plan"]')).toHaveValue("year");
+  });
+
+  test("/signup with an unknown plan falls back to the plan choice", async ({ page }) => {
+    await page.goto("/signup?plan=weekly");
+    await expect(page.getByRole("heading", { name: "Choose your plan" })).toBeVisible();
+    await expect(page.getByLabel("Email")).toHaveCount(0);
   });
 
   test("the checkout endpoint refuses an anonymous POST", async ({ page }) => {

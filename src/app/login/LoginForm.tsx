@@ -3,11 +3,14 @@
 import { useActionState } from "react";
 import { login } from "../auth/actions";
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(login, undefined);
 
   return (
     <form action={formAction} className="mt-8 space-y-4">
+      {/* Where to go after logging in; the action falls back to "/" unless
+          this is a safe same-site path (src/lib/safe-redirect.ts). */}
+      {next && <input type="hidden" name="next" value={next} />}
       <div>
         <label htmlFor="email" className="block text-sm font-medium text-ink-soft">
           Email

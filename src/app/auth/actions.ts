@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { signupNextPath } from "@/lib/signup-plan";
 import type { AuthError } from "@supabase/supabase-js";
 
 export type AuthFormState = { error?: string; message?: string } | undefined;
@@ -25,6 +26,9 @@ function friendlyAuthError(error: AuthError, context: string): string {
 
   if (code === "invalid_credentials" || message.includes("invalid login credentials")) {
     return "Email or password is incorrect.";
+  }
+  if (code === "email_not_confirmed" || message.includes("email not confirmed")) {
+    return "Please confirm your email first — check your inbox for the link we sent you.";
   }
   if (
     code === "user_already_exists" ||
@@ -72,8 +76,13 @@ export async function login(
     return { error: friendlyAuthError(error, "login") };
   }
 
+  // Home after a login (owner, 28 Sep 2026), unless the login page was given
+  // a safe same-site `next` to return to. The password-reset flow doesn't
+  // come through here: updatePassword below still ends on /account.
+  const next = safeNextPath(formData.get("next"), "/");
+
   revalidatePath("/", "layout");
-  redirect("/account");
+  redirect(next);
 }
 
 export async function signup(
@@ -96,14 +105,19 @@ export async function signup(
 
   const supabase = await createClient();
   const origin = await siteOrigin();
-  const next = safeNextPath(formData.get("next"), "/account");
+  // The plan picked on /signup (step 1) rides along as a hidden field, so
+  // /auth/confirm can land the user on /pricing?confirmed=1&plan=<interval>
+  // with that card already highlighted. signupNextPath drops any value that
+  // isn't "month" or "year"; safeNextPath is what the confirm route applies
+  // to the same value on the way back, so run it here too.
+  const next = safeNextPath(signupNextPath(formData.get("plan")), "/pricing");
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       // /auth/confirm forwards the user to `next` once the emailed link is
-      // verified (e.g. back to the pricing card they came from).
+      // verified (the plan choice, with the chosen plan).
       emailRedirectTo: `${origin}/auth/confirm?next=${encodeURIComponent(next)}`,
     },
   });

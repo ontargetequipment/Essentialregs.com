@@ -53,7 +53,8 @@ test.describe("signed in", () => {
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: "Log in" }).click();
-    await page.waitForURL(/\/account(\?|$)/, { timeout: 30_000 });
+    // A login lands on the homepage (src/app/auth/actions.ts `login`).
+    await page.waitForURL((url) => url.pathname === "/", { timeout: 30_000 });
     await context.storageState({ path: statePath });
     await context.close();
   });
