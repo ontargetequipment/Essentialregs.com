@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { login } from "../auth/actions";
 
@@ -38,7 +39,23 @@ export function LoginForm({ next }: { next?: string }) {
         />
       </div>
 
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && (
+        <p className="text-sm text-red-600">
+          {state.error}
+          {state.unconfirmedEmail && (
+            <>
+              {" "}
+              <Link
+                href={`/check-email?email=${encodeURIComponent(state.unconfirmedEmail)}`}
+                className="font-medium text-ink underline underline-offset-2"
+              >
+                Resend the confirmation email
+              </Link>
+              .
+            </>
+          )}
+        </p>
+      )}
 
       <button
         type="submit"

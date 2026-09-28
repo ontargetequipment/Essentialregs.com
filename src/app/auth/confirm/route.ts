@@ -3,21 +3,28 @@ import { type NextRequest } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
-import { safeNextPath } from "@/lib/safe-redirect";
+import { nextFromConfirmLink } from "@/lib/safe-redirect";
 import { confirmedDestination } from "@/lib/signup-plan";
+import { SITE_URL } from "@/lib/site";
 
 // Landing point for whatever link Supabase's auth email sends the user to
 // (emailRedirectTo / resetPasswordForEmail's redirectTo in auth/actions.ts).
 //
-// Supabase's *default* "Confirm signup" / "Reset Password" templates link to
-// `{{ .ConfirmationURL }}`, which is Supabase's own hosted verify page — it
-// checks the token server-side, then bounces the browser here with a `code`
-// query param (PKCE flow, the default for @supabase/ssr clients). That's the
-// path this route is built for, so no dashboard template edits are needed.
+// Two link shapes arrive here, and both end with a real session before the
+// user is sent on to `next`:
 //
-// If the templates are ever customized to link straight here instead (with
-// `token_hash` + `type` in the URL), this also handles that shape — either
-// way it ends with a real session, then sends the user on to `next`.
+//   - `token_hash` + `type`: the templates in docs/auth-email-templates.md
+//     link straight here and verifyOtp checks the token. This is the shape
+//     production uses (28 Sep 2026): it completes in whatever browser opens
+//     the link, so signing up on a laptop and tapping the link on a phone
+//     works.
+//   - `code`: Supabase's *default* templates link to `{{ .ConfirmationURL }}`,
+//     Supabase's own hosted verify page, which bounces the browser here with
+//     a PKCE code. That exchange needs the code verifier cookie the sign-up
+//     left behind, so it only works in the browser that created the
+//     account; anywhere else it confirmed the email but landed on
+//     /login?error=confirmation-failed. Kept so a project still on the
+//     default templates keeps working.
 //
 // With no explicit `next`, a user who can't read the corpus yet lands on the
 // plan choice (/pricing?confirmed=1, the plans above the fold on a phone)
@@ -30,9 +37,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   // `next` comes back off the confirmation link's query string, which is
   // attacker-controlled (anyone can craft a link with their own `next`) —
-  // validate it the same way actions.ts does before ever redirecting there.
-  // An empty fallback here means "nothing safe was given".
-  const explicitNext = safeNextPath(searchParams.get("next"), "");
+  // reduce it to a safe same-site path before ever redirecting there. It
+  // is either the path actions.ts put there, or (token-hash templates) the
+  // whole emailRedirectTo URL wrapping that path; "" means nothing safe.
+  const explicitNext = nextFromConfirmLink(searchParams.get("next"), SITE_URL);
   const supabase = await createClient();
 
   const code = searchParams.get("code");

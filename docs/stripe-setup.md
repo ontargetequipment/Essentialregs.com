@@ -33,6 +33,14 @@ live key (step 7).
    emails about upcoming trial ends* (Stripe sends it 3 days before the first
    charge), *Successful payments* (receipts) and *Failed payments*. These are
    account-level toggles the API can't set.
+5. **Terms of Service URL.** **Settings** → **Business** → **Public details**
+   → *Terms of service URL* = `https://www.essentialregs.com/terms` (and
+   *Privacy policy URL* = `https://www.essentialregs.com/privacy`). The
+   checkout asks Stripe to show an "I agree to the terms" checkbox
+   (`consent_collection`), which Stripe refuses until this URL is set; until
+   then the site creates the session without the checkbox and logs a line
+   saying so. Per mode, like the emails. See `docs/auth-email-templates.md`
+   §3.
 
 ## 2. Run the script
 
@@ -167,5 +175,5 @@ advance the clock past the trial end.
 3. In Vercel replace the two Stripe variables, `STRIPE_SECRET_KEY` and
    `STRIPE_WEBHOOK_SECRET`, with the live values, and redeploy.
    `NEXT_PUBLIC_SITE_URL` and the Supabase key don't change.
-4. Repeat step 1.4 (customer emails) with Test mode off; the toggles are
-   per mode.
+4. Repeat steps 1.4 (customer emails) and 1.5 (Terms of Service URL) with
+   Test mode off; both are per mode.

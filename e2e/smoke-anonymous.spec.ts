@@ -7,6 +7,7 @@
  */
 import { expect, test } from "./fixtures";
 import { ANNUAL_PRICE_DISPLAY, MONTHLY_PRICE_DISPLAY } from "../src/lib/pricing";
+import { DISCLAIMER_VERSION } from "../src/lib/disclaimer";
 
 /**
  * The plan-first signup: logged out, every plan box's "Create an account"
@@ -89,14 +90,95 @@ test.describe("anonymous", () => {
     await expect(page.getByLabel("Email")).toHaveCount(0);
   });
 
-  test("/signup?plan=year shows the account form with the chosen plan", async ({ page }) => {
+  test("/signup?plan=year shows the disclaimer first; the account form only after it is read and accepted", async ({ page }) => {
     const res = await page.goto("/signup?plan=year");
     expect(res?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: "Create an account" })).toBeVisible();
     await expect(page.getByText("Your plan: Annual")).toBeVisible();
     await expect(page.getByRole("link", { name: "Change plan" })).toHaveAttribute("href", "/signup");
+
+    // Screen 2: the full disclaimer (the same sections as /disclaimer) in a
+    // scroll box; no account form yet, and nothing to click through with.
+    const box = page.getByTestId("disclaimer-scroll");
+    await expect(box).toBeVisible();
+    await expect(box.getByRole("heading", { name: /Informational and reference purposes only/ })).toBeVisible();
+    await expect(box.getByRole("heading", { name: /No warranty; your responsibility/ })).toBeAttached();
+    await expect(page.getByLabel("Email")).toHaveCount(0);
+    const checkbox = page.getByRole("checkbox", { name: /I have read the disclaimer/ });
+    const cont = page.getByRole("button", { name: "Continue" });
+    await expect(checkbox).toBeDisabled();
+    await expect(cont).toBeDisabled();
+    // The label links to the two documents it names (the disclaimer text
+    // itself links to /terms too, so scope to the label).
+    const label = page.locator("label").filter({ hasText: "I have read the disclaimer" });
+    await expect(label.getByRole("link", { name: "Terms of Service" })).toHaveAttribute("href", "/terms");
+    await expect(label.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/privacy");
+
+    // Reading to the end unlocks the checkbox; ticking it unlocks Continue.
+    await box.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+    });
+    await expect(checkbox).toBeEnabled();
+    await expect(cont).toBeDisabled();
+    await checkbox.check();
+    await expect(cont).toBeEnabled();
+    await cont.click();
+
+    // Screen 3: the account form, still on the same URL, carrying the plan
+    // and the acceptance as hidden fields for the signup action.
+    await expect(page).toHaveURL(/\/signup\?plan=year$/);
     await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign up" })).toBeVisible();
     await expect(page.locator('input[name="plan"]')).toHaveValue("year");
+    await expect(page.locator('input[name="accepted"]')).toHaveValue("1");
+    await expect(page.locator('input[name="disclaimer_version"]')).toHaveValue(DISCLAIMER_VERSION);
+    await expect(box).toHaveCount(0);
+
+    // The server enforces it too: a submission without the acceptance field
+    // is refused before Supabase is ever contacted (no account is created).
+    await page.locator('input[name="accepted"]').evaluate((el) => el.remove());
+    await page.getByLabel("Email").fill("smoke-never-created@example.com");
+    await page.getByLabel("Password", { exact: true }).fill("not-a-real-password");
+    await page.getByLabel("Confirm password").fill("not-a-real-password");
+    await page.getByRole("button", { name: "Sign up" }).click();
+    await expect(page.getByText("Please read and accept the disclaimer before creating an account.")).toBeVisible();
+    await expect(page).toHaveURL(/\/signup\?plan=year$/);
+  });
+
+  test("no query string skips the disclaimer", async ({ page }) => {
+    // The step lives in component state, not the URL: claiming acceptance
+    // in the address bar still lands on the disclaimer with no form.
+    await page.goto(`/signup?plan=month&accepted=1&disclaimer_version=${DISCLAIMER_VERSION}`);
+    await expect(page.getByTestId("disclaimer-scroll")).toBeVisible();
+    await expect(page.getByLabel("Email")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
+  });
+
+  test("/check-email is the screen after sign-up, with a resend form", async ({ page }) => {
+    // Where the signup action redirects a new account (read-only here: the
+    // resend button is never pressed).
+    const res = await page.goto("/check-email?email=someone%40example.com&plan=month");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
+    await expect(page.getByText("someone@example.com")).toBeVisible();
+    await expect(page.getByText(/Monthly plan/)).toBeVisible();
+    await expect(page.getByLabel("Email")).toHaveValue("someone@example.com");
+    await expect(page.locator('input[name="plan"]')).toHaveValue("month");
+    await expect(page.getByRole("button", { name: "Resend confirmation email" })).toBeEnabled();
+    // The header has its own "Log in"; this is the one in the page body.
+    await expect(page.getByRole("main").getByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
+  });
+
+  test("/login?error=confirmation-failed explains and points at a new link", async ({ page }) => {
+    // Where /auth/confirm sends a link it couldn't verify.
+    await page.goto("/login?error=confirmation-failed");
+    const main = page.getByRole("main");
+    await expect(main.getByRole("alert")).toContainText("That confirmation link didn't work.");
+    await expect(main.getByRole("link", { name: "request a new link" })).toHaveAttribute("href", "/check-email");
+    await expect(page.getByLabel("Email")).toBeVisible();
+    // A plain /login carries no such notice.
+    await page.goto("/login");
+    await expect(main.getByRole("alert")).toHaveCount(0);
   });
 
   test("/signup with an unknown plan falls back to the plan choice", async ({ page }) => {
