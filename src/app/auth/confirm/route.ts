@@ -19,9 +19,10 @@ import { safeNextPath } from "@/lib/safe-redirect";
 // way it ends with a real session, then sends the user on to `next`.
 //
 // With no explicit `next`, a user who can't read the corpus yet lands on the
-// plan choice (/#pricing) rather than /account, so the first thing after
-// confirming is picking monthly or annual (owner, 27 Sep 2026); anyone
-// already entitled (comped, or a returning subscriber) goes to /account.
+// plan choice (/pricing?confirmed=1, the plans above the fold on a phone)
+// rather than /account, so the first thing after confirming is picking
+// monthly or annual (owner, 27 Sep 2026); anyone already entitled (comped,
+// or a returning subscriber) goes to /account.
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   // `next` comes back off the confirmation link's query string, which is
@@ -57,5 +58,5 @@ async function defaultDestination(): Promise<string> {
   // request's cookie store, so this sees the user who just confirmed. If
   // for any reason it doesn't (no user), fall back to /account as before.
   const access = await getAccessStatus();
-  return access.user && !access.hasAccess ? "/#pricing" : "/account";
+  return access.user && !access.hasAccess ? "/pricing?confirmed=1" : "/account";
 }

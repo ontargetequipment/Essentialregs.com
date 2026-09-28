@@ -15,6 +15,7 @@ const STATIC_ROUTES: Array<{
 }> = [
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/sample", changeFrequency: "monthly", priority: 0.8 },
+  { path: "/pricing", changeFrequency: "monthly", priority: 0.8 },
   { path: "/regulations", changeFrequency: "weekly", priority: 0.8 },
   { path: "/general-permits", changeFrequency: "weekly", priority: 0.8 },
   { path: "/federal", changeFrequency: "weekly", priority: 0.8 },

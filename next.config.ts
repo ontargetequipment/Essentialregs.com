@@ -29,15 +29,6 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
-  async redirects() {
-    return [
-      // A short, sayable URL for the pricing card (LinkedIn posts, emails).
-      // 308, so search engines treat /pricing as an alias; it is deliberately
-      // not in the sitemap. The hash is part of the destination: browsers
-      // keep it across the redirect and land on the card.
-      { source: "/pricing", destination: "/#pricing", permanent: true },
-    ];
-  },
   async headers() {
     return [
       {

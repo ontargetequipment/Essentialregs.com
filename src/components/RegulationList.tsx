@@ -74,7 +74,7 @@ export function RegulationList({
           {/* Both plans (src/components/PlanChoice.tsx), so nobody reaches
               Checkout without seeing the monthly option. Logged out, it shows
               the prices and one "Create an account" link, which returns to
-              #pricing. */}
+              /pricing. */}
           <PlanChoice access={access} className="mt-5" />
           <p className="mt-4 text-xs text-muted">
             Need multiple seats for your team?{" "}

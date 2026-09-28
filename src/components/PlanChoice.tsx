@@ -86,7 +86,7 @@ export function PlanChoice({
       </div>
       {!ctaInBoxes && (
         /* Logged out, one link: the interval is moot here, since the visitor
-           picks a plan on #pricing after signing up. */
+           picks a plan on /pricing after signing up. */
         <SubscribeControl access={access} interval="year" className="mt-4" />
       )}
       {trialOffered && (

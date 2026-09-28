@@ -20,7 +20,7 @@ const WIDTH = {
  * The one subscribe/upsell control, used on the homepage pricing card (once
  * per price box), the account page, and the /regulations upsell panel so
  * every entry point behaves the same:
- *   - logged out       -> create an account (returns to #pricing afterwards)
+ *   - logged out       -> create an account (returns to /pricing afterwards)
  *   - logged in, free  -> POST to /api/stripe/checkout (plain form, no JS)
  *                         with the chosen `interval` as a hidden field
  *   - has access       -> straight to the regulations
@@ -55,7 +55,7 @@ export function SubscribeControl({
   if (!access.user) {
     return (
       <Link
-        href="/signup?next=/%23pricing"
+        href="/signup?next=/pricing"
         className={`${SECONDARY} ${SIZE[size]} ${width} ${className}`}
       >
         Create an account to subscribe
