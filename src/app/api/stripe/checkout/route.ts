@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         ...(firstSubscription ? { trial_period_days: TRIAL_DAYS } : {}),
       },
       success_url: `${base}/account?checkout=success`,
-      cancel_url: `${base}/#pricing`,
+      cancel_url: `${base}/pricing`,
       allow_promotion_codes: true,
     });
 

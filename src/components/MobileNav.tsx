@@ -304,7 +304,7 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
             <Link href="/sample" className={DRAWER_LINK}>
               Sample
             </Link>
-            <Link href="/#pricing" className={DRAWER_LINK}>
+            <Link href="/pricing" className={DRAWER_LINK}>
               Pricing
             </Link>
             <Link href="/about" className={DRAWER_LINK}>
@@ -389,7 +389,7 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
         <Link href="/sample" className="hover:text-ink">
           Sample
         </Link>
-        <Link href="/#pricing" className="hover:text-ink">
+        <Link href="/pricing" className="hover:text-ink">
           Pricing
         </Link>
         {authSlot}

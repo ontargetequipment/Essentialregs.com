@@ -30,14 +30,26 @@ test.describe("anonymous", () => {
     await expect(card.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toBeVisible();
     await expect(card.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
     // Logged out, each price box carries the create-an-account link (which
-    // returns to #pricing) rather than the checkout form; no stray third
+    // returns to /pricing) rather than the checkout form; no stray third
     // button below the boxes.
     const ctas = card.getByRole("link", { name: "Create an account to subscribe" });
     await expect(ctas).toHaveCount(2);
     for (const cta of await ctas.all()) {
-      await expect(cta).toHaveAttribute("href", "/signup?next=/%23pricing");
+      await expect(cta).toHaveAttribute("href", "/signup?next=/pricing");
     }
     await expect(card.getByText(/^7 days free, then the price you picked\./)).toBeVisible();
+  });
+
+  test("/pricing is a real page with both plans above a heading", async ({ page }) => {
+    // Where /auth/confirm sends a new user; a 200, not the old redirect.
+    const res = await page.goto("/pricing");
+    expect(res?.status()).toBe(200);
+    await expect(page).toHaveURL(/\/pricing$/);
+    await expect(page.getByRole("heading", { name: "Choose your plan" })).toBeVisible();
+    await expect(page.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toBeVisible();
+    await expect(page.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
+    // Logged out: the prices and one create-an-account link.
+    await expect(page.getByRole("link", { name: "Create an account to subscribe" })).toHaveCount(1);
   });
 
   test("the checkout endpoint refuses an anonymous POST", async ({ page }) => {

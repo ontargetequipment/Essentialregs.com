@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getAccessStatus, type AccessStatus } from "@/lib/access";
 import { ANNUAL_PLAN_NAME, planDisplayName } from "@/lib/pricing";
 import { logout } from "@/app/auth/actions";
-import { SubscribeControl } from "@/components/SubscribeControl";
+import { PlanChoice } from "@/components/PlanChoice";
 
 export const metadata = { title: "Your account" };
 
@@ -102,10 +102,11 @@ export default async function AccountPage(props: PageProps<"/account">) {
         </div>
       </dl>
 
-      <div className="mt-8 flex flex-wrap items-center gap-3">
-        {/* Annual is the default here; the pricing card offers both. */}
-        {!access.hasAccess && <SubscribeControl access={access} interval="year" size="compact" />}
+      {/* Both plans, so a new user picks monthly or annual here rather than
+          being sent to Checkout for one of them (owner, 27 Sep 2026). */}
+      {!access.hasAccess && <PlanChoice access={access} className="mt-8" />}
 
+      <div className="mt-8 flex flex-wrap items-center gap-3">
         {access.stripeCustomerId && (
           <form method="post" action="/api/stripe/portal">
             <button

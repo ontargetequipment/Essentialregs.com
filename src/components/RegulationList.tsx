@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { AccessStatus } from "@/lib/access";
 import { PRICE_SUMMARY, TRIAL_DAYS } from "@/lib/pricing";
-import { SubscribeControl } from "@/components/SubscribeControl";
+import { PlanChoice } from "@/components/PlanChoice";
 import type { Provision } from "@/lib/types";
 import {
   groupColoradoRegulations,
@@ -71,10 +71,11 @@ export function RegulationList({
             </Link>{" "}
             first.
           </p>
-          {/* Annual (the best-value price) here; the homepage card offers
-              both, and its #pricing anchor is where the "Create an account"
-              link returns to. */}
-          <SubscribeControl access={access} interval="year" className="mt-5" />
+          {/* Both plans (src/components/PlanChoice.tsx), so nobody reaches
+              Checkout without seeing the monthly option. Logged out, it shows
+              the prices and one "Create an account" link, which returns to
+              /pricing. */}
+          <PlanChoice access={access} className="mt-5" />
           <p className="mt-4 text-xs text-muted">
             Need multiple seats for your team?{" "}
             {/* inline-flex + min-h-11 below `sm` grows this inline link to a
