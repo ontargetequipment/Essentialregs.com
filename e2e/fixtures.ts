@@ -13,6 +13,15 @@ import { test as base, type BrowserContext } from "@playwright/test";
  */
 const BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "";
 
+/**
+ * The bypass header for a request made outside the browser (page.request),
+ * which context.route below never sees. Only ever send it to the
+ * deployment's own origin. Empty when no secret is set.
+ */
+export function protectionBypassHeaders(): Record<string, string> {
+  return BYPASS ? { "x-vercel-protection-bypass": BYPASS } : {};
+}
+
 export async function withProtectionBypass(context: BrowserContext, baseURL: string | undefined): Promise<void> {
   if (!BYPASS || !baseURL) return;
   const origin = new URL(baseURL).origin;

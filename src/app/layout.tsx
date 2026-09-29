@@ -55,7 +55,7 @@ const FOOTER_GROUPS = [
   {
     label: "Regulations",
     links: [
-      { href: "/regulations", label: "Colorado (state)" },
+      { href: "/states", label: "State regulations" },
       { href: "/general-permits", label: "General permits" },
       { href: "/federal", label: "Federal" },
     ],

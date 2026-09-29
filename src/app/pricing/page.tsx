@@ -21,7 +21,7 @@ export default async function PricingPage(props: PageProps<"/pricing">) {
   const [access, searchParams] = await Promise.all([getAccessStatus(), props.searchParams]);
 
   // Nothing to choose for a subscriber (or a comped account).
-  if (access.hasAccess) redirect("/regulations");
+  if (access.hasAccess) redirect("/states/colorado");
 
   const confirmed = searchParams.confirmed === "1";
   const chosen = parseBillingInterval(searchParams.plan);

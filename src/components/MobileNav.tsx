@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 
 /** The three regulation indexes behind the "Regulations" header entry. */
 const REGULATION_LINKS = [
-  { href: "/regulations", label: "Colorado (state)" },
+  { href: "/states", label: "State regulations" },
   { href: "/general-permits", label: "General permits" },
   { href: "/federal", label: "Federal" },
 ] as const;

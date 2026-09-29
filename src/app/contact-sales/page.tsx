@@ -62,7 +62,7 @@ export default function ContactSalesPage() {
           </Link>{" "}
           for {PRICE_SUMMARY} (the first {TRIAL_DAYS} days are free), or see the plan details on the{" "}
           <Link
-            href="/regulations"
+            href="/states/colorado"
             className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0"
           >
             regulations

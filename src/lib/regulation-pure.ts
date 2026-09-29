@@ -401,7 +401,7 @@ const ECMC_HEADING = "Energy and Carbon Management Commission (2 CCR 404-1)";
 const OTHER_HEADING = "Other";
 
 /**
- * Groups the Colorado (/regulations) index by issuing_body. Within the AQCC
+ * Groups the Colorado (/states/colorado) index by issuing_body. Within the AQCC
  * group, order is Common Provisions first, then numerically by regulation
  * number (1, 2, 3, 6, 7, 8, 9, 11, 12, 22, 24, 25, 26, 27, 30, ...) -- the
  * printed CCR series' own ordering, not id/insertion order (id order would

@@ -5,9 +5,9 @@ import { PlanChoice } from "@/components/PlanChoice";
 import { SubscribeControl } from "@/components/SubscribeControl";
 
 // Hero buttons. Full-width 44px rows below `sm` (tap targets), inline from
-// `sm` up. Both regulation buttons land on a list of that group's
-// regulations whether or not the visitor is signed in (the index pages read
-// the roots through the anonymous-safe fetchRegulationRoots).
+// `sm` up. The state button lands on the /states picker and the federal one
+// on the federal list, whether or not the visitor is signed in (the index
+// pages read the roots through the anonymous-safe fetchRegulationRoots).
 const BUTTON =
   "inline-flex min-h-11 items-center justify-center rounded-md px-5 py-3 text-sm font-semibold";
 const BUTTON_PRIMARY = `${BUTTON} bg-accent text-white hover:bg-accent/90`;
@@ -50,8 +50,8 @@ export default async function Home() {
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <Link href="/regulations" className={BUTTON_PRIMARY}>
-            Colorado regulations
+          <Link href="/states" className={BUTTON_PRIMARY}>
+            State regulations
           </Link>
           <Link href="/federal" className={BUTTON_OUTLINE}>
             Federal regulations
@@ -89,7 +89,7 @@ export default async function Home() {
           <p className="mt-1 font-serif text-card font-semibold text-ink">{PLAN_TAGLINE}</p>
 
           {/* The two plans (src/components/PlanChoice.tsx), shared with the
-              account page and the /regulations panel. A subscriber gets the
+              account page and the /states/colorado panel. A subscriber gets the
               one "open the regulations" link instead. */}
           <PlanChoice access={access} className="mt-5" />
           {access.hasAccess && <SubscribeControl access={access} interval="year" className="mt-5" />}

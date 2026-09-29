@@ -147,7 +147,7 @@ export async function fetchRenderedReader(
   return { title: meta.title, blurb: meta.blurb, navHtml: meta.navHtml, docHtml: chunks.join("") };
 }
 
-/** Every top-level regulation currently in the corpus (for the /regulations index). */
+/** Every top-level regulation currently in the corpus (for a regulation index). */
 export async function fetchRegulationList(): Promise<Provision[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

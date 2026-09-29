@@ -5,7 +5,7 @@
  * Expected values were read from the corpus on 25 Sep 2026; if the sample
  * rows (is_public) or the regulation roots change, update them here.
  */
-import { expect, test } from "./fixtures";
+import { expect, protectionBypassHeaders, test } from "./fixtures";
 import { ANNUAL_PRICE_DISPLAY, MONTHLY_PRICE_DISPLAY } from "../src/lib/pricing";
 import { DISCLAIMER_VERSION } from "../src/lib/disclaimer";
 
@@ -207,15 +207,46 @@ test.describe("anonymous", () => {
     await expect(page.locator("article > h2")).toHaveText(SAMPLE_HEADINGS);
   });
 
-  test("/regulations lists the Colorado regulations for a logged-out visitor", async ({ page }) => {
+  test("/states lists Colorado with live counts and links to its index", async ({ page }) => {
+    const res = await page.goto("/states");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "State regulations" })).toBeVisible();
+    // The card is the only link to /states/colorado (the header and footer
+    // link to /states); its counts come from the same roots the index lists.
+    const card = page.getByRole("main").locator('a[href="/states/colorado"]');
+    await expect(card).toHaveCount(1);
+    await expect(card).toContainText("Colorado");
+    await expect(card).toContainText(/\d+ regulations · \d+ General Permits/);
+    await expect(page.getByText("More states are on the way.")).toBeVisible();
+  });
+
+  test("/states/colorado lists the Colorado regulations for a logged-out visitor", async ({ page }) => {
     // The list is the same for a prospect as for a subscriber; only the card
     // targets differ (the public /preview teaser here, the reader when
     // entitled). The reader route itself stays 404 anonymously (below).
-    const res = await page.goto("/regulations");
+    const res = await page.goto("/states/colorado");
     expect(res?.status()).toBe(200);
     const cards = page.locator('a[href^="/regulations/"][href$="/preview"]');
     expect(await cards.count()).toBeGreaterThan(10);
     await expect(page.getByRole("heading", { name: "Subscribe to open the full regulations" })).toBeVisible();
+  });
+
+  test("/regulations is a permanent redirect to /states/colorado", async ({ page, baseURL }) => {
+    // Unfollowed, so the status and Location can be read. page.request
+    // bypasses context.route (fixtures.ts), so it carries the
+    // deployment-protection header itself.
+    const res = await page.request.get("/regulations", {
+      maxRedirects: 0,
+      headers: protectionBypassHeaders(),
+    });
+    expect([301, 308]).toContain(res.status());
+    const location = res.headers()["location"] ?? "";
+    expect(new URL(location, baseURL).pathname).toBe("/states/colorado");
+  });
+
+  test("an unknown state is 404", async ({ page }) => {
+    const res = await page.goto("/states/atlantis");
+    expect(res?.status()).toBe(404);
   });
 
   test("a regulation preview returns 200", async ({ page }) => {

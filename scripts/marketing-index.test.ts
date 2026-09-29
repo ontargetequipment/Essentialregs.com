@@ -1,5 +1,5 @@
 /**
- * The marketing pages (/sample, /regulations, /federal, /general-permits) are read by
+ * The marketing pages (/sample, /states/colorado, /federal, /general-permits) are read by
  * logged-out prospects, whose RLS-bound client sees only `is_public` rows
  * -- never a regulation's root row. This proves the page logic produces
  * the same cards for a prospect as for a subscriber once the roots come
@@ -104,11 +104,11 @@ test("/federal shows every federal root, whoever is looking", () => {
   assert.equal(federal.length, 14);
 });
 
-test("/regulations shows every Colorado root, whoever is looking", () => {
+test("/states/colorado shows every Colorado root, whoever is looking", () => {
   // The page's own filter over what fetchRegulationRoots returns: the AQCC
   // regulations, the APCD general permits and the ECMC rules. It used to
   // read through the RLS-bound list, which is empty for a prospect, so a
-  // logged-out /regulations was nothing but the subscribe prompt.
+  // logged-out Colorado index was nothing but the subscribe prompt.
   const state = ROOTS.filter((r) => r.jurisdiction_level === "state");
   assert.equal(state.length, 43);
   assert.ok(state.length > 10);

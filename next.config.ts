@@ -29,6 +29,15 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      // The Colorado index moved to /states/colorado (28 Sep 2026). The
+      // source is the exact path, so the reader and its public teaser at
+      // /regulations/<reg> and /regulations/<reg>/preview are untouched.
+      // permanent: a 308.
+      { source: "/regulations", destination: "/states/colorado", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

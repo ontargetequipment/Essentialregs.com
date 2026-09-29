@@ -15,7 +15,7 @@ import {
 export type RegulationListRow = Pick<Provision, "id" | "citation" | "title" | "issuing_body">;
 
 /**
- * The card list shared by the /regulations (Colorado), /federal and
+ * The card list shared by the /states/colorado (Colorado), /federal and
  * /general-permits index pages: the subscribe prompt for visitors without
  * access, one card per regulation root, and the "nothing loaded" note for
  * subscribers when the list is empty. A card links to the gated reader at
