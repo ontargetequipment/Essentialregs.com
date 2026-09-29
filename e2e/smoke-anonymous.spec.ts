@@ -250,7 +250,7 @@ test.describe("anonymous", () => {
     await page.keyboard.press("Escape");
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
     const drawer = page.getByRole("dialog", { name: "Menu" });
     await expect(drawer.getByRole("list").first().getByRole("link")).toHaveText(TWO);
     await drawer.getByRole("button", { name: "Close menu" }).click();
