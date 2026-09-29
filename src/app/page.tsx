@@ -34,14 +34,14 @@ export default async function Home() {
     <div className="mx-auto max-w-shell px-6">
       <section className="py-16 sm:py-24">
         <p className="font-mono text-eyebrow uppercase text-tag">
-          Colorado · EPA · PHMSA
+          Now featuring Colorado oil &amp; gas
         </p>
         <h1 className="mt-4 max-w-[900px] font-serif text-[36px] font-bold leading-[1.1] tracking-tight text-ink sm:text-display">
-          Colorado oil &amp; gas regulations — searchable, cross-referenced,
-          and easier to use.
+          State and federal regulations — searchable, cross-referenced, and
+          easier to use.
         </h1>
         <p className="mt-6 max-w-reading text-lg leading-relaxed text-ink-soft">
-          Navigate Colorado air-quality rules, ECMC requirements, General
+          Navigate state air-quality rules, oil &amp; gas requirements, General
           Permits, federal EPA standards and PHMSA pipeline regulations in one
           connected reader. Jump straight to a provision, preview cited
           sections without losing your place, and use plain-English summaries
@@ -60,6 +60,15 @@ export default async function Home() {
             See a sample entry
           </Link>
         </div>
+
+        {/* Coverage line. Names only what is in the corpus today; the
+            "Coming soon" clause is the one forward-looking line on the site. */}
+        <p className="mt-6 max-w-reading text-sm text-ink-soft">
+          Now featuring Colorado — AQCC air-quality regulations, ECMC rules and
+          APCD General Permits, alongside the federal EPA and PHMSA rules they
+          reference. Coming soon: more states, plus OSHA, DOT (FMCSA) and FAA
+          regulations.
+        </p>
       </section>
 
       <section aria-labelledby="features-heading" className="border-t border-line py-14">
