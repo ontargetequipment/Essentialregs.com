@@ -66,7 +66,8 @@ export default async function Home() {
         <p className="mt-6 max-w-reading text-sm text-ink-soft">
           Now featuring Colorado — AQCC air-quality regulations, ECMC rules and
           APCD General Permits, alongside the federal EPA and PHMSA rules they
-          reference. Coming soon: more states, plus OSHA and FAA regulations.
+          reference. Coming soon: more states, plus OSHA, DOT (FMCSA) and FAA
+          regulations.
         </p>
       </section>
 
