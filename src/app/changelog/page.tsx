@@ -85,7 +85,7 @@ export default async function ChangelogPage() {
             </p>
             <p className="mt-2 text-ink-soft">
               The{" "}
-              <Link href="/regulations" className="inline-flex min-h-11 items-center underline hover:text-accent sm:inline sm:min-h-0">
+              <Link href="/states/colorado" className="inline-flex min-h-11 items-center underline hover:text-accent sm:inline sm:min-h-0">
                 Colorado
               </Link>{" "}
               and{" "}

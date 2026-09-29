@@ -363,7 +363,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
         <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Ask is part of the subscription.{" "}
           {user ? (
-            <Link href="/regulations" className="font-medium underline hover:text-amber-950">
+            <Link href="/states/colorado" className="font-medium underline hover:text-amber-950">
               Subscribe
             </Link>
           ) : (

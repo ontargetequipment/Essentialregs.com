@@ -26,7 +26,7 @@ export default async function FederalIndexPage() {
   // The index of what is covered is marketing, not paywalled content, so
   // the roots come from the anonymous-safe fetchRegulationRoots (citation
   // and title, service-role) rather than the RLS-bound fetchRegulationList
-  // that /regulations uses: a logged-out visitor used to get zero cards
+  // that /states/colorado uses: a logged-out visitor used to get zero cards
   // here. Entitlement only decides where a card links (RegulationList:
   // the reader for a subscriber, the public /preview teaser otherwise).
   const [access, allRegs] = await Promise.all([

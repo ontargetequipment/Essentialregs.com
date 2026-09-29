@@ -1,12 +1,16 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
 import { fetchRegulationRoots } from "@/lib/regulation";
+import { STATES } from "@/lib/states";
 
 /**
  * Static, public routes only. The gated full reader (/regulations/[reg])
  * lives behind login and is deliberately not enumerated here -- but each
  * regulation's public /preview teaser is (see the loop in the default
- * export below).
+ * export below). The per-state indexes (/states/<slug>) come from STATES
+ * rather than this list, so a new state is listed the moment it is added.
+ * The old /regulations index is a permanent redirect to /states/colorado
+ * (next.config.ts) and so no longer listed.
  */
 const STATIC_ROUTES: Array<{
   path: string;
@@ -16,7 +20,7 @@ const STATIC_ROUTES: Array<{
   { path: "/", changeFrequency: "weekly", priority: 1 },
   { path: "/sample", changeFrequency: "monthly", priority: 0.8 },
   { path: "/pricing", changeFrequency: "monthly", priority: 0.8 },
-  { path: "/regulations", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/states", changeFrequency: "weekly", priority: 0.8 },
   { path: "/general-permits", changeFrequency: "weekly", priority: 0.8 },
   { path: "/federal", changeFrequency: "weekly", priority: 0.8 },
   { path: "/changelog", changeFrequency: "daily", priority: 0.5 },
@@ -47,6 +51,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority,
     })
   );
+  const stateEntries: MetadataRoute.Sitemap = STATES.map((state) => ({
+    url: `${SITE_URL}/states/${state.slug}`,
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
 
   // A transient DB/config problem here should degrade to "the static routes
   // still get crawled" rather than take the whole sitemap down with a 500.
@@ -69,5 +78,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("sitemap: failed to enumerate regulation preview pages", error);
   }
 
-  return [...staticEntries, ...previewEntries];
+  return [...staticEntries, ...stateEntries, ...previewEntries];
 }

@@ -108,7 +108,7 @@ export function TrialNote({ className = "" }: { className?: string }) {
  * The two plans side by side, each with its own call to action, so a
  * non-subscriber always sees the monthly option before reaching Stripe
  * Checkout (owner, 27 Sep 2026). One source of truth for the homepage
- * pricing card, /pricing, the account page and the /regulations subscribe
+ * pricing card, /pricing, the account page and the /states/colorado subscribe
  * panel.
  *
  *   - entitled             -> renders nothing (the caller shows its own link)

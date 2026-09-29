@@ -110,7 +110,7 @@ export default function AboutPage() {
         <p>
           More is coming: additional CDPHE and ECMC rules and further
           federal EPA and PHMSA provisions that apply to oil and gas. The{" "}
-          <Link href="/regulations" className="underline underline-offset-2">
+          <Link href="/states" className="underline underline-offset-2">
             Regulations
           </Link>{" "}
           page always shows what is live, and the{" "}

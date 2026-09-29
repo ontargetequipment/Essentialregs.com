@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     // Already paying (or comped) — nothing to sell; just send them in.
     if (access.hasAccess) {
-      return NextResponse.redirect(`${base}/regulations`, 303);
+      return NextResponse.redirect(`${base}/states/colorado`, 303);
     }
 
     // One trial per customer: only an account that has never had a

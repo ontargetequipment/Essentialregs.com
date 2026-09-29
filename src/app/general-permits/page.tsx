@@ -34,7 +34,7 @@ export default async function GeneralPermitsIndexPage() {
   // Same anonymous-safe fetch as /federal: the permit index is marketing
   // (citation and title per permit), so it comes from fetchRegulationRoots
   // (service-role) rather than the RLS-bound fetchRegulationList that
-  // /regulations uses -- a logged-out visitor used to get zero cards here.
+  // /states/colorado uses -- a logged-out visitor used to get zero cards here.
   // Entitlement only decides where a card links (RegulationList: the
   // reader for a subscriber, the public /preview teaser otherwise).
   const [access, allRegs] = await Promise.all([
@@ -61,7 +61,7 @@ export default async function GeneralPermitsIndexPage() {
         </p>
         <p className="mt-2 text-sm text-ink-soft">
           Looking for the numbered AQCC regulations or ECMC rules? See{" "}
-          <Link href="/regulations" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
+          <Link href="/states/colorado" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
             Colorado regulations
           </Link>
           .

@@ -20,7 +20,7 @@ const WIDTH = {
 
 /**
  * The one subscribe/upsell control, used on the homepage pricing card (once
- * per price box), the account page, the /pricing page and the /regulations
+ * per price box), the account page, the /pricing page and the /states/colorado
  * upsell panel so every entry point behaves the same:
  *   - logged out       -> create an account, with this box's plan already
  *                         chosen (/signup?plan=<interval>, the account step
@@ -80,7 +80,7 @@ export function SubscribeControl({
 
   if (access.hasAccess) {
     return (
-      <Link href="/regulations" className={`${PRIMARY} ${SIZE[size]} ${width} ${className}`}>
+      <Link href="/states/colorado" className={`${PRIMARY} ${SIZE[size]} ${width} ${className}`}>
         You&apos;re subscribed — open the regulations
       </Link>
     );
