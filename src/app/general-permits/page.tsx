@@ -46,7 +46,16 @@ export default async function GeneralPermitsIndexPage() {
   return (
     <div className="mx-auto max-w-shell px-6 py-12">
       <div className="max-w-reading">
-        <h1 className="font-serif text-section font-bold tracking-tight text-ink">APCD General Permits</h1>
+        {/* The permits are a Colorado (APCD) category, not a top-level nav
+            entry: this page is reached from the Colorado index's "APCD
+            General Permits" group heading, so it links back there. */}
+        <Link
+          href="/states/colorado"
+          className="inline-flex min-h-11 items-center text-sm text-ink-soft hover:text-ink sm:min-h-0"
+        >
+          ← Colorado regulations
+        </Link>
+        <h1 className="mt-4 font-serif text-section font-bold tracking-tight text-ink">APCD General Permits</h1>
         <p className="mt-2 text-sm text-ink-soft">
           The Colorado Air Pollution Control Division issues general
           construction permits covering common oil-and-gas source types --

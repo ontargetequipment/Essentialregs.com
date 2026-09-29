@@ -55,8 +55,9 @@ const FOOTER_GROUPS = [
   {
     label: "Regulations",
     links: [
+      // One entry per jurisdiction; the APCD General Permits are a Colorado
+      // category, reached from /states/colorado rather than listed here.
       { href: "/states", label: "State regulations" },
-      { href: "/general-permits", label: "General permits" },
       { href: "/federal", label: "Federal" },
     ],
   },

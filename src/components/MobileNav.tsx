@@ -4,10 +4,14 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
-/** The three regulation indexes behind the "Regulations" header entry. */
+/**
+ * The two regulation indexes behind the "Regulations" header entry, one per
+ * jurisdiction. The APCD General Permits are a Colorado category, not a
+ * jurisdiction: /general-permits stays reachable from /states/colorado (its
+ * group heading there links out), not from here.
+ */
 const REGULATION_LINKS = [
   { href: "/states", label: "State regulations" },
-  { href: "/general-permits", label: "General permits" },
   { href: "/federal", label: "Federal" },
 ] as const;
 
@@ -353,7 +357,7 @@ export function MobileNav({ authSlot }: { authSlot: ReactNode }) {
         >
           <SearchIcon />
         </Link>
-        {/* Click-to-open dropdown for the three regulation indexes. */}
+        {/* Click-to-open dropdown for the two regulation indexes. */}
         <div ref={regsRef} className="relative">
           <button
             type="button"

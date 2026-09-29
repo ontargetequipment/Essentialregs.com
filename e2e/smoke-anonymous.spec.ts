@@ -231,6 +231,41 @@ test.describe("anonymous", () => {
     await expect(page.getByRole("heading", { name: "Subscribe to open the full regulations" })).toBeVisible();
   });
 
+  test("the Regulations nav lists the two jurisdictions; General Permits hang off Colorado", async ({ page }) => {
+    // The APCD General Permits are a Colorado category, not a jurisdiction,
+    // so the header dropdown, the mobile drawer and the footer's Regulations
+    // column each carry exactly State regulations and Federal. The permits
+    // index keeps its URL (sitemap, external links) and is reached from the
+    // Colorado index's group heading.
+    const TWO = ["State regulations", "Federal"];
+    await page.goto("/states/colorado");
+    const footer = page.getByRole("navigation", { name: "Footer" }).locator("ul").first();
+    await expect(footer.getByRole("link")).toHaveText(TWO);
+
+    // The dropdown (desktop) and the drawer (phone) render from the same
+    // list; the project runs Desktop Chrome, so the drawer is checked at a
+    // phone width. Each hides the other's DOM (sm:hidden / hidden sm:flex).
+    await page.getByRole("button", { name: "Regulations" }).click();
+    await expect(page.getByRole("menuitem")).toHaveText(TWO);
+    await page.keyboard.press("Escape");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("button", { name: "Menu", exact: true }).click();
+    const drawer = page.getByRole("dialog", { name: "Menu" });
+    await expect(drawer.getByRole("list").first().getByRole("link")).toHaveText(TWO);
+    await drawer.getByRole("button", { name: "Close menu" }).click();
+
+    const gpLink = page.getByRole("main").locator('a[href="/general-permits"]');
+    await expect(gpLink).toHaveCount(1);
+    await expect(gpLink).toHaveText("APCD General Permits");
+
+    const res = await page.goto("/general-permits");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("link", { name: "← Colorado regulations" })).toHaveAttribute("href", "/states/colorado");
+    const sitemap = await page.request.get("/sitemap.xml", { headers: protectionBypassHeaders() });
+    expect(await sitemap.text()).toContain("/general-permits</loc>");
+  });
+
   test("/regulations is a permanent redirect to /states/colorado", async ({ page, baseURL }) => {
     // Unfollowed, so the status and Location can be read. page.request
     // bypasses context.route (fixtures.ts), so it carries the
