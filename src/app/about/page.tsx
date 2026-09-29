@@ -5,7 +5,7 @@ import { LegalList, LegalPage, LegalSection } from "@/components/LegalPage";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "EssentialRegs is a cross-referenced, plain-English reference for Colorado oil & gas regulations, built by someone who does this compliance work every day.",
+    "EssentialRegs is a cross-referenced, plain-English reference for state and federal regulations, now featuring Colorado oil & gas, built by someone who does this compliance work every day.",
 };
 
 export default function AboutPage() {
@@ -14,10 +14,10 @@ export default function AboutPage() {
       title="About EssentialRegs"
       intro={
         <p>
-          EssentialRegs is a subscription reference for the federal and
-          Colorado regulations that govern oil and gas operations — with the
-          cross-references linked and a plain-English summary beside the
-          official text.
+          EssentialRegs is a subscription reference for state and federal
+          regulations — with the cross-references linked and a plain-English
+          summary beside the official text. It currently features the
+          Colorado and federal rules that govern oil and gas operations.
         </p>
       }
     >

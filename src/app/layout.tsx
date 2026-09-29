@@ -10,7 +10,7 @@ import "./globals.css";
 
 const SITE_NAME = "EssentialRegs";
 const SITE_DESCRIPTION =
-  "Federal and Colorado oil & gas regulations with plain-English summaries and linked cross-references.";
+  "State and federal regulations with plain-English summaries and linked cross-references. Now featuring Colorado oil & gas rules alongside the federal EPA and PHMSA rules they reference.";
 
 // Display headings and regulation text; citations and eyebrow labels. Body/UI
 // copy stays on the system sans stack (see --font-sans in globals.css).
@@ -35,7 +35,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "EssentialRegs — Colorado Oil & Gas Compliance Reference",
+    default: "EssentialRegs — State and federal regulations, cross-referenced",
     template: `%s — ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
