@@ -17,7 +17,7 @@
  *   npx tsx scripts/ask-eval.ts --ask "When is a GP01 required?" --ask "..."
  */
 import { appendFileSync } from "node:fs";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expandAcronyms, keywordQuery } from "../src/lib/acronyms";
 import { EVAL_QUESTIONS, evaluateQuestion, rowsNeeded, type EvalHit } from "../src/lib/semantic-eval";
 
@@ -59,7 +59,7 @@ async function embedQueries(texts: string[], key: string): Promise<number[][]> {
  * and the neighbour rebuild can hold the database busy for minutes; a
  * timed-out probe says nothing about the ranking).
  */
-async function hybrid(supabase: ReturnType<typeof createClient>, args: Record<string, unknown>, label: string): Promise<Hit[]> {
+async function hybrid(supabase: SupabaseClient, args: Record<string, unknown>, label: string): Promise<Hit[]> {
   for (let attempt = 1; ; attempt++) {
     const { data, error } = await supabase.rpc("match_provisions_hybrid", args);
     if (!error) return (data ?? []) as Hit[];
