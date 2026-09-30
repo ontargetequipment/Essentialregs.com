@@ -29,6 +29,12 @@ export type EvalQuestion = {
   forbidTopN?: number;
   /** Further conditions, all of which must hold. */
   checks?: EvalCheck[];
+  /**
+   * Run this question with Statements of Basis included. Default: hidden,
+   * which is what a subscriber sees on Ask. None of the current questions
+   * set it.
+   */
+  includeBasis?: true;
 };
 
 /**

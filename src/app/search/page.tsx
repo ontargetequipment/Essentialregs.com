@@ -71,6 +71,16 @@ function keywordHref(q: string, includeBasis: boolean): string {
   return qs ? `/search?${qs}` : "/search";
 }
 
+/** Ask-tab URL keeping the jurisdiction / regulation chips, and ?basis=1 only when it is on. */
+function askHref(q: string, includeBasis: boolean, jurisdiction: string | null = null, reg = ""): string {
+  const params = new URLSearchParams({ mode: "ask" });
+  if (q) params.set("q", q);
+  if (jurisdiction) params.set("j", jurisdiction);
+  if (reg) params.set("reg", reg);
+  if (includeBasis) params.set("basis", "1");
+  return `/search?${params.toString()}`;
+}
+
 /**
  * A good Ask hit scores ~0.6–0.9 cosine similarity. When the best result is
  * below this and nothing matched the visitor's words, the corpus probably
@@ -163,9 +173,10 @@ export default async function SearchPage(props: PageProps<"/search">) {
   const jParam = first(params.j);
   const jurisdiction: Jurisdiction | null = jParam === "state" || jParam === "federal" ? jParam : null;
   const regParam = first(params.reg).toLowerCase();
-  // Keyword search leaves Statements of Basis (rulemaking history) out unless
-  // asked: they are the longest rows in the corpus and used to fill the whole
-  // first page (backlog #15). ?basis=1 brings them back, ranked below the rules.
+  // Keyword search and Ask leave Statements of Basis (rulemaking history) out
+  // unless asked: they are the longest rows in the corpus and used to fill the
+  // whole first page (backlog #15). ?basis=1 brings them back, ranked below the
+  // rules. Ask has read the same param since 2026-09-30.
   const includeBasis = first(params.basis) === "1";
 
   const supabase = await createClient();
@@ -211,6 +222,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
       askHits = await semanticSearch(q, {
         regFilter: regFilter ? [regFilter] : null,
         jurisdiction,
+        includeBasis,
       });
     } catch (e) {
       askError =
@@ -262,7 +274,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
         <Link href={keywordHref(q, includeBasis)} className={tabClass(mode === "keyword")} role="tab" aria-selected={mode === "keyword"}>
           Keyword
         </Link>
-        <Link href={q ? `/search?mode=ask&q=${encodeURIComponent(q)}` : "/search?mode=ask"} className={tabClass(mode === "ask")} role="tab" aria-selected={mode === "ask"}>
+        <Link href={askHref(q, includeBasis)} className={tabClass(mode === "ask")} role="tab" aria-selected={mode === "ask"}>
           Ask
         </Link>
       </div>
@@ -280,14 +292,15 @@ export default async function SearchPage(props: PageProps<"/search">) {
           deadline, a question you&apos;d ask a coworker. Ask finds the provisions most{" "}
           <em>about</em> your question, across Colorado, ECMC and federal rules, even when
           they don&apos;t use the same words, and shows their plain-English summaries,
-          clearly labelled. It does not decide what applies to you and it is not legal
-          advice — open each provision and read the official text.
+          clearly labelled. Rulemaking history (Statements of Basis) is hidden by default.
+          It does not decide what applies to you and it is not legal advice — open each
+          provision and read the official text.
         </p>
       )}
 
       <form action="/search" method="get" role="search" className="mt-6 flex flex-col gap-3">
         {mode === "ask" && <input type="hidden" name="mode" value="ask" />}
-        {mode === "keyword" && includeBasis && <input type="hidden" name="basis" value="1" />}
+        {includeBasis && <input type="hidden" name="basis" value="1" />}
         <div className="flex gap-2">
           <input
             type="search"
@@ -414,7 +427,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           {user && access.hasAccess && (
             <>
               {" "}Or try the same words on the{" "}
-              <Link href={`/search?mode=ask&q=${encodeURIComponent(q)}`} className="font-medium text-ink-soft underline">
+              <Link href={askHref(q, includeBasis)} className="font-medium text-ink-soft underline">
                 Ask tab
               </Link>
               .
@@ -521,6 +534,23 @@ export default async function SearchPage(props: PageProps<"/search">) {
           <p className="mt-8 font-mono text-eyebrow uppercase text-tag">
             {`${askHits.length} ${askHits.length === 1 ? "provision" : "provisions"} most about \u201c${q}\u201d`}
           </p>
+          <p className="mt-1 text-xs text-muted">
+            {includeBasis ? (
+              <>
+                Statements of basis (rulemaking history) are included, ranked below the rules.{" "}
+                <Link href={askHref(q, false, jurisdiction, regFilter)} className="font-medium text-ink-soft underline">
+                  Hide them
+                </Link>
+              </>
+            ) : (
+              <>
+                Statements of basis (rulemaking history) are hidden.{" "}
+                <Link href={askHref(q, true, jurisdiction, regFilter)} className="font-medium text-ink-soft underline">
+                  Include them
+                </Link>
+              </>
+            )}
+          </p>
           <ol className="mt-3 flex flex-col gap-3">
             {askHits.map((hit) => {
               const paras = summaryParagraphs(hit.summary ?? "");
@@ -595,7 +625,8 @@ export default async function SearchPage(props: PageProps<"/search">) {
           </ol>
           <p className="mt-6 text-xs text-muted">
             Results are the regulation&apos;s own provisions, ranked by meaning and by your words together;
-            statements of basis (rulemaking history) are shown but ranked below the rules. They are not legal advice; read the full
+            statements of basis (rulemaking history) are{" "}
+            {includeBasis ? "shown but ranked below the rules" : "hidden unless you include them"}. They are not legal advice; read the full
             text and check the official source before relying on them.
           </p>
         </>

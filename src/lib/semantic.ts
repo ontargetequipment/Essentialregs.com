@@ -49,7 +49,10 @@ export type SemanticOptions = {
   regFilter?: string[] | null;
   jurisdiction?: Jurisdiction | null;
   count?: number;
-  /** false hides statements of basis entirely (default: shown, demoted) */
+  /**
+   * true includes statements of basis, ranked below the rules (x0.5). Default
+   * false: hidden, as on keyword search (default changed 2026-09-30).
+   */
   includeBasis?: boolean;
   /** "hybrid" (default) fuses full-text + vector; "vector" is meaning only */
   mode?: "hybrid" | "vector";
@@ -131,7 +134,8 @@ const VALID_REG = /^[a-z0-9]+$/;
 
 /**
  * Runs an Ask search as the current visitor. Throws SemanticError with a
- * code the caller can map to a message / HTTP status.
+ * code the caller can map to a message / HTTP status. Statements of Basis
+ * are left out unless opts.includeBasis is true.
  */
 export async function semanticSearch(
   question: string,
@@ -169,7 +173,7 @@ export async function semanticSearch(
   // The user's own session client, so the RPC's access check sees them.
   const supabase = await createClient();
   const mode = opts.mode ?? "hybrid";
-  const includeBasis = opts.includeBasis ?? true;
+  const includeBasis = opts.includeBasis ?? false;
   const { data, error } =
     mode === "vector"
       ? await supabase.rpc("match_provisions", {
