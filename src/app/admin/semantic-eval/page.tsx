@@ -43,7 +43,8 @@ export default async function SemanticEvalPage() {
     const embeddings = await embedQueries(expanded);
     rows = await Promise.all(
       EVAL_QUESTIONS.map(async (e, i) => {
-        // Same call the Ask tab makes (hybrid: full-text + vector, basis demoted).
+        // Same call the Ask tab makes by default (hybrid: full-text + vector,
+        // Statements of Basis hidden) unless the question opts in.
         // A question with a wider window (top 10) or a forbid list fetches
         // as many rows as its widest condition needs; the rest fetch TOP_N.
         const window = rowsNeeded(e);
@@ -53,7 +54,7 @@ export default async function SemanticEvalPage() {
           match_count: window,
           reg_filter: null,
           jurisdiction_filter: null,
-          include_basis: true,
+          include_basis: e.includeBasis ?? false,
           keyword_query: keywordQuery(e.q) || null,
         });
         if (error) throw new Error(`${e.q}: ${error.message}`);

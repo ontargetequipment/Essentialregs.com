@@ -19,14 +19,14 @@ const STATUS: Record<SemanticError["code"], number> = {
 
 /**
  * POST /api/search/semantic
- * Body: { q: string, regs?: string[], jurisdiction?: "state" | "federal", count?: number }
+ * Body: { q: string, regs?: string[], jurisdiction?: "state" | "federal", count?: number, includeBasis?: boolean }
  * Returns: { hits: SemanticHit[] }
  *
  * Same behaviour as the Ask mode on /search, as JSON. Subscriber-only,
  * rate-limited, logged — all enforced inside semanticSearch().
  */
 export async function POST(req: Request) {
-  let body: { q?: unknown; regs?: unknown; jurisdiction?: unknown; count?: unknown };
+  let body: { q?: unknown; regs?: unknown; jurisdiction?: unknown; count?: unknown; includeBasis?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -40,9 +40,12 @@ export async function POST(req: Request) {
   const jurisdiction: Jurisdiction | null =
     body.jurisdiction === "state" || body.jurisdiction === "federal" ? body.jurisdiction : null;
   const count = typeof body.count === "number" ? body.count : undefined;
+  // Statements of Basis are hidden unless the caller sends includeBasis: true,
+  // matching the Ask tab. Default changed from shown to hidden on 2026-09-30.
+  const includeBasis = body.includeBasis === true;
 
   try {
-    const hits = await semanticSearch(q, { regFilter: regs, jurisdiction, count });
+    const hits = await semanticSearch(q, { regFilter: regs, jurisdiction, count, includeBasis });
     return NextResponse.json({ hits });
   } catch (e) {
     if (e instanceof SemanticError) {
