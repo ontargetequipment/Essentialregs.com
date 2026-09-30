@@ -27,6 +27,12 @@ Examples:
     # Regenerate every summary in Reg 3 from scratch.
     python pipeline/summarize.py --reg 3 --force
 
+    # Phase 0: regenerate every summarized row that has children, with the
+    # children's text in the prompt (implies --force; rows go back to
+    # summary_status='pending').
+    python pipeline/summarize.py --parents --dry-run
+    python pipeline/summarize.py --parents --reg gp01
+
     # --reg takes any regulation id prefix: 1, 2, 3, 6, 7, 8, 22, 26, ecmc,
     # ooooa, oooob, ooooc. Regs listed in REG_PROMPT_HINTS get an extra
     # regulation-specific paragraph appended to the system prompt per row.
@@ -63,7 +69,19 @@ META_PAGE_SIZE = 1000       # rows fetched per page when building the id->citati
 MIN_WORDS = 25              # tag-stripped word count below this = headings-only, skip
 MAX_PROMPT_WORDS = 6000     # cap on the provision's own text included in the prompt
 PARENT_TEXT_CHARS = 400     # chars of the immediate parent paragraph shown for scoping
+CHILD_TEXT_WORDS = 3000     # budget for the whole "Provisions inside this one" block; over it -> outline mode
+OUTLINE_TITLE_WORDS = 12    # outline mode: first N words of a descendant's text when it has no title
 MAX_TOKENS = 700            # 400 cut four wide ZZZZ table summaries mid-sentence (batch 4)
+
+# Phase 0 (Sept 2026): a summary that says the text is silent about something
+# is almost always a chapeau summarized without its children. Every returned
+# summary is tested against this; a hit gets one sync retry, and a second hit
+# is logged to failed.jsonl with reason "hedging" instead of being written.
+HEDGING_RE = re.compile(
+    r"(the text does not|does not show|not stated|not specified|unclear|no date)",
+    re.IGNORECASE,
+)
+HEDGING_RETRY_LINE = "Rewrite without stating that anything is absent from the text."
 TEMPERATURE = 0
 DEFAULT_MODEL = "claude-sonnet-4-5"
 BATCH_MAX_REQUESTS = 1000   # Anthropic Message Batches API limit per batch
@@ -260,6 +278,13 @@ SYSTEM_PROMPT_TEMPLATE = (
     "provision's beginning (e.g. its applicability or effective-date clause) "
     "is not shown in the available text, and summarize only what is "
     "actually present.\n\n"
+    "The provision text may be an introduction whose substance is in the "
+    "provisions listed under \"Provisions inside this one\". Summarize what "
+    "the provision, taken together with those listed provisions, requires. "
+    "Never state or imply that something is absent, not shown, not "
+    "specified, unclear, or not stated in the text. If a detail is in a "
+    "listed provision, state it; if the listed provisions are shown only as "
+    "an outline, say the provision introduces those items and name them.\n\n"
     "Scope the summary by the paragraph's OWN words plus its immediate "
     "parent paragraph -- nothing wider. Never carry an equipment list, an "
     "applicability date, or a scope qualifier down from the section heading "
@@ -1328,7 +1353,7 @@ def fetch_meta(client, reg: Optional[str]) -> dict[str, dict]:
     like_prefix = f"sec-{reg.lower()}-" if reg else None
     start = 0
     while True:
-        q = client.table("provisions").select("id, parent_id, citation, title, full_text")
+        q = client.table("provisions").select("id, parent_id, citation, title, full_text, sort_order")
         if like_prefix:
             q = q.like("id", f"{like_prefix}%")
         q = q.order("sort_order").range(start, start + META_PAGE_SIZE - 1)
@@ -1339,6 +1364,48 @@ def fetch_meta(client, reg: Optional[str]) -> dict[str, dict]:
             break
         start += META_PAGE_SIZE
     return meta
+
+
+def build_children_index(meta: dict[str, dict]) -> dict[str, list[dict]]:
+    """parent_id -> [child rows in sort_order], over every row in `meta`.
+    Phase 0: this is what lets build_prompt show a chapeau its own children,
+    and what --parents uses to know which rows have any."""
+    index: dict[str, list[dict]] = {}
+    for row in meta.values():
+        parent_id = row.get("parent_id")
+        if parent_id:
+            index.setdefault(parent_id, []).append(row)
+    for children in index.values():
+        children.sort(key=lambda r: (r.get("sort_order") is None, r.get("sort_order") or 0, r["id"]))
+    return index
+
+
+def build_descendants(provision: dict, meta: dict[str, dict],
+                      children_index: Optional[dict[str, list[dict]]] = None) -> list[dict]:
+    """Every descendant of `provision`, depth-first in reading order, as
+    dicts with id, citation, title, text (tag-stripped full_text) and depth
+    (1 = direct child). Cycles and ids missing from `meta` are skipped."""
+    if children_index is None:
+        children_index = build_children_index(meta)
+    out: list[dict] = []
+    seen: set[str] = {provision["id"]}
+
+    def walk(parent_id: str, depth: int) -> None:
+        for child in children_index.get(parent_id, []):
+            if child["id"] in seen:
+                continue
+            seen.add(child["id"])
+            out.append({
+                "id": child["id"],
+                "citation": child.get("citation") or "",
+                "title": child.get("title") or "",
+                "text": strip_html(child.get("full_text") or ""),
+                "depth": depth,
+            })
+            walk(child["id"], depth + 1)
+
+    walk(provision["id"], 1)
+    return out
 
 
 def load_ids_file(path: str) -> list[str]:
@@ -1360,7 +1427,8 @@ def load_ids_file(path: str) -> list[str]:
 
 
 def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int],
-                     ids: Optional[list[str]] = None):
+                     ids: Optional[list[str]] = None,
+                     parent_ids: Optional[set[str]] = None):
     """Yields full candidate rows (id, citation, title, parent_id, full_text,
     sort_order), ordered by sort_order, paginated DB_PAGE_SIZE at a time,
     stopping once --limit rows have been yielded.
@@ -1368,7 +1436,35 @@ def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int
     When `ids` is given, this targets exactly those provision ids (e.g. a
     specific list of rows flagged by a review pass) -- ignores --reg and the
     "ai_summary IS NULL" gate entirely, since asking for a row by id is
-    itself the intent to regenerate it regardless of --force."""
+    itself the intent to regenerate it regardless of --force.
+
+    When `parent_ids` is given (--parents), candidates are the rows in scope
+    whose ai_summary is NOT null and whose id is in that set (the ids with
+    at least one child, from build_children_index). Combines with --reg and
+    --limit; `force` is implied."""
+    if parent_ids is not None:
+        like_prefix = f"sec-{reg.lower()}-" if reg else None
+        start = 0
+        yielded = 0
+        while True:
+            q = (client.table("provisions")
+                 .select("id, citation, title, parent_id, full_text, sort_order")
+                 .not_.is_("ai_summary", "null"))
+            if like_prefix:
+                q = q.like("id", f"{like_prefix}%")
+            q = q.order("sort_order").range(start, start + DB_PAGE_SIZE - 1)
+            rows = q.execute().data or []
+            for row in rows:
+                if row["id"] not in parent_ids:
+                    continue
+                yield row
+                yielded += 1
+                if limit is not None and yielded >= limit:
+                    return
+            if len(rows) < DB_PAGE_SIZE:
+                return
+            start += DB_PAGE_SIZE
+
     if ids:
         rows_by_id: dict[str, dict] = {}
         for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
@@ -1415,14 +1511,101 @@ def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int
         start += DB_PAGE_SIZE
 
 
-def write_summary(client, provision_id: str, summary: str, model: str) -> None:
-    client.table("provisions").update(
-        {
-            "ai_summary": summary,
-            "summary_model": model,
-            "summary_generated_at": datetime.now(timezone.utc).isoformat(),
-        }
-    ).eq("id", provision_id).execute()
+def write_summary(client, provision_id: str, summary: str, model: str,
+                  regenerated: bool = False, descendant_count: int = 0) -> None:
+    """Writes ai_summary + provenance for one row.
+
+    With regenerated=True (Phase 0, --parents): the row already had a
+    summary that reviewers may have approved, so the write also
+      - keeps summary_original = coalesce(existing summary_original, old
+        ai_summary) -- an original a reviewer already preserved is never
+        overwritten;
+      - puts the row back in the review queue (summary_status='pending',
+        reviewed_by/reviewed_at cleared);
+      - logs a provision_changes row (change_type='summary_regenerated')
+        naming the descendant count and model.
+    """
+    payload = {
+        "ai_summary": summary,
+        "summary_model": model,
+        "summary_generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if not regenerated:
+        client.table("provisions").update(payload).eq("id", provision_id).execute()
+        return
+
+    existing = (client.table("provisions")
+                .select("ai_summary, summary_original")
+                .eq("id", provision_id).execute().data or [])
+    old = existing[0] if existing else {}
+    payload.update({
+        "summary_original": old.get("summary_original") or old.get("ai_summary"),
+        "summary_status": "pending",
+        "reviewed_by": None,
+        "reviewed_at": None,
+    })
+    client.table("provisions").update(payload).eq("id", provision_id).execute()
+    client.table("provision_changes").insert({
+        "provision_id": provision_id,
+        "change_type": "summary_regenerated",
+        "note": f"Phase 0: regenerated from provision + {descendant_count} "
+                f"descendants (model {model})",
+    }).execute()
+
+
+def is_hedging(summary: str) -> bool:
+    """True when the summary claims the text is silent about something --
+    see HEDGING_RE. Case-insensitive."""
+    return bool(HEDGING_RE.search(summary or ""))
+
+
+def _message_text(message) -> str:
+    return "".join(
+        block.text for block in message.content if getattr(block, "type", None) == "text"
+    ).strip()
+
+
+def retry_without_hedging(client_anthropic, model: str, result: "PromptResult",
+                          first_summary: str, stats: "RunStats") -> str:
+    """One synchronous retry for a summary that hit HEDGING_RE: the same
+    prompt, the model's own first answer, then HEDGING_RETRY_LINE as a new
+    user turn. Returns the retried text (the caller re-tests it)."""
+    message = client_anthropic.messages.create(
+        model=model,
+        max_tokens=MAX_TOKENS,
+        temperature=TEMPERATURE,
+        system=result.system,
+        messages=[
+            {"role": "user", "content": result.prompt},
+            {"role": "assistant", "content": first_summary},
+            {"role": "user", "content": HEDGING_RETRY_LINE},
+        ],
+    )
+    stats.add_usage(message.usage)
+    stats.hedging_retried += 1
+    return _message_text(message)
+
+
+def guard_and_write(client_anthropic, client_supabase, provision_id: str, result: "PromptResult",
+                    summary_text: str, model: str, stats: "RunStats", regenerated: bool) -> None:
+    """Post-generation guard shared by sync and batch mode: a hedging summary
+    gets one sync retry; if it still hedges it is NOT written and the id
+    goes to failed.jsonl with reason "hedging". Otherwise write it."""
+    if is_hedging(summary_text):
+        try:
+            summary_text = retry_without_hedging(client_anthropic, model, result, summary_text, stats)
+        except Exception as exc:  # noqa: BLE001 -- treat like any other API failure
+            stats.failed += 1
+            log_failure(provision_id, f"hedging retry error: {exc}")
+            return
+        if not summary_text or is_hedging(summary_text):
+            stats.failed += 1
+            stats.hedging_failed += 1
+            log_failure(provision_id, "hedging")
+            return
+    write_summary(client_supabase, provision_id, summary_text, model,
+                  regenerated=regenerated, descendant_count=result.descendant_count)
+    stats.processed += 1
 
 
 def clear_summary_as_too_short(client, provision_id: str) -> None:
@@ -1445,6 +1628,57 @@ class PromptResult:
     body_word_count: int          # tag-stripped word count of the provision's own text
     prompt_word_count: int        # words actually included in the prompt (post-cap)
     truncated: bool
+    descendant_count: int = 0     # descendants listed under "Provisions inside this one"
+    descendant_word_count: int = 0  # words of descendant text actually included
+    outline_mode: bool = False    # descendants shown as citation+title lines only
+
+
+def _descendant_label(desc: dict) -> str:
+    """'I.C.2.b.(i).' style label for one descendant: the citation, with a
+    trailing period added when the citation doesn't already end in one."""
+    cite = (desc.get("citation") or desc.get("id") or "").strip()
+    return cite if cite.endswith(".") else f"{cite}."
+
+
+def _descendant_title_or_opening(desc: dict) -> str:
+    title = (desc.get("title") or "").strip()
+    if title:
+        return title
+    words = (desc.get("text") or "").split()
+    opening = " ".join(words[:OUTLINE_TITLE_WORDS])
+    return opening + ("…" if len(words) > OUTLINE_TITLE_WORDS else "")
+
+
+def build_descendants_block(descendants: list[dict]) -> tuple[list[str], int, bool]:
+    """Lines for the "Provisions inside this one" block, plus (words
+    included, outline_mode). Full mode: one line per descendant with its
+    citation, title (when the text doesn't already open with it) and
+    stripped text, indented by depth. Over CHILD_TEXT_WORDS in total ->
+    outline mode: citation + title (or the first OUTLINE_TITLE_WORDS words),
+    no bodies, and a note telling the model what was left out."""
+    if not descendants:
+        return [], 0, False
+    total_words = sum(len(d["text"].split()) for d in descendants)
+    lines = ["Provisions inside this one (its children, in order):"]
+    if total_words <= CHILD_TEXT_WORDS:
+        for d in descendants:
+            indent = "  " * (d["depth"] - 1)
+            label = _descendant_label(d)
+            title = (d.get("title") or "").strip()
+            text = d["text"]
+            if title and not text.lower().startswith(title.lower()[:40]):
+                label = f"{label} {title}:"
+            lines.append(f"{indent}{label} {text}".rstrip())
+        return lines, total_words, False
+    for d in descendants:
+        indent = "  " * (d["depth"] - 1)
+        lines.append(f"{indent}{_descendant_label(d)} {_descendant_title_or_opening(d)}".rstrip())
+    lines.append(
+        f"[{len(descendants)} provisions inside; bodies omitted for length — "
+        f"summarize what this provision introduces and say the detail is in the "
+        f"listed items]"
+    )
+    return lines, 0, True
 
 
 def build_context(provision: dict, meta: dict[str, dict]) -> tuple[Optional[dict], list[dict]]:
@@ -1472,7 +1706,12 @@ def build_context(provision: dict, meta: dict[str, dict]) -> tuple[Optional[dict
     return root, chain
 
 
-def build_prompt(provision: dict, meta: dict[str, dict]) -> PromptResult:
+def build_prompt(provision: dict, meta: dict[str, dict],
+                 children_index: Optional[dict[str, list[dict]]] = None) -> PromptResult:
+    """The user prompt for one row. `children_index` (build_children_index
+    over `meta`) is what makes the "Provisions inside this one" block
+    possible; when it is None it is built from `meta` on the fly, so a row
+    with children in `meta` always gets the block."""
     root, chain = build_context(provision, meta)
     stripped = strip_html(provision["full_text"])
     words = stripped.split()
@@ -1514,12 +1753,25 @@ def build_prompt(provision: dict, meta: dict[str, dict]) -> PromptResult:
             f"{MAX_PROMPT_WORDS:,} of {body_word_count:,} words.]"
         )
 
+    # Phase 0: the provision's own descendants, in reading order, so a
+    # chapeau ("must comply with one of the following:") is summarized
+    # together with the items it introduces instead of as a dangling
+    # sentence. Full bodies up to CHILD_TEXT_WORDS, an outline past that.
+    descendants = build_descendants(provision, meta, children_index)
+    desc_lines, desc_words, outline_mode = build_descendants_block(descendants)
+    if desc_lines:
+        lines.append("")
+        lines.extend(desc_lines)
+
     return PromptResult(
         prompt="\n".join(lines),
         system=system_prompt_for(provision["id"]),
         body_word_count=body_word_count,
         prompt_word_count=len(used_words),
         truncated=truncated,
+        descendant_count=len(descendants),
+        descendant_word_count=desc_words,
+        outline_mode=outline_mode,
     )
 
 
@@ -1551,6 +1803,16 @@ class RunStats:
     input_tokens: int = 0
     output_tokens: int = 0
     batches_submitted: int = 0
+    outline_mode: int = 0       # rows whose descendants block was over CHILD_TEXT_WORDS
+    with_descendants: int = 0   # rows whose prompt carried a descendants block at all
+    hedging_retried: int = 0    # first answers that hit HEDGING_RE and were retried
+    hedging_failed: int = 0     # retries that still hit it (logged, not written)
+
+    def note_prompt(self, result: "PromptResult") -> None:
+        if result.descendant_count:
+            self.with_descendants += 1
+        if result.outline_mode:
+            self.outline_mode += 1
 
     def add_usage(self, usage) -> None:
         self.input_tokens += getattr(usage, "input_tokens", 0) or 0
@@ -1568,6 +1830,10 @@ def print_report(stats: RunStats, model: str, batch: bool, dry_run: bool) -> Non
     print(f"{'Rows processed (summarized)':38}{stats.processed:>12,}")
     print(f"{'Rows skipped (headings-only, <'+str(MIN_WORDS)+' words)':38}{stats.skipped_short:>12,}")
     print(f"{'Rows failed':38}{stats.failed:>12,}")
+    print(f"{'Rows with descendants in prompt':38}{stats.with_descendants:>12,}")
+    print(f"{'  of which outline mode':38}{stats.outline_mode:>12,}")
+    print(f"{'Hedging: retried once':38}{stats.hedging_retried:>12,}")
+    print(f"{'Hedging: still hedging (not written)':38}{stats.hedging_failed:>12,}")
     print(f"{'Input tokens':38}{stats.input_tokens:>12,}")
     print(f"{'Output tokens':38}{stats.output_tokens:>12,}")
     print(f"{'Estimated cost (USD)':38}{'$' + format(cost, ',.4f'):>12}")
@@ -1595,23 +1861,33 @@ def log_failure(custom_id: str, reason: str) -> None:
 # --------------------------------------------------------------------------
 
 def run_sync(client_anthropic, client_supabase, rows: list[dict], meta: dict, model: str,
-             stats: RunStats, dry_run: bool) -> None:
+             stats: RunStats, dry_run: bool, regenerated: bool = False,
+             children_index: Optional[dict[str, list[dict]]] = None) -> None:
+    if children_index is None:
+        children_index = build_children_index(meta)
     for provision in rows:
-        result = build_prompt(provision, meta)
+        result = build_prompt(provision, meta, children_index)
         if result.body_word_count < MIN_WORDS:
             stats.skipped_short += 1
             if not dry_run:
                 clear_summary_as_too_short(client_supabase, provision["id"])
             continue
+        stats.note_prompt(result)
 
         if dry_run:
             print(f"--- {provision['id']} ({provision['citation']}) ---")
             print(result.prompt[:2000])
             print(f"[prompt words: {result.prompt_word_count}"
-                  f"{' (truncated from ' + str(result.body_word_count) + ')' if result.truncated else ''}]\n")
-            est_in = int(result.prompt_word_count * 1.35) + 250
+                  f"{' (truncated from ' + str(result.body_word_count) + ')' if result.truncated else ''}"
+                  f"{'; descendants: ' + str(result.descendant_count) + (' (outline mode)' if result.outline_mode else ' (' + str(result.descendant_word_count) + ' words)') if result.descendant_count else ''}]\n")
+            # Words -> tokens at ~1.35, plus the system prompt and prompt
+            # scaffolding; outline lines are counted at ~15 words each.
+            prompt_words = result.prompt_word_count + result.descendant_word_count
+            if result.outline_mode:
+                prompt_words += result.descendant_count * 15
+            est_in = int(prompt_words * 1.35) + 900
             stats.input_tokens += est_in
-            stats.output_tokens += 120
+            stats.output_tokens += 150
             stats.processed += 1
             continue
 
@@ -1628,17 +1904,15 @@ def run_sync(client_anthropic, client_supabase, rows: list[dict], meta: dict, mo
             log_failure(provision["id"], str(exc))
             continue
 
-        summary_text = "".join(
-            block.text for block in message.content if getattr(block, "type", None) == "text"
-        ).strip()
+        summary_text = _message_text(message)
         stats.add_usage(message.usage)
         if not summary_text:
             stats.failed += 1
             log_failure(provision["id"], "empty response")
             continue
 
-        write_summary(client_supabase, provision["id"], summary_text, model)
-        stats.processed += 1
+        guard_and_write(client_anthropic, client_supabase, provision["id"], result,
+                        summary_text, model, stats, regenerated)
 
 
 CUSTOM_ID_INVALID_RE = re.compile(r"[^a-zA-Z0-9_-]")
@@ -1685,7 +1959,8 @@ def make_custom_id(provision_id: str, used: dict[str, str]) -> str:
 
 
 def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, model: str,
-              stats: RunStats, poll_interval: int) -> None:
+              stats: RunStats, poll_interval: int, regenerated: bool = False,
+              children_index: Optional[dict[str, list[dict]]] = None) -> None:
     """Batch mode is only ever invoked for real runs (main() routes --dry-run
     and --sync through run_sync instead), so every row here either gets
     submitted to the Anthropic Batches API or is skipped as headings-only
@@ -1697,13 +1972,20 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
     # to Anthropic is a sanitized/possibly-hashed stand-in -- always map
     # back through this dict before writing a summary or logging a failure.
     custom_id_map: dict[str, str] = {}
+    # provision id -> its PromptResult, kept so the hedging guard can retry
+    # a batch answer synchronously with the exact prompt it was built from.
+    prompts: dict[str, PromptResult] = {}
+    if children_index is None:
+        children_index = build_children_index(meta)
 
     for provision in rows:
-        result = build_prompt(provision, meta)
+        result = build_prompt(provision, meta, children_index)
         if result.body_word_count < MIN_WORDS:
             stats.skipped_short += 1
             clear_summary_as_too_short(client_supabase, provision["id"])
             continue
+        stats.note_prompt(result)
+        prompts[provision["id"]] = result
         custom_id = make_custom_id(provision["id"], custom_id_map)
         batch_requests.append({
             "custom_id": custom_id,
@@ -1755,24 +2037,21 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
             # Always resolve back to the real provision id -- never write a
             # summary (or log a failure) under the sanitized custom_id.
             provision_id = custom_id_map.get(custom_id, custom_id)
-            result = item.result
-            if result.type == "succeeded":
-                message = result.message
-                summary_text = "".join(
-                    block.text for block in message.content
-                    if getattr(block, "type", None) == "text"
-                ).strip()
+            outcome = item.result
+            if outcome.type == "succeeded":
+                message = outcome.message
+                summary_text = _message_text(message)
                 stats.add_usage(message.usage)
                 if not summary_text:
                     stats.failed += 1
                     log_failure(provision_id, "empty response")
                     continue
-                write_summary(client_supabase, provision_id, summary_text, model)
-                stats.processed += 1
+                guard_and_write(client_anthropic, client_supabase, provision_id,
+                                prompts[provision_id], summary_text, model, stats, regenerated)
             else:
                 stats.failed += 1
-                error_detail = getattr(getattr(result, "error", None), "message", result.type)
-                log_failure(provision_id, f"{result.type}: {error_detail}")
+                error_detail = getattr(getattr(outcome, "error", None), "message", outcome.type)
+                log_failure(provision_id, f"{outcome.type}: {error_detail}")
 
 
 # --------------------------------------------------------------------------
@@ -1820,6 +2099,15 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
              "ai_summary IS NULL gate just like --ids).",
     )
     parser.add_argument(
+        "--parents", action="store_true",
+        help="Phase 0 selector: regenerate every row in scope that already has an "
+             "ai_summary AND has at least one child provision, with the children's "
+             "text in the prompt. Combines with --reg and --limit; implies --force. "
+             "Each rewritten row goes back to summary_status='pending' (its previous "
+             "summary is kept in summary_original) and gets a 'summary_regenerated' "
+             "changelog row.",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true",
         help="Build and print prompts + token/cost estimates for every "
              "candidate row. Never calls the Anthropic API and never writes "
@@ -1857,6 +2145,11 @@ def main(argv: Optional[list[str]] = None) -> int:
         print("--ids-file is mutually exclusive with --reg, --limit, and --ids.",
               file=sys.stderr)
         return 1
+    if args.parents and (args.ids or args.ids_file):
+        print("--parents is mutually exclusive with --ids and --ids-file.", file=sys.stderr)
+        return 1
+    if args.parents:
+        args.force = True
 
     required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
     if not args.dry_run:
@@ -1884,6 +2177,8 @@ def main(argv: Optional[list[str]] = None) -> int:
           f"{f' for reg {meta_reg}' if meta_reg else ' (all regulations)'}...")
     meta = fetch_meta(client_supabase, meta_reg)
     print(f"  {len(meta):,} rows loaded for context lookups.")
+    children_index = build_children_index(meta)
+    print(f"  {len(children_index):,} of them have children.")
 
     if args.ids_file:
         ids = load_ids_file(args.ids_file)
@@ -1895,8 +2190,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     print("Fetching candidate rows"
           f"{f' ({len(ids)} explicit id(s))' if ids else ''}"
           f"{f' (limit {args.limit})' if args.limit and not ids else ''}"
-          f"{' [force: regenerating existing summaries too]' if args.force and not ids else ''}...")
-    rows = list(iter_candidates(client_supabase, args.reg, args.force, args.limit, ids=ids))
+          f"{' [parents: rows with a summary and at least one child]' if args.parents else ''}"
+          f"{' [force: regenerating existing summaries too]' if args.force and not ids and not args.parents else ''}...")
+    rows = list(iter_candidates(client_supabase, args.reg, args.force, args.limit, ids=ids,
+                                parent_ids=set(children_index) if args.parents else None))
     print(f"  {len(rows):,} candidate rows.")
 
     if not rows:
@@ -1905,10 +2202,11 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     stats = RunStats()
     if args.sync or args.dry_run:
-        run_sync(client_anthropic, client_supabase, rows, meta, args.model, stats, args.dry_run)
+        run_sync(client_anthropic, client_supabase, rows, meta, args.model, stats, args.dry_run,
+                 regenerated=args.parents, children_index=children_index)
     else:
         run_batch(client_anthropic, client_supabase, rows, meta, args.model, stats,
-                   args.poll_interval)
+                  args.poll_interval, regenerated=args.parents, children_index=children_index)
 
     print_report(stats, args.model, batch=not (args.sync or args.dry_run), dry_run=args.dry_run)
     return 0

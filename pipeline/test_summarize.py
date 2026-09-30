@@ -1705,3 +1705,374 @@ def test_reg31_build_prompt_system_matches_row_reg():
     assert result.system == system_prompt_for("sec-31-D-I-C-2")
     assert result.system.endswith(REG_PROMPT_HINTS["31"])
     assert REG_PROMPT_HINTS["31"] not in result.prompt
+
+
+# ==========================================================================
+# Phase 0 (Sept 30 2026): parent summaries regenerated from parent +
+# descendants -- descendants block, outline mode, hedging guard, write-back,
+# --parents selector.
+# ==========================================================================
+
+from summarize import (  # noqa: E402
+    CHILD_TEXT_WORDS,
+    HEDGING_RETRY_LINE,
+    PromptResult,
+    build_children_index,
+    build_descendants,
+    guard_and_write,
+    is_hedging,
+    iter_candidates,
+    write_summary,
+)
+
+
+def _node(provision_id, parent_id, citation, title, text, sort_order):
+    return {
+        "id": provision_id, "parent_id": parent_id, "citation": citation,
+        "title": title, "full_text": f"<p>{text}</p>", "sort_order": sort_order,
+    }
+
+
+def _reg6_tree() -> dict[str, dict]:
+    """Reg 6 I.C.2.b: a chapeau with two children, one of which has a
+    grandchild, plus an unrelated sibling that must never appear."""
+    long_body = " ".join(["must"] * 30)
+    rows = [
+        _node("sec-6-top-REG-6", None, "Reg 6", "Standards of Performance", "root", 0),
+        _node("sec-6-B-I-C-2", "sec-6-top-REG-6", "I.C.2.", "Emission factors",
+              "Owners must demonstrate compliance", 10),
+        _node("sec-6-B-I-C-2-b", "sec-6-B-I-C-2", "I.C.2.b.", "",
+              f"The owner or operator {long_body} comply with one of the following:", 20),
+        _node("sec-6-B-I-C-2-b-(ii)", "sec-6-B-I-C-2-b", "I.C.2.b.(ii).", "",
+              "Division approved testing under representative conditions.", 22),
+        _node("sec-6-B-I-C-2-b-(i)", "sec-6-B-I-C-2-b", "I.C.2.b.(i).", "",
+              "Manufacturer certified emission factors; or", 21),
+        _node("sec-6-B-I-C-2-b-(i)-(A)", "sec-6-B-I-C-2-b-(i)", "I.C.2.b.(i)(A).", "",
+              "Factors must be current.", 23),
+        _node("sec-6-B-I-C-2-c", "sec-6-B-I-C-2", "I.C.2.c.", "", "Unrelated sibling text.", 30),
+    ]
+    return {r["id"]: r for r in rows}
+
+
+def test_children_index_orders_by_sort_order():
+    index = build_children_index(_reg6_tree())
+    assert [c["id"] for c in index["sec-6-B-I-C-2-b"]] == [
+        "sec-6-B-I-C-2-b-(i)", "sec-6-B-I-C-2-b-(ii)",
+    ]
+    assert "sec-6-B-I-C-2-b-(i)-(A)" not in index["sec-6-B-I-C-2-b"]  # grandchild, not child
+
+
+def test_build_descendants_depth_first_reading_order():
+    meta = _reg6_tree()
+    descendants = build_descendants(meta["sec-6-B-I-C-2-b"], meta)
+    assert [(d["citation"], d["depth"]) for d in descendants] == [
+        ("I.C.2.b.(i).", 1), ("I.C.2.b.(i)(A).", 2), ("I.C.2.b.(ii).", 1),
+    ]
+    assert descendants[0]["text"] == "Manufacturer certified emission factors; or"
+
+
+def test_prompt_lists_descendants_in_order_after_provision_text():
+    meta = _reg6_tree()
+    result = build_prompt(meta["sec-6-B-I-C-2-b"], meta)
+    prompt = result.prompt
+    block = prompt.index("Provisions inside this one (its children, in order):")
+    assert block > prompt.index("Provision text:")
+    i = prompt.index("I.C.2.b.(i). Manufacturer certified emission factors; or")
+    a = prompt.index("  I.C.2.b.(i)(A). Factors must be current.")
+    ii = prompt.index("I.C.2.b.(ii). Division approved testing under representative conditions.")
+    assert block < i < a < ii
+    assert "Unrelated sibling" not in prompt
+    assert result.descendant_count == 3
+    assert result.outline_mode is False
+    assert result.descendant_word_count == 5 + 4 + 6
+    assert "bodies omitted" not in prompt
+
+
+def test_prompt_has_no_descendants_block_for_a_leaf():
+    meta = _reg6_tree()
+    result = build_prompt(meta["sec-6-B-I-C-2-b-(ii)"], meta)
+    assert "Provisions inside this one" not in result.prompt
+    assert result.descendant_count == 0
+    # and a caller with no children index at all still gets the old shape
+    assert build_prompt(_row("sec-6-A-SUBPART-Kb"), meta={}).descendant_count == 0
+
+
+def test_outline_mode_over_the_word_budget():
+    meta = _reg6_tree()
+    parent = meta["sec-6-B-I-C-2-b"]
+    # Two direct children, one titled and one not, whose bodies together
+    # exceed CHILD_TEXT_WORDS.
+    half = " ".join(["body"] * (CHILD_TEXT_WORDS // 2 + 10))
+    meta["sec-6-B-I-C-2-b-(i)"]["full_text"] = f"<p>{half}</p>"
+    meta["sec-6-B-I-C-2-b-(i)"]["title"] = "Certified factors"
+    meta["sec-6-B-I-C-2-b-(ii)"]["full_text"] = "<p>" + " ".join(f"w{n}" for n in range(CHILD_TEXT_WORDS)) + "</p>"
+    result = build_prompt(parent, meta)
+    assert result.outline_mode is True
+    assert result.descendant_word_count == 0
+    assert "I.C.2.b.(i). Certified factors" in result.prompt
+    # untitled: first 12 words of its text, then an ellipsis
+    assert "I.C.2.b.(ii). " + " ".join(f"w{n}" for n in range(12)) + "…" in result.prompt
+    assert "body body body" not in result.prompt
+    assert ("[3 provisions inside; bodies omitted for length — summarize what this "
+            "provision introduces and say the detail is in the listed items]") in result.prompt
+
+
+def test_system_prompt_carries_the_descendants_rule_for_every_family():
+    rule = (
+        "The provision text may be an introduction whose substance is in the "
+        "provisions listed under \"Provisions inside this one\". Summarize what "
+        "the provision, taken together with those listed provisions, requires. "
+        "Never state or imply that something is absent, not shown, not "
+        "specified, unclear, or not stated in the text. If a detail is in a "
+        "listed provision, state it; if the listed provisions are shown only as "
+        "an outline, say the provision introduces those items and name them."
+    )
+    for pid in ("sec-6-B-I-C-2-b", "sec-iiii-4202-f", "sec-oooob-5416b-b-7", "sec-gp01-I-A",
+                "sec-p192-1", "sec-11-A-I", "sec-ecmc-100-a", "sec-unknown-1"):
+        assert rule in system_prompt_for(pid), pid
+
+
+@pytest.mark.parametrize("phrase", [
+    "The text does not list them.",
+    "Which engines it covers Does Not Show here.",
+    "The deadline is not stated.",
+    "The threshold is NOT SPECIFIED in this paragraph.",
+    "It is unclear which methods apply.",
+    "There is no date given for compliance.",
+])
+def test_hedging_guard_catches_each_phrase(phrase):
+    assert is_hedging("Operators must certify engines. " + phrase)
+
+
+def test_hedging_guard_passes_a_clean_summary():
+    assert not is_hedging(
+        "You can show compliance either with manufacturer-certified emission "
+        "factors or with Division-approved testing under representative conditions."
+    )
+    assert not is_hedging("")
+
+
+class _StubTable:
+    """Minimal supabase-py table stub: records updates/inserts, answers a
+    select with a canned row."""
+
+    def __init__(self, log: list, existing: dict):
+        self.log = log
+        self.existing = existing
+        self._op = None
+        self._payload = None
+
+    def select(self, cols):
+        self._op = ("select", cols)
+        return self
+
+    def update(self, payload):
+        self._op = ("update",)
+        self._payload = payload
+        return self
+
+    def insert(self, payload):
+        self._op = ("insert",)
+        self._payload = payload
+        return self
+
+    def eq(self, col, val):
+        self._eq = (col, val)
+        return self
+
+    def execute(self):
+        if self._op[0] == "select":
+            return type("R", (), {"data": [dict(self.existing)]})()
+        self.log.append((self.name, self._op[0], self._payload))
+        return type("R", (), {"data": []})()
+
+
+class _StubClient:
+    def __init__(self, existing: dict):
+        self.log: list = []
+        self.existing = existing
+
+    def table(self, name):
+        t = _StubTable(self.log, self.existing)
+        t.name = name
+        return t
+
+
+def test_write_back_regenerated_preserves_existing_summary_original():
+    client = _StubClient({"ai_summary": "old ai text", "summary_original": "reviewer-kept original"})
+    write_summary(client, "sec-6-B-I-C-2-b", "new text", "claude-sonnet-4-5",
+                  regenerated=True, descendant_count=2)
+    (table, op, payload), (ctable, cop, cpayload) = client.log
+    assert (table, op) == ("provisions", "update")
+    assert payload["ai_summary"] == "new text"
+    assert payload["summary_model"] == "claude-sonnet-4-5"
+    assert payload["summary_original"] == "reviewer-kept original"   # never overwritten
+    assert payload["summary_status"] == "pending"
+    assert payload["reviewed_by"] is None and payload["reviewed_at"] is None
+    assert (ctable, cop) == ("provision_changes", "insert")
+    assert cpayload["provision_id"] == "sec-6-B-I-C-2-b"
+    assert cpayload["change_type"] == "summary_regenerated"
+    assert cpayload["note"] == "Phase 0: regenerated from provision + 2 descendants (model claude-sonnet-4-5)"
+
+
+def test_write_back_regenerated_falls_back_to_old_ai_summary():
+    client = _StubClient({"ai_summary": "old ai text", "summary_original": None})
+    write_summary(client, "x", "new text", "m", regenerated=True, descendant_count=0)
+    assert client.log[0][2]["summary_original"] == "old ai text"
+
+
+def test_write_back_not_regenerated_is_unchanged():
+    client = _StubClient({"ai_summary": "old", "summary_original": None})
+    write_summary(client, "x", "new text", "m")
+    assert len(client.log) == 1
+    payload = client.log[0][2]
+    assert set(payload) == {"ai_summary", "summary_model", "summary_generated_at"}
+
+
+def _fake_anthropic(answers: list[str], calls: list[dict]):
+    class _Usage:
+        input_tokens = 10
+        output_tokens = 5
+
+    class _Block:
+        type = "text"
+
+        def __init__(self, text):
+            self.text = text
+
+    class _Message:
+        usage = _Usage()
+
+        def __init__(self, text):
+            self.content = [_Block(text)]
+
+    class _Messages:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return _Message(answers.pop(0))
+
+    class _Anthropic:
+        messages = _Messages()
+
+    return _Anthropic()
+
+
+def _prompt_result() -> PromptResult:
+    return PromptResult(prompt="P", system="S", body_word_count=30, prompt_word_count=30,
+                        truncated=False, descendant_count=2)
+
+
+def test_guard_retries_once_then_writes_clean_answer(monkeypatch, tmp_path):
+    written: list = []
+    monkeypatch.setattr(summarize, "write_summary",
+                        lambda c, pid, text, model, **kw: written.append((pid, text, kw)))
+    monkeypatch.setattr(summarize, "FAILED_LOG_PATH", tmp_path / "failed.jsonl")
+    calls: list[dict] = []
+    client = _fake_anthropic(["Clean rewrite."], calls)
+    stats = summarize.RunStats()
+    guard_and_write(client, None, "sec-x", _prompt_result(),
+                    "The text does not show the methods.", "m", stats, regenerated=True)
+    assert written == [("sec-x", "Clean rewrite.", {"regenerated": True, "descendant_count": 2})]
+    assert len(calls) == 1
+    assert calls[0]["messages"][-1] == {"role": "user", "content": HEDGING_RETRY_LINE}
+    assert calls[0]["messages"][1]["content"] == "The text does not show the methods."
+    assert stats.hedging_retried == 1 and stats.hedging_failed == 0 and stats.processed == 1
+    assert not (tmp_path / "failed.jsonl").exists()
+
+
+def test_guard_logs_hedging_and_does_not_write_after_second_hit(monkeypatch, tmp_path):
+    written: list = []
+    monkeypatch.setattr(summarize, "write_summary",
+                        lambda *a, **k: written.append(a))
+    monkeypatch.setattr(summarize, "FAILED_LOG_PATH", tmp_path / "failed.jsonl")
+    client = _fake_anthropic(["Still not specified."], [])
+    stats = summarize.RunStats()
+    guard_and_write(client, None, "sec-x", _prompt_result(),
+                    "It is unclear.", "m", stats, regenerated=True)
+    assert written == []
+    assert stats.hedging_retried == 1 and stats.hedging_failed == 1
+    assert stats.failed == 1 and stats.processed == 0
+    import json as _json
+    entry = _json.loads((tmp_path / "failed.jsonl").read_text().strip())
+    assert entry == {"id": "sec-x", "reason": "hedging", "at": entry["at"]}
+
+
+def test_guard_writes_clean_answer_without_calling_the_api(monkeypatch):
+    written: list = []
+    monkeypatch.setattr(summarize, "write_summary", lambda *a, **k: written.append(a))
+    calls: list[dict] = []
+    stats = summarize.RunStats()
+    guard_and_write(_fake_anthropic([], calls), None, "sec-x", _prompt_result(),
+                    "Clean.", "m", stats, regenerated=False)
+    assert len(written) == 1 and calls == []
+
+
+class _SelectClient:
+    """iter_candidates stub: serves `rows` through the --parents query shape
+    (select / not_.is_ / like / order / range) and records the filters."""
+
+    def __init__(self, rows):
+        self.rows = rows
+        self.filters: list = []
+        self._q = None
+
+    def table(self, name):
+        return self
+
+    def select(self, cols):
+        self._like = None
+        return self
+
+    @property
+    def not_(self):
+        self.filters.append("not_")
+        return self
+
+    def is_(self, col, val):
+        self.filters.append(("is_", col, val))
+        return self
+
+    def like(self, col, pat):
+        self._like = pat[:-1]
+        return self
+
+    def order(self, col):
+        return self
+
+    def range(self, start, end):
+        self._range = (start, end)
+        return self
+
+    def execute(self):
+        rows = [r for r in self.rows if r["ai_summary"] is not None]
+        if self._like:
+            rows = [r for r in rows if r["id"].startswith(self._like)]
+        s, e = self._range
+        return type("R", (), {"data": rows[s:e + 1]})()
+
+
+def test_parents_selects_parent_with_summary_skips_leaf_and_unsummarized_parent():
+    meta = _reg6_tree()
+    children_index = build_children_index(meta)
+    rows = [
+        {"id": "sec-6-B-I-C-2", "ai_summary": None},                 # parent, no summary
+        {"id": "sec-6-B-I-C-2-b", "ai_summary": "old"},              # parent with summary
+        {"id": "sec-6-B-I-C-2-b-(ii)", "ai_summary": "leaf summary"},  # leaf
+        {"id": "sec-6-B-I-C-2-b-(i)", "ai_summary": "x"},            # parent with summary
+        {"id": "sec-7-Z", "ai_summary": "x"},                        # other reg, no children
+    ]
+    client = _SelectClient(rows)
+    got = [r["id"] for r in iter_candidates(client, "6", False, None,
+                                            parent_ids=set(children_index))]
+    assert got == ["sec-6-B-I-C-2-b", "sec-6-B-I-C-2-b-(i)"]
+    assert ("is_", "ai_summary", "null") in client.filters and "not_" in client.filters
+    # --limit applies to the filtered set
+    got = [r["id"] for r in iter_candidates(_SelectClient(rows), "6", False, 1,
+                                            parent_ids=set(children_index))]
+    assert got == ["sec-6-B-I-C-2-b"]
+
+
+def test_parents_flag_implies_force_and_excludes_ids():
+    args = summarize.parse_args(["--parents", "--reg", "6", "--limit", "25"])
+    assert args.parents and args.reg == "6" and args.limit == 25
+    assert summarize.main(["--parents", "--ids", "a"]) == 1

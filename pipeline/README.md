@@ -98,6 +98,29 @@ touched unless you say so explicitly:
    the full cost, so scope it deliberately.
 3. Check **force**, leave **dry_run** unchecked, click **Run workflow**.
 
+## Regenerating parent summaries from parent + descendants (Phase 0)
+
+A provision that is only an introduction ("must comply with one of the
+following:") used to be summarized without its children, and the model
+wrote things like "the text does not show what those methods are". The
+**parents** checkbox on **Generate summaries** (`summarize.py --parents`)
+re-selects every row that already has a summary *and* has at least one
+child, and puts the children's text (every descendant, in reading order)
+in the prompt under "Provisions inside this one". Subtrees over 3,000
+words are shown as an outline (citation + title only) with a note.
+
+It implies **force**, and combines with **reg** and **limit** for pilots.
+Every rewritten row goes back to `summary_status = 'pending'` (its previous
+summary is kept in `summary_original` unless a reviewer already preserved
+one there) and gets a `summary_regenerated` row in `provision_changes`, so
+the review queue and /changelog show exactly what changed. A new summary
+that still says something is "not stated" / "not specified" / "unclear" is
+retried once and, if it still hedges, is **not** written -- the id lands in
+`failed.jsonl` with reason `hedging` and the old summary stays in place.
+
+Always dry-run first: the report prints the row count, how many prompts
+fell back to outline mode, and the cost estimate.
+
 ## Cost
 
 Each run prints a final table with rows processed, tokens used, and an
