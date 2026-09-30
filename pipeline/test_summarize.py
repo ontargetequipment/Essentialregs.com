@@ -2076,3 +2076,72 @@ def test_parents_flag_implies_force_and_excludes_ids():
     args = summarize.parse_args(["--parents", "--reg", "6", "--limit", "25"])
     assert args.parents and args.reg == "6" and args.limit == 25
     assert summarize.main(["--parents", "--ids", "a"]) == 1
+
+
+def test_run_batch_submits_every_chunk_before_polling(monkeypatch, tmp_path):
+    """Phase 0: all chunks go to the Batches API up front and are polled
+    together, so the wall-clock is the slowest batch, not the sum."""
+    monkeypatch.setattr(summarize, "BATCH_MAX_REQUESTS", 2)
+    monkeypatch.setattr(summarize, "FAILED_LOG_PATH", tmp_path / "failed.jsonl")
+    monkeypatch.setattr(summarize.time, "sleep", lambda s: None)
+    written: list = []
+    monkeypatch.setattr(summarize, "write_summary", lambda c, pid, text, model, **kw: written.append(pid))
+    events: list[str] = []
+
+    class _Counts:
+        succeeded = 2; errored = 0; canceled = 0; expired = 0
+
+    class _Batch:
+        def __init__(self, bid, requests):
+            self.id = bid; self.requests = requests
+            self.processing_status = "in_progress"; self.request_counts = _Counts()
+
+    class _Usage:
+        input_tokens = 1; output_tokens = 1
+
+    class _Block:
+        type = "text"
+        def __init__(self, t): self.text = t
+
+    class _Msg:
+        usage = _Usage()
+        def __init__(self, t): self.content = [_Block(t)]
+
+    class _Res:
+        type = "succeeded"
+        def __init__(self, t): self.message = _Msg(t)
+
+    class _Item:
+        def __init__(self, cid): self.custom_id = cid; self.result = _Res("Clean summary.")
+
+    class _Batches:
+        def __init__(self): self.store = {}; self.polls = 0
+        def create(self, requests):
+            b = _Batch(f"b{len(self.store)}", requests); self.store[b.id] = b
+            events.append(f"create:{b.id}"); return b
+        def retrieve(self, bid):
+            self.polls += 1; b = self.store[bid]
+            events.append(f"poll:{bid}")
+            # every batch ends on its second poll
+            if events.count(f"poll:{bid}") >= 2:
+                b.processing_status = "ended"
+            return b
+        def results(self, bid):
+            return [_Item(r["custom_id"]) for r in self.store[bid].requests]
+
+    class _Messages:
+        batches = _Batches()
+
+    class _Anthropic:
+        messages = _Messages()
+
+    rows = [_row(f"sec-6-B-{i}") for i in range(5)]  # 5 rows -> 3 chunks of <=2
+    stats = summarize.RunStats()
+    summarize.run_batch(_Anthropic(), None, rows, {}, "m", stats, poll_interval=0)
+    creates = [e for e in events if e.startswith("create:")]
+    first_poll = next(i for i, e in enumerate(events) if e.startswith("poll:"))
+    assert creates == ["create:b0", "create:b1", "create:b2"]
+    assert all(events.index(c) < first_poll for c in creates)   # all submitted before any poll
+    assert stats.batches_submitted == 3
+    assert sorted(written) == sorted(r["id"] for r in rows)
+    assert stats.processed == 5 and stats.failed == 0

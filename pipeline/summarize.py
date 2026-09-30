@@ -2006,57 +2006,76 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
     if not batch_requests:
         return
 
+    # Submit every chunk first, then poll them together. The Batches API
+    # queues each batch independently, and the Phase 0 pilot showed even a
+    # 4-request batch can wait ~75 minutes before it starts; draining the
+    # chunks one after another would multiply that wait by the number of
+    # chunks (four, for the full parent set) and risk the workflow's 6h
+    # timeout. Submitting all of them up front makes the wall-clock the
+    # slowest batch rather than the sum.
+    pending: list[tuple[object, list[dict]]] = []
     for chunk_start in range(0, len(batch_requests), BATCH_MAX_REQUESTS):
         chunk = batch_requests[chunk_start:chunk_start + BATCH_MAX_REQUESTS]
         print(f"Submitting batch of {len(chunk)} requests "
               f"({chunk_start + 1}-{chunk_start + len(chunk)} of {len(batch_requests)})...")
         batch = client_anthropic.messages.batches.create(requests=chunk)
         stats.batches_submitted += 1
-        print(f"  batch id: {batch.id} -- polling every {poll_interval}s "
-              f"(processing_status starts as '{batch.processing_status}')")
+        print(f"  batch id: {batch.id} (processing_status starts as '{batch.processing_status}')")
+        pending.append((batch, chunk))
+    print(f"Polling {len(pending)} batch(es) every {poll_interval}s...")
 
-        deadline = time.monotonic() + MAX_POLL_SECONDS
-        while True:
+    deadline = time.monotonic() + MAX_POLL_SECONDS
+    while pending:
+        still_pending: list[tuple[object, list[dict]]] = []
+        for batch, chunk in pending:
             batch = client_anthropic.messages.batches.retrieve(batch.id)
-            if batch.processing_status == "ended":
-                break
-            if time.monotonic() > deadline:
+            if batch.processing_status != "ended":
+                still_pending.append((batch, chunk))
+                continue
+            counts = batch.request_counts
+            print(f"  batch {batch.id} done: succeeded={counts.succeeded} "
+                  f"errored={counts.errored} canceled={counts.canceled} expired={counts.expired}")
+            _consume_batch_results(client_anthropic, client_supabase, batch.id, custom_id_map,
+                                   prompts, model, stats, regenerated)
+        pending = still_pending
+        if not pending:
+            break
+        if time.monotonic() > deadline:
+            for batch, chunk in pending:
                 print(f"  WARNING: batch {batch.id} did not finish within "
-                      f"{MAX_POLL_SECONDS}s -- leaving remaining rows for next run.")
+                      f"{MAX_POLL_SECONDS}s -- leaving its rows for the next run.")
                 for req in chunk:
                     provision_id = custom_id_map.get(req["custom_id"], req["custom_id"])
                     log_failure(provision_id, "batch poll timeout")
                     stats.failed += 1
-                break
-            time.sleep(poll_interval)
+            break
+        time.sleep(poll_interval)
 
-        if batch.processing_status != "ended":
-            continue
 
-        counts = batch.request_counts
-        print(f"  done: succeeded={counts.succeeded} errored={counts.errored} "
-              f"canceled={counts.canceled} expired={counts.expired}")
-
-        for item in client_anthropic.messages.batches.results(batch.id):
-            custom_id = item.custom_id
-            # Always resolve back to the real provision id -- never write a
-            # summary (or log a failure) under the sanitized custom_id.
-            provision_id = custom_id_map.get(custom_id, custom_id)
-            outcome = item.result
-            if outcome.type == "succeeded":
-                message = outcome.message
-                summary_text = _message_text(message)
-                stats.add_usage(message.usage)
-                if not summary_text:
-                    stats.failed += 1
-                    log_failure(provision_id, "empty response")
-                    continue
-                guard_and_write(client_anthropic, client_supabase, provision_id,
-                                prompts[provision_id], summary_text, model, stats, regenerated)
-            else:
+def _consume_batch_results(client_anthropic, client_supabase, batch_id: str,
+                           custom_id_map: dict[str, str], prompts: dict[str, PromptResult],
+                           model: str, stats: RunStats, regenerated: bool) -> None:
+    """Writes (or fails) every result of one ended batch."""
+    for item in client_anthropic.messages.batches.results(batch_id):
+        custom_id = item.custom_id
+        # Always resolve back to the real provision id -- never write a
+        # summary (or log a failure) under the sanitized custom_id.
+        provision_id = custom_id_map.get(custom_id, custom_id)
+        outcome = item.result
+        if outcome.type == "succeeded":
+            message = outcome.message
+            summary_text = _message_text(message)
+            stats.add_usage(message.usage)
+            if not summary_text:
                 stats.failed += 1
-                error_detail = getattr(getattr(outcome, "error", None), "message", outcome.type)
-                log_failure(provision_id, f"{outcome.type}: {error_detail}")
+                log_failure(provision_id, "empty response")
+                continue
+            guard_and_write(client_anthropic, client_supabase, provision_id,
+                            prompts[provision_id], summary_text, model, stats, regenerated)
+        else:
+            stats.failed += 1
+            error_detail = getattr(getattr(outcome, "error", None), "message", outcome.type)
+            log_failure(provision_id, f"{outcome.type}: {error_detail}")
 
 
 # --------------------------------------------------------------------------
