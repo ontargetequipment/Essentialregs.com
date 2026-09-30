@@ -54,6 +54,21 @@ async function embedQueries(texts: string[], key: string): Promise<number[][]> {
   return json.data.sort((a, b) => a.index - b.index).map((d) => d.embedding);
 }
 
+/**
+ * One hybrid search, retried on a Postgres statement timeout (the embedder
+ * and the neighbour rebuild can hold the database busy for minutes; a
+ * timed-out probe says nothing about the ranking).
+ */
+async function hybrid(supabase: ReturnType<typeof createClient>, args: Record<string, unknown>, label: string): Promise<Hit[]> {
+  for (let attempt = 1; ; attempt++) {
+    const { data, error } = await supabase.rpc("match_provisions_hybrid", args);
+    if (!error) return (data ?? []) as Hit[];
+    if (!/statement timeout/i.test(error.message) || attempt >= 4) throw new Error(`${label}: ${error.message}`);
+    console.error(`${label}: statement timeout (attempt ${attempt}), retrying...`);
+    await new Promise((r) => setTimeout(r, 5_000 * attempt));
+  }
+}
+
 function line(h: Hit, i: number): string {
   const score = h.score == null ? "kw" : h.score.toFixed(3);
   return `${i + 1}. \`${h.id}\` ${h.citation}${h.title ? ` — ${h.title}` : ""} (${score}${h.keyword_hit ? ", kw" : ""})`;
@@ -77,7 +92,7 @@ async function main(): Promise<void> {
   const askExpanded = askQuestions.map(expandAcronyms);
   const askEmbeddings = await embedQueries(askExpanded, voyageKey);
   for (let i = 0; i < askQuestions.length; i++) {
-    const { data, error } = await supabase.rpc("match_provisions_hybrid", {
+    const hits = await hybrid(supabase, {
       query_text: askExpanded[i],
       query_embedding: askEmbeddings[i],
       match_count: 10,
@@ -85,9 +100,7 @@ async function main(): Promise<void> {
       jurisdiction_filter: null,
       include_basis: false,
       keyword_query: keywordQuery(askQuestions[i]) || null,
-    });
-    if (error) throw new Error(`${askQuestions[i]}: ${error.message}`);
-    const hits = (data ?? []) as Hit[];
+    }, askQuestions[i]);
     out.push(`**${askQuestions[i]}**`, "");
     hits.forEach((h, j) => out.push(line(h, j)));
     const seen = WATCH.filter((w) => hits.some((h) => h.id === w || h.id.startsWith(`${w}-`)));
@@ -100,7 +113,7 @@ async function main(): Promise<void> {
   const rows: { q: string; pass: boolean; matchRank: number | null; failures: string[]; ids: string[]; top: number | null }[] = [];
   for (let i = 0; i < EVAL_QUESTIONS.length; i++) {
     const e = EVAL_QUESTIONS[i];
-    const { data, error } = await supabase.rpc("match_provisions_hybrid", {
+    const hits = await hybrid(supabase, {
       query_text: expanded[i],
       query_embedding: embeddings[i],
       match_count: rowsNeeded(e),
@@ -108,9 +121,7 @@ async function main(): Promise<void> {
       jurisdiction_filter: null,
       include_basis: e.includeBasis ?? false,
       keyword_query: keywordQuery(e.q) || null,
-    });
-    if (error) throw new Error(`${e.q}: ${error.message}`);
-    const hits = (data ?? []) as Hit[];
+    }, e.q);
     const r = evaluateQuestion(e, hits);
     rows.push({ q: e.q, pass: r.pass, matchRank: r.matchRank, failures: r.failures, ids: hits.map((h) => h.id), top: hits[0]?.score ?? null });
   }
