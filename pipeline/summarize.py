@@ -1344,6 +1344,11 @@ def fetch_meta(client, reg: Optional[str]) -> dict[str, dict]:
     Scoped to one regulation's id prefix when --reg is given; otherwise the
     whole table, paginated past PostgREST's row cap.
 
+    Pages are ordered by (sort_order, id): sort_order alone is far from
+    unique (2026-09-30: 36,517 rows share 6,754 values), and PostgREST's
+    range() over a non-unique order can skip or repeat rows between pages
+    -- the first --parents dry run lost 4 of 3,163 parents that way.
+
     full_text is included so build_prompt can show the immediate parent
     paragraph's opening words -- a sub-paragraph like "(1) ..." often only
     makes sense against its parent's scoping clause, and without it the
@@ -1356,7 +1361,7 @@ def fetch_meta(client, reg: Optional[str]) -> dict[str, dict]:
         q = client.table("provisions").select("id, parent_id, citation, title, full_text, sort_order")
         if like_prefix:
             q = q.like("id", f"{like_prefix}%")
-        q = q.order("sort_order").range(start, start + META_PAGE_SIZE - 1)
+        q = q.order("sort_order").order("id").range(start, start + META_PAGE_SIZE - 1)
         rows = q.execute().data or []
         for row in rows:
             meta[row["id"]] = row
@@ -1452,7 +1457,7 @@ def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int
                  .not_.is_("ai_summary", "null"))
             if like_prefix:
                 q = q.like("id", f"{like_prefix}%")
-            q = q.order("sort_order").range(start, start + DB_PAGE_SIZE - 1)
+            q = q.order("sort_order").order("id").range(start, start + DB_PAGE_SIZE - 1)
             rows = q.execute().data or []
             for row in rows:
                 if row["id"] not in parent_ids:
@@ -1499,7 +1504,7 @@ def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int
             q = q.like("id", f"{like_prefix}%")
         if not force:
             q = q.is_("ai_summary", "null")
-        q = q.order("sort_order").range(start, start + DB_PAGE_SIZE - 1)
+        q = q.order("sort_order").order("id").range(start, start + DB_PAGE_SIZE - 1)
         rows = q.execute().data or []
         for row in rows:
             yield row
