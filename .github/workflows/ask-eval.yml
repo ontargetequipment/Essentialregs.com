@@ -1,0 +1,49 @@
+name: Ask eval
+
+# Scores Ask the way /admin/semantic-eval does (same questions, expansion,
+# RPC and pass rules; scripts/ask-eval.ts) and prints the top 10 for a few
+# fixed questions, without a browser session. Manual only. Read-only apart
+# from the search_queries log rows (mode='eval') the eval page also writes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ask:
+        description: "Extra Ask questions to print the top 10 for, separated by ' | '. Leave blank for the three standard ones."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the eval
+        env:
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ASK: ${{ inputs.ask }}
+        run: |
+          ARGS=()
+          if [ -n "$ASK" ]; then
+            IFS='|' read -ra QS <<< "$ASK"
+            for q in "${QS[@]}"; do
+              q="$(echo "$q" | sed 's/^ *//;s/ *$//')"
+              [ -n "$q" ] && ARGS+=(--ask "$q")
+            done
+          fi
+          npx tsx scripts/ask-eval.ts "${ARGS[@]}"
