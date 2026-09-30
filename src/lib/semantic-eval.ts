@@ -8,12 +8,108 @@
  * several paragraphs in that section are legitimate answers.
  *
  * Target from the plan: ≥ 17 of 20 pass. Run at /admin/semantic-eval.
+ *
+ * The last three (Ask Track A, 30 Sep 2026) are the outside reviewer's
+ * questions, pinned with `forbid` / `checks` so the ranking migrations
+ * 20260930002750..20260930003741 cannot silently regress: no GP03 or closed
+ * GP09/GP10 row leading "When is a GP01 required?", GP12 and Reg 26 above the
+ * closed permits for the engine question, and real federal rows (not a
+ * Statement of Basis) for "Colorado and federal ... storage vessels".
  */
 export type EvalQuestion = {
   q: string;
+  /** Any hit whose id starts with one of these, within the top `topN`, passes. */
   expect: string[];
   note: string;
+  /** Window for `expect` (and for `checks` entries that name none). Default DEFAULT_TOP_N. */
+  topN?: number;
+  /** No hit whose id starts with one of these may appear within the top `forbidTopN`. */
+  forbid?: string[];
+  /** Window for `forbid`. Default: `topN`. */
+  forbidTopN?: number;
+  /** Further conditions, all of which must hold. */
+  checks?: EvalCheck[];
 };
+
+/**
+ * One extra condition on a question's hits. `topN` defaults to the
+ * question's window. All optional and backwards-compatible: the original
+ * 24 questions use none of them.
+ */
+export type EvalCheck =
+  /** at least one hit whose id starts with one of the prefixes (a second required group) */
+  | { any: string[]; topN?: number }
+  /** no hit whose id starts with one of the prefixes */
+  | { none: string[]; topN?: number }
+  /** no Statement-of-Basis row (is_basis) */
+  | { noBasis: true; topN?: number }
+  /** at least this many rows with jurisdiction_level = 'federal' */
+  | { minFederal: number; topN?: number };
+
+export const DEFAULT_TOP_N = 5;
+
+/** The fields of a hit the evaluator reads (a subset of SemanticHit). */
+export type EvalHit = {
+  id: string;
+  is_basis?: boolean | null;
+  jurisdiction_level?: string | null;
+};
+
+export type EvalResult = {
+  pass: boolean;
+  /** 1-based rank of the first `expect` hit, or null */
+  matchRank: number | null;
+  /** one line per condition that failed; empty when pass */
+  failures: string[];
+};
+
+/** How many rows the question needs fetched: the widest of its windows. */
+export function rowsNeeded(e: EvalQuestion): number {
+  const top = e.topN ?? DEFAULT_TOP_N;
+  let n = Math.max(top, e.forbidTopN ?? top);
+  for (const c of e.checks ?? []) n = Math.max(n, c.topN ?? top);
+  return n;
+}
+
+/**
+ * Scores one question's hits (in rank order) against its expectations.
+ * Pure, so it can be tested without a database; /admin/semantic-eval calls
+ * it with the live RPC output.
+ */
+export function evaluateQuestion(e: EvalQuestion, hits: EvalHit[]): EvalResult {
+  const top = e.topN ?? DEFAULT_TOP_N;
+  const startsWithAny = (h: EvalHit, prefixes: string[]) => prefixes.some((p) => h.id.startsWith(p));
+  const failures: string[] = [];
+
+  const idx = hits.slice(0, top).findIndex((h) => startsWithAny(h, e.expect));
+  const matchRank = idx >= 0 ? idx + 1 : null;
+  if (matchRank == null) failures.push(`none of ${e.expect.join(", ")} in the top ${top}`);
+
+  if (e.forbid && e.forbid.length > 0) {
+    const n = e.forbidTopN ?? top;
+    const bad = hits.slice(0, n).filter((h) => startsWithAny(h, e.forbid ?? []));
+    if (bad.length > 0) failures.push(`forbidden in the top ${n}: ${bad.map((h) => h.id).join(", ")}`);
+  }
+
+  for (const c of e.checks ?? []) {
+    const n = c.topN ?? top;
+    const window = hits.slice(0, n);
+    if ("any" in c) {
+      if (!window.some((h) => startsWithAny(h, c.any))) failures.push(`none of ${c.any.join(", ")} in the top ${n}`);
+    } else if ("none" in c) {
+      const bad = window.filter((h) => startsWithAny(h, c.none));
+      if (bad.length > 0) failures.push(`forbidden in the top ${n}: ${bad.map((h) => h.id).join(", ")}`);
+    } else if ("noBasis" in c) {
+      const bad = window.filter((h) => h.is_basis === true);
+      if (bad.length > 0) failures.push(`Statement of Basis in the top ${n}: ${bad.map((h) => h.id).join(", ")}`);
+    } else if ("minFederal" in c) {
+      const got = window.filter((h) => h.jurisdiction_level === "federal").length;
+      if (got < c.minFederal) failures.push(`${got} federal rows in the top ${n}; need ${c.minFederal}`);
+    }
+  }
+
+  return { pass: failures.length === 0, matchRank, failures };
+}
 
 export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
@@ -135,5 +231,32 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     q: "What are the requirements for loading gasoline into a tank truck at a bulk plant?",
     expect: ["sec-24-B-IV", "sec-24-B-APPENDIX"],
     note: "Reg 24 Part B IV petroleum liquid storage and transfer",
+  },
+  // ---- Ask Track A regression checks (reviewer questions, 30 Sep 2026) ----
+  {
+    q: "When is a GP01 required?",
+    expect: ["sec-gp01-I-A", "sec-gp01-I-E"],
+    forbid: ["sec-gp03-", "sec-gp10-"],
+    note: "GP01 I.A / I.E applicability lead; no GP03 (dust permit, word-only match) or closed GP10 row in the top 5 (20260930003557, 20260930003325)",
+  },
+  {
+    q: "What regulations apply to a natural gas-fired engine?",
+    expect: ["sec-gp12-", "sec-26-"],
+    topN: 10,
+    forbid: ["sec-gp09-", "sec-gp10-"],
+    forbidTopN: 3,
+    checks: [{ any: ["sec-gp12-"] }, { any: ["sec-26-"] }],
+    note: "GP12 and Reg 26 both in the top 10; the closed GP09 / GP10 never in the top 3 (20260930003325)",
+  },
+  {
+    q: "What Colorado and federal requirements could apply to storage vessels?",
+    expect: ["sec-gp08-", "sec-gp05-"],
+    topN: 10,
+    checks: [
+      { any: ["sec-oooob-60.5365b", "sec-oooob-60.5395b", "sec-ooooa-60.5365a", "sec-ooooa-60.5395a"] },
+      { noBasis: true, topN: 5 },
+      { minFederal: 3 },
+    ],
+    note: "A storage-tank general permit (GP08 / GP05) and an OOOOa/OOOOb storage-vessel section in the top 10; no Statement of Basis in the top 5; at least 3 federal rows in the top 10 (20260930002750, 20260930003040)",
   },
 ];

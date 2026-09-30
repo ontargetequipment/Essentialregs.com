@@ -3,12 +3,12 @@ import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { embedQueries, hrefForHit, regLabel, type SemanticHit } from "@/lib/semantic";
 import { expandAcronyms, keywordQuery } from "@/lib/acronyms";
-import { EVAL_QUESTIONS } from "@/lib/semantic-eval";
+import { DEFAULT_TOP_N, EVAL_QUESTIONS, evaluateQuestion, rowsNeeded } from "@/lib/semantic-eval";
 
 export const metadata = { title: "Ask acceptance test" };
 export const dynamic = "force-dynamic";
 
-const TOP_N = 5;
+const TOP_N = DEFAULT_TOP_N;
 /** ≥ 85% of the list (17/20 in the original plan). */
 const PASS_TARGET = Math.ceil(EVAL_QUESTIONS.length * 0.85);
 
@@ -19,6 +19,10 @@ type Row = {
   hits: SemanticHit[];
   pass: boolean;
   matchRank: number | null;
+  /** why it failed, one line per condition (empty on a pass) */
+  failures: string[];
+  /** rows fetched for this question (5, or wider when the question asks) */
+  window: number;
 };
 
 /**
@@ -40,10 +44,13 @@ export default async function SemanticEvalPage() {
     rows = await Promise.all(
       EVAL_QUESTIONS.map(async (e, i) => {
         // Same call the Ask tab makes (hybrid: full-text + vector, basis demoted).
+        // A question with a wider window (top 10) or a forbid list fetches
+        // as many rows as its widest condition needs; the rest fetch TOP_N.
+        const window = rowsNeeded(e);
         const { data, error } = await admin.rpc("match_provisions_hybrid", {
           query_text: expanded[i],
           query_embedding: embeddings[i],
-          match_count: TOP_N,
+          match_count: window,
           reg_filter: null,
           jurisdiction_filter: null,
           include_basis: true,
@@ -51,8 +58,8 @@ export default async function SemanticEvalPage() {
         });
         if (error) throw new Error(`${e.q}: ${error.message}`);
         const hits = (data ?? []) as SemanticHit[];
-        const idx = hits.findIndex((h) => e.expect.some((p) => h.id.startsWith(p)));
-        return { q: e.q, note: e.note, expect: e.expect, hits, pass: idx >= 0, matchRank: idx >= 0 ? idx + 1 : null };
+        const result = evaluateQuestion(e, hits);
+        return { q: e.q, note: e.note, expect: e.expect, hits, window, ...result };
       })
     );
     await admin.from("search_queries").insert(
@@ -74,7 +81,7 @@ export default async function SemanticEvalPage() {
       <h1 className="text-2xl font-bold text-zinc-900">Ask acceptance test</h1>
       <p className="mt-2 text-sm text-zinc-600">
         {EVAL_QUESTIONS.length} real compliance questions; a question passes when an expected provision appears in the
-        top {TOP_N}. Target: {PASS_TARGET} of {EVAL_QUESTIONS.length}. Every load re-runs the set (about {(EVAL_QUESTIONS.length * 30 / 1e6 * 0.02 * 100).toFixed(4)}¢).
+        top {TOP_N} (a few look at the top 10, or also forbid a provision). Target: {PASS_TARGET} of {EVAL_QUESTIONS.length}. Every load re-runs the set (about {(EVAL_QUESTIONS.length * 30 / 1e6 * 0.02 * 100).toFixed(4)}¢).
       </p>
 
       {fatal && <p className="mt-6 rounded-md bg-red-50 p-4 text-sm text-red-700">Run failed: {fatal}</p>}
@@ -105,6 +112,16 @@ export default async function SemanticEvalPage() {
                 {r.pass ? `PASS (rank ${r.matchRank})` : "MISS"}
               </span>
             </div>
+            {r.failures.length > 0 && (
+              <ul className="mt-2 list-disc pl-5 text-xs text-amber-900">
+                {r.failures.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+            )}
+            {r.window !== TOP_N && (
+              <p className="mt-2 text-xs text-zinc-500">Top {r.window} shown: this question&apos;s conditions look past the top {TOP_N}.</p>
+            )}
             <ol className="mt-3 flex flex-col gap-1 text-sm">
               {r.hits.map((h, j) => {
                 const expected = r.expect.some((p) => h.id.startsWith(p));

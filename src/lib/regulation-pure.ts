@@ -294,11 +294,34 @@ const GP_TRAILING = /\s*[—-]\s*(?:GP\d{2}\s+)?Issuance\s+(\d+),\s+(.+)$/i;
 
 // Display-only addendum for permits CDPHE has closed to new registrations
 // (existing registrations stay active) -- see GP12, which replaces GP09/GP10
-// for new applicants. Never affects what's stored, only the card subtitle.
+// for new applicants. Never affects what's stored, only the card subtitle
+// and, through isClosedPermit(), the "Closed to new registrations" badge on
+// Ask, keyword and related-provision cards.
+// Keep in sync with public.closed_permit_reg_keys() (migration 20260930003325).
 const GP_CLOSURE_NOTE: Record<string, string> = {
   gp09: " · closed to new registrations July 15, 2026",
   gp10: " · closed to new registrations July 15, 2026",
 };
+
+/** The reg keys GP_CLOSURE_NOTE covers, lower-case, in key order. The one app-side list; the DB's is closed_permit_reg_keys(). */
+export const CLOSED_PERMIT_REG_KEYS: readonly string[] = Object.keys(GP_CLOSURE_NOTE);
+
+/**
+ * Whether a regulation key ("gp09", "GP10") is a general permit CDPHE has
+ * closed to new registrations. Built from GP_CLOSURE_NOTE, never a second
+ * list. Null / unknown keys are not closed.
+ */
+export function isClosedPermit(regKey: string | null | undefined): boolean {
+  if (!regKey) return false;
+  return Object.prototype.hasOwnProperty.call(GP_CLOSURE_NOTE, regKey.toLowerCase());
+}
+
+/** The badge a result card shows for a closed permit; the tooltip is the one sentence the reader header also implies. */
+export const CLOSED_PERMIT_BADGE = {
+  label: "Closed to new registrations",
+  title:
+    "CDPHE closed this general permit to new registrations on July 15, 2026; existing registrations remain active. GP12 replaced GP09 and GP10 for new applicants.",
+} as const;
 
 // AQCC documents that carry NO regulation number and are keyed by name
 // instead. Batch 6 added "aqs" (Air Quality Standards, Designations and
