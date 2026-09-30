@@ -24,7 +24,10 @@
 -- nobody had a query that would have said so. Check 17 tests the
 -- oil-and-gas tie-break on that ranking (backlog #21) and, unlike 16, takes
 -- its probe from Step 0b, which runs as the subscriber: the pool-stage
--- multipliers only mean anything for a caller who gets breadcrumbs. Run the
+-- multipliers only mean anything for a caller who gets breadcrumbs. Check 18
+-- pins the closed-permit list (Ask Track A, 20260930003325): the database's
+-- closed_permit_reg_keys() and the app's GP_CLOSURE_NOTE must name the same
+-- permits, so a change to either fails loudly until both move. Run the
 -- whole file, top to bottom, in one go: Steps 0 and 0b must run before the
 -- main query.
 -- ============================================================================
@@ -422,6 +425,16 @@ checks as (
     from pg_temp.keyword_oil_gas_top3 t
     where t.note is null and t.reg_key = any (public.non_oil_gas_reg_keys())
   ) p
+
+  union all
+  select 18, 'GUARD', 'closed_permit_keys_in_sync', count(*), 0,
+         'Ask Track A (20260930003325). public.closed_permit_reg_keys() -- the permits match_provisions_hybrid multiplies by 0.6 unless the question names them -- must be exactly {gp09,gp10}, the keys of GP_CLOSURE_NOTE in src/lib/regulation-pure.ts (the "Closed to new registrations" badge; scripts/closed-permit.test.ts pins that side). When CDPHE closes or reopens a permit, change both and this literal together. Counts 1 when the sorted array differs. Expect 0.'
+         || coalesce(' Got: {' || (select string_agg(k, ',' order by k) from unnest(public.closed_permit_reg_keys()) k) || '}', ' Got: null')
+  from (
+    select 1
+    where (select array_agg(k order by k) from unnest(public.closed_permit_reg_keys()) k)
+          is distinct from array['gp09', 'gp10']::text[]
+  ) d
 )
 select severity, check_name, n,
        case when severity in ('ERROR','GUARD') and n <> expected then '*** CHECK ***'

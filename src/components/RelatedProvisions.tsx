@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchRelated, fetchRelatedTeaser, hrefForRelated, type RelatedItem } from "@/lib/related";
+import { CLOSED_PERMIT_BADGE, isClosedPermit } from "@/lib/regulation-pure";
 
 // Jurisdiction badges. Federal and ECMC keep the blue/violet the reader's own
 // related panel uses (.related-badge-federal / -ecmc in reader.css) so the
@@ -53,6 +54,14 @@ export async function RelatedProvisions({
                 </span>
                 <span className="text-xs text-muted">{item.regLabel}</span>
                 <span className="font-mono text-xs text-tag group-hover:underline">{item.citation}</span>
+                {isClosedPermit(item.reg_key) && (
+                  <span
+                    className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted"
+                    title={CLOSED_PERMIT_BADGE.title}
+                  >
+                    {CLOSED_PERMIT_BADGE.label}
+                  </span>
+                )}
               </div>
               {item.path && <p className="mt-0.5 text-xs leading-snug text-muted">{item.path}</p>}
               {item.title && (

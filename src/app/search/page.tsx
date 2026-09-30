@@ -2,7 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
 import {
+  CLOSED_PERMIT_BADGE,
   fetchRegulationList,
+  isClosedPermit,
   isHeadingOnlyText,
   normalizeCitationLabel,
   regKeyOf,
@@ -479,6 +481,11 @@ export default async function SearchPage(props: PageProps<"/search">) {
                           Statement of basis
                         </span>
                       )}
+                      {isClosedPermit(hit.reg_key) && (
+                        <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title={CLOSED_PERMIT_BADGE.title}>
+                          {CLOSED_PERMIT_BADGE.label}
+                        </span>
+                      )}
                     </p>
                     {hit.path && <p className="mt-1 text-xs leading-snug text-muted">{hit.path}</p>}
                     {heading && (
@@ -543,7 +550,23 @@ export default async function SearchPage(props: PageProps<"/search">) {
                           Statement of basis
                         </span>
                       )}
-                      <span className="ml-auto text-xs tabular-nums text-muted" title={hit.keyword_hit ? "Matched your words and your meaning" : "How close this provision's meaning is to your question"}>
+                      {isClosedPermit(hit.reg_key) && (
+                        <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title={CLOSED_PERMIT_BADGE.title}>
+                          {CLOSED_PERMIT_BADGE.label}
+                        </span>
+                      )}
+                      {/* Since 20260930003557 a keyword-only row carries its real cosine, so the
+                          null branch is rare: only a row with no embedding still lands here. */}
+                      <span
+                        className="ml-auto text-xs tabular-nums text-muted"
+                        title={
+                          hit.score == null
+                            ? "Matched your words; no meaning score available for this provision."
+                            : hit.keyword_hit
+                              ? "Matched your words and your meaning"
+                              : "How close this provision's meaning is to your question"
+                        }
+                      >
                         {hit.score == null ? "keyword match" : `${Math.round(hit.score * 100)}% match`}
                         {hit.keyword_hit && hit.score != null ? " · words" : ""}
                       </span>
