@@ -6,8 +6,14 @@ citation, title, immediate parent's opening words, the tag-stripped
 full_text, and the plain-English ai_summary; embeds it with Voyage AI
 (voyage-3.5-lite, 1024 dims); and upserts the vectors into
 `provision_embeddings`. Long rows are split into overlapping chunks, and
-chunk 0 always carries the summary. Every chunk is content-hashed so
-re-runs only re-embed rows whose text or summary actually changed.
+chunk 0 always carries the summary. The summary's share of the embedding
+text is capped at its first SUMMARY_EMBED_CHARS (600) characters, cut back
+to a sentence boundary: the Phase 0 parent summaries (Oct 2026) run to
+1,000-3,000 characters, and a long gloss drowned the row's own citation,
+title and text in the vector (the OOOOb storage-vessel sections fell out of
+Ask's top 10). The reader still shows the whole summary. Every chunk is
+content-hashed so re-runs only re-embed rows whose text or summary (as
+embedded) actually changed.
 
 After the embeddings are written it calls the `recompute_provision_neighbors`
 RPC (supabase/migrations/006_neighbors_rpc.sql) so the "Related provisions"
@@ -76,6 +82,7 @@ CHARS_PER_TOKEN = 3.8            # for dry-run estimates only; real runs use API
 MAX_CHUNK_CHARS = 6000           # ≈1,500 tokens
 CHUNK_OVERLAP_CHARS = 600        # ≈150 tokens
 PARENT_TEXT_CHARS = 300          # opening words of the immediate parent shown for scope
+SUMMARY_EMBED_CHARS = 600        # the summary's share of chunk 0, cut back to a sentence boundary
 MIN_BODY_CHARS = 1               # rows with no text at all still get embedded (title + summary)
 
 # --- Batching ------------------------------------------------------------
@@ -183,9 +190,29 @@ def build_header(provision: dict, parent: Optional[dict]) -> str:
     return "\n".join(lines)
 
 
+SENTENCE_END_RE = re.compile(r"[.!?]['\")\]]?(?=\s|$)")
+
+
+def cap_summary(summary: str, limit: int = SUMMARY_EMBED_CHARS) -> str:
+    """The first `limit` characters of `summary`, cut back to the last
+    sentence boundary inside that window, so the embedding carries the
+    summary's opening sentences rather than a truncated clause. A summary
+    with no sentence end inside the window is cut at the last word break
+    instead; one that fits is returned unchanged."""
+    summary = (summary or "").strip()
+    if len(summary) <= limit:
+        return summary
+    window = summary[:limit + 1]
+    ends = [m.end() for m in SENTENCE_END_RE.finditer(window) if m.end() <= limit]
+    if ends:
+        return summary[:ends[-1]].strip()
+    cut = window.rfind(" ")
+    return (summary[:cut] if cut > 0 else summary[:limit]).strip()
+
+
 def build_chunks(provision: dict, parent: Optional[dict], model: str) -> list[Chunk]:
     header = build_header(provision, parent)
-    summary = (provision.get("ai_summary") or "").strip()
+    summary = cap_summary(provision.get("ai_summary") or "")
     if provision.get("summary_status") == "rejected":
         summary = ""
     body = strip_html(provision.get("full_text"))

@@ -67,6 +67,39 @@ def test_chunk0_has_header_summary_and_text():
     assert "Text: Owners shall inspect tanks." in c.text
 
 
+def test_summary_cap_cuts_at_a_sentence_boundary():
+    from embed import SUMMARY_EMBED_CHARS, cap_summary
+    short = "Inspect tanks. Keep records."
+    assert cap_summary(short) == short
+    s1 = "A" * 300 + ". "            # sentence 1 ends at 301
+    s2 = "B" * 250 + "! "            # sentence 2 ends at 553
+    s3 = "C" * 200 + "."             # would run past 600
+    capped = cap_summary(s1 + s2 + s3)
+    assert capped == (s1 + s2).strip()
+    assert len(capped) <= SUMMARY_EMBED_CHARS
+    # an abbreviation-like period mid-window is still a boundary only before whitespace
+    assert cap_summary("x" * 590 + " 3.5 pct " + "y" * 100).endswith("x" * 590) is False
+    # no sentence end inside the window: cut at the last word break
+    words = " ".join(["word"] * 200)
+    capped = cap_summary(words)
+    assert len(capped) <= SUMMARY_EMBED_CHARS and not capped.endswith("wor") and capped.endswith("word")
+    # a closing quote or paren after the period stays with the sentence
+    assert cap_summary("P" * 595 + ".) " + "Q" * 50) == "P" * 595 + ".)"
+
+
+def test_chunk0_embeds_only_the_capped_summary():
+    long_summary = ("First sentence about storage vessels. " * 30).strip()   # ~1,100 chars
+    [c] = build_chunks(row(summary=long_summary), None, MODEL)
+    embedded = c.text.split("Summary: ", 1)[1].split("\nText:", 1)[0]
+    assert len(embedded) <= 600
+    assert embedded.endswith("vessels.")
+    assert embedded == long_summary[: len(embedded)]
+    # the cap is part of the hash: the same row with a different tail past the
+    # cap hashes the same, so the gate does not re-embed it
+    [c2] = build_chunks(row(summary=long_summary + " Trailing sentence that is past the cap."), None, MODEL)
+    assert c2.text_hash == c.text_hash
+
+
 def test_rejected_summary_is_excluded():
     [c] = build_chunks(row(status="rejected"), None, MODEL)
     assert "Summary:" not in c.text

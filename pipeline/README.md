@@ -306,12 +306,20 @@ rebuilds `provision_neighbors` (the "Related provisions" panel) through the
 and `006_neighbors_rpc.sql`.
 
 What goes into each embedding: `<Colorado|Federal> regulation <key>: citation — title`,
-the first 300 characters of the immediate parent paragraph, the row's
-`ai_summary` (unless its `summary_status` is `rejected`), and the tag-stripped
-`full_text`. Rows over 6,000 characters are split into overlapping chunks
-(~1,500 tokens, 150 overlap); chunk 0 always carries the summary. Each chunk
-is content-hashed with the model name, so a re-run only re-embeds rows whose
-text or summary changed (or everything, with `--force`).
+the first 300 characters of the immediate parent paragraph, the first 600
+characters of the row's `ai_summary` cut back to a sentence boundary (unless
+its `summary_status` is `rejected`), and the tag-stripped `full_text`. Rows
+over 6,000 characters are split into overlapping chunks (~1,500 tokens, 150
+overlap); chunk 0 always carries the summary. Each chunk is content-hashed
+with the model name, so a re-run only re-embeds rows whose text or embedded
+summary changed (or everything, with `--force`).
+
+The 600-character summary cap (`SUMMARY_EMBED_CHARS`) dates from the Phase 0
+parent regeneration (Oct 2026): parent summaries written with the children in
+view run to 1,000-3,000 characters, and embedding the whole gloss drowned the
+row's own citation, title and text, so the OOOOb storage-vessel sections fell
+out of Ask's top 10. The reader still shows the whole summary; only the
+vector sees the opening sentences.
 
 Secrets: `VOYAGE_API_KEY` (GitHub Actions secret and Vercel env var), plus the
 existing `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`. Never commit the key.
