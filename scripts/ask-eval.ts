@@ -14,7 +14,7 @@
  * from the search_queries log rows (mode='eval'), exactly like a page load.
  *
  *   npx tsx scripts/ask-eval.ts
- *   npx tsx scripts/ask-eval.ts --ask "When is a GP01 required?" --ask "..."
+ *   npx tsx scripts/ask-eval.ts --ask "When is a GP01 required?" --ask "..." --count 25
  */
 import { appendFileSync } from "node:fs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -71,13 +71,17 @@ async function hybrid(supabase: SupabaseClient, args: Record<string, unknown>, l
 
 function line(h: Hit, i: number): string {
   const score = h.score == null ? "kw" : h.score.toFixed(3);
-  return `${i + 1}. \`${h.id}\` ${h.citation}${h.title ? ` — ${h.title}` : ""} (${score}${h.keyword_hit ? ", kw" : ""})`;
+  return `${i + 1}. \`${h.id}\` [${h.jurisdiction_level ?? "?"}] ${h.citation}${h.title && h.title !== h.citation ? ` — ${h.title}` : ""} (${score}${h.keyword_hit ? ", kw" : ""})`;
 }
 
 async function main(): Promise<void> {
   const askArgs: string[] = [];
+  let askCount = 10;
   const argv = process.argv.slice(2);
-  for (let i = 0; i < argv.length; i++) if (argv[i] === "--ask" && argv[i + 1]) askArgs.push(argv[++i]);
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--ask" && argv[i + 1]) askArgs.push(argv[++i]);
+    else if (argv[i] === "--count" && argv[i + 1]) askCount = Math.min(Math.max(parseInt(argv[++i], 10) || 10, 1), 50);
+  }
   const askQuestions = askArgs.length ? askArgs : DEFAULT_ASK;
 
   const voyageKey = env("VOYAGE_API_KEY");
@@ -88,14 +92,14 @@ async function main(): Promise<void> {
   const out: string[] = [];
 
   // --- Ask top 10 -------------------------------------------------------
-  out.push("### Ask top 10 (hybrid, Statements of Basis hidden)", "");
+  out.push(`### Ask top ${askCount} (hybrid, Statements of Basis hidden)`, "");
   const askExpanded = askQuestions.map(expandAcronyms);
   const askEmbeddings = await embedQueries(askExpanded, voyageKey);
   for (let i = 0; i < askQuestions.length; i++) {
     const hits = await hybrid(supabase, {
       query_text: askExpanded[i],
       query_embedding: askEmbeddings[i],
-      match_count: 10,
+      match_count: askCount,
       reg_filter: null,
       jurisdiction_filter: null,
       include_basis: false,

@@ -36,9 +36,13 @@ on:
         required: false
         default: false
       ask:
-        description: "With ask_eval: extra questions to print the top 10 for, separated by ' | '."
+        description: "With ask_eval: extra questions to print the top N for, separated by ' | '."
         required: false
         default: ""
+      ask_count:
+        description: "With ask_eval: how many hits to print per Ask question (1-50)."
+        required: false
+        default: "10"
 
 jobs:
   # Scores Ask the way /admin/semantic-eval does (same questions, expansion,
@@ -67,8 +71,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ASK: ${{ inputs.ask }}
+          ASK_COUNT: ${{ inputs.ask_count }}
         run: |
           ARGS=()
+          if [ -n "$ASK_COUNT" ]; then ARGS+=(--count "$ASK_COUNT"); fi
           if [ -n "$ASK" ]; then
             IFS='|' read -ra QS <<< "$ASK"
             for q in "${QS[@]}"; do
