@@ -1,0 +1,75 @@
+name: Ask eval
+
+# Scores Ask the way /admin/semantic-eval does (same questions, acronym
+# expansion, question-map routing, RPC and pass rules) without a browser
+# session: scripts/ask-eval.ts. Since Ask Track B (1 Oct 2026) it is the
+# regression gate for every pull request to main (make the "Ask eval" check
+# required in the branch protection), and it still runs by hand with extra
+# questions to print the top N for.
+#
+# Cost and footprint: 27 + 3 Voyage query embeddings per run (a fraction of a
+# cent) and reads of the production database with the service role; the only
+# writes are the search_queries rows with mode='eval', exactly what a load of
+# the eval page writes. A Postgres statement timeout is retried by the script.
+# The script exits non-zero when a question outside KNOWN_FAILURES
+# (src/lib/semantic-eval.ts) fails; the score is printed either way.
+#
+# Secrets: VOYAGE_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY -- the same
+# three the embed workflow uses. A pull request from a fork has no secrets and
+# would fail at "VOYAGE_API_KEY is not set"; the repository takes no fork PRs.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ask:
+        description: "Extra questions to print the top N for, separated by ' | '."
+        required: false
+        default: ""
+      ask_count:
+        description: "How many hits to print per Ask question (1-50)."
+        required: false
+        default: "10"
+
+concurrency:
+  group: ask-eval-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ask_eval:
+    name: Ask eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the eval
+        env:
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ASK: ${{ inputs.ask }}
+          ASK_COUNT: ${{ inputs.ask_count }}
+        run: |
+          ARGS=()
+          if [ -n "$ASK_COUNT" ]; then ARGS+=(--count "$ASK_COUNT"); fi
+          if [ -n "$ASK" ]; then
+            IFS='|' read -ra QS <<< "$ASK"
+            for q in "${QS[@]}"; do
+              q="$(echo "$q" | sed 's/^ *//;s/ *$//')"
+              [ -n "$q" ] && ARGS+=(--ask "$q")
+            done
+          fi
+          npx tsx scripts/ask-eval.ts "${ARGS[@]}"

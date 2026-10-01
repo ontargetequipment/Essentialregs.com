@@ -2,16 +2,22 @@
  * Ask acceptance report from outside the app: the same 27 questions and
  * pass rules as /admin/semantic-eval (src/lib/semantic-eval.ts), the same
  * acronym expansion and keyword query (src/lib/acronyms.ts), the same
+ * question-map routing (src/lib/question-maps.ts, pure), the same
  * match_provisions_hybrid RPC with the same arguments, run with the service
  * role -- plus the top 10 for a few fixed questions, the way the Ask tab
  * asks (count=10, Statements of Basis hidden).
  *
  * Why it exists: the eval page needs an admin's browser session and the
  * previews sit behind Vercel auth, so a re-summarize or re-embed could not
- * be scored from CI. This runs in the "Ask eval" workflow with
- * VOYAGE_API_KEY / SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY and writes the
- * report to stdout and, when set, $GITHUB_STEP_SUMMARY. Read-only apart
- * from the search_queries log rows (mode='eval'), exactly like a page load.
+ * be scored from CI. This runs in the "Ask eval" workflow (every pull
+ * request to main, and by hand) with VOYAGE_API_KEY / SUPABASE_URL /
+ * SUPABASE_SERVICE_ROLE_KEY and writes the report to stdout and, when set,
+ * $GITHUB_STEP_SUMMARY. Read-only apart from the search_queries log rows
+ * (mode='eval'), exactly like a page load.
+ *
+ * Exit status (Ask Track B, 1 Oct 2026): non-zero when any question outside
+ * KNOWN_FAILURES fails, so the workflow is a regression gate; the score is
+ * printed either way.
  *
  *   npx tsx scripts/ask-eval.ts
  *   npx tsx scripts/ask-eval.ts --ask "When is a GP01 required?" --ask "..." --count 25
@@ -19,7 +25,8 @@
 import { appendFileSync } from "node:fs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expandAcronyms, keywordQuery } from "../src/lib/acronyms";
-import { EVAL_QUESTIONS, evaluateQuestion, rowsNeeded, type EvalHit } from "../src/lib/semantic-eval";
+import { matchQuestionMap } from "../src/lib/question-maps";
+import { EVAL_QUESTIONS, KNOWN_FAILURES, evaluateQuestion, rowsNeeded, type EvalHit } from "../src/lib/semantic-eval";
 
 // Mirrors EMBED_MODEL / EMBED_DIMS in src/lib/semantic.ts, which cannot be
 // imported here (it pulls in the Next.js server client).
@@ -108,13 +115,17 @@ async function main(): Promise<void> {
     out.push(`**${askQuestions[i]}**`, "");
     hits.forEach((h, j) => out.push(line(h, j)));
     const seen = WATCH.filter((w) => hits.some((h) => h.id === w || h.id.startsWith(`${w}-`)));
-    out.push("", `watched: ${seen.length ? seen.join(", ") : `none of ${WATCH.join(", ")}`}`, "");
+    out.push("", `watched: ${seen.length ? seen.join(", ") : `none of ${WATCH.join(", ")}`}`);
+    // The page's routing is pure, so the same call tells us which map the
+    // Ask tab would lay these hits out under.
+    const map = matchQuestionMap(askQuestions[i]);
+    out.push(`question map: ${map ? `${map.key} (${map.name})` : "none"}`, "");
   }
 
   // --- Eval ---------------------------------------------------------------
   const expanded = EVAL_QUESTIONS.map((e) => expandAcronyms(e.q));
   const embeddings = await embedQueries(expanded, voyageKey);
-  const rows: { q: string; pass: boolean; matchRank: number | null; failures: string[]; ids: string[]; top: number | null }[] = [];
+  const rows: { q: string; pass: boolean; known: boolean; matchRank: number | null; failures: string[]; ids: string[]; top: number | null }[] = [];
   for (let i = 0; i < EVAL_QUESTIONS.length; i++) {
     const e = EVAL_QUESTIONS[i];
     const hits = await hybrid(supabase, {
@@ -126,18 +137,29 @@ async function main(): Promise<void> {
       include_basis: e.includeBasis ?? false,
       keyword_query: keywordQuery(e.q) || null,
     }, e.q);
-    const r = evaluateQuestion(e, hits);
-    rows.push({ q: e.q, pass: r.pass, matchRank: r.matchRank, failures: r.failures, ids: hits.map((h) => h.id), top: hits[0]?.score ?? null });
+    // Same routing call the page makes (pure); only looked at by questions that set `map`.
+    const r = evaluateQuestion(e, hits, matchQuestionMap(e.q)?.key ?? null);
+    rows.push({ q: e.q, pass: r.pass, known: KNOWN_FAILURES.includes(e.q), matchRank: r.matchRank, failures: r.failures, ids: hits.map((h) => h.id), top: hits[0]?.score ?? null });
   }
   const passed = rows.filter((r) => r.pass).length;
+  const mapChecked = EVAL_QUESTIONS.filter((e) => e.map !== undefined).length;
   out.push(`### Ask acceptance test: ${passed} of ${rows.length} passed`, "");
-  out.push("| # | question | pass | rank |", "|---|---|---|---|");
-  rows.forEach((r, i) => out.push(`| ${i + 1} | ${r.q} | ${r.pass ? "✅" : "❌"} | ${r.matchRank ?? "–"} |`));
+  out.push("| # | question | pass | rank | map |", "|---|---|---|---|---|");
+  rows.forEach((r, i) => {
+    const e = EVAL_QUESTIONS[i];
+    const mapCell = e.map === undefined ? "" : `${e.map === null ? "none" : e.map} ${r.failures.some((f) => f.startsWith("routed to")) ? "❌" : "✅"}`;
+    out.push(`| ${i + 1} | ${r.q} | ${r.pass ? "✅" : r.known ? "❌ (known)" : "❌"} | ${r.matchRank ?? "–"} | ${mapCell} |`);
+  });
   const failed = rows.filter((r) => !r.pass);
   if (failed.length) {
     out.push("", "Failed:");
-    for (const r of failed) out.push(`- **${r.q}** — ${r.failures.join("; ")}; top: ${r.ids.slice(0, 5).join(", ")}`);
+    for (const r of failed) out.push(`- **${r.q}**${r.known ? " (known failure)" : ""} — ${r.failures.join("; ")}; top: ${r.ids.slice(0, 5).join(", ")}`);
   }
+  const unexpected = failed.filter((r) => !r.known);
+  out.push(
+    "",
+    `${mapChecked} question-map checks; ${unexpected.length} unexpected ${unexpected.length === 1 ? "failure" : "failures"} (known failures: ${KNOWN_FAILURES.length}).`
+  );
 
   // Same log rows the page writes (mode='eval'); best effort.
   const { error: logErr } = await supabase
@@ -148,6 +170,10 @@ async function main(): Promise<void> {
   const text = out.join("\n");
   console.log(text);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, text + "\n");
+  if (unexpected.length > 0) {
+    console.error(`ask-eval: ${unexpected.length} question(s) outside KNOWN_FAILURES failed: ${unexpected.map((r) => r.q).join(" | ")}`);
+    process.exitCode = 1;
+  }
 }
 
 main().catch((e) => {

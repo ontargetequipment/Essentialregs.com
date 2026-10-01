@@ -3,7 +3,8 @@ import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { embedQueries, hrefForHit, regLabel, type SemanticHit } from "@/lib/semantic";
 import { expandAcronyms, keywordQuery } from "@/lib/acronyms";
-import { DEFAULT_TOP_N, EVAL_QUESTIONS, evaluateQuestion, rowsNeeded } from "@/lib/semantic-eval";
+import { matchQuestionMap } from "@/lib/question-maps";
+import { DEFAULT_TOP_N, EVAL_QUESTIONS, KNOWN_FAILURES, evaluateQuestion, rowsNeeded } from "@/lib/semantic-eval";
 
 export const metadata = { title: "Ask acceptance test" };
 export const dynamic = "force-dynamic";
@@ -23,6 +24,10 @@ type Row = {
   failures: string[];
   /** rows fetched for this question (5, or wider when the question asks) */
   window: number;
+  /** the question map the question routes to (src/lib/question-maps.ts), or null */
+  mapKey: string | null;
+  /** the question is in KNOWN_FAILURES: a miss is expected and does not fail the CI gate */
+  known: boolean;
 };
 
 /**
@@ -59,8 +64,10 @@ export default async function SemanticEvalPage() {
         });
         if (error) throw new Error(`${e.q}: ${error.message}`);
         const hits = (data ?? []) as SemanticHit[];
-        const result = evaluateQuestion(e, hits);
-        return { q: e.q, note: e.note, expect: e.expect, hits, window, ...result };
+        // Same pure routing call the Ask page makes; checked only by questions that set `map`.
+        const mapKey = matchQuestionMap(e.q)?.key ?? null;
+        const result = evaluateQuestion(e, hits, mapKey);
+        return { q: e.q, note: e.note, expect: e.expect, hits, window, mapKey, known: KNOWN_FAILURES.includes(e.q), ...result };
       })
     );
     await admin.from("search_queries").insert(
@@ -110,7 +117,7 @@ export default async function SemanticEvalPage() {
                 </p>
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${r.pass ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"}`}>
-                {r.pass ? `PASS (rank ${r.matchRank})` : "MISS"}
+                {r.pass ? `PASS (rank ${r.matchRank})` : r.known ? "MISS (known)" : "MISS"}
               </span>
             </div>
             {r.failures.length > 0 && (
@@ -122,6 +129,12 @@ export default async function SemanticEvalPage() {
             )}
             {r.window !== TOP_N && (
               <p className="mt-2 text-xs text-zinc-500">Top {r.window} shown: this question&apos;s conditions look past the top {TOP_N}.</p>
+            )}
+            {(r.mapKey || EVAL_QUESTIONS[i].map !== undefined) && (
+              <p className="mt-2 text-xs text-zinc-500">
+                Question map: <span className="font-mono">{r.mapKey ?? "none"}</span>
+                {EVAL_QUESTIONS[i].map !== undefined && ` (expected ${EVAL_QUESTIONS[i].map ?? "none"})`}
+              </p>
             )}
             <ol className="mt-3 flex flex-col gap-1 text-sm">
               {r.hits.map((h, j) => {

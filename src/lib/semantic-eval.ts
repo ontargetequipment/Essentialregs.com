@@ -1,6 +1,11 @@
 /**
  * Acceptance questions for Ask search (Phase 3/5 of the semantic-search
- * plan). Each is a question a Colorado oil & gas compliance person would
+ * plan). Since Ask Track B (1 Oct 2026) the set is also the pull-request
+ * gate: the "Ask eval" workflow runs scripts/ask-eval.ts on every PR to
+ * main and fails on any miss outside KNOWN_FAILURES; four questions also
+ * pin question-map routing (`map`).
+ *
+ * Original description: Each is a question a Colorado oil & gas compliance person would
  * actually type, with the provision(s) that should appear in the top 5,
  * given as id prefixes — any hit whose id starts with one of them passes.
  * Prefixes point at the *section* that governs the topic (e.g. Reg 7 Part B
@@ -35,7 +40,27 @@ export type EvalQuestion = {
    * set it.
    */
   includeBasis?: true;
+  /**
+   * Question-map routing (Ask Track B, src/lib/question-maps.ts). A string:
+   * matchQuestionMap(q) must return the map with that key (the API's
+   * map.key). null: no map may match. Absent: routing is not checked.
+   */
+  map?: string | null;
 };
+
+/**
+ * Questions that fail today and are allowed to: scripts/ask-eval.ts exits
+ * non-zero only for a failure outside this list, so the gate holds the line
+ * at the current score without pretending these pass. Each entry says why.
+ *
+ * - Civil penalties: the PHMSA enforcement sections (49 CFR Part 190) share
+ *   the question's vocabulary ("civil penalty", "violation") and outscore
+ *   Common Provisions III; nothing reaches cosine 0.5, so no keyword-only
+ *   row survives either. A Track B vocabulary problem (the Colorado text says
+ *   "penalty" in a Procedural Rules frame), not a ranking one; no SQL change
+ *   is planned for it.
+ */
+export const KNOWN_FAILURES: string[] = ["How does the Division assess civil penalties for a violation?"];
 
 /**
  * One extra condition on a question's hits. `topN` defaults to the
@@ -79,13 +104,21 @@ export function rowsNeeded(e: EvalQuestion): number {
 
 /**
  * Scores one question's hits (in rank order) against its expectations.
- * Pure, so it can be tested without a database; /admin/semantic-eval calls
- * it with the live RPC output.
+ * `mapKey` is the key of the question map the question routed to (null for
+ * none); it is only looked at when the question sets `map`. Pure, so it can
+ * be tested without a database; /admin/semantic-eval and scripts/ask-eval.ts
+ * call it with the live RPC output and matchQuestionMap(q).
  */
-export function evaluateQuestion(e: EvalQuestion, hits: EvalHit[]): EvalResult {
+export function evaluateQuestion(e: EvalQuestion, hits: EvalHit[], mapKey: string | null = null): EvalResult {
   const top = e.topN ?? DEFAULT_TOP_N;
   const startsWithAny = (h: EvalHit, prefixes: string[]) => prefixes.some((p) => h.id.startsWith(p));
   const failures: string[] = [];
+
+  if (e.map !== undefined && mapKey !== e.map) {
+    failures.push(
+      e.map === null ? `routed to question map "${mapKey}"; expected none` : `routed to ${mapKey === null ? "no question map" : `question map "${mapKey}"`}; expected "${e.map}"`
+    );
+  }
 
   const idx = hits.slice(0, top).findIndex((h) => startsWithAny(h, e.expect));
   const matchRank = idx >= 0 ? idx + 1 : null;
@@ -181,7 +214,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
     q: "What are the emission standards for a new natural gas fired compressor engine?",
     expect: ["sec-26-A", "sec-26-B-I", "sec-26-B-II", "sec-26-C-FEDJJJJ"],
-    note: "Reg 26 engines (Part A/B) and incorporated Subpart JJJJ",
+    map: "engines",
+    note: "Reg 26 engines (Part A/B) and incorporated Subpart JJJJ; routes to the engines question map",
   },
   {
     q: "What controls are required for a glycol dehydrator?",
@@ -191,7 +225,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
     q: "What venting and control requirements apply to a centrifugal compressor with wet seals?",
     expect: ["sec-7-B-II-J", "sec-oooob-60.5380b"],
-    note: "Reg 7 Part B II.J; OOOOb centrifugal compressors",
+    map: null,
+    note: "Reg 7 Part B II.J; OOOOb centrifugal compressors; a compressor question takes no engine map",
   },
   {
     q: "What do I have to do with the flowback during well completion?",
@@ -252,7 +287,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     forbid: ["sec-gp09-", "sec-gp10-"],
     forbidTopN: 3,
     checks: [{ any: ["sec-gp12-"] }, { any: ["sec-26-"] }],
-    note: "GP12 and Reg 26 both in the top 10; the closed GP09 / GP10 never in the top 3 (20260930003325)",
+    map: "engines",
+    note: "GP12 and Reg 26 both in the top 10; the closed GP09 / GP10 never in the top 3 (20260930003325); routes to the engines question map",
   },
   {
     q: "What Colorado and federal requirements could apply to storage vessels?",
@@ -263,6 +299,7 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
       { noBasis: true, topN: 5 },
       { minFederal: 3 },
     ],
-    note: "A storage-tank general permit (GP08 / GP05) and an OOOOa/OOOOb storage-vessel section in the top 10; no Statement of Basis in the top 5; at least 3 federal rows in the top 10 (20260930002750, 20260930003040)",
+    map: null,
+    note: "A storage-tank general permit (GP08 / GP05) and an OOOOa/OOOOb storage-vessel section in the top 10; no Statement of Basis in the top 5; at least 3 federal rows in the top 10 (20260930002750, 20260930003040); no question map",
   },
 ];
