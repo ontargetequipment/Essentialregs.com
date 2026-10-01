@@ -14,10 +14,13 @@ export const LAST_UPDATED = "September 12, 2026";
 export function LegalPage({
   title,
   intro,
+  lastUpdated = LAST_UPDATED,
   children,
 }: {
   title: string;
   intro?: ReactNode;
+  /** This page's own "Last updated" date when it has moved on from the set's shared one. */
+  lastUpdated?: string;
   children: ReactNode;
 }) {
   return (
@@ -27,7 +30,7 @@ export function LegalPage({
           {title}
         </h1>
         <p className="mt-2 font-mono text-eyebrow uppercase text-tag">
-          Last updated: {LAST_UPDATED}
+          Last updated: {lastUpdated}
         </p>
         {intro && (
           <div className="mt-4 text-base leading-relaxed text-ink-soft">
@@ -40,18 +43,20 @@ export function LegalPage({
   );
 }
 
-/** A numbered section. `number` is rendered as-is (e.g. "1", "12"). */
+/** A numbered section. `number` is rendered as-is (e.g. "1", "12"). `id` makes it linkable (#id). */
 export function LegalSection({
   number,
   title,
+  id,
   children,
 }: {
   number?: string | number;
   title: string;
+  id?: string;
   children: ReactNode;
 }) {
   return (
-    <section>
+    <section id={id}>
       <h2 className="text-lg font-semibold text-ink">
         {number !== undefined && (
           <span className="mr-2 font-mono text-sm text-accent">

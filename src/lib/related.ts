@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { escapeHtml, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
+import { escapeHtml, summaryParagraphs, summaryStatusBadge, titleWithoutCitation } from "@/lib/regulation";
 import { regBadge } from "@/lib/semantic";
 import { regulationDisplayName } from "@/lib/regulation-pure";
 import { PROVISION_ID } from "@/lib/types";
@@ -33,6 +33,14 @@ export type RelatedItem = {
   path: string | null;
   /** First paragraph of the summary, or null when there is none / it was rejected. */
   summary: string | null;
+  /**
+   * The review-status badge for `summary` (summaryStatusBadge: "Reviewed ·
+   * Sept 17, 2026" / "AI-generated · not yet reviewed"), computed here so the
+   * reader's client-side panel (RelatedProvisionsLoader.tsx, which must not
+   * import regulation-pure) and RelatedProvisions.tsx print the same text.
+   * null when there is no summary to label. Never names the reviewer.
+   */
+  summary_badge: { kind: "reviewed" | "pending"; label: string; title: string } | null;
   score: number;
   rank: number;
   badge: string;
@@ -61,6 +69,7 @@ type NeighborRow = {
     title: string;
     ai_summary: string | null;
     summary_status: string | null;
+    reviewed_at: string | null;
     jurisdiction_level: string;
     context_path: string | null;
   } | null;
@@ -81,6 +90,7 @@ function toItem(anchorId: string, row: NeighborRow): RelatedItem | null {
     jurisdiction_level: n.jurisdiction_level,
     path: n.context_path ?? null,
     summary: paras[0] ?? null,
+    summary_badge: paras[0] ? summaryStatusBadge(n) : null,
     score: row.score,
     rank: row.rank,
     badge: regBadge(key, n.jurisdiction_level),
@@ -101,7 +111,7 @@ export function orderForDisplay(items: RelatedItem[]): RelatedItem[] {
 }
 
 const SELECT =
-  "rank, score, neighbor:provisions!provision_neighbors_neighbor_id_fkey(id, citation, title, ai_summary, summary_status, jurisdiction_level, context_path)";
+  "rank, score, neighbor:provisions!provision_neighbors_neighbor_id_fkey(id, citation, title, ai_summary, summary_status, reviewed_at, jurisdiction_level, context_path)";
 
 /** Related provisions as the current visitor (RLS-bound). */
 export async function fetchRelated(provisionId: string): Promise<RelatedItem[]> {

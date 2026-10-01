@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import {
   buildSearchIndexFromDom,
   fillContainsBoxes,
+  fillSummaryBadges,
   fillSummaryLinks,
   readReaderModel,
 } from "@/lib/reader-client";
@@ -86,10 +87,11 @@ export function RegulationReader() {
     // The page ships the provisions and nothing else; the furniture around
     // them is rebuilt here from the DOM (see reader-client.ts): the tree
     // from document order, then every item's contains box and every summary
-    // panel's source link, right now, so a hash jump below lands on a
+    // panel's badge tooltip and source link, right now, so a hash jump below lands on a
     // finished page and a popup's clone of an item is complete. The search
     // index is the same rows again, built on first use or when idle.
     const model = readReaderModel(doc);
+    fillSummaryBadges(model);
     fillSummaryLinks(model);
     fillContainsBoxes(model);
     let searchIndex: SearchRow[] | null = null;

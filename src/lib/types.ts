@@ -25,6 +25,15 @@ export type Provision = {
   sort_order: number;
   /** Moderation state of ai_summary — see supabase/migrations/004_review.sql. Absent/undefined wherever a caller hasn't selected it. */
   summary_status?: string | null;
+  /**
+   * When ai_summary was last approved, edited or rejected (timestamptz, ISO
+   * string from PostgREST); null for a summary nobody has reviewed. Absent
+   * wherever a caller hasn't selected it. Shown as the date on the
+   * "Reviewed" badge (summaryStatusBadge). reviewed_by is deliberately NOT
+   * on this type: it holds an email on some rows and is never rendered
+   * outside /admin.
+   */
+  reviewed_at?: string | null;
   cross_references?: CrossReference[];
 };
 

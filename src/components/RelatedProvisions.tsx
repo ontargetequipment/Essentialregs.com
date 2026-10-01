@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { fetchRelated, fetchRelatedTeaser, hrefForRelated, type RelatedItem } from "@/lib/related";
 import { CLOSED_PERMIT_BADGE, isClosedPermit } from "@/lib/regulation-pure";
+import { SummaryBadgeText } from "@/components/SummaryBadge";
 
 // Jurisdiction badges. Federal and ECMC keep the blue/violet the reader's own
 // related panel uses (.related-badge-federal / -ecmc in reader.css) so the
@@ -72,6 +73,7 @@ export async function RelatedProvisions({
                   {/* Same label and style as the Ask cards (backlog #16): no summary prose goes unlabelled. */}
                   <p className="mt-1.5 font-mono text-eyebrow uppercase text-tag">
                     Plain-English summary
+                    <SummaryBadgeText badge={item.summary_badge} />
                   </p>
                   <p className="mt-0.5 line-clamp-2 text-sm text-ink-soft">{item.summary}</p>
                 </>

@@ -13,6 +13,16 @@ import { LegalSection } from "@/components/LegalPage";
 
 const SUPPORT_EMAIL = "support@essentialregs.com";
 
+/**
+ * The disclaimer's own "Last updated" line (the other legal pages keep
+ * LegalPage's shared date). Same revision as DISCLAIMER_VERSION in
+ * src/lib/disclaimer.ts: 1 Oct 2026, when section 9 defined "Reviewed".
+ */
+export const DISCLAIMER_LAST_UPDATED = "October 1, 2026";
+
+/** The anchor of section 9, which the summary badges' tooltips refer to as "the Disclaimer page". */
+export const REVIEWED_SECTION_ID = "what-reviewed-means";
+
 /** The amber "read this first" box above the numbered sections. */
 export function DisclaimerIntro() {
   return (
@@ -141,6 +151,24 @@ export function DisclaimerSections() {
             Terms of Service
           </Link>
           , into which this Disclaimer is incorporated.
+        </p>
+      </LegalSection>
+
+      {/* Owner decision, 29 Sep 2026: every summary carries a review-status
+          badge ("Reviewed · <date>" or "AI-generated · not yet reviewed"),
+          and this section is the definition the badge's tooltip points at. */}
+      <LegalSection number={9} title={"What \u201cReviewed\u201d means"} id={REVIEWED_SECTION_ID}>
+        <p>
+          Every plain-English summary on EssentialRegs carries a label. A
+          summary marked &ldquo;Reviewed&rdquo; with a date has been checked
+          against the official regulation text after it was written. That
+          check is an automated second pass that compares the summary with
+          the provision it describes; some provisions have also been read by
+          a person. A summary marked &ldquo;AI-generated &middot; not yet
+          reviewed&rdquo; was written from the official text but has not yet
+          been checked, and should be read with that in mind. In every case
+          the official text controls, a label is not a guarantee of
+          accuracy, and the summary is not legal advice.
         </p>
       </LegalSection>
     </>

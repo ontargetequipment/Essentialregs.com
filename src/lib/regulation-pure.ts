@@ -6,7 +6,10 @@ import {
   normalizeCitationLabel,
   SNIPPET_LEN,
   snippetAfterCitation,
+  summaryBadgeClass,
+  SUMMARY_BADGE_TITLES,
   type SearchRow,
+  type SummaryBadgeKind,
 } from "@/lib/snippet";
 
 // The text helpers the browser also needs (snippets, escaping, the contains
@@ -787,6 +790,58 @@ export function isHeadingOnlyText(fullText: string, title: string | null, citati
 }
 
 /**
+ * The text badge every rendered summary carries, from the row's
+ * summary_status and reviewed_at (owner decision, Brody, 29 Sep 2026).
+ * Text with a date, not styling, so a reader can tell a checked summary
+ * from one nobody has looked at yet:
+ *
+ *   approved / edited  -> "Reviewed · Sept 17, 2026" (reviewed_at as
+ *                         MMM d, yyyy; "Reviewed" alone if the date is null)
+ *   pending (or unset) -> "AI-generated · not yet reviewed"
+ *   rejected           -> null (the summary itself is withheld everywhere)
+ *
+ * It says nothing about who reviewed: reviewed_by holds an email on some
+ * rows and never reaches a public surface. `title` is the tooltip; what
+ * "Reviewed" means is defined on the Disclaimer page
+ * (/disclaimer#what-reviewed-means). Pure, no React: the reader panel
+ * (summaryPanelHtml) and every card (SummaryBadge.tsx) render the same
+ * object.
+ */
+export function summaryStatusBadge(
+  p: Pick<Provision, "summary_status" | "reviewed_at">
+): { kind: SummaryBadgeKind; label: string; title: string } | null {
+  const status = p.summary_status ?? "pending";
+  if (status === "rejected") return null;
+  if (status === "approved" || status === "edited") {
+    const date = formatReviewedDate(p.reviewed_at);
+    return {
+      kind: "reviewed",
+      label: date ? `Reviewed · ${date}` : "Reviewed",
+      title: SUMMARY_BADGE_TITLES.reviewed,
+    };
+  }
+  return { kind: "pending", label: "AI-generated · not yet reviewed", title: SUMMARY_BADGE_TITLES.pending };
+}
+
+/**
+ * AP-style month abbreviations ("Sept", not "Sep"), the owner's wording for
+ * the badge: "Reviewed · Sept 17, 2026".
+ */
+const MONTH_ABBREVIATIONS = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
+
+/**
+ * A reviewed_at timestamp as "Sept 17, 2026", in UTC so the reader body --
+ * rendered once and cached for every subscriber -- never depends on the
+ * server's zone. "" for null or anything that is not a date.
+ */
+export function formatReviewedDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${MONTH_ABBREVIATIONS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+}
+
+/**
  * The collapsible "Plain-English summary" panel rendered directly under a
  * provision's text in the reader. Returns "" when there's no summary yet
  * (the whole corpus starts out that way), so callers can concatenate it
@@ -794,7 +849,7 @@ export function isHeadingOnlyText(fullText: string, title: string | null, citati
  * HTML, so it's escaped here; blank lines become paragraph breaks.
  */
 export function summaryPanelHtml(
-  p: Pick<Provision, "ai_summary" | "summary_status" | "source_url">,
+  p: Pick<Provision, "ai_summary" | "summary_status" | "reviewed_at" | "source_url">,
   fallbackSourceUrl?: string | null
 ): string {
   // A rejected summary is withheld from every reader entirely — it failed
@@ -804,14 +859,23 @@ export function summaryPanelHtml(
   const paragraphs = summaryParagraphs(p.ai_summary ?? "");
   if (!paragraphs.length) return "";
   const body = paragraphs.map((t) => `<p>${escapeHtml(t)}</p>`).join("");
-  // No mention of who/what reviewed this or when, and no "AI-generated"
-  // label -- [Brody, Sep 14 2026] that line risked misleading readers once
-  // review passes started including an AI second-pass alongside human
-  // review, and the Disclaimer page already covers that summaries are
-  // AI-generated. A link to the source document lets a reader verify
-  // directly instead.
-  //
-  // The link itself is no longer in the string: with one URL per regulation
+  // The review-status badge is the first thing in the panel body: text
+  // with a date ("Reviewed · Sept 17, 2026" / "AI-generated · not yet
+  // reviewed"), never a reviewer. History: the "AI-generated" line was
+  // removed on 14 Sep 2026 [Brody] because it had become misleading once
+  // review passes included an AI second pass alongside human review. On
+  // 29 Sep 2026 [Brody] it came back as this two-state badge, because after
+  // Phase 0 the reader could not tell a pending summary from a reviewed
+  // one; what "Reviewed" means now lives on the Disclaimer page
+  // (/disclaimer#what-reviewed-means), which the tooltip points at. Only
+  // the label and a state class are in the string -- the browser adds the
+  // tooltip from SUMMARY_BADGE_TITLES (reader-client.ts, fillSummaryBadges),
+  // for the same reason the source link below is filled in the browser.
+  const badge = summaryStatusBadge(p);
+  const badgeHtml = badge
+    ? `<p class="summary-badge ${summaryBadgeClass(badge.kind)}">${escapeHtml(badge.label)}</p>`
+    : "";
+  // The source link itself is not in the string: with one URL per regulation
   // it was the same 150 bytes under every one of thousands of panels (511 KB
   // of ECMC's HTML, shipped twice). The row is emitted empty and the browser
   // fills it from the regulation's source link (reader-client.ts,
@@ -823,7 +887,7 @@ export function summaryPanelHtml(
   return (
     `<details class="summary-panel">` +
     `<summary>Plain-English summary</summary>` +
-    `<div class="summary-body">${body}</div>` +
+    `<div class="summary-body">${badgeHtml}${body}</div>` +
     sourceLinkHtml +
     `</details>`
   );

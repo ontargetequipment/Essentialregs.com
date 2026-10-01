@@ -435,6 +435,12 @@ checks as (
     where (select array_agg(k order by k) from unnest(public.closed_permit_reg_keys()) k)
           is distinct from array['gp09', 'gp10']::text[]
   ) d
+
+  union all
+  select 19, 'GUARD', 'summary_status_badge_inputs', count(*), 0,
+         'Trust badge (1 Oct 2026). Every summary in the reader and on the Ask, keyword and related cards carries "Reviewed · <reviewed_at>" for summary_status approved/edited, or "AI-generated · not yet reviewed" for pending (summaryStatusBadge in src/lib/regulation-pure.ts). A reviewed row with a null reviewed_at renders "Reviewed" with no date, which a reader cannot date-check. Counts rows with summary_status in (approved, edited) and reviewed_at null. Expect 0; report the count if not, do not fix the data from a web PR (the review actions and the pipeline set reviewed_at).'
+  from provisions
+  where summary_status in ('approved', 'edited') and reviewed_at is null
 )
 select severity, check_name, n,
        case when severity in ('ERROR','GUARD') and n <> expected then '*** CHECK ***'

@@ -401,6 +401,21 @@
 .reg-reader .summary-body p {
   margin: 0 0 8px;
 }
+/* The review-status badge: the first line of every panel body, text with a
+   date ("Reviewed · Sept 17, 2026" / "AI-generated · not yet reviewed"),
+   emitted by summaryPanelHtml; the browser adds its tooltip. The pending
+   state is amber so the unchecked summaries stand out at a glance; the
+   words, not the colour, carry the meaning. */
+.reg-reader .summary-body p.summary-badge {
+  margin: 6px 0 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+}
+.reg-reader .summary-body p.summary-badge.is-pending {
+  color: #92400e;
+}
 .reg-reader .summary-status {
   padding: 6px 12px 9px;
   font-family: var(--mono);
@@ -921,6 +936,19 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #6b7280;
+}
+/* The review-status badge beside a related item's "Plain-English summary"
+   label (RelatedProvisionsLoader.tsx), small text like the card badges. */
+.reg-reader .related-label .related-review {
+  margin-left: 8px;
+  font-family: var(--mono);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--ink-soft);
+}
+.reg-reader .related-label .related-review.is-pending {
+  color: #92400e;
 }
 .reg-reader .related-snip {
   display: block;

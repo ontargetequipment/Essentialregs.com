@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { BillingInterval } from "@/lib/pricing";
-import { LAST_UPDATED } from "@/components/LegalPage";
+import { DISCLAIMER_LAST_UPDATED } from "@/components/DisclaimerText";
 import { SignupForm } from "./SignupForm";
 
 const INLINE_LINK = "font-medium text-ink underline underline-offset-2";
@@ -90,7 +90,7 @@ function DisclaimerGate({ children, onContinue }: { children: ReactNode; onConti
         data-testid="disclaimer-scroll"
         className="mt-4 max-h-[55vh] overflow-y-auto rounded-md border border-line bg-panel p-4 focus:border-accent focus:outline-none"
       >
-        <p className="font-mono text-eyebrow uppercase text-tag">Disclaimer · Last updated: {LAST_UPDATED}</p>
+        <p className="font-mono text-eyebrow uppercase text-tag">Disclaimer · Last updated: {DISCLAIMER_LAST_UPDATED}</p>
         <div className="mt-3">{children}</div>
         <p className="mt-6 text-xs text-muted" data-testid="disclaimer-end">
           End of disclaimer.

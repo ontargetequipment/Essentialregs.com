@@ -1,7 +1,7 @@
 // DRAFT — attorney review required before launch
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
-import { DisclaimerIntro, DisclaimerSections } from "@/components/DisclaimerText";
+import { DisclaimerIntro, DisclaimerSections, DISCLAIMER_LAST_UPDATED } from "@/components/DisclaimerText";
 
 export const metadata: Metadata = {
   title: "Disclaimer",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 // the signup gate that makes every new account read it first.
 export default function DisclaimerPage() {
   return (
-    <LegalPage title="Disclaimer" intro={<DisclaimerIntro />}>
+    <LegalPage title="Disclaimer" intro={<DisclaimerIntro />} lastUpdated={DISCLAIMER_LAST_UPDATED}>
       <DisclaimerSections />
     </LegalPage>
   );

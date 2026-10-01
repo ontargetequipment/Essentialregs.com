@@ -10,7 +10,7 @@
  * for one reg_key, ordered by sort_order, with the columns
  * fetchRegulationProvisions selects (id, citation, title, jurisdiction_level,
  * issuing_body, parent_id, full_text, ai_summary, summary_status,
- * source_url, last_verified_date, is_public, sort_order). Pull it with the
+ * reviewed_at, source_url, last_verified_date, is_public, sort_order). Pull it with the
  * Supabase connector / psql in chunks and concatenate; it is git-ignored
  * because it is the paid corpus.
  *
