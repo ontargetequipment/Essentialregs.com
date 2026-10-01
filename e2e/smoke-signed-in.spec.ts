@@ -161,6 +161,51 @@ test.describe("signed in", () => {
     await expect(badge).toHaveAttribute("title", /Disclaimer page|Read the official text/);
   });
 
+  test("an engine question renders grouped under its question map; ?flat=1 shows the flat list", async ({ page }) => {
+    // Ask Track B: "What regulations apply to a natural gas-fired engine?"
+    // routes to the engines map (src/lib/question-maps.ts), so the page
+    // shows the "Mapped question" line, the factors sentence and one h2 per
+    // non-empty group, in MAP_GROUP_ORDER, with "Other matches" last if any.
+    const q = "What regulations apply to a natural gas-fired engine?";
+    const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
+    expect(res?.status()).toBe(200);
+    await expect(page.getByText("Ask is a beta feature for subscribers")).toHaveCount(0);
+    await expect(page.getByText("Mapped question: Natural gas-fired and diesel engines")).toHaveCount(1);
+    await expect(page.getByText(/What applies depends on the fuel/)).toHaveCount(1);
+    const groups = ["Colorado permitting and APEN", "General Permit options", "Colorado standards", "Federal NSPS", "Federal NESHAP", "Definitions"];
+    const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
+    expect(headings.length).toBeGreaterThan(0);
+    const named = headings.filter((h) => h !== "Other matches");
+    for (const h of named) expect(groups).toContain(h);
+    // In display order, and "Other matches" only ever last.
+    expect(named.map((h) => groups.indexOf(h))).toEqual([...named.map((h) => groups.indexOf(h))].sort((a, b) => a - b));
+    const otherAt = headings.indexOf("Other matches");
+    expect(otherAt === -1 || otherAt === headings.length - 1).toBe(true);
+    // The map's canonical rows carry their reason; every card is still one link.
+    expect(await page.getByText("Why it's here:", { exact: false }).count()).toBeGreaterThan(0);
+    expect(await page.locator("ol > li > a").count()).toBeGreaterThan(0);
+    await expect(page.getByRole("link", { name: "Show as a flat list" })).toHaveAttribute("href", /[?&]flat=1/);
+
+    // The flat list: the retrieval order as before, no groups, a way back.
+    const flat = await page.goto("/search?mode=ask&flat=1&q=" + encodeURIComponent(q));
+    expect(flat?.status()).toBe(200);
+    await expect(page.getByText("Mapped question:", { exact: false })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2 })).toHaveCount(0);
+    await expect(page.getByText(/provisions? most about/)).toHaveCount(1);
+    await expect(page.getByText("Why it's here:", { exact: false })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Show grouped" })).toHaveCount(1);
+  });
+
+  test("a storage-vessel question routes to no map and renders the flat list", async ({ page }) => {
+    const q = "What Colorado and federal requirements could apply to storage vessels?";
+    const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
+    expect(res?.status()).toBe(200);
+    await expect(page.getByText("Mapped question:", { exact: false })).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2 })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Show grouped" })).toHaveCount(0);
+    await expect(page.getByText(/provisions? most about/)).toHaveCount(1);
+  });
+
   test("search returns provisions beyond the public sample", async ({ page }) => {
     const res = await page.goto("/search?q=emissions");
     expect(res?.status()).toBe(200);

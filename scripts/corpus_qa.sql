@@ -27,9 +27,13 @@
 -- multipliers only mean anything for a caller who gets breadcrumbs. Check 18
 -- pins the closed-permit list (Ask Track A, 20260930003325): the database's
 -- closed_permit_reg_keys() and the app's GP_CLOSURE_NOTE must name the same
--- permits, so a change to either fails loudly until both move. Run the
--- whole file, top to bottom, in one go: Steps 0 and 0b must run before the
--- main query.
+-- permits, so a change to either fails loudly until both move. Check 20
+-- (Ask Track B, 1 Oct 2026) verifies that every provision id a question map
+-- names (src/lib/question-maps.ts) exists: the ids arrive through the
+-- generated scripts/question-map-ids.sql, which must be loaded first (CI
+-- passes it as the first -f; in the SQL editor paste it ahead of this file
+-- in the same run). Run the whole file, top to bottom, in one go: Steps 0,
+-- 0b and 0c must run before the main query.
 -- ============================================================================
 
 -- ============================================================================
@@ -232,6 +236,33 @@ begin
   end;
 end
 $oilgas$;
+
+-- ============================================================================
+-- Step 0c — question-map ids (runs BEFORE the main query)
+-- ============================================================================
+-- scripts/question-map-ids.sql (generated from src/lib/question-maps.ts by
+-- scripts/question-map-ids.ts; npm test fails while it is stale) creates
+-- pg_temp.question_map_ids. SQL cannot read the TypeScript file, so that
+-- file is the one way the ids reach this suite. Check 20 reads the result
+-- table below: one row per id missing from provisions, or one "not loaded"
+-- row when the generated file was not run first -- never a parse error, so
+-- the suite still finishes when it is run on its own.
+drop table if exists pg_temp.question_map_missing;
+create temp table question_map_missing (map_key text, id text, note text);
+
+do $maps$
+begin
+  if to_regclass('pg_temp.question_map_ids') is null then
+    insert into question_map_missing (note)
+    values ('question_map_ids not loaded: run scripts/question-map-ids.sql before this file');
+    return;
+  end if;
+  insert into question_map_missing (map_key, id)
+  select m.map_key, m.id
+  from pg_temp.question_map_ids m
+  where not exists (select 1 from public.provisions p where p.id = m.id);
+end
+$maps$;
 
 -- ============================================================================
 -- Main query — one row per check
@@ -441,6 +472,13 @@ checks as (
          'Trust badge (1 Oct 2026). Every summary in the reader and on the Ask, keyword and related cards carries "Reviewed · <reviewed_at>" for summary_status approved/edited, or "AI-generated · not yet reviewed" for pending (summaryStatusBadge in src/lib/regulation-pure.ts). A reviewed row with a null reviewed_at renders "Reviewed" with no date, which a reader cannot date-check. Counts rows with summary_status in (approved, edited) and reviewed_at null. Expect 0; report the count if not, do not fix the data from a web PR (the review actions and the pipeline set reviewed_at).'
   from provisions
   where summary_status in ('approved', 'edited') and reviewed_at is null
+
+  union all
+  select 20, 'GUARD', 'question_map_ids_exist', count(*), 0,
+         'Ask Track B (1 Oct 2026). Every provision id a question map names in src/lib/question-maps.ts (the canonical rows the grouped Ask view fetches by id) must exist in provisions; a re-import that renumbers a section would otherwise leave a silent hole in the map. The ids come from the generated scripts/question-map-ids.sql (Step 0c), loaded ahead of this file. Counts missing ids, plus 1 when the generated file was not loaded. Expect 0.'
+         || coalesce(' Missing: ' || (select string_agg(q.map_key || ' ' || q.id, ', ' order by q.map_key, q.id) from pg_temp.question_map_missing q where q.id is not null), '')
+         || coalesce(' Problems: ' || (select string_agg(q.note, '; ') from pg_temp.question_map_missing q where q.note is not null), '')
+  from pg_temp.question_map_missing
 )
 select severity, check_name, n,
        case when severity in ('ERROR','GUARD') and n <> expected then '*** CHECK ***'

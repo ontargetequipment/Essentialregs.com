@@ -29,6 +29,7 @@ import {
   type Jurisdiction,
   type SemanticHit,
 } from "@/lib/semantic";
+import { OTHER_GROUP, groupHits, type QuestionMap } from "@/lib/question-maps";
 
 export const metadata = {
   title: "Search",
@@ -80,14 +81,126 @@ function keywordHref(q: string, includeBasis: boolean): string {
   return qs ? `/search?${qs}` : "/search";
 }
 
-/** Ask URL keeping the jurisdiction / regulation chips, and ?basis=1 only when it is on. */
-function askHref(q: string, includeBasis: boolean, jurisdiction: string | null = null, reg = ""): string {
+/** Ask URL keeping the jurisdiction / regulation chips, ?basis=1 only when it is on, and ?flat=1 only when the visitor asked for the flat list. */
+function askHref(q: string, includeBasis: boolean, jurisdiction: string | null = null, reg = "", flat = false): string {
   const params = new URLSearchParams({ mode: "ask" });
   if (q) params.set("q", q);
   if (jurisdiction) params.set("j", jurisdiction);
   if (reg) params.set("reg", reg);
   if (includeBasis) params.set("basis", "1");
+  if (flat) params.set("flat", "1");
   return `/search?${params.toString()}`;
+}
+
+/** The review state of a summary, for the badge beside it (and, on the keyword page, the summary itself). */
+type ReviewRow = { id: string; ai_summary: string | null; summary_status: string | null; reviewed_at: string | null };
+
+/**
+ * One row on the Ask page: a retrieval hit, or a question map's canonical
+ * provision read from the table. `retrieved` is false for a canonical row
+ * retrieval did not return: it has no score, so the card shows none.
+ */
+type AskRow = SemanticHit & { retrieved: boolean };
+
+/**
+ * The Ask result card. One markup for the flat list and the grouped view
+ * (Ask Track B): badge, regulation name, Statement-of-basis and closed-permit
+ * badges, match score, breadcrumb, citation, heading, then the summary with
+ * its review badge (or the heading-only line). `why` is the map's one-line
+ * reason for a canonical row, printed above the summary label.
+ */
+function AskCard({
+  row,
+  why,
+  name,
+  review,
+  headingChildren,
+}: {
+  row: AskRow;
+  why?: string;
+  name: string;
+  review: ReviewRow | undefined;
+  headingChildren: Map<string, number | null>;
+}) {
+  const paras = summaryParagraphs(row.summary ?? "");
+  const badge = regBadge(row.reg_key, row.jurisdiction_level);
+  const heading = titleWithoutCitation(row.title, row.citation);
+  return (
+    <li>
+      <Link
+        href={hrefForHit(row)}
+        className="block rounded-lg border border-line bg-panel p-5 shadow-sm transition hover:border-accent hover:shadow-md"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+              badge === "Federal"
+                ? "bg-blue-50 text-blue-700"
+                : badge === "ECMC"
+                  ? "bg-violet-50 text-violet-700"
+                  : "bg-accent-soft text-accent"
+            }`}
+          >
+            {badge}
+          </span>
+          <span className="text-xs text-muted">{name}</span>
+          {row.is_basis && (
+            <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
+              Statement of basis
+            </span>
+          )}
+          {isClosedPermit(row.reg_key) && (
+            <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title={CLOSED_PERMIT_BADGE.title}>
+              {CLOSED_PERMIT_BADGE.label}
+            </span>
+          )}
+          {/* Since 20260930003557 a keyword-only row carries its real cosine, so the
+              null branch is rare: only a row with no embedding still lands here. A
+              canonical map row retrieval did not return has no score at all. */}
+          {row.retrieved && (
+            <span
+              className="ml-auto text-xs tabular-nums text-muted"
+              title={
+                row.score == null
+                  ? "Matched your words; no meaning score available for this provision."
+                  : row.keyword_hit
+                    ? "Matched your words and your meaning"
+                    : "How close this provision's meaning is to your question"
+              }
+            >
+              {row.score == null ? "keyword match" : `${Math.round(row.score * 100)}% match`}
+              {row.keyword_hit && row.score != null ? " · words" : ""}
+            </span>
+          )}
+        </div>
+        {row.path && <p className="mt-2 text-xs leading-snug text-muted">{row.path}</p>}
+        <p className="mt-1 font-mono text-eyebrow uppercase text-tag">
+          {row.citation}
+        </p>
+        {heading && (
+          <p className="mt-1 font-semibold text-ink">{heading}</p>
+        )}
+        {why && (
+          <p className="mt-2 text-xs leading-snug text-muted">
+            <span className="font-medium">Why it&apos;s here:</span> {why}
+          </p>
+        )}
+        {paras.length > 0 ? (
+          <>
+            <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>
+              Plain-English summary
+              {review && <SummaryBadge provision={review} />}
+            </p>
+            <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-ink-soft">{paras[0]}</p>
+          </>
+        ) : headingChildren.has(row.id) ? (
+          <p className="mt-2 text-sm text-muted">{headingLine(headingChildren.get(row.id) ?? null)}</p>
+        ) : (
+          <p className="mt-2 text-sm italic text-muted">No plain-English summary yet — read the official text.</p>
+        )}
+      </Link>
+    </li>
+  );
 }
 
 /**
@@ -187,6 +300,10 @@ export default async function SearchPage(props: PageProps<"/search">) {
   // whole first page (backlog #15). ?basis=1 brings them back, ranked below the
   // rules. Ask has read the same param since 2026-09-30.
   const includeBasis = first(params.basis) === "1";
+  // Ask Track B: a question that routes to a question map renders grouped;
+  // ?flat=1 shows the retrieval list as before (the "Show as a flat list"
+  // link). Ignored when no map matched.
+  const flat = first(params.flat) === "1";
 
   const supabase = await createClient();
   const {
@@ -214,6 +331,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
 
   let hits: SearchHit[] = [];
   let askHits: SemanticHit[] = [];
+  let askMap: QuestionMap | null = null;
   let searchError: string | null = null;
   let askError: { code: SemanticError["code"]; message: string } | null = null;
 
@@ -228,11 +346,11 @@ export default async function SearchPage(props: PageProps<"/search">) {
   }
   if (q && mode === "ask" && access.hasAccess) {
     try {
-      askHits = await semanticSearch(q, {
+      ({ hits: askHits, map: askMap } = await semanticSearch(q, {
         regFilter: regFilter ? [regFilter] : null,
         jurisdiction,
         includeBasis,
-      });
+      }));
     } catch (e) {
       askError =
         e instanceof SemanticError
@@ -241,6 +359,66 @@ export default async function SearchPage(props: PageProps<"/search">) {
       if (askError.code !== "rate_limited") console.error("ask:", askError.message);
     }
   }
+
+  // Question map rows (Ask Track B). When the question routed to a map and
+  // the visitor did not ask for the flat list, the map's canonical provisions
+  // are read through the visitor's own client (RLS-bound, like the
+  // review-status lookup below) and laid out under the map's groups.
+  // Retrieval above is untouched: the RPC call and the hits are what they
+  // were. A canonical row retrieval also found keeps its hit (score, path);
+  // the others get their breadcrumb from the provision_path RPC, the same
+  // function the hybrid RPC calls for its own rows. The visitor's filters
+  // apply to the canonical rows too, so a "Federal" view never shows a
+  // Colorado row. A failed read leaves mapRows empty and the page renders
+  // the flat list. reviewed_by is never selected.
+  const mapRows = new Map<string, AskRow>();
+  if (askMap && !flat && !askError) {
+    type MapRow = ReviewRow & {
+      citation: string;
+      title: string;
+      reg_key: string | null;
+      jurisdiction_level: SemanticHit["jurisdiction_level"];
+    };
+    const hitById = new Map(askHits.map((h) => [h.id, h]));
+    const { data: rows, error: rowsErr } = await supabase
+      .from("provisions")
+      .select("id, citation, title, reg_key, jurisdiction_level, ai_summary, summary_status, reviewed_at")
+      .in("id", askMap.provisions.map((p) => p.id));
+    if (rowsErr) console.error("ask: question-map lookup failed", rowsErr.message);
+    const kept = ((rows ?? []) as MapRow[]).filter(
+      (r) => (!jurisdiction || r.jurisdiction_level === jurisdiction) && (!regFilter || r.id.startsWith(`sec-${regFilter}-`))
+    );
+    const paths = await Promise.all(
+      kept.map((r) => (hitById.has(r.id) ? null : supabase.rpc("provision_path", { p_id: r.id })))
+    );
+    kept.forEach((r, i) => {
+      const hit = hitById.get(r.id);
+      if (hit) {
+        mapRows.set(r.id, { ...hit, retrieved: true });
+        return;
+      }
+      const res = paths[i];
+      if (res?.error) console.error("ask: question-map path failed", res.error.message);
+      mapRows.set(r.id, {
+        id: r.id,
+        citation: r.citation,
+        title: r.title,
+        reg_key: r.reg_key ?? regKeyOf(r.id)?.toLowerCase() ?? null,
+        jurisdiction_level: r.jurisdiction_level,
+        summary: r.summary_status === "rejected" ? null : r.ai_summary,
+        score: null,
+        path: res && !res.error && typeof res.data === "string" ? res.data : null,
+        retrieved: false,
+      });
+    });
+  }
+  // The rows the Ask page shows: the hits, plus the canonical rows retrieval
+  // did not return. The review and heading lookups below cover all of them.
+  const askRows: AskRow[] = [
+    ...askHits.map((h) => ({ ...h, retrieved: true })),
+    ...Array.from(mapRows.values()).filter((r) => !r.retrieved),
+  ];
+  const grouped = askMap && mapRows.size > 0 ? groupHits(askMap, askHits, new Set(mapRows.keys())) : null;
 
   // The review state of every hit's summary, for the badge beside it
   // (summaryStatusBadge; owner decision, 29 Sep 2026). Neither RPC returns
@@ -252,10 +430,9 @@ export default async function SearchPage(props: PageProps<"/search">) {
   // A failed read leaves the map empty: the Ask cards then show their
   // summary with no badge and the keyword cards show no summary, never a
   // wrong badge. reviewed_by is never selected.
-  type ReviewRow = { id: string; ai_summary: string | null; summary_status: string | null; reviewed_at: string | null };
   const reviewOf = new Map<string, ReviewRow>();
   {
-    const ids = mode === "ask" ? askHits.map((h) => h.id) : hits.map((h) => h.id);
+    const ids = mode === "ask" ? askRows.map((h) => h.id) : hits.map((h) => h.id);
     if (ids.length > 0) {
       const { data: rows, error: rowsErr } = await supabase
         .from("provisions")
@@ -275,8 +452,8 @@ export default async function SearchPage(props: PageProps<"/search">) {
   // capped by the hits on the page. Any failure leaves the map empty and the
   // card falls back to its "No plain-English summary yet" line.
   const headingChildren = new Map<string, number | null>();
-  if (askHits.length > 0) {
-    const unsummarised = askHits.filter((h) => summaryParagraphs(h.summary ?? "").length === 0).map((h) => h.id);
+  if (askRows.length > 0) {
+    const unsummarised = askRows.filter((h) => summaryParagraphs(h.summary ?? "").length === 0).map((h) => h.id);
     if (unsummarised.length > 0) {
       const { data: rows, error: rowsErr } = await supabase
         .from("provisions")
@@ -496,7 +673,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
         </p>
       )}
 
-      {mode === "ask" && q && access.hasAccess && !askError && askHits.length === 0 && (
+      {mode === "ask" && q && access.hasAccess && !askError && askHits.length === 0 && !grouped && (
         <p className="mt-10 text-sm text-muted">
           Nothing close enough for that question{regFilter || jurisdiction ? " with those filters" : ""}. Try rephrasing, or
           widen the filters.
@@ -603,12 +780,21 @@ export default async function SearchPage(props: PageProps<"/search">) {
         </p>
       )}
 
-      {mode === "ask" && askHits.length > 0 && (
+      {mode === "ask" && grouped && askMap && (
         <>
-          <p className="mt-8 font-mono text-eyebrow uppercase text-tag">
-            {`${askHits.length} ${askHits.length === 1 ? "provision" : "provisions"} most about \u201c${q}\u201d`}
+          {/* Ask Track B: the question routed to a question map. The map's
+              canonical rows lead each group; the retrieval hits follow,
+              grouped by regulation; the rest go under "Other matches". */}
+          <p className="mt-8 text-sm">
+            <span className="font-mono text-eyebrow uppercase text-tag">Mapped question:</span>{" "}
+            <span className="font-semibold text-ink">{askMap.name}</span>
           </p>
+          <p className="mt-2 text-sm leading-relaxed text-ink-soft">{askMap.factors}</p>
           <p className="mt-1 text-xs text-muted">
+            <Link href={askHref(q, includeBasis, jurisdiction, regFilter, true)} className="font-medium text-ink-soft underline">
+              Show as a flat list
+            </Link>
+            {" · "}
             {includeBasis ? (
               <>
                 Statements of basis (rulemaking history) are included, ranked below the rules.{" "}
@@ -625,80 +811,76 @@ export default async function SearchPage(props: PageProps<"/search">) {
               </>
             )}
           </p>
+          {grouped.groups.map((g) => (
+            <section key={g.group} className="mt-8">
+              <h2 className="font-serif text-lg font-bold tracking-tight text-ink">{g.group}</h2>
+              <ol className="mt-3 flex flex-col gap-3">
+                {g.canonical.map((p) => {
+                  const row = mapRows.get(p.id);
+                  return row ? (
+                    <AskCard key={p.id} row={row} why={p.why} name={nameOf(row.reg_key)} review={reviewOf.get(p.id)} headingChildren={headingChildren} />
+                  ) : null;
+                })}
+                {g.hits.map((hit) => (
+                  <AskCard key={hit.id} row={{ ...hit, retrieved: true }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+                ))}
+              </ol>
+            </section>
+          ))}
+          {grouped.other.length > 0 && (
+            <section className="mt-8">
+              <h2 className="font-serif text-lg font-bold tracking-tight text-ink">{OTHER_GROUP}</h2>
+              <ol className="mt-3 flex flex-col gap-3">
+                {grouped.other.map((hit) => (
+                  <AskCard key={hit.id} row={{ ...hit, retrieved: true }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+                ))}
+              </ol>
+            </section>
+          )}
+          <p className="mt-6 text-xs text-muted">
+            The groups are a map of where the rules for this question live; the provisions inside them are the
+            regulation&apos;s own, with the ones found by meaning and by your words marked with a match score. Statements
+            of basis (rulemaking history) are{" "}
+            {includeBasis ? "shown but ranked below the rules" : "hidden unless you include them"}. None of this is legal
+            advice; read the full text and check the official source before relying on it.
+          </p>
+        </>
+      )}
+
+      {mode === "ask" && !grouped && askHits.length > 0 && (
+        <>
+          <p className="mt-8 font-mono text-eyebrow uppercase text-tag">
+            {`${askHits.length} ${askHits.length === 1 ? "provision" : "provisions"} most about \u201c${q}\u201d`}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {askMap && flat && (
+              <>
+                <Link href={askHref(q, includeBasis, jurisdiction, regFilter)} className="font-medium text-ink-soft underline">
+                  Show grouped
+                </Link>
+                {" · "}
+              </>
+            )}
+            {includeBasis ? (
+              <>
+                Statements of basis (rulemaking history) are included, ranked below the rules.{" "}
+                <Link href={askHref(q, false, jurisdiction, regFilter, flat)} className="font-medium text-ink-soft underline">
+                  Hide them
+                </Link>
+              </>
+            ) : (
+              <>
+                Statements of basis (rulemaking history) are hidden.{" "}
+                <Link href={askHref(q, true, jurisdiction, regFilter, flat)} className="font-medium text-ink-soft underline">
+                  Include them
+                </Link>
+              </>
+            )}
+          </p>
           <ol className="mt-3 flex flex-col gap-3">
-            {askHits.map((hit) => {
-              const paras = summaryParagraphs(hit.summary ?? "");
-              const badge = regBadge(hit.reg_key, hit.jurisdiction_level);
-              const heading = titleWithoutCitation(hit.title, hit.citation);
-              return (
-                <li key={hit.id}>
-                  <Link
-                    href={hrefForHit(hit)}
-                    className="block rounded-lg border border-line bg-panel p-5 shadow-sm transition hover:border-accent hover:shadow-md"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
-                          badge === "Federal"
-                            ? "bg-blue-50 text-blue-700"
-                            : badge === "ECMC"
-                              ? "bg-violet-50 text-violet-700"
-                              : "bg-accent-soft text-accent"
-                        }`}
-                      >
-                        {badge}
-                      </span>
-                      <span className="text-xs text-muted">{nameOf(hit.reg_key)}</span>
-                      {hit.is_basis && (
-                        <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
-                          Statement of basis
-                        </span>
-                      )}
-                      {isClosedPermit(hit.reg_key) && (
-                        <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title={CLOSED_PERMIT_BADGE.title}>
-                          {CLOSED_PERMIT_BADGE.label}
-                        </span>
-                      )}
-                      {/* Since 20260930003557 a keyword-only row carries its real cosine, so the
-                          null branch is rare: only a row with no embedding still lands here. */}
-                      <span
-                        className="ml-auto text-xs tabular-nums text-muted"
-                        title={
-                          hit.score == null
-                            ? "Matched your words; no meaning score available for this provision."
-                            : hit.keyword_hit
-                              ? "Matched your words and your meaning"
-                              : "How close this provision's meaning is to your question"
-                        }
-                      >
-                        {hit.score == null ? "keyword match" : `${Math.round(hit.score * 100)}% match`}
-                        {hit.keyword_hit && hit.score != null ? " · words" : ""}
-                      </span>
-                    </div>
-                    {hit.path && <p className="mt-2 text-xs leading-snug text-muted">{hit.path}</p>}
-                    <p className="mt-1 font-mono text-eyebrow uppercase text-tag">
-                      {hit.citation}
-                    </p>
-                    {heading && (
-                      <p className="mt-1 font-semibold text-ink">{heading}</p>
-                    )}
-                    {paras.length > 0 ? (
-                      <>
-                        <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>
-                          Plain-English summary
-                          {reviewOf.has(hit.id) && <SummaryBadge provision={reviewOf.get(hit.id)!} />}
-                        </p>
-                        <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-ink-soft">{paras[0]}</p>
-                      </>
-                    ) : headingChildren.has(hit.id) ? (
-                      <p className="mt-2 text-sm text-muted">{headingLine(headingChildren.get(hit.id) ?? null)}</p>
-                    ) : (
-                      <p className="mt-2 text-sm italic text-muted">No plain-English summary yet — read the official text.</p>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
+            {askHits.map((hit) => (
+              <AskCard key={hit.id} row={{ ...hit, retrieved: true }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+            ))}
           </ol>
           <p className="mt-6 text-xs text-muted">
             Results are the regulation&apos;s own provisions, ranked by meaning and by your words together;

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccessStatus } from "@/lib/access";
 import { expandAcronyms, keywordQuery } from "@/lib/acronyms";
+import { matchQuestionMap, type QuestionMap } from "@/lib/question-maps";
 import { regulationDisplayName } from "@/lib/regulation-pure";
 
 /**
@@ -39,7 +40,12 @@ export type SemanticHit = {
   is_basis?: boolean;
   /** the full-text search also matched this provision (hybrid only) */
   keyword_hit?: boolean;
-  /** reciprocal-rank-fusion score the hybrid results are ordered by */
+  /**
+   * The score the hybrid results are ordered by: reciprocal-rank fusion for
+   * a query of five words or fewer, cosine-based (cosine minus a 0.40 floor,
+   * plus a keyword bonus of up to 0.02) for a question of six or more, then
+   * the ranking multipliers (migration 20261001042517).
+   */
   fused?: number;
   /** ancestor headings below the regulation ("PART B — … › II. …"); null when directly under it */
   path?: string | null;
@@ -57,6 +63,15 @@ export type SemanticOptions = {
   /** "hybrid" (default) fuses full-text + vector; "vector" is meaning only */
   mode?: "hybrid" | "vector";
 };
+
+/**
+ * What an Ask returns: the retrieval hits, exactly as the RPC ranked them,
+ * and the question map the question routed to (null when none matched).
+ * The map is additive (Ask Track B): the page lays the hits out under its
+ * groups, /api/search/semantic reports it beside the hits, the eval checks
+ * the routing. Retrieval itself never changes because a map matched.
+ */
+export type AskResult = { hits: SemanticHit[]; map: QuestionMap | null };
 
 export class SemanticError extends Error {
   constructor(
@@ -135,14 +150,15 @@ const VALID_REG = /^[a-z0-9]+$/;
 /**
  * Runs an Ask search as the current visitor. Throws SemanticError with a
  * code the caller can map to a message / HTTP status. Statements of Basis
- * are left out unless opts.includeBasis is true.
+ * are left out unless opts.includeBasis is true. The question map (if any)
+ * rides along in the result; it changes nothing about the RPC call.
  */
 export async function semanticSearch(
   question: string,
   opts: SemanticOptions = {}
-): Promise<SemanticHit[]> {
+): Promise<AskResult> {
   const q = cleanQuestion(question);
-  if (!q) return [];
+  if (!q) return { hits: [], map: null };
 
   const access = await getAccessStatus();
   if (!access.user) throw new SemanticError("Log in to use Ask.", "unauthenticated");
@@ -199,11 +215,16 @@ export async function semanticSearch(
   }
   const hits = (data ?? []) as SemanticHit[];
 
+  // Question map (Ask Track B): routed on the expanded question, after
+  // retrieval, never fed back into it. Logged beside the expansion so the
+  // owner can see which questions took a map.
+  const map = matchQuestionMap(expanded);
+
   // Log (best effort; never fails the search).
   const { error: logErr } = await admin.from("search_queries").insert({
     user_id: access.user.id,
     mode: "ask",
-    query: q + (expanded !== q ? `  ⟶ ${expanded}` : ""),
+    query: q + (expanded !== q ? `  ⟶ ${expanded}` : "") + (map ? `  ⟶ map:${map.key}` : ""),
     reg_filter: regFilter.length ? regFilter : null,
     jurisdiction,
     result_ids: hits.map((h) => h.id),
@@ -212,5 +233,5 @@ export async function semanticSearch(
   });
   if (logErr) console.error("ask: could not log query", logErr.message);
 
-  return hits;
+  return { hits, map };
 }

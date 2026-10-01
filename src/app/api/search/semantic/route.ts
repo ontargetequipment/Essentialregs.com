@@ -5,6 +5,7 @@ import {
   semanticSearch,
   type Jurisdiction,
 } from "@/lib/semantic";
+import { groupHits, summariseGroups } from "@/lib/question-maps";
 
 export const runtime = "nodejs";
 
@@ -20,10 +21,15 @@ const STATUS: Record<SemanticError["code"], number> = {
 /**
  * POST /api/search/semantic
  * Body: { q: string, regs?: string[], jurisdiction?: "state" | "federal", count?: number, includeBasis?: boolean }
- * Returns: { hits: SemanticHit[] }
+ * Returns: { hits: SemanticHit[], map: QuestionMapSummary | null }
  *
  * Same behaviour as the Ask mode on /search, as JSON. Subscriber-only,
- * rate-limited, logged — all enforced inside semanticSearch().
+ * rate-limited, logged — all enforced inside semanticSearch(). `hits` is the
+ * retrieval list exactly as the RPC ranked it; `map` (Ask Track B) is the
+ * question map the question routed to, with its groups as id lists in the
+ * order the page shows them (canonical rows first, then the hits grouped
+ * under them), or null when no map matched. The eval reads hits; the map
+ * check reads map.key.
  */
 export async function POST(req: Request) {
   let body: { q?: unknown; regs?: unknown; jurisdiction?: unknown; count?: unknown; includeBasis?: unknown };
@@ -45,8 +51,8 @@ export async function POST(req: Request) {
   const includeBasis = body.includeBasis === true;
 
   try {
-    const hits = await semanticSearch(q, { regFilter: regs, jurisdiction, count, includeBasis });
-    return NextResponse.json({ hits });
+    const { hits, map } = await semanticSearch(q, { regFilter: regs, jurisdiction, count, includeBasis });
+    return NextResponse.json({ hits, map: map ? summariseGroups(map, groupHits(map, hits)) : null });
   } catch (e) {
     if (e instanceof SemanticError) {
       if (e.code === "config" || e.code === "db" || e.code === "upstream") console.error("ask:", e.message);
