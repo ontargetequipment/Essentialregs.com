@@ -130,12 +130,23 @@ test.describe("signed in", () => {
     expect(await page.locator("#doc").innerText()).not.toMatch(/reviewed by/i);
   });
 
+  test("/search shows a subscriber the one Ask (beta) line, linking to ?mode=ask with the query", async ({ page }) => {
+    // The smoke account is a subscriber. The line sits under the keyword
+    // form in place of the old Keyword / Ask tabs (owner decision, 30 Sep
+    // 2026) and carries the current query into Ask.
+    const res = await page.goto("/search?q=emissions");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("tablist")).toHaveCount(0);
+    await expect(page.getByText("Ask (beta)", { exact: true })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Try it →" })).toHaveAttribute("href", "/search?mode=ask&q=emissions");
+  });
+
   test("an Ask card carries the review-status badge beside its summary", async ({ page }) => {
     // The smoke account is a subscriber (Ask is part of the subscription);
     // the first hit for this question has carried a summary since Phase 0.
     const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent("When is a GP01 required?"));
     expect(res?.status()).toBe(200);
-    await expect(page.getByText("Ask is part of the subscription")).toHaveCount(0);
+    await expect(page.getByText("Ask is a beta feature for subscribers")).toHaveCount(0);
     const cards = page.locator("ol > li > a");
     expect(await cards.count()).toBeGreaterThan(0);
     const first = cards.first();

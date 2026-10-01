@@ -50,6 +50,14 @@ function hrefFor(hit: SearchHit): string {
 const PROVENANCE_LABEL_CLASS = "font-mono text-eyebrow uppercase text-tag";
 
 /**
+ * The small badge on a result card ("Statement of basis", the closed-permit
+ * label) and, since 2026-09-30, the Beta pill after the Ask heading: one
+ * style for every quiet qualifier.
+ */
+const BETA_PILL_CLASS =
+  "rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted";
+
+/**
  * The line an Ask card prints for a heading-only row (a section, not a
  * provision) in place of its missing summary. `children` is the count of
  * rows whose parent_id is the heading; null when the count failed.
@@ -63,7 +71,7 @@ function first(v: string | string[] | undefined): string {
   return (Array.isArray(v) ? v[0] : v) ?? "";
 }
 
-/** Keyword-tab URL for a query, keeping the Statements-of-Basis toggle (?basis=1) only when it is on. */
+/** Keyword-search URL for a query, keeping the Statements-of-Basis toggle (?basis=1) only when it is on. */
 function keywordHref(q: string, includeBasis: boolean): string {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
@@ -72,7 +80,7 @@ function keywordHref(q: string, includeBasis: boolean): string {
   return qs ? `/search?${qs}` : "/search";
 }
 
-/** Ask-tab URL keeping the jurisdiction / regulation chips, and ?basis=1 only when it is on. */
+/** Ask URL keeping the jurisdiction / regulation chips, and ?basis=1 only when it is on. */
 function askHref(q: string, includeBasis: boolean, jurisdiction: string | null = null, reg = ""): string {
   const params = new URLSearchParams({ mode: "ask" });
   if (q) params.set("q", q);
@@ -239,7 +247,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
   // summary_status or reviewed_at and the SQL functions are not changed for
   // this, so it is one follow-up read of the hit ids through the visitor's
   // own client (RLS-bound: the same rows the RPC could see). For the
-  // keyword tab the read also carries ai_summary, which search_provisions
+  // keyword page the read also carries ai_summary, which search_provisions
   // does not return, so a keyword card can show the summary under its badge.
   // A failed read leaves the map empty: the Ask cards then show their
   // summary with no badge and the keyword cards show no summary, never a
@@ -286,23 +294,29 @@ export default async function SearchPage(props: PageProps<"/search">) {
     }
   }
 
-  const tabClass = (active: boolean) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium transition ${
-      active ? "bg-accent text-white" : "text-ink-soft hover:bg-accent-soft hover:text-ink"
-    }`;
-
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="font-serif text-section font-bold tracking-tight text-ink">Search</h1>
-
-      <div className="mt-4 inline-flex gap-1 rounded-lg border border-line bg-panel p-1" role="tablist">
-        <Link href={keywordHref(q, includeBasis)} className={tabClass(mode === "keyword")} role="tab" aria-selected={mode === "keyword"}>
-          Keyword
-        </Link>
-        <Link href={askHref(q, includeBasis)} className={tabClass(mode === "ask")} role="tab" aria-selected={mode === "ask"}>
-          Ask
-        </Link>
-      </div>
+      {mode === "keyword" ? (
+        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Search</h1>
+      ) : (
+        <>
+          {/* Keyword search is the product; Ask is a labelled beta reached
+              from the line under the keyword form (owner decision, 30 Sep
+              2026). The pill is the same badge as "Statement of basis". */}
+          <h1 className="flex flex-wrap items-center gap-x-3 font-serif text-section font-bold tracking-tight text-ink">
+            Ask
+            <span className={BETA_PILL_CLASS} title="Ask is in beta: results are improving as we tune it">
+              Beta
+            </span>
+          </h1>
+          <p className="mt-2 text-sm text-ink-soft">
+            Ask is in beta. Results are improving as we tune it; keyword search is the reference.{" "}
+            <Link href={keywordHref(q, includeBasis)} className="font-medium underline hover:text-ink">
+              &larr; Keyword search
+            </Link>
+          </p>
+        </>
+      )}
 
       {mode === "keyword" ? (
         <p className="mt-3 text-sm text-ink-soft">
@@ -388,6 +402,16 @@ export default async function SearchPage(props: PageProps<"/search">) {
         )}
       </form>
 
+      {mode === "keyword" && access.hasAccess && (
+        <p className="mt-3 text-sm text-ink-soft">
+          <span className="font-medium">Ask (beta)</span> &mdash; describe the situation in your own words and Ask
+          finds the provisions most about it.{" "}
+          <Link href={askHref(q, includeBasis)} className="font-medium underline hover:text-ink">
+            Try it &rarr;
+          </Link>
+        </p>
+      )}
+
       {mode === "keyword" && !user && (
         <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           You&apos;re not logged in, so only the free sample content is
@@ -401,7 +425,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
 
       {mode === "ask" && !access.hasAccess && (
         <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Ask is part of the subscription.{" "}
+          Ask is a beta feature for subscribers.{" "}
           {user ? (
             <Link href="/states/colorado" className="font-medium underline hover:text-amber-950">
               Subscribe
@@ -411,8 +435,11 @@ export default async function SearchPage(props: PageProps<"/search">) {
               Log in
             </Link>
           )}{" "}
-          to search the full corpus by meaning. Keyword search of the free sample is still
-          available on the Keyword tab.
+          to search the full corpus by meaning. Keyword search of the free sample is available{" "}
+          <Link href={keywordHref(q, includeBasis)} className="font-medium underline hover:text-amber-950">
+            here
+          </Link>
+          .
         </p>
       )}
 
@@ -431,9 +458,17 @@ export default async function SearchPage(props: PageProps<"/search">) {
             askError.code === "rate_limited" ? "bg-amber-50 text-amber-900" : "bg-red-50 text-red-700"
           }`}
         >
-          {askError.code === "rate_limited"
-            ? askError.message
-            : "Ask isn't available right now. Please try again in a moment, or use the Keyword tab."}
+          {askError.code === "rate_limited" ? (
+            askError.message
+          ) : (
+            <>
+              Ask isn&apos;t available right now. Please try again in a moment, or use{" "}
+              <Link href={keywordHref(q, includeBasis)} className="font-medium underline">
+                keyword search
+              </Link>
+              .
+            </>
+          )}
         </p>
       )}
 
@@ -451,9 +486,9 @@ export default async function SearchPage(props: PageProps<"/search">) {
           Try fewer or different words{!user ? ", or log in to search beyond the sample" : ""}.
           {user && access.hasAccess && (
             <>
-              {" "}Or try the same words on the{" "}
+              {" "}Or try the same words as a question in{" "}
               <Link href={askHref(q, includeBasis)} className="font-medium text-ink-soft underline">
-                Ask tab
+                Ask (beta)
               </Link>
               .
             </>
