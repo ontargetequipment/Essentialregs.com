@@ -13,8 +13,11 @@ export * from "@/lib/regulation-pure";
 
 const PAGE_SIZE = 1000;
 
+// reviewed_at is the date on the summary badge (summaryStatusBadge).
+// reviewed_by is NOT here and must not be added: it holds an email on some
+// rows and this list feeds the reader body every subscriber receives.
 const PROVISION_COLUMNS =
-  "id, citation, title, jurisdiction_level, issuing_body, parent_id, full_text, ai_summary, summary_status, source_url, last_verified_date, is_public, sort_order";
+  "id, citation, title, jurisdiction_level, issuing_body, parent_id, full_text, ai_summary, summary_status, reviewed_at, source_url, last_verified_date, is_public, sort_order";
 
 /**
  * Fetches every provision belonging to a regulation (stored `reg_key`, the
@@ -92,9 +95,24 @@ export async function fetchReaderVersion(regNumber: string): Promise<string> {
 const CACHE_CHUNK_CHARS = 800_000;
 
 /**
+ * The markup version of the rendered body. The cache key below is the
+ * regulation, the DATA version (fetchReaderVersion: row count and newest
+ * updated_at) and this. unstable_cache also keys on the source text of its
+ * callback, but that callback is a one-line call to `load` whose text does
+ * not change when renderReaderBody's output does, and the data cache
+ * outlives a deployment -- so a markup change with no data change would
+ * keep serving the old body. Bump this whenever reader-render.ts or the
+ * panel builders in regulation-pure.ts change what they emit.
+ *
+ *   2: the review-status badge in every summary panel (1 Oct 2026).
+ */
+const READER_RENDER_VERSION = "2";
+
+/**
  * The rendered reader body for a regulation, cached across requests and
  * deployments with Next's data cache, keyed by reg plus the data version
- * from fetchReaderVersion. Fetches with the service-role client, because a
+ * from fetchReaderVersion plus READER_RENDER_VERSION. Fetches with the
+ * service-role client, because a
  * cache scope cannot read cookies() and the body is the same for every
  * entitled subscriber anyway.
  *
@@ -127,7 +145,7 @@ export async function fetchRenderedReader(
         chunks: Math.ceil(r.docHtml.length / CACHE_CHUNK_CHARS),
       };
     },
-    ["reader-meta", regNumber, version],
+    ["reader-meta", regNumber, version, READER_RENDER_VERSION],
     { tags: ["reader-body"] }
   )();
   if (!meta) return null;
@@ -139,7 +157,7 @@ export async function fetchRenderedReader(
           const r = await load();
           return r ? r.docHtml.slice(i * CACHE_CHUNK_CHARS, (i + 1) * CACHE_CHUNK_CHARS) : "";
         },
-        ["reader-chunk", regNumber, version, String(i)],
+        ["reader-chunk", regNumber, version, READER_RENDER_VERSION, String(i)],
         { tags: ["reader-body"] }
       )()
     )

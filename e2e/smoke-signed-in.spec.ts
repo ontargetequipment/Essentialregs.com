@@ -112,6 +112,44 @@ test.describe("signed in", () => {
     await expect(page.locator("#return-trail")).toBeHidden();
   });
 
+  test("the /regulations/gp01 reader labels every summary with its review status", async ({ page }) => {
+    // Trust badge (owner decision, 29 Sep 2026): every summary panel opens
+    // with text saying whether the summary was checked. GP01 had 64
+    // summaries on 1 Oct 2026 (60 approved, 4 pending).
+    const res = await page.goto("/regulations/gp01");
+    expect(res?.status()).toBe(200);
+    const badges = page.locator("#doc details.summary-panel > .summary-body > .summary-badge");
+    expect(await badges.count()).toBeGreaterThan(0);
+    const texts = await badges.allTextContents();
+    for (const text of texts) expect(text).toMatch(/^(Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/);
+    expect(texts.some((t) => t.startsWith("Reviewed") || t.startsWith("AI-generated"))).toBe(true);
+    // The tooltip is added after hydration (reader-client.ts, fillSummaryBadges).
+    await expect(badges.first()).toHaveAttribute("title", /Disclaimer page|Read the official text/);
+    // No panel without a badge, and no reviewer named anywhere in the body.
+    expect(await page.locator("#doc details.summary-panel").count()).toBe(texts.length);
+    expect(await page.locator("#doc").innerText()).not.toMatch(/reviewed by/i);
+  });
+
+  test("an Ask card carries the review-status badge beside its summary", async ({ page }) => {
+    // The smoke account is a subscriber (Ask is part of the subscription);
+    // the first hit for this question has carried a summary since Phase 0.
+    const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent("When is a GP01 required?"));
+    expect(res?.status()).toBe(200);
+    await expect(page.getByText("Ask is part of the subscription")).toHaveCount(0);
+    const cards = page.locator("ol > li > a");
+    expect(await cards.count()).toBeGreaterThan(0);
+    const first = cards.first();
+    const summaryLabel = first.getByText("Plain-English summary", { exact: false });
+    test.skip(
+      (await summaryLabel.count()) === 0,
+      "the first Ask card has no summary (a heading-only row): no badge to check on it",
+    );
+    const badge = first.locator(".summary-badge");
+    await expect(badge).toHaveCount(1);
+    await expect(badge).toHaveText(/^(Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/);
+    await expect(badge).toHaveAttribute("title", /Disclaimer page|Read the official text/);
+  });
+
   test("search returns provisions beyond the public sample", async ({ page }) => {
     const res = await page.goto("/search?q=emissions");
     expect(res?.status()).toBe(200);

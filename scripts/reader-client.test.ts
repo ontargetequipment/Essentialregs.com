@@ -7,7 +7,9 @@
  *   - the search index deep-equals buildSearchIndex(all);
  *   - every summary panel's source link points where summaryPanelHtml
  *     pointed it (p.source_url ?? root.source_url), and no panel that had
- *     no link grows one.
+ *     no link grows one;
+ *   - every summary panel opens with its review-status badge, whose text is
+ *     summaryStatusBadge's and whose tooltip the browser fills in.
  *
  * Runs against a small synthetic regulation that covers every edge the
  * corpus has (citation badge inside/outside a <p>, text that already opens
@@ -30,10 +32,12 @@ import {
   containsBoxHtml,
   sanitizeHtml,
   summarySourceLinkHtml,
+  summaryStatusBadge,
 } from "../src/lib/regulation-pure";
 import {
   buildSearchIndexFromDom,
   fillContainsBoxes,
+  fillSummaryBadges,
   fillSummaryLinks,
   readReaderModel,
 } from "../src/lib/reader-client";
@@ -66,6 +70,7 @@ function checkRegulation(all: Provision[]) {
 
   // Contains boxes: the string the browser inserts is byte-identical to the
   // one the server built from full_text, for every provision.
+  fillSummaryBadges(model);
   fillSummaryLinks(model);
   fillContainsBoxes(model);
   let boxes = 0;
@@ -91,6 +96,24 @@ function checkRegulation(all: Provision[]) {
   // Search index: same rows, same snippets, same top groups.
   assert.deepEqual(buildSearchIndexFromDom(model), buildSearchIndex(all));
 
+  // Summary badges: every panel opens with summaryStatusBadge's text for
+  // its row, and the browser has given it that state's tooltip.
+  let badges = 0;
+  for (const p of all) {
+    const el = model.byId.get(p.id)!.el;
+    const body = el.querySelector(":scope > details.summary-panel > .summary-body");
+    if (!body) continue;
+    const expected = summaryStatusBadge(p);
+    assert.ok(expected, `${p.id} has a panel, so it has a badge`);
+    const badge = body.firstElementChild;
+    assert.ok(badge, `${p.id}'s panel body is not empty`);
+    assert.ok(badge.classList.contains("summary-badge"), `badge of ${p.id} is first in the panel body`);
+    assert.equal(badge.textContent, expected.label, `badge text of ${p.id}`);
+    assert.equal(badge.getAttribute("title"), expected.title, `badge tooltip of ${p.id}`);
+    assert.equal(body.querySelectorAll(".summary-badge").length, 1, `${p.id} has one badge`);
+    badges++;
+  }
+
   // Summary source links: where summaryPanelHtml put one, with its URL.
   let links = 0;
   for (const p of all) {
@@ -105,14 +128,18 @@ function checkRegulation(all: Provision[]) {
     links++;
     assert.equal(status?.innerHTML, domNormalize(window.document, summarySourceLinkHtml(expectedUrl)), `source link of ${p.id}`);
   }
-  return { rows: all.length, boxes, links };
+  return { rows: all.length, boxes, links, badges };
 }
 
 const ROOT = "sec-t-top-REG-t";
 const SRC = "https://example.gov/reg-t";
 const synthetic: Provision[] = [
   row(ROOT, "REGULATION T", null, "<p>REGULATION T Synthetic test regulation</p>", { source_url: SRC, ai_summary: "Root summary." }),
-  row("sec-t-A-PART-A", "PART A", ROOT, "<p>PART A Applicability &amp; scope</p>", { ai_summary: "Part A summary.\n\nSecond paragraph." }),
+  row("sec-t-A-PART-A", "PART A", ROOT, "<p>PART A Applicability &amp; scope</p>", {
+    ai_summary: "Part A summary.\n\nSecond paragraph.",
+    summary_status: "approved",
+    reviewed_at: "2026-09-17T18:04:10Z",
+  }),
   row("sec-t-A-I", "I.", "sec-t-A-PART-A", "<p>Definitions</p><p>Words mean things, 1 &lt; 2 and a&nbsp;b.</p>", {
     ai_summary: "Own-url summary.",
     source_url: "https://example.gov/other",
@@ -151,6 +178,7 @@ function row(
     is_public: false,
     sort_order: 0,
     summary_status: null,
+    reviewed_at: null,
     ...extra,
   };
 }
@@ -167,6 +195,10 @@ test("synthetic regulation: browser-built furniture equals server-built", () => 
   assert.equal(r.rows, synthetic.length);
   // root, PART A, sec-t-A-I (own URL), APPENDIX A; sec-t-A-II's summary is rejected.
   assert.equal(r.links, 4);
+  // The same four panels carry a badge: PART A "Reviewed · Sept 17, 2026", the rest pending.
+  assert.equal(r.badges, 4);
+  assert.match(html, /<p class="summary-badge is-reviewed">Reviewed · Sept 17, 2026<\/p>/);
+  assert.match(html, /<p class="summary-badge is-pending">AI-generated · not yet reviewed<\/p>/);
 });
 
 const fixtureDir = "scripts/fixtures";
@@ -181,7 +213,7 @@ for (const file of fixtures) {
       full_text: sanitizeHtml(p.full_text),
     }));
     const r = checkRegulation(all);
-    console.log(`  ${file}: ${r.rows} rows, ${r.boxes} contains boxes, ${r.links} source links`);
+    console.log(`  ${file}: ${r.rows} rows, ${r.boxes} contains boxes, ${r.links} source links, ${r.badges} badges`);
   });
 }
 

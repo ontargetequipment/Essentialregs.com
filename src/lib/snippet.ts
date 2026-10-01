@@ -128,3 +128,38 @@ export function containsBoxFromRows(children: ContainsRow[]): string {
 export function summarySourceLinkHtml(url: string): string {
   return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">View official source ↗</a>`;
 }
+
+/**
+ * The two review states a summary badge can show (owner decision, 29 Sep
+ * 2026): "reviewed" for summary_status approved or edited, "pending" for a
+ * summary not yet checked. A rejected summary is withheld everywhere, so it
+ * has no badge. summaryStatusBadge (regulation-pure.ts) maps a row to one.
+ */
+export type SummaryBadgeKind = "reviewed" | "pending";
+
+/**
+ * The tooltip for each badge state. On the cards it is the badge's own
+ * title attribute (React). In the reader the server ships only the badge's
+ * text and its state class (`summary-badge is-reviewed` / `is-pending`)
+ * and the browser sets the title from this table (reader-client.ts,
+ * fillSummaryBadges) -- the same ~95 bytes under every one of a
+ * regulation's thousands of panels would otherwise be shipped twice, the
+ * way the source link once was. "Reviewed" is defined on the Disclaimer
+ * page, section "What 'Reviewed' means" (/disclaimer#what-reviewed-means).
+ */
+export const SUMMARY_BADGE_TITLES: Record<SummaryBadgeKind, string> = {
+  reviewed: "Checked against the official text; see the Disclaimer page for what review means.",
+  pending: "Generated from the official text and not yet checked. Read the official text.",
+};
+
+/** The reader badge's state class, as emitted by summaryPanelHtml and read back by fillSummaryBadges. */
+export function summaryBadgeClass(kind: SummaryBadgeKind): string {
+  return kind === "reviewed" ? "is-reviewed" : "is-pending";
+}
+
+/** The state a reader badge element carries, from its class list; null for an element that is not a badge. */
+export function summaryBadgeKindOf(el: { classList: { contains(c: string): boolean } }): SummaryBadgeKind | null {
+  if (el.classList.contains("is-reviewed")) return "reviewed";
+  if (el.classList.contains("is-pending")) return "pending";
+  return null;
+}

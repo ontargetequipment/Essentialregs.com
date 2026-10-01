@@ -9,6 +9,8 @@ type Item = {
   reg_key: string | null;
   path: string | null;
   summary: string | null;
+  /** summaryStatusBadge's result for `summary`, computed by /api/related (lib/related.ts). */
+  summary_badge: { kind: "reviewed" | "pending"; label: string; title: string } | null;
   badge: string;
   regLabel: string;
   crossReg: boolean;
@@ -47,9 +49,15 @@ export function RelatedProvisionsLoader({ currentReg }: { currentReg: string }) 
           const title = it.title ? `<span class="related-title">${esc(it.title)}</span>` : "";
           const path = it.path ? `<span class="related-path">${esc(it.path)}</span>` : "";
           // Same "Plain-English summary" label as the Ask cards (backlog #16), so the
-          // excerpt is never unlabelled prose next to the provision's own words.
+          // excerpt is never unlabelled prose next to the provision's own words, and
+          // the same review-status badge beside it (owner decision, 29 Sep 2026).
+          const review = it.summary_badge
+            ? `<span class="summary-badge related-review is-${esc(it.summary_badge.kind)}" title="${esc(
+                it.summary_badge.title
+              )}">${esc(it.summary_badge.label)}</span>`
+            : "";
           const summary = it.summary
-            ? `<span class="related-label">Plain-English summary</span><span class="related-snip">${esc(it.summary)}</span>`
+            ? `<span class="related-label">Plain-English summary${review}</span><span class="related-snip">${esc(it.summary)}</span>`
             : "";
           return (
             `<li><span class="related-badge related-badge-${esc(it.badge.toLowerCase())}">${esc(it.badge)}</span>` +

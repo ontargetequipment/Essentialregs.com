@@ -16,6 +16,8 @@ import {
   containsBoxFromRows,
   SNIPPET_LEN,
   snippetAfterCitation,
+  SUMMARY_BADGE_TITLES,
+  summaryBadgeKindOf,
   summarySourceLinkHtml,
   type SearchRow,
 } from "@/lib/snippet";
@@ -143,6 +145,20 @@ export function fillContainsBoxes(model: ReaderModel): void {
       "beforeend",
       containsBoxFromRows(children.map((c) => ({ id: c.id, citation: c.citation, snippet: model.snippetOf(c) })))
     );
+  }
+}
+
+/**
+ * Sets the tooltip on each summary panel's review-status badge from its
+ * state class (SUMMARY_BADGE_TITLES): the server ships the badge text and
+ * the class only. Idempotent.
+ */
+export function fillSummaryBadges(model: ReaderModel): void {
+  for (const row of model.rows) {
+    const badge = row.el.querySelector(":scope > details.summary-panel > .summary-body > .summary-badge");
+    if (!badge || badge.hasAttribute("title")) continue;
+    const kind = summaryBadgeKindOf(badge);
+    if (kind) badge.setAttribute("title", SUMMARY_BADGE_TITLES[kind]);
   }
 }
 

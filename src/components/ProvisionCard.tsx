@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cache } from "react";
 import { getAccessStatus } from "@/lib/access";
 import { sanitizeCardHtml, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
+import { SummaryBadge } from "@/components/SummaryBadge";
 import type { Provision } from "@/lib/types";
 
 // Renders one regulation entry: citation/title, the plain-English summary in
@@ -39,16 +40,17 @@ export async function ProvisionCard({ provision }: { provision: Provision }) {
         <details className="mt-4 rounded-md bg-accent-soft p-4" open>
           <summary className="cursor-pointer text-sm font-semibold text-ink">
             Plain-English summary
+            {/* The review-status badge, text with a date, next to the label
+                (owner decision, 29 Sep 2026; see summaryStatusBadge). The
+                reviewer is never shown. /sample and /regs/[id] select "*",
+                so reviewed_at is already on the row. */}
+            <SummaryBadge provision={provision} />
           </summary>
           <div className="mt-2 flex flex-col gap-2 text-sm leading-relaxed text-ink">
             {summaryParagraphs(provision.ai_summary ?? "").map((para, i) => (
               <p key={i}>{para}</p>
             ))}
           </div>
-          {/* No reviewer/AI-generated/reviewed-date mention here [Brody,
-              Sep 14 2026] -- the card's own "View official source" link
-              below already gives a reader a way to verify this directly,
-              and the Disclaimer page covers that summaries are AI-generated. */}
         </details>
       )}
 

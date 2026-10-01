@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SummaryBadge } from "@/components/SummaryBadge";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
 import {
@@ -230,6 +231,30 @@ export default async function SearchPage(props: PageProps<"/search">) {
           ? { code: e.code, message: e.message }
           : { code: "db", message: e instanceof Error ? e.message : String(e) };
       if (askError.code !== "rate_limited") console.error("ask:", askError.message);
+    }
+  }
+
+  // The review state of every hit's summary, for the badge beside it
+  // (summaryStatusBadge; owner decision, 29 Sep 2026). Neither RPC returns
+  // summary_status or reviewed_at and the SQL functions are not changed for
+  // this, so it is one follow-up read of the hit ids through the visitor's
+  // own client (RLS-bound: the same rows the RPC could see). For the
+  // keyword tab the read also carries ai_summary, which search_provisions
+  // does not return, so a keyword card can show the summary under its badge.
+  // A failed read leaves the map empty: the Ask cards then show their
+  // summary with no badge and the keyword cards show no summary, never a
+  // wrong badge. reviewed_by is never selected.
+  type ReviewRow = { id: string; ai_summary: string | null; summary_status: string | null; reviewed_at: string | null };
+  const reviewOf = new Map<string, ReviewRow>();
+  {
+    const ids = mode === "ask" ? askHits.map((h) => h.id) : hits.map((h) => h.id);
+    if (ids.length > 0) {
+      const { data: rows, error: rowsErr } = await supabase
+        .from("provisions")
+        .select("id, ai_summary, summary_status, reviewed_at")
+        .in("id", ids);
+      if (rowsErr) console.error("search: review-status lookup failed", rowsErr.message);
+      for (const r of (rows ?? []) as ReviewRow[]) reviewOf.set(r.id, r);
     }
   }
 
@@ -472,6 +497,11 @@ export default async function SearchPage(props: PageProps<"/search">) {
             {hits.map((hit) => {
               const heading = titleWithoutCitation(hit.title, hit.citation);
               const snippet = snippetWithoutTitle(sanitizeHeadline(hit.headline ?? ""), [hit.title, heading]);
+              // The summary's first paragraph, labelled and badged like an
+              // Ask card; a rejected summary is withheld here as everywhere.
+              const review = reviewOf.get(hit.id);
+              const summary =
+                review && review.summary_status !== "rejected" ? summaryParagraphs(review.ai_summary ?? "")[0] ?? null : null;
               return (
                 <li key={hit.id}>
                   <Link
@@ -503,6 +533,15 @@ export default async function SearchPage(props: PageProps<"/search">) {
                     {hit.path && <p className="mt-1 text-xs leading-snug text-muted">{hit.path}</p>}
                     {heading && (
                       <p className="mt-1 font-semibold text-ink">{heading}</p>
+                    )}
+                    {summary && review && (
+                      <>
+                        <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>
+                          Plain-English summary
+                          <SummaryBadge provision={review} />
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-ink-soft">{summary}</p>
+                      </>
                     )}
                     {snippet && (
                       <>
@@ -610,7 +649,10 @@ export default async function SearchPage(props: PageProps<"/search">) {
                     )}
                     {paras.length > 0 ? (
                       <>
-                        <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>Plain-English summary</p>
+                        <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>
+                          Plain-English summary
+                          {reviewOf.has(hit.id) && <SummaryBadge provision={reviewOf.get(hit.id)!} />}
+                        </p>
                         <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-ink-soft">{paras[0]}</p>
                       </>
                     ) : headingChildren.has(hit.id) ? (

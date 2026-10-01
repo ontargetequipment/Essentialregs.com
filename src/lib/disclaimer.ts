@@ -12,9 +12,10 @@
  * Which revision of the disclaimer text the user accepted, stored in the
  * account's user metadata as `disclaimer_version`. Bump it (ISO date) when
  * the wording in src/components/DisclaimerText.tsx changes in substance;
- * LegalPage's "Last updated" line is the same date.
+ * the disclaimer page's "Last updated" line (DISCLAIMER_LAST_UPDATED in
+ * src/components/DisclaimerText.tsx) is the same date.
  */
-export const DISCLAIMER_VERSION = "2026-09-12";
+export const DISCLAIMER_VERSION = "2026-10-01";
 
 /** The hidden fields the account form carries once the gate has been passed. */
 export const ACCEPT_FIELD = "accepted";
