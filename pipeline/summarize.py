@@ -91,10 +91,16 @@ HEDGING_RETRY_LINE = "Rewrite without stating that anything is absent from the t
 # LENGTH_RETRY_WORDS words gets one sync retry asking for the usual length;
 # the shorter clean answer is written.
 LENGTH_RETRY_WORDS = 150
+# The first retry wording ("2-5 short sentences") still came back at 170-250
+# words on the OOOOb pilot (82 of 82 retries stayed over the limit): the
+# model writes five long sentences. An explicit word budget, and a token
+# ceiling on the call, hold it to the usual length.
 LENGTH_RETRY_LINE = (
-    "Rewrite in 2-5 short sentences, keeping the key thresholds, dates and "
-    "numbers and naming the listed items as a group rather than one by one."
+    "Rewrite in at most 100 words (2-4 short sentences). Keep the key "
+    "thresholds, dates and numbers; name the listed items as a group, not "
+    "one by one; drop everything else."
 )
+LENGTH_RETRY_MAX_TOKENS = 260  # ~190 words: room for a 100-word answer, never a wall of text
 TEMPERATURE = 0
 DEFAULT_MODEL = "claude-sonnet-4-5"
 BATCH_MAX_REQUESTS = 1000   # Anthropic Message Batches API limit per batch
@@ -1592,13 +1598,14 @@ def _message_text(message) -> str:
 
 
 def retry_with_line(client_anthropic, model: str, result: "PromptResult",
-                    first_summary: str, stats: "RunStats", line: str) -> str:
+                    first_summary: str, stats: "RunStats", line: str,
+                    max_tokens: int = MAX_TOKENS) -> str:
     """One synchronous retry: the same prompt, the model's own first answer,
     then `line` as a new user turn. Returns the retried text (the caller
     re-tests it)."""
     message = client_anthropic.messages.create(
         model=model,
-        max_tokens=MAX_TOKENS,
+        max_tokens=max_tokens,
         temperature=TEMPERATURE,
         system=result.system,
         messages=[
@@ -1643,13 +1650,16 @@ def guard_and_write(client_anthropic, client_supabase, provision_id: str, result
         stats.length_retried += 1
         try:
             shorter = retry_with_line(client_anthropic, model, result, summary_text, stats,
-                                      LENGTH_RETRY_LINE)
+                                      LENGTH_RETRY_LINE, max_tokens=LENGTH_RETRY_MAX_TOKENS)
         except Exception as exc:  # noqa: BLE001 -- keep the long but clean answer
             print(f"  length retry failed for {provision_id}: {exc}", file=sys.stderr)
             shorter = ""
-        # Take the rewrite only when it is a real improvement and still clean;
+        # Take the rewrite only when it is a real improvement, still clean and
+        # a whole answer (the token ceiling must not have cut it mid-sentence);
         # a long, correct summary beats no summary.
-        if shorter and not is_hedging(shorter) and len(shorter.split()) < len(summary_text.split()):
+        if (shorter and not is_hedging(shorter)
+                and len(shorter.split()) < len(summary_text.split())
+                and shorter.rstrip()[-1] in ".!?)\""):
             summary_text = shorter
         if is_too_long(summary_text):
             stats.length_still_long += 1

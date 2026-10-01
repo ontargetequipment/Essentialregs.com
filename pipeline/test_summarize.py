@@ -2177,6 +2177,25 @@ def test_length_guard_retries_once_and_writes_the_shorter_clean_answer(monkeypat
     assert stats.length_retried == 1 and stats.length_still_long == 0 and stats.processed == 1
 
 
+def test_length_retry_uses_the_word_budget_line_and_token_ceiling(monkeypatch):
+    monkeypatch.setattr(summarize, "write_summary", lambda *a, **k: None)
+    calls: list[dict] = []
+    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40))
+    guard_and_write(_fake_anthropic(["Done."], calls), None, "sec-x", _prompt_result(),
+                    long_text, "m", summarize.RunStats(), regenerated=True)
+    assert calls[0]["max_tokens"] == summarize.LENGTH_RETRY_MAX_TOKENS
+    assert "at most 100 words" in calls[0]["messages"][-1]["content"]
+
+
+def test_length_guard_rejects_a_rewrite_cut_mid_sentence(monkeypatch):
+    written: list = []
+    monkeypatch.setattr(summarize, "write_summary", lambda c, pid, text, model, **kw: written.append(text))
+    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40))
+    guard_and_write(_fake_anthropic(["Shorter but cut off in the middle of a"], []), None, "sec-x",
+                    _prompt_result(), long_text, "m", summarize.RunStats(), regenerated=True)
+    assert written == [long_text]
+
+
 def test_length_guard_keeps_the_long_answer_when_the_rewrite_hedges_or_grows(monkeypatch):
     written: list = []
     monkeypatch.setattr(summarize, "write_summary", lambda c, pid, text, model, **kw: written.append(text))
