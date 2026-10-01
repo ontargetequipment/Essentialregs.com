@@ -26,6 +26,9 @@ async function expectPlanCtas(scope: import("@playwright/test").Locator | import
   }
 }
 
+/** What a review-status badge says (summaryStatusBadge): a dated "Reviewed", or the pending line. */
+const BADGE_TEXT = /^(Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/;
+
 /** Each /sample card's heading, in SAMPLE_ORDER: regulation label · citation [— title]. */
 const SAMPLE_HEADINGS = [
   "Regulation 7 · I.D.3.a.(i).",
@@ -304,6 +307,11 @@ test.describe("anonymous", () => {
     await expect(page.getByText("Search isn't available right now")).toHaveCount(0);
     await expect(page.getByText(/^3 results for/)).toBeVisible();
     await expect(page.locator("ol > li > a")).toHaveCount(3);
+    // Every keyword card with a summary labels it and badges its review
+    // status (owner decision, 29 Sep 2026); the public rows all have one.
+    const badges = page.locator("ol > li > a .summary-badge");
+    expect(await badges.count()).toBeGreaterThan(0);
+    for (const text of await badges.allTextContents()) expect(text).toMatch(BADGE_TEXT);
   });
 
   test("a parenthesised /regs/<id> returns 200", async ({ page }) => {
@@ -313,10 +321,13 @@ test.describe("anonymous", () => {
     // Provenance (backlog #16): the title names the provision and its
     // regulation, and the summary and the official text are each labelled.
     await expect(page).toHaveTitle(/^I\.D\.3\.a\.\(i\)\. · Regulation 7 — /);
+    // The summary toggle carries the review-status badge after its label
+    // (SummaryBadge.tsx); this row has been approved since 15 Sep 2026.
     await expect(page.locator("article details > summary")).toHaveText([
-      "Plain-English summary",
+      /^Plain-English summary\s*Reviewed · [A-Z][a-z]+ \d{1,2}, \d{4}$/,
       "Original regulatory text",
     ]);
+    await expect(page.locator("article .summary-badge")).toHaveAttribute("title", /Disclaimer page/);
     await expect(page.getByRole("link", { name: "← Back to sample" })).toBeVisible();
   });
 
