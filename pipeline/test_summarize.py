@@ -2145,3 +2145,57 @@ def test_run_batch_submits_every_chunk_before_polling(monkeypatch, tmp_path):
     assert stats.batches_submitted == 3
     assert sorted(written) == sorted(r["id"] for r in rows)
     assert stats.processed == 5 and stats.failed == 0
+
+
+# --- Phase 0 follow-up: length guard and --longer-than ----------------------
+
+from summarize import LENGTH_RETRY_LINE, LENGTH_RETRY_WORDS, is_too_long  # noqa: E402
+
+
+def test_system_prompt_keeps_the_rule_and_adds_the_length_sentence():
+    system = system_prompt_for("sec-oooob-60.5395b")
+    assert "Summarize what the provision, taken together with those listed provisions, requires." in system
+    assert "keep to the usual 2-5 short sentences" in system
+    assert "do not restate each one" in system
+
+
+def test_is_too_long_threshold():
+    assert not is_too_long(" ".join(["w"] * LENGTH_RETRY_WORDS))
+    assert is_too_long(" ".join(["w"] * (LENGTH_RETRY_WORDS + 1)))
+
+
+def test_length_guard_retries_once_and_writes_the_shorter_clean_answer(monkeypatch):
+    written: list = []
+    monkeypatch.setattr(summarize, "write_summary", lambda c, pid, text, model, **kw: written.append(text))
+    calls: list[dict] = []
+    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40))
+    client = _fake_anthropic(["Short and clean."], calls)
+    stats = summarize.RunStats()
+    guard_and_write(client, None, "sec-x", _prompt_result(), long_text, "m", stats, regenerated=True)
+    assert written == ["Short and clean."]
+    assert calls[0]["messages"][-1] == {"role": "user", "content": LENGTH_RETRY_LINE}
+    assert stats.length_retried == 1 and stats.length_still_long == 0 and stats.processed == 1
+
+
+def test_length_guard_keeps_the_long_answer_when_the_rewrite_hedges_or_grows(monkeypatch):
+    written: list = []
+    monkeypatch.setattr(summarize, "write_summary", lambda c, pid, text, model, **kw: written.append(text))
+    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40))
+    stats = summarize.RunStats()
+    guard_and_write(_fake_anthropic(["Shorter but the text does not say."], []), None, "sec-x",
+                    _prompt_result(), long_text, "m", stats, regenerated=True)
+    assert written == [long_text]            # hedging rewrite rejected, long clean answer kept
+    assert stats.length_retried == 1 and stats.length_still_long == 1 and stats.failed == 0
+
+
+def test_parents_longer_than_keeps_only_long_summaries():
+    meta = _reg6_tree()
+    children_index = build_children_index(meta)
+    rows = [
+        {"id": "sec-6-B-I-C-2-b", "ai_summary": "x" * 1000},
+        {"id": "sec-6-B-I-C-2-b-(i)", "ai_summary": "x" * 300},
+    ]
+    got = [r["id"] for r in iter_candidates(_SelectClient(rows), "6", False, None,
+                                            parent_ids=set(children_index), longer_than=900)]
+    assert got == ["sec-6-B-I-C-2-b"]
+    assert summarize.main(["--longer-than", "900"]) == 1   # needs --parents

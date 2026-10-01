@@ -30,6 +30,10 @@ on:
         type: boolean
         required: false
         default: false
+      longer_than:
+        description: "With parents: only rows whose current summary is longer than this many characters (e.g. 900), to redo the ones that ran long. Leave blank for all parents."
+        required: false
+        default: ""
       ids:
         description: "Comma-separated exact provision ids to regenerate (e.g. from a review report). Overrides limit/force row selection; pair with reg for correct metadata scoping. Leave blank for normal reg/limit/force selection."
         required: false
@@ -66,6 +70,7 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run); fi
           if [ "${{ inputs.force }}" = "true" ]; then ARGS+=(--force); fi
           if [ "${{ inputs.parents }}" = "true" ]; then ARGS+=(--parents); fi
+          if [ -n "${{ inputs.longer_than }}" ]; then ARGS+=(--longer-than "${{ inputs.longer_than }}"); fi
           if [ -n "${{ inputs.ids }}" ]; then ARGS+=(--ids "${{ inputs.ids }}"); fi
           ARGS+=(--model "${{ inputs.model }}")
           echo "Running: python summarize.py ${ARGS[*]}"

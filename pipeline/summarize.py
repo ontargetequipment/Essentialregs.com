@@ -82,6 +82,19 @@ HEDGING_RE = re.compile(
     re.IGNORECASE,
 )
 HEDGING_RETRY_LINE = "Rewrite without stating that anything is absent from the text."
+
+# Phase 0 follow-up: with the children in the prompt the model wrote 10-25
+# sentence summaries for parents with many descendants (3,162 regenerated
+# rows averaged 789 characters against 380 before; 871 passed 900). A long
+# gloss dilutes the row's embedding -- the OOOO storage-vessel rows fell out
+# of Ask's top 10 -- and breaks the 2-5 sentence spec. A summary over
+# LENGTH_RETRY_WORDS words gets one sync retry asking for the usual length;
+# the shorter clean answer is written.
+LENGTH_RETRY_WORDS = 150
+LENGTH_RETRY_LINE = (
+    "Rewrite in 2-5 short sentences, keeping the key thresholds, dates and "
+    "numbers and naming the listed items as a group rather than one by one."
+)
 TEMPERATURE = 0
 DEFAULT_MODEL = "claude-sonnet-4-5"
 BATCH_MAX_REQUESTS = 1000   # Anthropic Message Batches API limit per batch
@@ -284,7 +297,10 @@ SYSTEM_PROMPT_TEMPLATE = (
     "Never state or imply that something is absent, not shown, not "
     "specified, unclear, or not stated in the text. If a detail is in a "
     "listed provision, state it; if the listed provisions are shown only as "
-    "an outline, say the provision introduces those items and name them.\n\n"
+    "an outline, say the provision introduces those items and name them. "
+    "Even so, keep to the usual 2-5 short sentences: when many provisions "
+    "are listed, say what they require as a group and name the items, with "
+    "the key thresholds, dates and numbers -- do not restate each one.\n\n"
     "Scope the summary by the paragraph's OWN words plus its immediate "
     "parent paragraph -- nothing wider. Never carry an equipment list, an "
     "applicability date, or a scope qualifier down from the section heading "
@@ -1433,7 +1449,8 @@ def load_ids_file(path: str) -> list[str]:
 
 def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int],
                      ids: Optional[list[str]] = None,
-                     parent_ids: Optional[set[str]] = None):
+                     parent_ids: Optional[set[str]] = None,
+                     longer_than: Optional[int] = None):
     """Yields full candidate rows (id, citation, title, parent_id, full_text,
     sort_order), ordered by sort_order, paginated DB_PAGE_SIZE at a time,
     stopping once --limit rows have been yielded.
@@ -1446,14 +1463,16 @@ def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int
     When `parent_ids` is given (--parents), candidates are the rows in scope
     whose ai_summary is NOT null and whose id is in that set (the ids with
     at least one child, from build_children_index). Combines with --reg and
-    --limit; `force` is implied."""
+    --limit; `force` is implied. `longer_than` (--longer-than N) further
+    keeps only rows whose current ai_summary is longer than N characters --
+    the way to redo just the parents whose regenerated summary ran long."""
     if parent_ids is not None:
         like_prefix = f"sec-{reg.lower()}-" if reg else None
         start = 0
         yielded = 0
         while True:
             q = (client.table("provisions")
-                 .select("id, citation, title, parent_id, full_text, sort_order")
+                 .select("id, citation, title, parent_id, full_text, sort_order, ai_summary")
                  .not_.is_("ai_summary", "null"))
             if like_prefix:
                 q = q.like("id", f"{like_prefix}%")
@@ -1461,6 +1480,8 @@ def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int
             rows = q.execute().data or []
             for row in rows:
                 if row["id"] not in parent_ids:
+                    continue
+                if longer_than is not None and len(row.get("ai_summary") or "") <= longer_than:
                     continue
                 yield row
                 yielded += 1
@@ -1570,11 +1591,11 @@ def _message_text(message) -> str:
     ).strip()
 
 
-def retry_without_hedging(client_anthropic, model: str, result: "PromptResult",
-                          first_summary: str, stats: "RunStats") -> str:
-    """One synchronous retry for a summary that hit HEDGING_RE: the same
-    prompt, the model's own first answer, then HEDGING_RETRY_LINE as a new
-    user turn. Returns the retried text (the caller re-tests it)."""
+def retry_with_line(client_anthropic, model: str, result: "PromptResult",
+                    first_summary: str, stats: "RunStats", line: str) -> str:
+    """One synchronous retry: the same prompt, the model's own first answer,
+    then `line` as a new user turn. Returns the retried text (the caller
+    re-tests it)."""
     message = client_anthropic.messages.create(
         model=model,
         max_tokens=MAX_TOKENS,
@@ -1583,12 +1604,22 @@ def retry_without_hedging(client_anthropic, model: str, result: "PromptResult",
         messages=[
             {"role": "user", "content": result.prompt},
             {"role": "assistant", "content": first_summary},
-            {"role": "user", "content": HEDGING_RETRY_LINE},
+            {"role": "user", "content": line},
         ],
     )
     stats.add_usage(message.usage)
-    stats.hedging_retried += 1
     return _message_text(message)
+
+
+def retry_without_hedging(client_anthropic, model: str, result: "PromptResult",
+                          first_summary: str, stats: "RunStats") -> str:
+    """One synchronous retry for a summary that hit HEDGING_RE."""
+    stats.hedging_retried += 1
+    return retry_with_line(client_anthropic, model, result, first_summary, stats, HEDGING_RETRY_LINE)
+
+
+def is_too_long(summary: str) -> bool:
+    return len((summary or "").split()) > LENGTH_RETRY_WORDS
 
 
 def guard_and_write(client_anthropic, client_supabase, provision_id: str, result: "PromptResult",
@@ -1608,6 +1639,20 @@ def guard_and_write(client_anthropic, client_supabase, provision_id: str, result
             stats.hedging_failed += 1
             log_failure(provision_id, "hedging")
             return
+    if is_too_long(summary_text):
+        stats.length_retried += 1
+        try:
+            shorter = retry_with_line(client_anthropic, model, result, summary_text, stats,
+                                      LENGTH_RETRY_LINE)
+        except Exception as exc:  # noqa: BLE001 -- keep the long but clean answer
+            print(f"  length retry failed for {provision_id}: {exc}", file=sys.stderr)
+            shorter = ""
+        # Take the rewrite only when it is a real improvement and still clean;
+        # a long, correct summary beats no summary.
+        if shorter and not is_hedging(shorter) and len(shorter.split()) < len(summary_text.split()):
+            summary_text = shorter
+        if is_too_long(summary_text):
+            stats.length_still_long += 1
     write_summary(client_supabase, provision_id, summary_text, model,
                   regenerated=regenerated, descendant_count=result.descendant_count)
     stats.processed += 1
@@ -1812,6 +1857,8 @@ class RunStats:
     with_descendants: int = 0   # rows whose prompt carried a descendants block at all
     hedging_retried: int = 0    # first answers that hit HEDGING_RE and were retried
     hedging_failed: int = 0     # retries that still hit it (logged, not written)
+    length_retried: int = 0     # first answers over LENGTH_RETRY_WORDS words, retried once
+    length_still_long: int = 0  # retries still over the limit (the shorter one is written)
 
     def note_prompt(self, result: "PromptResult") -> None:
         if result.descendant_count:
@@ -1839,6 +1886,8 @@ def print_report(stats: RunStats, model: str, batch: bool, dry_run: bool) -> Non
     print(f"{'  of which outline mode':38}{stats.outline_mode:>12,}")
     print(f"{'Hedging: retried once':38}{stats.hedging_retried:>12,}")
     print(f"{'Hedging: still hedging (not written)':38}{stats.hedging_failed:>12,}")
+    print(f"{'Length: retried once':38}{stats.length_retried:>12,}")
+    print(f"{'Length: still long after retry':38}{stats.length_still_long:>12,}")
     print(f"{'Input tokens':38}{stats.input_tokens:>12,}")
     print(f"{'Output tokens':38}{stats.output_tokens:>12,}")
     print(f"{'Estimated cost (USD)':38}{'$' + format(cost, ',.4f'):>12}")
@@ -2132,6 +2181,12 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
              "changelog row.",
     )
     parser.add_argument(
+        "--longer-than", type=int, default=None, metavar="CHARS",
+        help="With --parents: only rows whose current ai_summary is longer than "
+             "this many characters (e.g. 900), to redo just the parents whose "
+             "regenerated summary ran long.",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true",
         help="Build and print prompts + token/cost estimates for every "
              "candidate row. Never calls the Anthropic API and never writes "
@@ -2171,6 +2226,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 1
     if args.parents and (args.ids or args.ids_file):
         print("--parents is mutually exclusive with --ids and --ids-file.", file=sys.stderr)
+        return 1
+    if args.longer_than is not None and not args.parents:
+        print("--longer-than only applies with --parents.", file=sys.stderr)
         return 1
     if args.parents:
         args.force = True
@@ -2215,9 +2273,11 @@ def main(argv: Optional[list[str]] = None) -> int:
           f"{f' ({len(ids)} explicit id(s))' if ids else ''}"
           f"{f' (limit {args.limit})' if args.limit and not ids else ''}"
           f"{' [parents: rows with a summary and at least one child]' if args.parents else ''}"
+          f"{f' [summary longer than {args.longer_than} chars]' if args.longer_than is not None else ''}"
           f"{' [force: regenerating existing summaries too]' if args.force and not ids and not args.parents else ''}...")
     rows = list(iter_candidates(client_supabase, args.reg, args.force, args.limit, ids=ids,
-                                parent_ids=set(children_index) if args.parents else None))
+                                parent_ids=set(children_index) if args.parents else None,
+                                longer_than=args.longer_than))
     print(f"  {len(rows):,} candidate rows.")
 
     if not rows:
