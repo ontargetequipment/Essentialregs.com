@@ -30,9 +30,62 @@ on:
         description: "With neighbors_only: resume after this provision id (the 'last=' id in a failed run's log). Leave blank to start over."
         required: false
         default: ""
+      ask_eval:
+        description: "Ask eval instead of embedding: score Ask like /admin/semantic-eval (scripts/ask-eval.ts) and print the top 10 for the standard questions. Read-only apart from the mode='eval' log rows."
+        type: boolean
+        required: false
+        default: false
+      ask:
+        description: "With ask_eval: extra questions to print the top N for, separated by ' | '."
+        required: false
+        default: ""
+      ask_count:
+        description: "With ask_eval: how many hits to print per Ask question (1-50)."
+        required: false
+        default: "10"
 
 jobs:
+  # Scores Ask the way /admin/semantic-eval does (same questions, expansion,
+  # RPC and pass rules) without a browser session: the eval page needs an
+  # admin login behind Vercel auth, so a re-summarize or re-embed could not
+  # be scored from CI. Lives in this workflow because it needs the same
+  # VOYAGE_API_KEY and Supabase secrets.
+  ask_eval:
+    if: inputs.ask_eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the eval
+        env:
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ASK: ${{ inputs.ask }}
+          ASK_COUNT: ${{ inputs.ask_count }}
+        run: |
+          ARGS=()
+          if [ -n "$ASK_COUNT" ]; then ARGS+=(--count "$ASK_COUNT"); fi
+          if [ -n "$ASK" ]; then
+            IFS='|' read -ra QS <<< "$ASK"
+            for q in "${QS[@]}"; do
+              q="$(echo "$q" | sed 's/^ *//;s/ *$//')"
+              [ -n "$q" ] && ARGS+=(--ask "$q")
+            done
+          fi
+          npx tsx scripts/ask-eval.ts "${ARGS[@]}"
+
   embed:
+    if: ${{ !inputs.ask_eval }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     defaults:

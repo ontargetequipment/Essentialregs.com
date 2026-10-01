@@ -98,6 +98,29 @@ touched unless you say so explicitly:
    the full cost, so scope it deliberately.
 3. Check **force**, leave **dry_run** unchecked, click **Run workflow**.
 
+## Regenerating parent summaries from parent + descendants (Phase 0)
+
+A provision that is only an introduction ("must comply with one of the
+following:") used to be summarized without its children, and the model
+wrote things like "the text does not show what those methods are". The
+**parents** checkbox on **Generate summaries** (`summarize.py --parents`)
+re-selects every row that already has a summary *and* has at least one
+child, and puts the children's text (every descendant, in reading order)
+in the prompt under "Provisions inside this one". Subtrees over 3,000
+words are shown as an outline (citation + title only) with a note.
+
+It implies **force**, and combines with **reg** and **limit** for pilots.
+Every rewritten row goes back to `summary_status = 'pending'` (its previous
+summary is kept in `summary_original` unless a reviewer already preserved
+one there) and gets a `summary_regenerated` row in `provision_changes`, so
+the review queue and /changelog show exactly what changed. A new summary
+that still says something is "not stated" / "not specified" / "unclear" is
+retried once and, if it still hedges, is **not** written -- the id lands in
+`failed.jsonl` with reason `hedging` and the old summary stays in place.
+
+Always dry-run first: the report prints the row count, how many prompts
+fell back to outline mode, and the cost estimate.
+
 ## Cost
 
 Each run prints a final table with rows processed, tokens used, and an
@@ -283,12 +306,29 @@ rebuilds `provision_neighbors` (the "Related provisions" panel) through the
 and `006_neighbors_rpc.sql`.
 
 What goes into each embedding: `<Colorado|Federal> regulation <key>: citation — title`,
-the first 300 characters of the immediate parent paragraph, the row's
-`ai_summary` (unless its `summary_status` is `rejected`), and the tag-stripped
-`full_text`. Rows over 6,000 characters are split into overlapping chunks
-(~1,500 tokens, 150 overlap); chunk 0 always carries the summary. Each chunk
-is content-hashed with the model name, so a re-run only re-embeds rows whose
-text or summary changed (or everything, with `--force`).
+the first 300 characters of the immediate parent paragraph, the first 600
+characters of the row's `ai_summary` cut back to a sentence boundary (unless
+its `summary_status` is `rejected`), and the tag-stripped `full_text`. Rows
+over 6,000 characters are split into overlapping chunks (~1,500 tokens, 150
+overlap); chunk 0 always carries the capped summary. A row whose summary runs
+past the cap gets one more chunk, after the text chunks, holding only the
+citation/title line and the full summary. Each chunk is content-hashed with
+the model name, so a re-run only re-embeds rows whose text or embedded
+summary changed (or everything, with `--force`).
+
+The 600-character summary cap (`SUMMARY_EMBED_CHARS`, `cap_summary`) dates
+from the Phase 0 parent regeneration (Oct 2026): parent summaries written
+with the children in view run to 1,000-3,000 characters, and embedding the
+whole gloss in chunk 0 drowned the row's own citation, title and text, so
+the OOOOb storage-vessel sections fell out of Ask's top 10. The cut falls at
+the last sentence end before 600; a summary with no sentence end in that
+window (ECMC 912.b.(1) is one 1,138-character list of spill triggers) is cut
+at the last `; ` or `: `, and failing that at a word break, never mid-word.
+The separate full-summary chunk is what keeps a question aimed at the
+summary's later clauses (a produced-water spill) finding the row: Ask's
+hybrid RPC scores a provision by its best chunk, while `provision_neighbors`
+is built from chunk 0 only, so the extra chunk changes search and not the
+"Related provisions" panel. The reader still shows the whole summary.
 
 Secrets: `VOYAGE_API_KEY` (GitHub Actions secret and Vercel env var), plus the
 existing `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`. Never commit the key.

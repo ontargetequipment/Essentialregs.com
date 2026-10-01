@@ -6,8 +6,20 @@ citation, title, immediate parent's opening words, the tag-stripped
 full_text, and the plain-English ai_summary; embeds it with Voyage AI
 (voyage-3.5-lite, 1024 dims); and upserts the vectors into
 `provision_embeddings`. Long rows are split into overlapping chunks, and
-chunk 0 always carries the summary. Every chunk is content-hashed so
-re-runs only re-embed rows whose text or summary actually changed.
+chunk 0 always carries the summary. The summary's share of chunk 0 is
+capped at its first SUMMARY_EMBED_CHARS (600) characters, cut back to the
+last sentence boundary before the cap (failing that, a clause boundary at
+"; " or ": ", failing that a word break): the Phase 0 parent summaries
+(Oct 2026) run to 1,000-3,000 characters, and a long gloss drowned the
+row's own citation, title and text in the vector (the OOOOb storage-vessel
+sections fell out of Ask's top 10). A row whose summary exceeds the cap gets
+one more chunk, after the text chunks, holding the citation/title header and
+the full summary alone, so a question that matches the summary's later
+clauses (the ECMC 912 spill-notification triggers) still finds the row:
+Ask's hybrid RPC takes the best chunk per provision, and the neighbours RPC
+reads chunk 0 only. The reader still shows the whole summary. Every chunk
+is content-hashed so re-runs only re-embed rows whose text or summary (as
+embedded) actually changed.
 
 After the embeddings are written it calls the `recompute_provision_neighbors`
 RPC (supabase/migrations/006_neighbors_rpc.sql) so the "Related provisions"
@@ -76,6 +88,7 @@ CHARS_PER_TOKEN = 3.8            # for dry-run estimates only; real runs use API
 MAX_CHUNK_CHARS = 6000           # ≈1,500 tokens
 CHUNK_OVERLAP_CHARS = 600        # ≈150 tokens
 PARENT_TEXT_CHARS = 300          # opening words of the immediate parent shown for scope
+SUMMARY_EMBED_CHARS = 600        # the summary's share of chunk 0, cut back to a sentence boundary
 MIN_BODY_CHARS = 1               # rows with no text at all still get embedded (title + summary)
 
 # --- Batching ------------------------------------------------------------
@@ -183,11 +196,42 @@ def build_header(provision: dict, parent: Optional[dict]) -> str:
     return "\n".join(lines)
 
 
+SENTENCE_END_RE = re.compile(r"[.!?]['\")\]]?(?=\s|$)")
+CLAUSE_END_RE = re.compile(r"[;:](?=\s|$)")
+
+
+def cap_summary(summary: str, limit: int = SUMMARY_EMBED_CHARS) -> str:
+    """The first `limit` characters of `summary`, cut back to the last
+    sentence boundary inside that window, so chunk 0 carries the summary's
+    opening sentences rather than a truncated clause. A summary with no
+    sentence end inside the window (one long semicolon list, say) is cut at
+    the last clause end ("; " or ": "), and failing that at the last word
+    break; one that fits is returned unchanged."""
+    summary = (summary or "").strip()
+    if len(summary) <= limit:
+        return summary
+    window = summary[:limit + 1]
+    for boundary in (SENTENCE_END_RE, CLAUSE_END_RE):
+        ends = [m.end() for m in boundary.finditer(window) if m.end() <= limit]
+        if ends:
+            return summary[:ends[-1]].strip()
+    cut = window.rfind(" ")
+    return (summary[:cut] if cut > 0 else summary[:limit]).strip()
+
+
+def summary_exceeds_cap(summary: str, limit: int = SUMMARY_EMBED_CHARS) -> bool:
+    return len((summary or "").strip()) > limit
+
+
 def build_chunks(provision: dict, parent: Optional[dict], model: str) -> list[Chunk]:
+    """Chunk 0: header + capped summary + the first text piece; then one chunk
+    per further text piece; then, only when the summary runs past the cap, a
+    final chunk of the citation/title header and the whole summary."""
     header = build_header(provision, parent)
-    summary = (provision.get("ai_summary") or "").strip()
+    full_summary = (provision.get("ai_summary") or "").strip()
     if provision.get("summary_status") == "rejected":
-        summary = ""
+        full_summary = ""
+    summary = cap_summary(full_summary)
     body = strip_html(provision.get("full_text"))
 
     pieces = split_body(body) if body else [""]
@@ -200,6 +244,9 @@ def build_chunks(provision: dict, parent: Optional[dict], model: str) -> list[Ch
             parts.append(f"Text: {piece}")
         text = "\n".join(parts)
         chunks.append(Chunk(provision["id"], i, text, content_hash(text, model)))
+    if summary_exceeds_cap(full_summary):
+        text = "\n".join([build_header(provision, None), f"Summary: {full_summary}"])
+        chunks.append(Chunk(provision["id"], len(chunks), text, content_hash(text, model)))
     return chunks
 
 
@@ -492,6 +539,7 @@ class RunStats:
     provisions_skipped_unchanged: int = 0
     chunks_embedded: int = 0
     chunks_multi: int = 0          # provisions that needed >1 chunk
+    summary_chunks: int = 0        # full-summary chunks added for summaries past the cap
     tokens: int = 0
     estimated: bool = False
     requests: int = 0
@@ -515,6 +563,7 @@ def print_report(stats: RunStats, model: str, dry_run: bool) -> None:
     print(f"{'Provisions skipped (unchanged hash)':40}{stats.provisions_skipped_unchanged:>12,}")
     print(f"{'Chunks embedded':40}{stats.chunks_embedded:>12,}")
     print(f"{'  of which from multi-chunk rows':40}{stats.chunks_multi:>12,}")
+    print(f"{'  full-summary chunks (summary > cap)':40}{stats.summary_chunks:>12,}")
     print(f"{'API requests':40}{stats.requests:>12,}")
     print(f"{'Tokens' + (' (estimated)' if stats.estimated else ''):40}{stats.tokens:>12,}")
     print(f"{'Cost (USD)':40}{'$' + format(cost, ',.4f'):>12}")
@@ -548,6 +597,8 @@ def plan_work(provisions: list[dict], parents: dict[str, dict], existing: dict[t
         counts[p["id"]] = len(chunks)
         if len(chunks) > 1:
             stats.chunks_multi += len(chunks)
+        if summary_exceeds_cap(p.get("ai_summary") or "") and p.get("summary_status") != "rejected":
+            stats.summary_chunks += 1
         unchanged = (not force) and all(
             existing.get((c.provision_id, c.chunk_index)) == c.text_hash for c in chunks
         )

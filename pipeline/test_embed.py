@@ -12,7 +12,8 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import embed  # noqa: E402
-from embed import (  # noqa: E402
+from embed import (
+    cap_summary,  # noqa: E402
     CHUNK_OVERLAP_CHARS, MAX_CHUNK_CHARS, RunStats, batch_chunks, build_chunks,
     content_hash, plan_work, split_body, strip_html, vector_literal,
 )
@@ -65,6 +66,79 @@ def test_chunk0_has_header_summary_and_text():
     assert "Under I.: Applicability. Storage tanks." in c.text
     assert "Summary: Inspect tanks." in c.text
     assert "Text: Owners shall inspect tanks." in c.text
+
+
+def test_summary_cap_cuts_at_a_sentence_boundary():
+    from embed import SUMMARY_EMBED_CHARS, cap_summary
+    short = "Inspect tanks. Report leaks."
+    assert cap_summary(short) == short
+    s1 = "A" * 300 + ". "            # sentence 1 ends at 301
+    s2 = "B" * 250 + "! "            # sentence 2 ends at 553
+    s3 = "C" * 200 + "."             # would run past 600
+    capped = cap_summary(s1 + s2 + s3)
+    assert capped == (s1 + s2).strip()
+    assert len(capped) <= SUMMARY_EMBED_CHARS
+    # a decimal point is not a sentence end
+    assert cap_summary("x" * 590 + " 3.5 pct " + "y" * 100).endswith("x" * 590) is False
+    # no sentence end and no clause end inside the window: last word break, never mid-word
+    words = " ".join(["word"] * 200)
+    capped = cap_summary(words)
+    assert len(capped) <= SUMMARY_EMBED_CHARS and not capped.endswith("wor") and capped.endswith("word")
+    # a closing quote or paren after the period stays with the sentence
+    assert cap_summary("P" * 595 + ".) " + "Q" * 50) == "P" * 595 + ".)"
+
+
+def test_summary_cap_falls_back_to_a_clause_boundary():
+    # one long sentence of semicolon-separated triggers (ECMC 912.b.(1)): cut at
+    # the last "; " inside the window, not inside a clause or a word
+    clause = "any size spill that impacts or threatens waters, a public water system, or a residence; "  # 88
+    summary = clause * 20
+    capped = cap_summary(summary)
+    assert capped.endswith("residence;")
+    assert len(capped) <= 600
+    assert summary.startswith(capped)
+    assert capped == (clause * 6).strip()
+
+
+def test_short_summary_yields_one_chunk():
+    [c] = build_chunks(row(summary="Inspect tanks. Report leaks."), None, MODEL)
+    assert c.chunk_index == 0 and "Summary: Inspect tanks. Report leaks." in c.text
+
+
+def test_long_summary_adds_a_full_summary_chunk():
+    long_summary = ("First sentence about storage vessels. " * 30).strip()   # ~1,100 chars
+    parent = {"id": "sec-7-B-I", "citation": "I.", "full_text": "Applicability. Storage tanks."}
+    chunks = build_chunks(row(summary=long_summary), parent, MODEL)
+    assert [c.chunk_index for c in chunks] == [0, 1]
+    c0, c1 = chunks
+    embedded = c0.text.split("Summary: ", 1)[1].split("\nText:", 1)[0]
+    assert len(embedded) <= 600
+    assert embedded.endswith("vessels.")
+    assert embedded == long_summary[: len(embedded)]
+    assert "Text: Owners shall inspect tanks." in c0.text
+    # the last chunk is the whole summary alone, with a self-describing header
+    assert c1.text == f"Colorado regulation 7: I.C. — Tanks\nSummary: {long_summary}"
+    assert "Text:" not in c1.text and "Under I.:" not in c1.text
+    # chunk 0's hash ignores the tail past the cap; the summary chunk's does not
+    chunks2 = build_chunks(row(summary=long_summary + " Trailing sentence that is past the cap."), parent, MODEL)
+    assert chunks2[0].text_hash == c0.text_hash
+    assert chunks2[1].text_hash != c1.text_hash
+
+
+def test_long_summary_chunk_comes_after_the_text_chunks():
+    long_text = " ".join(["compressor"] * 3000)
+    long_summary = ("Compressors are inspected monthly. " * 30).strip()
+    chunks = build_chunks(row(pid="sec-oooob-5390", text=long_text, summary=long_summary, juris="federal"), None, MODEL)
+    assert len(chunks) >= 3
+    assert "Summary:" in chunks[0].text and "Text:" in chunks[0].text
+    assert all("Summary:" not in c.text and "Text:" in c.text for c in chunks[1:-1])
+    assert chunks[-1].text == f"Federal regulation OOOOB: I.C. — Tanks\nSummary: {long_summary}"
+    assert [c.chunk_index for c in chunks] == list(range(len(chunks)))
+
+
+def test_rejected_long_summary_adds_no_chunk():
+    [c] = build_chunks(row(status="rejected", summary="x. " * 400), None, MODEL)
+    assert "Summary:" not in c.text
 
 
 def test_rejected_summary_is_excluded():
