@@ -314,6 +314,32 @@ test.describe("anonymous", () => {
     for (const text of await badges.allTextContents()) expect(text).toMatch(BADGE_TEXT);
   });
 
+  test("/search is keyword-first: no tabs, and no Ask line for a visitor who is not a subscriber", async ({ page }) => {
+    // Owner decision, 30 Sep 2026: keyword search is the product; Ask is a
+    // labelled beta reached from one line that only subscribers see.
+    const res = await page.goto("/search");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Search");
+    await expect(page.getByRole("tablist")).toHaveCount(0);
+    await expect(page.getByText("Ask (beta)")).toHaveCount(0);
+  });
+
+  test("/search?mode=ask is labelled Beta and links back to keyword search", async ({ page }) => {
+    const res = await page.goto("/search?mode=ask");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("tablist")).toHaveCount(0);
+    const h1 = page.getByRole("heading", { level: 1 });
+    await expect(h1).toContainText("Ask");
+    await expect(h1.getByText("Beta", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ask is in beta.", { exact: false })).toBeVisible();
+    await expect(page.getByRole("link", { name: "← Keyword search" })).toHaveAttribute("href", "/search");
+    // Not a subscriber: the notice, with its own way back to keyword search.
+    const notice = page.getByText("Ask is a beta feature for subscribers.", { exact: false });
+    await expect(notice).toBeVisible();
+    await expect(notice.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
+    await expect(notice.getByRole("link", { name: "here" })).toHaveAttribute("href", "/search");
+  });
+
   test("a parenthesised /regs/<id> returns 200", async ({ page }) => {
     const res = await page.goto("/regs/sec-7-B-I-D-3-a-(i)");
     expect(res?.status()).toBe(200);
