@@ -310,16 +310,25 @@ the first 300 characters of the immediate parent paragraph, the first 600
 characters of the row's `ai_summary` cut back to a sentence boundary (unless
 its `summary_status` is `rejected`), and the tag-stripped `full_text`. Rows
 over 6,000 characters are split into overlapping chunks (~1,500 tokens, 150
-overlap); chunk 0 always carries the summary. Each chunk is content-hashed
-with the model name, so a re-run only re-embeds rows whose text or embedded
+overlap); chunk 0 always carries the capped summary. A row whose summary runs
+past the cap gets one more chunk, after the text chunks, holding only the
+citation/title line and the full summary. Each chunk is content-hashed with
+the model name, so a re-run only re-embeds rows whose text or embedded
 summary changed (or everything, with `--force`).
 
-The 600-character summary cap (`SUMMARY_EMBED_CHARS`) dates from the Phase 0
-parent regeneration (Oct 2026): parent summaries written with the children in
-view run to 1,000-3,000 characters, and embedding the whole gloss drowned the
-row's own citation, title and text, so the OOOOb storage-vessel sections fell
-out of Ask's top 10. The reader still shows the whole summary; only the
-vector sees the opening sentences.
+The 600-character summary cap (`SUMMARY_EMBED_CHARS`, `cap_summary`) dates
+from the Phase 0 parent regeneration (Oct 2026): parent summaries written
+with the children in view run to 1,000-3,000 characters, and embedding the
+whole gloss in chunk 0 drowned the row's own citation, title and text, so
+the OOOOb storage-vessel sections fell out of Ask's top 10. The cut falls at
+the last sentence end before 600; a summary with no sentence end in that
+window (ECMC 912.b.(1) is one 1,138-character list of spill triggers) is cut
+at the last `; ` or `: `, and failing that at a word break, never mid-word.
+The separate full-summary chunk is what keeps a question aimed at the
+summary's later clauses (a produced-water spill) finding the row: Ask's
+hybrid RPC scores a provision by its best chunk, while `provision_neighbors`
+is built from chunk 0 only, so the extra chunk changes search and not the
+"Related provisions" panel. The reader still shows the whole summary.
 
 Secrets: `VOYAGE_API_KEY` (GitHub Actions secret and Vercel env var), plus the
 existing `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`. Never commit the key.
