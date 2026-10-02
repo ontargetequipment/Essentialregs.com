@@ -8,8 +8,8 @@
  * dehydrators, apen and the bulk-plant question that must take no map, and
  * since maps batch 3 (2 Oct 2026) combustion-devices, ldar, general-permits
  * (one new question, the 28th) and the GP01 question on storage-tanks.
- * Since migration 20261002151233 (2 Oct 2026) the gate is 28/28 with no
- * known failures.
+ * Score since migration 20261002151233 (2 Oct 2026): 27/28, one known
+ * failure (civil penalties, below).
  *
  * Original description: Each is a question a Colorado oil & gas compliance person would
  * actually type, with the provision(s) that should appear in the top 5,
@@ -59,11 +59,14 @@ export type EvalQuestion = {
  * non-zero only for a failure outside this list, so the gate holds the line
  * at the current score without pretending these pass. Each entry says why.
  *
- * Empty since migration 20261002151233 (2 Oct 2026): the civil-penalties
- * question passes now that "the Division" and "the Commission" count as
- * Colorado state words; Common Provisions III.B.2 is #3 (was #7).
+ * - Civil penalties: since migration 20261002151233 the three best Colorado
+ *   rows lead (ECMC 525.c, 525.b.(7), then CP III.B.2 or Reg 3 D X.A.4.c,
+ *   within 0.0004 cosine of each other). The true answer, CP III.A, is #13
+ *   at cosine 0.417: its text never says "assess", and the keyword leg finds
+ *   nothing. A vocabulary gap, not a ranking one. Next step: an enforcement
+ *   question map, after which this question's check moves to that map.
  */
-export const KNOWN_FAILURES: string[] = [];
+export const KNOWN_FAILURES: string[] = ["How does the Division assess civil penalties for a violation?"];
 
 /**
  * One extra condition on a question's hits. `topN` defaults to the

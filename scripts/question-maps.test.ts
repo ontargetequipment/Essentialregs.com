@@ -373,7 +373,7 @@ test("evaluateQuestion: map null fails when any map matched; absent map is never
   assert.equal(evaluateQuestion(unchecked, hits).pass, true);
 });
 
-test("the sixteen map-checked eval questions route as pinned (28 questions), and KNOWN_FAILURES is empty (since migration 20261002151233)", () => {
+test("the sixteen map-checked eval questions route as pinned (28 questions), and KNOWN_FAILURES is exactly the civil-penalties question", () => {
   assert.equal(EVAL_QUESTIONS.length, 28);
   const pinned = EVAL_QUESTIONS.filter((e) => e.map !== undefined);
   assert.equal(pinned.length, 16);
@@ -404,7 +404,7 @@ test("the sixteen map-checked eval questions route as pinned (28 questions), and
   // Every map has at least one eval question pinned to it.
   for (const m of QUESTION_MAPS) assert.ok(pinned.some((e) => e.map === m.key), `${m.key}: no eval question pinned`);
   for (const e of pinned) assert.equal(matchQuestionMap(e.q)?.key ?? null, e.map, e.q);
-  assert.deepEqual(KNOWN_FAILURES, []);
+  assert.deepEqual(KNOWN_FAILURES, ["How does the Division assess civil penalties for a violation?"]);
   for (const k of KNOWN_FAILURES) assert.ok(EVAL_QUESTIONS.some((e) => e.q === k), `${k} is not an eval question`);
 });
 
