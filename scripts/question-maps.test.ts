@@ -1,5 +1,5 @@
 /**
- * Question maps (Ask Track B, 1 Oct 2026; maps batch 2 and 3, 2 Oct 2026): routing, the group fallback for
+ * Question maps (Ask Track B, 1 Oct 2026; maps batch 2, 3 and 4, 2 Oct 2026): routing, the group fallback for
  * retrieval hits, the grouped layout, the eval's `map` check, and the
  * generated id list scripts/corpus_qa.sql check 20 reads. No database, no
  * Next.
@@ -11,9 +11,11 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   AQCC_REGULATION_KEYS,
+  ECMC_REG_KEYS,
   FEDERAL_NESHAP_REG_KEYS,
   FEDERAL_NSPS_REG_KEYS,
   MAP_GROUP_ORDER,
+  PHMSA_REG_KEYS,
   MAX_HITS_PER_GROUP,
   MAX_OTHER_HITS,
   QUESTION_MAPS,
@@ -91,7 +93,7 @@ test("the apen map routes its two eval questions, last after the equipment maps"
   assert.equal(matchQuestionMap("APEN for a pneumatic controller")?.key, "pneumatic-controllers");
   assert.deepEqual(
     QUESTION_MAPS.map((m) => m.key),
-    ["engines", "storage-tanks", "pneumatic-controllers", "dehydrators", "combustion-devices", "ldar", "general-permits", "apen"]
+    ["engines", "storage-tanks", "pneumatic-controllers", "dehydrators", "combustion-devices", "ldar", "enforcement", "general-permits", "apen"]
   );
 });
 
@@ -156,6 +158,57 @@ test("the general-permits map: its eval question, GP03, GP11, 'which general per
   assert.equal(matchQuestionMap("GP04")?.key, "general-permits");
 });
 
+// ---- maps batch 4 (2 Oct 2026) ---------------------------------------------
+
+test("the enforcement map routes its two eval questions, the APEN penalty question and the enforcement vocabulary; a bare 'violation' does not", () => {
+  assert.equal(matchQuestionMap("How does the Division assess civil penalties for a violation?")?.key, "enforcement");
+  assert.equal(matchQuestionMap("What is the maximum civil penalty per day for violating an AQCC regulation?")?.key, "enforcement");
+  assert.equal(matchQuestionMap("What is the maximum PHMSA civil penalty for a pipeline safety violation?")?.key, "enforcement");
+  // Before the generic APEN map: the penalty is the question, not the notice.
+  assert.equal(matchQuestionMap("what is the penalty for not filing an APEN")?.key, "enforcement");
+  assert.equal(matchQuestionMap("NOAV response deadline")?.key, "enforcement");
+  assert.equal(matchQuestionMap("notice of alleged violation")?.key, "enforcement");
+  assert.equal(matchQuestionMap("notice of probable violation")?.key, "enforcement");
+  assert.equal(matchQuestionMap("compliance advisory from the Division")?.key, "enforcement");
+  assert.equal(matchQuestionMap("order finding violation")?.key, "enforcement");
+  assert.equal(matchQuestionMap("OFV hearing")?.key, "enforcement");
+  assert.equal(matchQuestionMap("cease and desist order")?.key, "enforcement");
+  assert.equal(matchQuestionMap("cease-and-desist")?.key, "enforcement");
+  assert.equal(matchQuestionMap("consent order terms")?.key, "enforcement");
+  assert.equal(matchQuestionMap("administrative order on consent")?.key, "enforcement");
+  assert.equal(matchQuestionMap("AOC payment schedule")?.key, "enforcement");
+  assert.equal(matchQuestionMap("enforcement proceedings")?.key, "enforcement");
+  assert.equal(matchQuestionMap("enforcement")?.key, "enforcement");
+  // A bare "violation" must not trigger: the odor question is Regulation 2.
+  assert.equal(matchQuestionMap("How is an odor violation measured with dilutions?"), null);
+  assert.equal(matchQuestionMap("violation"), null);
+  // Equipment first: an LDAR enforcement question stays on the ldar map; GP02 stays engines.
+  assert.equal(matchQuestionMap("LDAR enforcement")?.key, "ldar");
+  assert.equal(matchQuestionMap("Do I need a GP02 permit for my engine?")?.key, "engines");
+});
+
+test("maps batch 4: the enforcement map's 21 rows in four groups, in display order, CP III.A among the first Colorado rows", () => {
+  const enforcement = QUESTION_MAPS.find((m) => m.key === "enforcement");
+  assert.ok(enforcement);
+  assert.equal(enforcement.name, "Enforcement and penalties: APCD, ECMC and PHMSA");
+  assert.equal(enforcement.provisions.length, 21);
+  assert.deepEqual(
+    [...new Set(enforcement.provisions.map((p) => p.group))],
+    ["General Permit options", "Colorado standards", "ECMC rules", "Federal PHMSA"]
+  );
+  assert.deepEqual(
+    enforcement.provisions.filter((p) => p.group === "Colorado standards").map((p) => p.id),
+    ["sec-cp-III", "sec-cp-III-A", "sec-cp-III-B-1", "sec-cp-III-B-3", "sec-proc-A-VI-D-1"]
+  );
+  assert.equal(enforcement.provisions.filter((p) => p.group === "ECMC rules").length, 7);
+  assert.equal(enforcement.provisions.filter((p) => p.group === "Federal PHMSA").length, 7);
+  assert.ok(enforcement.provisions.every((p) => p.group !== "ECMC rules" || p.id.startsWith("sec-ecmc-")));
+  assert.ok(enforcement.provisions.every((p) => p.group !== "Federal PHMSA" || /^sec-p19\d-/.test(p.id)));
+  // The two new groups sit after Federal NESHAP and before Definitions.
+  assert.deepEqual(MAP_GROUP_ORDER.slice(4), ["Federal NESHAP", "ECMC rules", "Federal PHMSA", "Definitions"]);
+  assert.equal(MAP_GROUP_ORDER.length, 8);
+});
+
 test("maps batch 3: row counts, groups in display order, GP01 first among the tanks permits, the shared rows", () => {
   const byKey = Object.fromEntries(QUESTION_MAPS.map((m) => [m.key, m]));
   const groupsOf = (key: string) => [...new Set(byKey[key].provisions.map((p) => p.group))];
@@ -216,9 +269,11 @@ test("the engines map lists its 23 rows in the plan's order, six groups, GP06 af
     engines.provisions.filter((p) => p.group === "General Permit options").map((p) => p.id),
     ["sec-gp12-I-A", "sec-gp02-I-A", "sec-gp06-I-A", "sec-gp09-I-A", "sec-gp10-I-A"]
   );
+  // The six air groups (maps batch 4 added ECMC rules and Federal PHMSA to
+  // MAP_GROUP_ORDER; no engines row lives there).
   assert.deepEqual(
     [...new Set(engines.provisions.map((p) => p.group))],
-    MAP_GROUP_ORDER
+    AIR_GROUPS
   );
   assert.ok(engines.provisions.some((p) => p.id === "sec-jjjj-60.4230"));
   assert.ok(engines.provisions.some((p) => p.id === "sec-zzzz-63.6585"));
@@ -250,6 +305,9 @@ test("maps batch 2: row counts, groups in display order, the two empty Federal N
   }
 });
 
+/** MAP_GROUP_ORDER without the two groups maps batch 4 added: the groups an air map can fill. */
+const AIR_GROUPS = MAP_GROUP_ORDER.filter((g) => g !== "ECMC rules" && g !== "Federal PHMSA");
+
 // ---- groupForHit -----------------------------------------------------------
 
 const hit = (id: string, reg_key: string | null, jurisdiction_level: string, extra: Partial<GroupableHit> = {}): GroupableHit => ({
@@ -260,7 +318,7 @@ const hit = (id: string, reg_key: string | null, jurisdiction_level: string, ext
   path: extra.path ?? null,
 });
 
-test("groupForHit routes one row per group, a Definitions row and an Other row", () => {
+test("groupForHit routes one row per group, a Definitions row, the ECMC and PHMSA groups, and an Other row", () => {
   assert.equal(groupForHit(hit("sec-3-B-II-D-1", "3", "state")), "Colorado permitting and APEN");
   assert.equal(groupForHit(hit("sec-gp01-I-A", "gp01", "state")), "General Permit options");
   assert.equal(groupForHit(hit("sec-7-B-II-E", "7", "state")), "Colorado standards");
@@ -273,9 +331,13 @@ test("groupForHit routes one row per group, a Definitions row and an Other row",
   assert.equal(groupForHit(hit("sec-7-B-I-B-2", "7", "state", { path: "PART B — … › I. Definitions" })), "Definitions");
   assert.equal(groupForHit(hit("sec-jjjj-60.4248", "jjjj", "federal", { title: "§ 60.4248 What definitions apply to this subpart?" })), "Definitions");
   assert.equal(groupForHit(hit("sec-3-A-I-B-36", "3", "state", { path: "PART A — … › I.B. Definitions" })), "Definitions");
-  // Everything else.
-  assert.equal(groupForHit(hit("sec-ecmc-604", "ecmc", "state")), "Other");
-  assert.equal(groupForHit(hit("sec-p192-192.3", "p192", "federal")), "Other");
+  // Maps batch 4: ECMC and PHMSA rows have groups of their own.
+  assert.equal(groupForHit(hit("sec-ecmc-604", "ecmc", "state")), "ECMC rules");
+  assert.equal(groupForHit(hit("sec-ecmc-525-c", "ecmc", "state")), "ECMC rules");
+  assert.equal(groupForHit(hit("sec-p192-192.3", "p192", "federal")), "Federal PHMSA");
+  assert.equal(groupForHit(hit("sec-p190-190.223", "p190", "federal")), "Federal PHMSA");
+  assert.equal(groupForHit(hit("sec-p196-196.205", "p196", "federal")), "Federal PHMSA");
+  // Everything else: proc, sip and county rows stay "Other".
   assert.equal(groupForHit(hit("sec-proc-I", "proc", "state")), "Other");
   assert.equal(groupForHit(hit("sec-sip-I", "sip", "state")), "Other");
   assert.equal(groupForHit(hit("sec-26-C-FEDJJJJ", "26", "federal")), "Other"); // a federal-level row keyed to a state regulation: not a state row
@@ -285,6 +347,9 @@ test("groupForHit routes one row per group, a Definitions row and an Other row",
 test("the key lists are the ones groupForHit consults", () => {
   assert.deepEqual([...FEDERAL_NSPS_REG_KEYS], ["ooooa", "oooob", "ooooc", "jjjj", "iiii"]);
   assert.deepEqual([...FEDERAL_NESHAP_REG_KEYS], ["zzzz"]);
+  assert.deepEqual([...ECMC_REG_KEYS], ["ecmc"]);
+  assert.deepEqual([...PHMSA_REG_KEYS], ["p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"]);
+  for (const k of PHMSA_REG_KEYS) assert.match(k, /^p19\d$/);
   assert.equal(AQCC_REGULATION_KEYS.length, 33);
   assert.ok(AQCC_REGULATION_KEYS.includes("1") && AQCC_REGULATION_KEYS.includes("31") && !AQCC_REGULATION_KEYS.includes("32"));
 });
@@ -301,19 +366,24 @@ test("groupHits: canonical rows lead, hits follow in retrieval order, caps hold,
     hit("sec-gp06-II-A", "gp06", "state"),
     hit("sec-gp09-II", "gp09", "state"),
     hit("sec-gp11-I", "gp11", "state"), // 4th permit hit: over MAX_HITS_PER_GROUP
-    hit("sec-ecmc-604", "ecmc", "state"),
-    hit("sec-p192-192.3", "p192", "federal"),
+    hit("sec-ecmc-604", "ecmc", "state"), // maps batch 4: ECMC rules, a group of its own
+    hit("sec-p192-192.3", "p192", "federal"), // maps batch 4: Federal PHMSA
     hit("sec-ecmc-912", "ecmc", "state"),
     hit("sec-ecmc-423", "ecmc", "state"),
+    hit("sec-ecmc-1105", "ecmc", "state"), // 4th ECMC hit: over MAX_HITS_PER_GROUP
     hit("sec-proc-I", "proc", "state"),
-    hit("sec-sip-I", "sip", "state"), // 6th other: over MAX_OTHER_HITS
+    hit("sec-sip-I", "sip", "state"),
+    hit("sec-sip-II", "sip", "state"),
+    hit("sec-sip-III", "sip", "state"),
+    hit("sec-26-C-FEDJJJJ-60.4230", "26", "federal"), // a federal-level row keyed to a state regulation: still Other
+    hit("x", null, "county"), // 6th other: over MAX_OTHER_HITS
   ];
   // Only the rows the caller could fetch are listed (RLS / filters).
   const fetched = new Set(["sec-gp12-I-A", "sec-gp09-I-A", "sec-26-B-I-D", "sec-jjjj-60.4230"]);
   const g = groupHits(engines, hits, fetched);
   assert.deepEqual(
     g.groups.map((x) => x.group),
-    ["General Permit options", "Colorado standards", "Federal NSPS"]
+    ["General Permit options", "Colorado standards", "Federal NSPS", "ECMC rules", "Federal PHMSA"]
   );
   const permits = g.groups[0];
   assert.deepEqual(permits.canonical.map((p) => p.id), ["sec-gp12-I-A", "sec-gp09-I-A"]);
@@ -322,7 +392,12 @@ test("groupHits: canonical rows lead, hits follow in retrieval order, caps hold,
   assert.deepEqual(g.groups[1].hits.map((h) => h.id), ["sec-26-B-I-D-3"]);
   assert.deepEqual(g.groups[2].canonical.map((p) => p.id), ["sec-jjjj-60.4230"]);
   assert.equal(g.groups[2].hits.length, 0);
-  assert.deepEqual(g.other.map((h) => h.id), ["sec-ecmc-604", "sec-p192-192.3", "sec-ecmc-912", "sec-ecmc-423", "sec-proc-I"]);
+  // The ECMC and PHMSA hits are named groups on an air map too (no canonical row, hits only, capped).
+  assert.deepEqual(g.groups[3].canonical, []);
+  assert.deepEqual(g.groups[3].hits.map((h) => h.id), ["sec-ecmc-604", "sec-ecmc-912", "sec-ecmc-423"]);
+  assert.deepEqual(g.groups[4].canonical, []);
+  assert.deepEqual(g.groups[4].hits.map((h) => h.id), ["sec-p192-192.3"]);
+  assert.deepEqual(g.other.map((h) => h.id), ["sec-proc-I", "sec-sip-I", "sec-sip-II", "sec-sip-III", "sec-26-C-FEDJJJJ-60.4230"]);
   assert.equal(g.other.length, MAX_OTHER_HITS);
 
   const summary = summariseGroups(engines, g);
@@ -337,10 +412,21 @@ test("groupHits: canonical rows lead, hits follow in retrieval order, caps hold,
 
   // Without a fetched set every canonical row is listed (the API's view).
   const all = groupHits(engines, []);
-  assert.deepEqual(all.groups.map((x) => x.group), MAP_GROUP_ORDER);
+  assert.deepEqual(all.groups.map((x) => x.group), AIR_GROUPS);
   assert.equal(all.groups.reduce((n, x) => n + x.canonical.length, 0), 23);
   assert.deepEqual(all.other, []);
   assert.equal(summariseGroups(engines, all).groups.length, 6);
+
+  // Maps batch 4: on the enforcement map the ECMC and PHMSA rows are canonical and lead their groups.
+  const enforcement = QUESTION_MAPS.find((m) => m.key === "enforcement")!;
+  const e = groupHits(enforcement, [hit("sec-ecmc-525-b-(7)", "ecmc", "state"), hit("sec-p190-190.213-(a)-(2)", "p190", "federal"), hit("sec-cp-III-B-2", "cp", "state")]);
+  assert.deepEqual(e.groups.map((x) => x.group), ["General Permit options", "Colorado standards", "ECMC rules", "Federal PHMSA"]);
+  assert.deepEqual(e.groups[1].canonical.slice(0, 2).map((p) => p.id), ["sec-cp-III", "sec-cp-III-A"]);
+  assert.deepEqual(e.groups[1].hits.map((h) => h.id), ["sec-cp-III-B-2"]);
+  assert.deepEqual(e.groups[2].canonical.map((p) => p.id).slice(0, 2), ["sec-ecmc-523-a", "sec-ecmc-523-c"]);
+  assert.deepEqual(e.groups[2].hits.map((h) => h.id), ["sec-ecmc-525-b-(7)"]);
+  assert.deepEqual(e.groups[3].hits.map((h) => h.id), ["sec-p190-190.213-(a)-(2)"]);
+  assert.deepEqual(e.other, []);
 });
 
 // ---- the eval's map check --------------------------------------------------
@@ -373,10 +459,10 @@ test("evaluateQuestion: map null fails when any map matched; absent map is never
   assert.equal(evaluateQuestion(unchecked, hits).pass, true);
 });
 
-test("the sixteen map-checked eval questions route as pinned (28 questions), and KNOWN_FAILURES is exactly the civil-penalties question", () => {
-  assert.equal(EVAL_QUESTIONS.length, 28);
+test("the eighteen map-checked eval questions route as pinned (29 questions), and KNOWN_FAILURES is empty", () => {
+  assert.equal(EVAL_QUESTIONS.length, 29);
   const pinned = EVAL_QUESTIONS.filter((e) => e.map !== undefined);
-  assert.equal(pinned.length, 16);
+  assert.equal(pinned.length, 18);
   assert.deepEqual(
     pinned.map((e) => [e.q, e.map]),
     [
@@ -388,23 +474,32 @@ test("the sixteen map-checked eval questions route as pinned (28 questions), and
       ["What controls are required for a glycol dehydrator?", "dehydrators"],
       ["What venting and control requirements apply to a centrifugal compressor with wet seals?", null],
       ["When does a source need a construction permit versus just an APEN?", "apen"],
+      ["How does the Division assess civil penalties for a violation?", "enforcement"],
       ["ECD testing requirements", "combustion-devices"],
       ["ecd testing", "combustion-devices"],
       ["flare testing", "combustion-devices"],
       ["What are the requirements for loading gasoline into a tank truck at a bulk plant?", null],
       ["Which general permits can an oil and gas well production facility register under?", "general-permits"],
+      ["What is the maximum civil penalty per day for violating an AQCC regulation?", "enforcement"],
       ["When is a GP01 required?", "storage-tanks"],
       ["What regulations apply to a natural gas-fired engine?", "engines"],
       ["What Colorado and federal requirements could apply to storage vessels?", "storage-tanks"],
     ]
   );
-  // The new general-permits question sits last in the original block, before the reviewer questions.
+  // The general-permits question and the new per-day-maximum question (the 29th) close the original block, before the reviewer questions.
   assert.equal(EVAL_QUESTIONS[24].q, "Which general permits can an oil and gas well production facility register under?");
-  assert.equal(EVAL_QUESTIONS[25].q, "When is a GP01 required?");
-  // Every map has at least one eval question pinned to it.
+  assert.equal(EVAL_QUESTIONS[25].q, "What is the maximum civil penalty per day for violating an AQCC regulation?");
+  assert.equal(EVAL_QUESTIONS[26].q, "When is a GP01 required?");
+  // The civil-penalties question now expects either Colorado penalty section and is pinned to the enforcement map.
+  const civil = EVAL_QUESTIONS.find((e) => e.q === "How does the Division assess civil penalties for a violation?");
+  assert.deepEqual(civil?.expect, ["sec-cp-III", "sec-ecmc-525"]);
+  assert.equal(civil?.map, "enforcement");
+  // Every map has at least one eval question pinned to it (maps batch 4: enforcement included).
+  assert.ok(QUESTION_MAPS.some((m) => m.key === "enforcement"));
   for (const m of QUESTION_MAPS) assert.ok(pinned.some((e) => e.map === m.key), `${m.key}: no eval question pinned`);
   for (const e of pinned) assert.equal(matchQuestionMap(e.q)?.key ?? null, e.map, e.q);
-  assert.deepEqual(KNOWN_FAILURES, ["How does the Division assess civil penalties for a violation?"]);
+  // Maps batch 4 closed the one known failure: the gate is 29/29.
+  assert.deepEqual(KNOWN_FAILURES, []);
   for (const k of KNOWN_FAILURES) assert.ok(EVAL_QUESTIONS.some((e) => e.q === k), `${k} is not an eval question`);
 });
 
