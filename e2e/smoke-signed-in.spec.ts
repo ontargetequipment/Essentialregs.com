@@ -191,7 +191,7 @@ test.describe("signed in", () => {
     expect(flat?.status()).toBe(200);
     await expect(page.getByText("Mapped question:", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2 })).toHaveCount(0);
-    await expect(page.getByText(/provisions? most about/)).toHaveCount(1);
+    await expect(page.getByText(/^\d+ provisions? most about/)).toHaveCount(1);
     await expect(page.getByText("Why it's here:", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Show grouped" })).toHaveCount(1);
   });
@@ -218,7 +218,7 @@ test.describe("signed in", () => {
     await expect(page.getByText("Mapped question:", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2 })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Show grouped" })).toHaveCount(0);
-    await expect(page.getByText(/provisions? most about/)).toHaveCount(1);
+    await expect(page.getByText(/^\d+ provisions? most about/)).toHaveCount(1);
   });
 
   test("search returns provisions beyond the public sample", async ({ page }) => {
