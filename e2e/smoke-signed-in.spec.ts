@@ -191,19 +191,34 @@ test.describe("signed in", () => {
     expect(flat?.status()).toBe(200);
     await expect(page.getByText("Mapped question:", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2 })).toHaveCount(0);
-    await expect(page.getByText(/provisions? most about/)).toHaveCount(1);
+    await expect(page.getByText(/^\d+ provisions? most about/)).toHaveCount(1);
     await expect(page.getByText("Why it's here:", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Show grouped" })).toHaveCount(1);
   });
 
-  test("a storage-vessel question routes to no map and renders the flat list", async ({ page }) => {
+  test("a storage-vessel question renders grouped under the storage-tanks map (maps batch 2)", async ({ page }) => {
+    // Until maps batch 2 (2 Oct 2026) this question took no map and this
+    // test checked the flat list; the bulk-plant test below now does that.
     const q = "What Colorado and federal requirements could apply to storage vessels?";
+    const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
+    expect(res?.status()).toBe(200);
+    await expect(page.getByText("Mapped question: Storage tanks and tank batteries")).toHaveCount(1);
+    await expect(page.getByText(/What applies depends on the tank's uncontrolled/)).toHaveCount(1);
+    expect(await page.getByRole("heading", { level: 2 }).count()).toBeGreaterThan(0);
+    // Subpart HH is not in the corpus: the tanks map has no Federal NESHAP row, and an
+    // empty group is not rendered.
+    await expect(page.getByRole("heading", { level: 2, name: "Federal NESHAP" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Show as a flat list" })).toHaveAttribute("href", /[?&]flat=1/);
+  });
+
+  test("a tank-truck question (a bare 'tank') routes to no map and renders the flat list", async ({ page }) => {
+    const q = "What are the requirements for loading gasoline into a tank truck at a bulk plant?";
     const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
     expect(res?.status()).toBe(200);
     await expect(page.getByText("Mapped question:", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2 })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Show grouped" })).toHaveCount(0);
-    await expect(page.getByText(/provisions? most about/)).toHaveCount(1);
+    await expect(page.getByText(/^\d+ provisions? most about/)).toHaveCount(1);
   });
 
   test("search returns provisions beyond the public sample", async ({ page }) => {

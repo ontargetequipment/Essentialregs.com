@@ -2,8 +2,10 @@
  * Acceptance questions for Ask search (Phase 3/5 of the semantic-search
  * plan). Since Ask Track B (1 Oct 2026) the set is also the pull-request
  * gate: the "Ask eval" workflow runs scripts/ask-eval.ts on every PR to
- * main and fails on any miss outside KNOWN_FAILURES; four questions also
- * pin question-map routing (`map`).
+ * main and fails on any miss outside KNOWN_FAILURES; ten questions also
+ * pin question-map routing (`map`): the engines map's four from Track B and,
+ * since maps batch 2 (2 Oct 2026), storage-tanks, pneumatic-controllers,
+ * dehydrators, apen and the bulk-plant question that must take no map.
  *
  * Original description: Each is a question a Colorado oil & gas compliance person would
  * actually type, with the provision(s) that should appear in the top 5,
@@ -154,7 +156,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
     q: "Do I need emission controls on a condensate storage tank at a well site?",
     expect: ["sec-7-B-I-D", "sec-7-B-II-C", "sec-oooob-60.5395b"],
-    note: "Reg 7 Part B I.D / II.C storage tank controls; OOOOb storage vessel standard",
+    map: "storage-tanks",
+    note: "Reg 7 Part B I.D / II.C storage tank controls; OOOOb storage vessel standard; routes to the storage-tanks question map",
   },
   {
     q: "How often do I have to do leak inspections at a well production facility?",
@@ -164,12 +167,14 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
     q: "Can I install a natural gas driven pneumatic controller at a new facility?",
     expect: ["sec-7-B-III", "sec-oooob-60.5390b"],
-    note: "Reg 7 Part B III pneumatic controllers; OOOOb process controllers",
+    map: "pneumatic-controllers",
+    note: "Reg 7 Part B III pneumatic controllers; OOOOb process controllers; routes to the pneumatic-controllers question map",
   },
   {
     q: "When do I have to file an APEN for a new source and what is the threshold?",
     expect: ["sec-3-A-II"],
-    note: "Reg 3 Part A II APEN requirements",
+    map: "apen",
+    note: "Reg 3 Part A II APEN requirements; routes to the apen question map",
   },
   {
     q: "What notice do I have to give before removing asbestos from a building?",
@@ -220,7 +225,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
     q: "What controls are required for a glycol dehydrator?",
     expect: ["sec-7-B-I-H", "sec-7-B-II-D"],
-    note: "Reg 7 Part B I.H / II.D glycol dehydrators",
+    map: "dehydrators",
+    note: "Reg 7 Part B I.H / II.D glycol dehydrators; routes to the dehydrators question map",
   },
   {
     q: "What venting and control requirements apply to a centrifugal compressor with wet seals?",
@@ -236,7 +242,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
     q: "When does a source need a construction permit versus just an APEN?",
     expect: ["sec-3-B-I", "sec-3-B-II", "sec-3-A-II"],
-    note: "Reg 3 Part B construction permit applicability",
+    map: "apen",
+    note: "Reg 3 Part B construction permit applicability; routes to the apen question map",
   },
   {
     q: "How does the Division assess civil penalties for a violation?",
@@ -271,7 +278,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
     q: "What are the requirements for loading gasoline into a tank truck at a bulk plant?",
     expect: ["sec-24-B-IV", "sec-24-B-APPENDIX"],
-    note: "Reg 24 Part B IV petroleum liquid storage and transfer",
+    map: null,
+    note: "Reg 24 Part B IV petroleum liquid storage and transfer; a bare \"tank\" (tank truck) takes no map",
   },
   // ---- Ask Track A regression checks (reviewer questions, 30 Sep 2026) ----
   {
@@ -299,7 +307,7 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
       { noBasis: true, topN: 5 },
       { minFederal: 3 },
     ],
-    map: null,
-    note: "A storage-tank general permit (GP08 / GP05) and an OOOOa/OOOOb storage-vessel section in the top 10; no Statement of Basis in the top 5; at least 3 federal rows in the top 10 (20260930002750, 20260930003040); no question map",
+    map: "storage-tanks",
+    note: "A storage-tank general permit (GP08 / GP05) and an OOOOa/OOOOb storage-vessel section in the top 10; no Statement of Basis in the top 5; at least 3 federal rows in the top 10 (20260930002750, 20260930003040); routes to the storage-tanks question map (maps batch 2) — the retrieval checks are unchanged",
   },
 ];
