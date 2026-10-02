@@ -1,0 +1,319 @@
+-- Ask: "the Division" and "the Commission" are Colorado words.
+--
+-- Colorado operators say "the Division" (APCD) and "the Commission" (AQCC
+-- or ECMC) the way the regulations do. "How does the Division assess civil
+-- penalties for a violation?" carried no jurisdiction word the function
+-- recognised, so the PHMSA enforcement sections (49 CFR Part 190/196),
+-- which share the vocabulary, led and Common Provisions III sat at #7.
+-- Adding division / commission to the Colorado word list makes such a
+-- question state-led (its three best Colorado rows first, x1.3), the same
+-- treatment "Colorado" or "CDPHE" already gets. Nothing else changes.
+--
+-- Measured on production 2 Oct: Common Provisions III.B.2 moves from #7 to
+-- #3 on the civil-penalties question (the last eval miss); the flowline
+-- question ("the Commission") is unchanged, its rows were already state.
+select '[1,2,3]'::extensions.vector;
+
+create or replace function public.match_provisions_hybrid(
+  query_text          text,
+  query_embedding     extensions.vector(1024),
+  match_count         integer default 20,
+  reg_filter          text[]  default null,
+  jurisdiction_filter text    default null,
+  include_basis       boolean default true,
+  keyword_query       text    default null   -- to_tsquery syntax from lib/acronyms.ts keywordQuery(); null = websearch(query_text)
+)
+returns table (
+  id                 text,
+  citation           text,
+  title              text,
+  reg_key            text,
+  jurisdiction_level text,
+  summary            text,
+  score              real,      -- cosine similarity when the vector search saw it, else null
+  is_basis           boolean,
+  keyword_hit        boolean,   -- true when full-text search also matched
+  fused              real,      -- the score actually sorted on (RRF x the multipliers above)
+  path               text       -- ancestor headings, e.g. 'PART B — … › II. …' (null when directly under the regulation)
+)
+language plpgsql
+stable
+security definer
+set search_path = public, extensions
+set hnsw.iterative_scan = relaxed_order
+set hnsw.ef_search = 80
+set plan_cache_mode = force_custom_plan
+as $$
+declare
+  k          constant integer := 60;          -- standard RRF constant
+  pool       integer;
+  sem_cand   integer;
+  tsq        tsquery;
+  tsq_and    tsquery;
+  n_and      integer := 0;
+  short_q    boolean;                          -- a document identifier, not a sentence
+  long_q     boolean;                          -- a sentence: fuse on cosine, not rank (see fusedset)
+  n_words    integer;
+  want_fed   boolean := false;                 -- the question names federal rules
+  want_state boolean := false;                 -- the question names Colorado / state rules
+  q_lower    text;
+  named_closed text[] := '{}';                 -- closed permits the question names by number
+  kw_min_score constant real := 0.5;           -- a keyword-only row below this cosine is dropped
+begin
+  if not public.has_full_access() then
+    raise exception 'semantic search requires an active subscription'
+      using errcode = '42501';
+  end if;
+  if match_count is null or match_count < 1 or match_count > 50 then
+    match_count := 20;
+  end if;
+  pool := greatest(match_count * 3, 60);
+  -- plain variable on purpose: see match_provisions
+  sem_cand := case when reg_filter is null and jurisdiction_filter is null then pool * 2 else pool end;
+  n_words := array_length(regexp_split_to_array(btrim(coalesce(query_text, '')), '\s+'), 1);
+  short_q := n_words <= 3;
+  long_q  := n_words >= 6;
+  -- Jurisdiction words in the question (only when the caller did not already filter).
+  if jurisdiction_filter is null then
+    q_lower := lower(coalesce(query_text, ''));
+    want_fed   := q_lower ~ '\m(federal|federally|epa|cfr|nsps|neshap|subpart|oooo[abc]?|jjjj|iiii|zzzz|phmsa|u\.?s\.?)\M';
+    want_state := q_lower ~ '\m(colorado|state|cdphe|apcd|aqcc|ecmc|cogcc|division|commission|regulation\s*[0-9]+|reg\s*[0-9]+|gp\s?[0-9]{2}|general permit)\M';
+  end if;
+  -- A closed permit the question names by number keeps its rank (an existing
+  -- registrant asking about their own permit).
+  select coalesce(array_agg(c), '{}') into named_closed
+  from unnest(public.closed_permit_reg_keys()) c
+  where lower(coalesce(query_text, '')) ~ ('\m(gp\s?0?' || ltrim(substring(c from 3), '0') || '|general permit\s+0?' || ltrim(substring(c from 3), '0') || ')\M');
+
+  -- Keyword side: all words must match; if that finds almost nothing (a long
+  -- natural-language question), fall back to any-word so ts_rank can still
+  -- favour rows that share several terms with the question.
+  -- Structured query when the app built one: (ecd | enclosed<->combustion<->device) & testing.
+  if keyword_query is not null and btrim(keyword_query) <> '' then
+    begin
+      tsq_and := to_tsquery('english', keyword_query);
+    exception when others then
+      tsq_and := websearch_to_tsquery('english', coalesce(query_text, ''));
+    end;
+  else
+    tsq_and := websearch_to_tsquery('english', coalesce(query_text, ''));
+  end if;
+  if tsq_and is not null and numnode(tsq_and) > 0 then
+    select count(*) into n_and from (
+      select 1 from public.provisions p
+      where p.search_vector @@ tsq_and
+        and (reg_filter is null or exists (select 1 from unnest(reg_filter) r where p.id like 'sec-' || r || '-%'))
+        and (jurisdiction_filter is null or p.jurisdiction_level = jurisdiction_filter)
+      limit 5
+    ) c;
+    if n_and >= 5 then
+      tsq := tsq_and;
+    elsif keyword_query is not null and btrim(keyword_query) <> '' then
+      -- any-word fallback: loosen every AND to OR (inside acronym groups too)
+      begin
+        tsq := to_tsquery('english', replace(keyword_query, ' & ', ' | '));
+      exception when others then
+        tsq := tsq_and;
+      end;
+    else
+      tsq := websearch_to_tsquery('english', regexp_replace(trim(coalesce(query_text, '')), '\s+', ' or ', 'g'));
+    end if;
+  end if;
+
+  return query
+  with kw_raw as (
+    select s.id as provision_id, row_number() over (order by s.rnk desc, s.sort_order) as kw_rank
+    from (
+      select p.id, p.sort_order, ts_rank(p.search_vector, tsq, 1) as rnk   -- /(1+log len): short operative paragraphs beat long basis statements
+      from public.provisions p
+      where tsq is not null and numnode(tsq) > 0
+        and p.search_vector @@ tsq
+        and (reg_filter is null or exists (select 1 from unnest(reg_filter) r where p.id like 'sec-' || r || '-%'))
+        and (jurisdiction_filter is null or p.jurisdiction_level = jurisdiction_filter)
+        and (include_basis or not public.is_basis_provision(p.id))
+      order by rnk desc, p.sort_order
+      limit pool
+    ) s
+  ),
+  -- Keyword-only rows get their real similarity to the question (best chunk);
+  -- below kw_min_score they are dropped here, before fusion.
+  kw as (
+    select kr.provision_id, row_number() over (order by kr.kw_rank) as kw_rank, ks.kw_score
+    from kw_raw kr
+    left join lateral (
+      select max(1 - (e.embedding <=> query_embedding))::real as kw_score
+      from public.provision_embeddings e
+      where e.provision_id = kr.provision_id
+    ) ks on true
+    where ks.kw_score is null or ks.kw_score >= kw_min_score
+  ),
+  -- Nearest chunks, over-fetched so that provisions with several chunks
+  -- (long rows; every long summary since 30 Sep) do not crowd the window.
+  sem_hits as (
+    select e.provision_id, e.is_basis,
+           (1 - (e.embedding <=> query_embedding))::real as score
+    from public.provision_embeddings e
+    where (reg_filter is null or e.reg_key = any (reg_filter))
+      and (jurisdiction_filter is null or e.jurisdiction = jurisdiction_filter)
+      and (include_basis or not e.is_basis)
+    order by e.embedding <=> query_embedding
+    limit sem_cand * 3
+  ),
+  -- Best chunk per provision, then the best sem_cand PROVISIONS.
+  sem_by_provision as (
+    select s.provision_id, bool_or(s.is_basis) as is_basis, max(s.score) as score
+    from sem_hits s group by s.provision_id
+  ),
+  sem as (
+    select sp.provision_id, sp.is_basis, sp.score,
+           row_number() over (order by sp.score desc) as sem_rank
+    from sem_by_provision sp
+    order by sp.score desc
+    limit sem_cand
+  ),
+  -- Fusion. Short and medium queries (<= 5 words: identifiers, topics):
+  -- reciprocal-rank fusion, where a row both legs found beats any row one
+  -- leg found. A sentence (>= 6 words): cosine-based -- the vector leg's
+  -- similarity carries its magnitude (0.63 beats 0.60 by the margin it
+  -- earned, not by one rank step), and a keyword hit adds a bonus worth
+  -- about two hundredths of cosine, fading with keyword rank. A long
+  -- question shares ordinary words with hundreds of rows, so a word match
+  -- is weak evidence next to a clear meaning match (the 912 spill rows,
+  -- 30 Sep). The 0.40 floor keeps the later multipliers proportional:
+  -- x0.6 on (0.62 - 0.40) is a shift of about 0.09 cosine, not a kill.
+  fusedset as (
+    select coalesce(sem.provision_id, kw.provision_id) as provision_id,
+           coalesce(sem.score, kw.kw_score) as score,
+           coalesce(sem.is_basis, public.is_basis_provision(kw.provision_id)) as is_basis,
+           (kw.provision_id is not null) as keyword_hit,
+           (case
+              when long_q then
+                greatest(coalesce(sem.score, kw.kw_score, 0.0) - 0.40, 0.01)
+                + coalesce(0.02 / (1.0 + (kw.kw_rank - 1) / 10.0), 0)
+              else
+                coalesce(1.0 / (k + sem.sem_rank), 0) + coalesce(1.0 / (k + kw.kw_rank), 0)
+            end)::real as fused
+    from sem full outer join kw on kw.provision_id = sem.provision_id
+  ),
+  -- Row-local stage: basis x0.5, other-sector regulation x0.7, direct
+  -- citation hit x1.5 (short queries only), closed permit x0.6 unless named. Cheap column tests on every
+  -- fused candidate; the best `pool` go on to the breadcrumb stage.
+  local_all as (
+    select f.provision_id, f.score, f.is_basis, f.keyword_hit,
+           p.citation, p.title, p.sort_order, p.reg_key as stored_reg_key,
+           p.jurisdiction_level as jur,
+           (f.fused
+             * case when f.is_basis then 0.5 else 1.0 end
+             * case when p.reg_key = any (public.non_oil_gas_reg_keys()) then 0.7 else 1.0 end
+             * case when short_q and tsq is not null and numnode(tsq) > 0
+                         and to_tsvector('english', p.citation) @@ tsq then 1.5 else 1.0 end
+             * case when p.reg_key = any (public.closed_permit_reg_keys())
+                         and not (p.reg_key = any (named_closed)) then 0.6 else 1.0 end
+           )::real as pre
+    from fusedset f
+    join public.provisions p on p.id = f.provision_id
+  ),
+  -- The best `pool` overall, plus the 20 best of each jurisdiction the
+  -- question named, so an interleave has rows to work with.
+  local_ranked as (
+    select la.*,
+           row_number() over (order by la.pre desc, la.score desc nulls last) as all_rank,
+           row_number() over (partition by la.jur order by la.pre desc, la.score desc nulls last) as jur_rank
+    from local_all la
+  ),
+  local_stage as (
+    select lr.* from local_ranked lr
+    where lr.all_rank <= pool
+       or (want_fed   and lr.jur = 'federal' and lr.jur_rank <= 20)
+       or (want_state and lr.jur = 'state'   and lr.jur_rank <= 20)
+  ),
+  -- Pool stage: the breadcrumb once per pooled row; Definitions x0.8,
+  -- applicability x1.15, heading-only x0.6. Reorders among good matches only.
+  pathed as (
+    select l.*, public.provision_path(l.provision_id) as path,
+           -- heading-only: <= 20 words of text AND provisions underneath it
+           (array_length(regexp_split_to_array(btrim(regexp_replace(coalesce(px.full_text, ''), '<[^>]+>', ' ', 'g')), '\s+'), 1) <= 20
+              and exists (select 1 from public.provisions c where c.parent_id = l.provision_id)) as heading_only
+    , px.parent_id
+    from local_stage l
+    join public.provisions px on px.id = l.provision_id
+  ),
+  content_scored as (
+    select ph.*,
+           (ph.pre
+             * case when ph.path ~* '\mdefinitions?\M'
+                      or ph.title ~* '^\s*§?\s*[0-9.]*[a-z]*\s*what definitions apply' then 0.8 else 1.0 end
+             * case when ph.title ~* '\m(applicability|applies to|subject to|who must comply|am i subject)'
+                      or ph.path ~* '\m(applicability|am i subject|who must comply)' then 1.15 else 1.0 end
+           )::real as content_score
+    from pathed ph
+  ),
+  -- The best pooled child of each heading-only row (by its own score).
+  best_child as (
+    select c.provision_id, h.content_score as heading_score,
+           row_number() over (partition by c.parent_id order by c.content_score desc, c.score desc nulls last) as child_rank
+    from content_scored c
+    join content_scored h on h.provision_id = c.parent_id and h.heading_only
+  ),
+  scored as (
+    select cs.*,
+           (case
+              when cs.heading_only then cs.content_score * 0.6
+              when bc.child_rank = 1 then greatest(cs.content_score, bc.heading_score)
+              else cs.content_score
+            end)::real as final_score
+    from content_scored cs
+    left join best_child bc on bc.provision_id = cs.provision_id and bc.child_rank = 1
+  ),
+  -- Jurisdiction ordering (see header). jrank = position within its own
+  -- jurisdiction by final score; lead = 0 for the three best rows of a
+  -- jurisdiction the question named alone.
+  juris as (
+    select sc.*,
+           row_number() over (partition by sc.jur order by sc.final_score desc, sc.score desc nulls last) as jrank,
+           case
+             when want_fed and want_state then 1.0
+             when want_fed   and sc.jur = 'federal' then 1.3
+             when want_state and sc.jur = 'state'   then 1.3
+             else 1.0
+           end as jur_weight
+    from scored sc
+  )
+  select p.id, p.citation, p.title,
+         substring(p.id from '^sec-([^-]+)-') as reg_key,
+         p.jurisdiction_level,
+         case when p.summary_status = 'rejected' then null else p.ai_summary end as summary,
+         s.score,
+         s.is_basis,
+         s.keyword_hit,
+         (s.final_score * s.jur_weight)::real as fused,
+         s.path
+  from juris s
+  join public.provisions p on p.id = s.provision_id
+  order by
+    -- both named: strict interleave, state first in each pair
+    case when want_fed and want_state then s.jrank else 0 end,
+    case when want_fed and want_state then (case when s.jur = 'state' then 0 else 1 end) else 0 end,
+    -- one named: its three best rows lead
+    case when (want_fed <> want_state) and s.jur_weight > 1.0 and s.jrank <= 3 then 0 else 1 end,
+    s.final_score * s.jur_weight desc, s.score desc nulls last, p.sort_order
+  limit match_count;
+end;
+$$;
+
+comment on function public.match_provisions_hybrid(text, extensions.vector, integer, text[], text, boolean, text) is
+  'Ask search: RRF of vector + full-text, then the keyword-search multipliers: '
+  'x0.5 Statement of Basis, x0.7 other-sector regulation (non_oil_gas_reg_keys), '
+  'x1.5 direct citation hit on a <=3-word query, x0.6 closed permit unless the '
+  'question names it (closed_permit_reg_keys); the best pool rows then get '
+  'x0.8 under a Definitions heading, x1.15 for an applicability section; a heading-only '
+  'row (<= 20 words with provisions inside) gets x0.6 and its best pooled child inherits its score. '
+  'Keyword-only rows below cosine 0.5 to the question are dropped. '
+  'Questions of 6+ words fuse on cosine (keyword hit = +0.02 bonus, fading with rank) instead of RRF. '
+  'Vector window = best sem_cand provisions (best chunk each), not chunks. '
+  'Jurisdiction words in the question (federal / Colorado, incl. "the Division" and "the Commission") reserve slots and '
+  'interleave or lead the results. SECURITY DEFINER; refuses without has_full_access().';
+
+-- CREATE OR REPLACE keeps the existing grants; re-stated for a from-scratch replay.
+revoke all on function public.match_provisions_hybrid(text, extensions.vector, integer, text[], text, boolean, text) from public, anon;
+grant execute on function public.match_provisions_hybrid(text, extensions.vector, integer, text[], text, boolean, text) to authenticated, service_role;

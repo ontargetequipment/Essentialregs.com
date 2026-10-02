@@ -44,7 +44,8 @@ export type SemanticHit = {
    * The score the hybrid results are ordered by: reciprocal-rank fusion for
    * a query of five words or fewer, cosine-based (cosine minus a 0.40 floor,
    * plus a keyword bonus of up to 0.02) for a question of six or more, then
-   * the ranking multipliers (migration 20261001042517).
+   * the ranking multipliers (migration 20261001042517; state words incl.
+   * Division / Commission since 20261002151233).
    */
   fused?: number;
   /** ancestor headings below the regulation ("PART B — … › II. …"); null when directly under it */

@@ -61,6 +61,14 @@ async function embedQueries(texts: string[], key: string): Promise<number[][]> {
   return json.data.sort((a, b) => a.index - b.index).map((d) => d.embedding);
 }
 
+// One question per Voyage call, the way the app embeds (one string per
+// request): a batch embedding differs slightly from the single one (about
+// 0.0014 cosine on the same question, 2 Oct), enough to swap two rows within
+// 0.0004 of each other, so the gate must score the embedding production uses.
+async function embedQuery(text: string, key: string): Promise<number[]> {
+  return (await embedQueries([text], key))[0];
+}
+
 /**
  * One hybrid search, retried on a Postgres statement timeout (the embedder
  * and the neighbour rebuild can hold the database busy for minutes; a
@@ -101,11 +109,10 @@ async function main(): Promise<void> {
   // --- Ask top 10 -------------------------------------------------------
   out.push(`### Ask top ${askCount} (hybrid, Statements of Basis hidden)`, "");
   const askExpanded = askQuestions.map(expandAcronyms);
-  const askEmbeddings = await embedQueries(askExpanded, voyageKey);
   for (let i = 0; i < askQuestions.length; i++) {
     const hits = await hybrid(supabase, {
       query_text: askExpanded[i],
-      query_embedding: askEmbeddings[i],
+      query_embedding: await embedQuery(askExpanded[i], voyageKey),
       match_count: askCount,
       reg_filter: null,
       jurisdiction_filter: null,
@@ -124,13 +131,12 @@ async function main(): Promise<void> {
 
   // --- Eval ---------------------------------------------------------------
   const expanded = EVAL_QUESTIONS.map((e) => expandAcronyms(e.q));
-  const embeddings = await embedQueries(expanded, voyageKey);
   const rows: { q: string; pass: boolean; known: boolean; matchRank: number | null; failures: string[]; ids: string[]; top: number | null }[] = [];
   for (let i = 0; i < EVAL_QUESTIONS.length; i++) {
     const e = EVAL_QUESTIONS[i];
     const hits = await hybrid(supabase, {
       query_text: expanded[i],
-      query_embedding: embeddings[i],
+      query_embedding: await embedQuery(expanded[i], voyageKey),
       match_count: rowsNeeded(e),
       reg_filter: null,
       jurisdiction_filter: null,
