@@ -8,6 +8,8 @@
  * dehydrators, apen and the bulk-plant question that must take no map, and
  * since maps batch 3 (2 Oct 2026) combustion-devices, ldar, general-permits
  * (one new question, the 28th) and the GP01 question on storage-tanks.
+ * Since migration 20261002151233 (2 Oct 2026) the gate is 28/28 with no
+ * known failures.
  *
  * Original description: Each is a question a Colorado oil & gas compliance person would
  * actually type, with the provision(s) that should appear in the top 5,
@@ -57,14 +59,11 @@ export type EvalQuestion = {
  * non-zero only for a failure outside this list, so the gate holds the line
  * at the current score without pretending these pass. Each entry says why.
  *
- * - Civil penalties: the PHMSA enforcement sections (49 CFR Part 190) share
- *   the question's vocabulary ("civil penalty", "violation") and outscore
- *   Common Provisions III; nothing reaches cosine 0.5, so no keyword-only
- *   row survives either. A Track B vocabulary problem (the Colorado text says
- *   "penalty" in a Procedural Rules frame), not a ranking one; no SQL change
- *   is planned for it.
+ * Empty since migration 20261002151233 (2 Oct 2026): the civil-penalties
+ * question passes now that "the Division" and "the Commission" count as
+ * Colorado state words; Common Provisions III.B.2 is #3 (was #7).
  */
-export const KNOWN_FAILURES: string[] = ["How does the Division assess civil penalties for a violation?"];
+export const KNOWN_FAILURES: string[] = [];
 
 /**
  * One extra condition on a question's hits. `topN` defaults to the
