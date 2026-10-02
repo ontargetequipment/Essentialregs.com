@@ -211,6 +211,21 @@ test.describe("signed in", () => {
     await expect(page.getByRole("link", { name: "Show as a flat list" })).toHaveAttribute("href", /[?&]flat=1/);
   });
 
+  test("a leak-inspection question renders grouped under the ldar map (maps batch 3)", async ({ page }) => {
+    // Maps batch 3 (2 Oct 2026): the LDAR eval question routes to the ldar map.
+    // No Colorado permitting and APEN row on that map, so the first group is
+    // General Permit options; no Federal NESHAP row either.
+    const q = "How often do I have to do leak inspections at a well production facility?";
+    const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
+    expect(res?.status()).toBe(200);
+    await expect(page.getByText("Mapped question: Leak detection and repair at well production facilities and compressor stations")).toHaveCount(1);
+    await expect(page.getByText(/What applies depends on the facility type/)).toHaveCount(1);
+    expect(await page.getByRole("heading", { level: 2 }).count()).toBeGreaterThan(0);
+    await expect(page.getByRole("heading", { level: 2, name: "Colorado standards" })).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 2, name: "Federal NESHAP" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Show as a flat list" })).toHaveAttribute("href", /[?&]flat=1/);
+  });
+
   test("a tank-truck question (a bare 'tank') routes to no map and renders the flat list", async ({ page }) => {
     const q = "What are the requirements for loading gasoline into a tank truck at a bulk plant?";
     const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));

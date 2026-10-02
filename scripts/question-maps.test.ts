@@ -1,5 +1,5 @@
 /**
- * Question maps (Ask Track B, 1 Oct 2026; maps batch 2, 2 Oct 2026): routing, the group fallback for
+ * Question maps (Ask Track B, 1 Oct 2026; maps batch 2 and 3, 2 Oct 2026): routing, the group fallback for
  * retrieval hits, the grouped layout, the eval's `map` check, and the
  * generated id list scripts/corpus_qa.sql check 20 reads. No database, no
  * Next.
@@ -52,8 +52,11 @@ test("the storage-tanks map: its eval questions, GP08, a tank battery APEN quest
   assert.equal(matchQuestionMap("APEN for my tank battery")?.key, "storage-tanks");
   assert.equal(matchQuestionMap("thief hatch inspections")?.key, "storage-tanks");
   assert.equal(matchQuestionMap("produced water tanks at a disposal well")?.key, "storage-tanks");
-  // GP01 routes here through its acronym expansion ("condensate storage tank batteries").
+  // GP01 routes here through its acronym expansion ("condensate storage tank
+  // batteries") and, since maps batch 3, its own trigger.
   assert.equal(matchQuestionMap("When is a GP01 required?")?.key, "storage-tanks");
+  assert.equal(matchQuestionMap("GP01 requirements")?.key, "storage-tanks");
+  assert.equal(matchQuestionMap("gp 1 tank battery")?.key, "storage-tanks");
   // A bare "tank" does not route: a tank truck at a bulk plant is Regulation 24.
   assert.equal(matchQuestionMap("tank truck at a bulk plant"), null);
   assert.equal(matchQuestionMap("What are the requirements for loading gasoline into a tank truck at a bulk plant?"), null);
@@ -88,16 +91,103 @@ test("the apen map routes its two eval questions, last after the equipment maps"
   assert.equal(matchQuestionMap("APEN for a pneumatic controller")?.key, "pneumatic-controllers");
   assert.deepEqual(
     QUESTION_MAPS.map((m) => m.key),
-    ["engines", "storage-tanks", "pneumatic-controllers", "dehydrators", "apen"]
+    ["engines", "storage-tanks", "pneumatic-controllers", "dehydrators", "combustion-devices", "ldar", "general-permits", "apen"]
   );
 });
 
-test("compressor and GP20 questions route to no map", () => {
+test("compressor questions route to no map (unchanged by maps batch 3); word boundaries hold", () => {
   assert.equal(matchQuestionMap("centrifugal compressor wet seals"), null);
+  assert.equal(matchQuestionMap("centrifugal compressor with wet seals"), null);
   assert.equal(matchQuestionMap("What venting and control requirements apply to a centrifugal compressor with wet seals?"), null);
-  // Word boundaries: "engineering" and "GP20" are not engines.
+  // Word boundaries: "engineering" is not an engine, and "control requirements" is not a control device.
   assert.equal(matchQuestionMap("engineering controls for dust"), null);
-  assert.equal(matchQuestionMap("gp20"), null);
+  // "GP20" is not an engine either; since maps batch 3 the general-permits
+  // gp\d\d catch-all takes any permit number no earlier map claimed.
+  assert.notEqual(matchQuestionMap("gp20")?.key, "engines");
+  assert.equal(matchQuestionMap("gp20")?.key, "general-permits");
+});
+
+// ---- maps batch 3 (2 Oct 2026) ---------------------------------------------
+
+test("the combustion-devices map routes its three eval questions, ECD in any case, and the control-device vocabulary", () => {
+  assert.equal(matchQuestionMap("ECD testing requirements")?.key, "combustion-devices");
+  assert.equal(matchQuestionMap("ecd testing")?.key, "combustion-devices");
+  assert.equal(matchQuestionMap("flare testing")?.key, "combustion-devices");
+  assert.equal(matchQuestionMap("enclosed combustion device destruction efficiency")?.key, "combustion-devices");
+  assert.equal(matchQuestionMap("auto-igniter on a combustor")?.key, "combustion-devices");
+  assert.equal(matchQuestionMap("thermal oxidizer monitoring")?.key, "combustion-devices");
+  assert.equal(matchQuestionMap("vapor combustion unit")?.key, "combustion-devices");
+  assert.equal(matchQuestionMap("flaring at a well pad")?.key, "combustion-devices");
+});
+
+test("equipment order: 'flare on my tank battery' is a tanks question (storage-tanks before combustion-devices)", () => {
+  assert.equal(matchQuestionMap("flare on my tank battery")?.key, "storage-tanks");
+  assert.equal(matchQuestionMap("flare on my glycol dehydrator")?.key, "dehydrators");
+  assert.equal(matchQuestionMap("flare on a natural gas engine site")?.key, "engines");
+});
+
+test("the ldar map routes its eval question, OGI, LDAR, AVO, fugitives and compressor stations", () => {
+  assert.equal(matchQuestionMap("How often do I have to do leak inspections at a well production facility?")?.key, "ldar");
+  assert.equal(matchQuestionMap("OGI survey frequency")?.key, "ldar");
+  assert.equal(matchQuestionMap("LDAR at a compressor station")?.key, "ldar");
+  assert.equal(matchQuestionMap("AVO inspection schedule")?.key, "ldar");
+  assert.equal(matchQuestionMap("fugitive emissions components under OOOOb")?.key, "ldar");
+  assert.equal(matchQuestionMap("Method 21 monitoring")?.key, "ldar");
+  assert.equal(matchQuestionMap("infrared camera leak survey")?.key, "ldar");
+  // A compressor station is an LDAR site; a compressor on its own is still no map.
+  assert.equal(matchQuestionMap("natural gas compressor stations")?.key, "ldar");
+  assert.equal(matchQuestionMap("compressor"), null);
+});
+
+test("the general-permits map: its eval question, GP03, GP11, 'which general permit'; GP02 stays engines and GP01 stays tanks", () => {
+  assert.equal(matchQuestionMap("Which general permits can an oil and gas well production facility register under?")?.key, "general-permits");
+  assert.equal(matchQuestionMap("GP03 dust permit")?.key, "general-permits");
+  assert.equal(matchQuestionMap("gp11 venting")?.key, "general-permits");
+  assert.equal(matchQuestionMap("which general permit do I need?")?.key, "general-permits");
+  assert.equal(matchQuestionMap("which GP fits a loadout?")?.key, "general-permits");
+  assert.equal(matchQuestionMap("can I register under a general permit")?.key, "general-permits");
+  // The equipment maps claim their permit numbers first.
+  assert.equal(matchQuestionMap("GP02 limits")?.key, "engines");
+  assert.equal(matchQuestionMap("GP01 requirements")?.key, "storage-tanks");
+  assert.equal(matchQuestionMap("GP08 conditions")?.key, "storage-tanks");
+  assert.equal(matchQuestionMap("GP12 registration")?.key, "engines");
+  // GP04 is inactive and GP07 is loadout; GP07 is a tanks trigger, GP04 falls to the catch-all.
+  assert.equal(matchQuestionMap("GP07 loadout")?.key, "storage-tanks");
+  assert.equal(matchQuestionMap("GP04")?.key, "general-permits");
+});
+
+test("maps batch 3: row counts, groups in display order, GP01 first among the tanks permits, the shared rows", () => {
+  const byKey = Object.fromEntries(QUESTION_MAPS.map((m) => [m.key, m]));
+  const groupsOf = (key: string) => [...new Set(byKey[key].provisions.map((p) => p.group))];
+  // The tanks map gained GP01, first in its General Permit options group.
+  assert.equal(byKey["storage-tanks"].provisions.length, 25);
+  assert.deepEqual(
+    byKey["storage-tanks"].provisions.filter((p) => p.group === "General Permit options").map((p) => p.id),
+    ["sec-gp01-I-A", "sec-gp08-I-B", "sec-gp05-I-A", "sec-gp12-I-A-3", "sec-gp07-I-A"]
+  );
+  assert.equal(byKey["combustion-devices"].name, "Flares and enclosed combustion devices");
+  assert.equal(byKey["combustion-devices"].provisions.length, 14);
+  assert.deepEqual(groupsOf("combustion-devices"), ["Colorado standards", "Federal NSPS", "Definitions"]);
+  // No "Enclosed combustion device" / "Flare" definition row exists in Reg 7 Part B: the two
+  // definitions are II.A 'Air pollution control equipment' and 'Approved instrument monitoring method'.
+  assert.deepEqual(
+    byKey["combustion-devices"].provisions.filter((p) => p.group === "Definitions").map((p) => p.id),
+    ["sec-7-B-II-A-1", "sec-7-B-II-A-2"]
+  );
+  assert.equal(byKey["ldar"].provisions.length, 25);
+  assert.deepEqual(groupsOf("ldar"), ["General Permit options", "Colorado standards", "Federal NSPS", "Definitions"]);
+  assert.equal(byKey["general-permits"].name, "APCD general permits: which one fits");
+  assert.equal(byKey["general-permits"].provisions.length, 14);
+  assert.deepEqual(groupsOf("general-permits"), ["Colorado permitting and APEN", "General Permit options"]);
+  // Every active permit's applicability row is on the general-permits map; GP09/GP10 (closed) last.
+  const permits = byKey["general-permits"].provisions.filter((p) => p.group === "General Permit options").map((p) => p.id);
+  for (const n of ["01", "02", "03", "05", "06", "07", "08", "09", "10", "11", "12"]) assert.ok(permits.some((id) => id.startsWith(`sec-gp${n}-`)), `GP${n} missing`);
+  assert.deepEqual(permits.slice(-2), ["sec-gp09-I-A", "sec-gp10-I-A"]);
+  // Every map's groups are in MAP_GROUP_ORDER order (repeated here for the new maps).
+  for (const m of QUESTION_MAPS) {
+    const idx = groupsOf(m.key).map((g) => MAP_GROUP_ORDER.indexOf(g));
+    assert.deepEqual(idx, [...idx].sort((a, b) => a - b), `${m.key}: groups out of display order`);
+  }
 });
 
 test("every map has a unique key, a trigger, a factors sentence and rows in MAP_GROUP_ORDER groups", () => {
@@ -137,7 +227,7 @@ test("the engines map lists its 23 rows in the plan's order, six groups, GP06 af
 test("maps batch 2: row counts, groups in display order, the two empty Federal NESHAP groups, the shared APEN rows", () => {
   const byKey = Object.fromEntries(QUESTION_MAPS.map((m) => [m.key, m]));
   const groupsOf = (key: string) => [...new Set(byKey[key].provisions.map((p) => p.group))];
-  assert.equal(byKey["storage-tanks"].provisions.length, 24);
+  assert.equal(byKey["storage-tanks"].provisions.length, 25); // 24 in batch 2, GP01 added in batch 3
   assert.deepEqual(groupsOf("storage-tanks"), ["Colorado permitting and APEN", "General Permit options", "Colorado standards", "Federal NSPS", "Definitions"]);
   assert.equal(byKey["pneumatic-controllers"].provisions.length, 19);
   assert.deepEqual(groupsOf("pneumatic-controllers"), ["Colorado standards", "Federal NSPS", "Definitions"]);
@@ -283,23 +373,34 @@ test("evaluateQuestion: map null fails when any map matched; absent map is never
   assert.equal(evaluateQuestion(unchecked, hits).pass, true);
 });
 
-test("the ten map-checked eval questions route as pinned, and KNOWN_FAILURES is exactly the civil-penalties question", () => {
+test("the sixteen map-checked eval questions route as pinned (28 questions), and KNOWN_FAILURES is exactly the civil-penalties question", () => {
+  assert.equal(EVAL_QUESTIONS.length, 28);
   const pinned = EVAL_QUESTIONS.filter((e) => e.map !== undefined);
+  assert.equal(pinned.length, 16);
   assert.deepEqual(
     pinned.map((e) => [e.q, e.map]),
     [
       ["Do I need emission controls on a condensate storage tank at a well site?", "storage-tanks"],
+      ["How often do I have to do leak inspections at a well production facility?", "ldar"],
       ["Can I install a natural gas driven pneumatic controller at a new facility?", "pneumatic-controllers"],
       ["When do I have to file an APEN for a new source and what is the threshold?", "apen"],
       ["What are the emission standards for a new natural gas fired compressor engine?", "engines"],
       ["What controls are required for a glycol dehydrator?", "dehydrators"],
       ["What venting and control requirements apply to a centrifugal compressor with wet seals?", null],
       ["When does a source need a construction permit versus just an APEN?", "apen"],
+      ["ECD testing requirements", "combustion-devices"],
+      ["ecd testing", "combustion-devices"],
+      ["flare testing", "combustion-devices"],
       ["What are the requirements for loading gasoline into a tank truck at a bulk plant?", null],
+      ["Which general permits can an oil and gas well production facility register under?", "general-permits"],
+      ["When is a GP01 required?", "storage-tanks"],
       ["What regulations apply to a natural gas-fired engine?", "engines"],
       ["What Colorado and federal requirements could apply to storage vessels?", "storage-tanks"],
     ]
   );
+  // The new general-permits question sits last in the original block, before the reviewer questions.
+  assert.equal(EVAL_QUESTIONS[24].q, "Which general permits can an oil and gas well production facility register under?");
+  assert.equal(EVAL_QUESTIONS[25].q, "When is a GP01 required?");
   // Every map has at least one eval question pinned to it.
   for (const m of QUESTION_MAPS) assert.ok(pinned.some((e) => e.map === m.key), `${m.key}: no eval question pinned`);
   for (const e of pinned) assert.equal(matchQuestionMap(e.q)?.key ?? null, e.map, e.q);

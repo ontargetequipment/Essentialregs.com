@@ -14,6 +14,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CLOSED_PERMIT_BADGE, CLOSED_PERMIT_REG_KEYS, isClosedPermit } from "../src/lib/regulation-pure";
+import { matchQuestionMap } from "../src/lib/question-maps";
 import { EVAL_QUESTIONS, evaluateQuestion, rowsNeeded, type EvalQuestion } from "../src/lib/semantic-eval";
 
 test("closed permits are exactly gp09 and gp10 (same literal as corpus_qa.sql check 18)", () => {
@@ -127,16 +128,16 @@ test("noBasis and minFederal checks", () => {
   assert.match(twoFederal.failures.join("\\n"), /2 federal rows in the top 10; need 3/);
 });
 
-test("the list carries the original 24 questions unchanged plus the three reviewer questions", () => {
-  assert.equal(EVAL_QUESTIONS.length, 27);
-  const plain = EVAL_QUESTIONS.slice(0, 24);
+test("the list carries the original 24 questions unchanged, the maps batch 3 general-permits question, then the three reviewer questions", () => {
+  assert.equal(EVAL_QUESTIONS.length, 28);
+  const plain = EVAL_QUESTIONS.slice(0, 25);
   for (const e of plain) {
     assert.equal(e.topN, undefined, e.q);
     assert.equal(e.forbid, undefined, e.q);
     assert.equal(e.checks, undefined, e.q);
   }
   assert.deepEqual(
-    EVAL_QUESTIONS.slice(24).map((e) => e.q),
+    EVAL_QUESTIONS.slice(25).map((e) => e.q),
     [
       "When is a GP01 required?",
       "What regulations apply to a natural gas-fired engine?",
@@ -144,9 +145,11 @@ test("the list carries the original 24 questions unchanged plus the three review
     ]
   );
   // the measured 30 Sep production top 10 for each passes its own question
-  const gp01: EvalQuestion = EVAL_QUESTIONS[24];
+  // (since maps batch 3 the GP01 question also pins the storage-tanks map, so
+  // the routed key is passed the way scripts/ask-eval.ts passes it)
+  const gp01: EvalQuestion = EVAL_QUESTIONS[25];
   assert.equal(
-    evaluateQuestion(gp01, [hit("sec-gp01-I"), hit("sec-gp01-I-E"), hit("sec-gp01-I-A-1"), hit("sec-gp01-IX"), hit("sec-gp01-top-REG-gp01")]).pass,
+    evaluateQuestion(gp01, [hit("sec-gp01-I"), hit("sec-gp01-I-E"), hit("sec-gp01-I-A-1"), hit("sec-gp01-IX"), hit("sec-gp01-top-REG-gp01")], matchQuestionMap(gp01.q)?.key ?? null).pass,
     true
   );
 });
