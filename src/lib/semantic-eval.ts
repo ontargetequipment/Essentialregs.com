@@ -2,10 +2,12 @@
  * Acceptance questions for Ask search (Phase 3/5 of the semantic-search
  * plan). Since Ask Track B (1 Oct 2026) the set is also the pull-request
  * gate: the "Ask eval" workflow runs scripts/ask-eval.ts on every PR to
- * main and fails on any miss outside KNOWN_FAILURES; ten questions also
- * pin question-map routing (`map`): the engines map's four from Track B and,
- * since maps batch 2 (2 Oct 2026), storage-tanks, pneumatic-controllers,
- * dehydrators, apen and the bulk-plant question that must take no map.
+ * main and fails on any miss outside KNOWN_FAILURES; sixteen questions also
+ * pin question-map routing (`map`): the engines map's four from Track B,
+ * since maps batch 2 (2 Oct 2026) storage-tanks, pneumatic-controllers,
+ * dehydrators, apen and the bulk-plant question that must take no map, and
+ * since maps batch 3 (2 Oct 2026) combustion-devices, ldar, general-permits
+ * (one new question, the 28th) and the GP01 question on storage-tanks.
  *
  * Original description: Each is a question a Colorado oil & gas compliance person would
  * actually type, with the provision(s) that should appear in the top 5,
@@ -162,7 +164,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
     q: "How often do I have to do leak inspections at a well production facility?",
     expect: ["sec-7-B-II-E", "sec-oooob-60.5397b"],
-    note: "Reg 7 Part B II.E LDAR frequency; OOOOb fugitive components",
+    map: "ldar",
+    note: "Reg 7 Part B II.E LDAR frequency; OOOOb fugitive components; routes to the ldar question map",
   },
   {
     q: "Can I install a natural gas driven pneumatic controller at a new facility?",
@@ -258,17 +261,20 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
     q: "ECD testing requirements",
     expect: ["sec-7-B-II-B-2-h", "sec-7-B-I-E"],
-    note: "Reg 7 Part B II.B.2.h enclosed combustion device requirements (acronym expansion + keyword side)",
+    map: "combustion-devices",
+    note: "Reg 7 Part B II.B.2.h enclosed combustion device requirements (acronym expansion + keyword side); routes to the combustion-devices question map",
   },
   {
     q: "ecd testing",
     expect: ["sec-7-B-II-B-2-h", "sec-7-B-I-E-3"],
-    note: "Lowercase acronym (Sept 19 miss: 'ECD' appears nowhere in the corpus; expansion must be case-insensitive and OR-grouped on the keyword side)",
+    map: "combustion-devices",
+    note: "Lowercase acronym (Sept 19 miss: 'ECD' appears nowhere in the corpus; expansion must be case-insensitive and OR-grouped on the keyword side); routes to the combustion-devices question map",
   },
   {
     q: "flare testing",
     expect: ["sec-7-B-II-B-2-h", "sec-oooob-60.5412b", "sec-ooooa-60.5412a", "sec-oooob-60.5417b"],
-    note: "Reg 7 combustion devices / OOOO flare control-device requirements — a two-word keyword-style query",
+    map: "combustion-devices",
+    note: "Reg 7 combustion devices / OOOO flare control-device requirements — a two-word keyword-style query; routes to the combustion-devices question map",
   },
   {
     q: "APEN exemptions for small sources",
@@ -281,12 +287,19 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     map: null,
     note: "Reg 24 Part B IV petroleum liquid storage and transfer; a bare \"tank\" (tank truck) takes no map",
   },
+  {
+    q: "Which general permits can an oil and gas well production facility register under?",
+    expect: ["sec-gp12-", "sec-gp11-", "sec-gp09-", "sec-gp10-"],
+    map: "general-permits",
+    note: "GP12 (and GP11 / the closed GP09-GP10) for a well production facility; routes to the general-permits map",
+  },
   // ---- Ask Track A regression checks (reviewer questions, 30 Sep 2026) ----
   {
     q: "When is a GP01 required?",
     expect: ["sec-gp01-I-A", "sec-gp01-I-E"],
     forbid: ["sec-gp03-", "sec-gp10-"],
-    note: "GP01 I.A / I.E applicability lead; no GP03 (dust permit, word-only match) or closed GP10 row in the top 5 (20260930003557, 20260930003325)",
+    map: "storage-tanks",
+    note: "GP01 I.A / I.E applicability lead; no GP03 (dust permit, word-only match) or closed GP10 row in the top 5 (20260930003557, 20260930003325); routes to the storage-tanks question map (maps batch 3)",
   },
   {
     q: "What regulations apply to a natural gas-fired engine?",

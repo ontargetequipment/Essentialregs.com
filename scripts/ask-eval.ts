@@ -1,5 +1,5 @@
 /**
- * Ask acceptance report from outside the app: the same 27 questions and
+ * Ask acceptance report from outside the app: the same 28 questions and
  * pass rules as /admin/semantic-eval (src/lib/semantic-eval.ts), the same
  * acronym expansion and keyword query (src/lib/acronyms.ts), the same
  * question-map routing (src/lib/question-maps.ts, pure), the same

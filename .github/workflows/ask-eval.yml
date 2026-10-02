@@ -7,7 +7,7 @@ name: Ask eval
 # required in the branch protection), and it still runs by hand with extra
 # questions to print the top N for.
 #
-# Cost and footprint: 27 + 3 Voyage query embeddings per run (a fraction of a
+# Cost and footprint: 28 + 3 Voyage query embeddings per run (a fraction of a
 # cent) and reads of the production database with the service role; the only
 # writes are the search_queries rows with mode='eval', exactly what a load of
 # the eval page writes. A Postgres statement timeout is retried by the script.

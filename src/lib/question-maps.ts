@@ -103,6 +103,18 @@ export type QuestionMap = {
  * not in the corpus, so the Federal NESHAP group of both maps is empty; and
  * 40 CFR 60 Subpart Kb exists only as Regulation 6's adoption stub
  * (sec-6-A-SUBPART-Kb), which the tanks map lists under Colorado standards.
+ *
+ * Batch 3 (2 Oct 2026) added combustion-devices, ldar and general-permits,
+ * and GP01 to the tanks map; every id was verified against the production
+ * database on 2 Oct 2026. The equipment maps stay ahead of the two generic
+ * ones, and general-permits sits after the equipment maps on purpose: a
+ * GP02 question keeps routing to engines and a GP08 question to tanks, while
+ * general-permits catches GP03, GP11 and "which general permit…" questions.
+ * One more corpus gap, left open the same way: Regulation 7 Part B's
+ * definition sections have no "Enclosed combustion device" or "Flare" row a
+ * title search finds, so the combustion-devices map's Definitions group
+ * uses the "Air pollution control equipment" and "Approved instrument
+ * monitoring method" definitions instead.
  */
 export const QUESTION_MAPS: QuestionMap[] = [
   {
@@ -149,10 +161,11 @@ export const QUESTION_MAPS: QuestionMap[] = [
     key: "storage-tanks",
     name: "Storage tanks and tank batteries",
     // Not a bare "tank": a tank truck at a bulk plant is Regulation 24, not
-    // this map. GP01 routes here through its acronym expansion ("condensate
-    // storage tank batteries"), as GP02 routes to engines through its own.
+    // this map. GP01 (condensate storage tank batteries) already routes here
+    // through its acronym expansion, as GP02 routes to engines through its
+    // own; since batch 3 it is also an explicit trigger.
     triggers: [
-      /\b(?:storage (?:tanks?|vessels?)|tank batter(?:y|ies)|(?:condensate|produced[- ]water|crude[- ]oil|oil|hydrocarbon liquid) tanks?|thief hatch(?:es)?|gp\s?0?5|gp\s?0?8|gp\s?0?7)\b/i,
+      /\b(?:storage (?:tanks?|vessels?)|tank batter(?:y|ies)|(?:condensate|produced[- ]water|crude[- ]oil|oil|hydrocarbon liquid) tanks?|thief hatch(?:es)?|gp\s?0?1|gp\s?0?5|gp\s?0?8|gp\s?0?7)\b/i,
     ],
     factors:
       "What applies depends on the tank's uncontrolled and controlled VOC emissions, what it stores (condensate, crude oil, intermediate hydrocarbon liquids or produced water), its throughput, when it was built or modified, whether it sits at a well production facility or a midstream or E&P site, whether that site is in the 8-hour Ozone Control Area or Northern Weld County, and — federally — whether the tank battery was constructed, modified or reconstructed after December 6, 2022 (OOOOb) or before (OOOOc).",
@@ -163,6 +176,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
       { id: "sec-3-A-II-D-1-fff", group: "Colorado permitting and APEN", why: "APEN exemption for storage tanks under 400,000 gallons per year storing listed liquids" },
       { id: "sec-3-B-II-D", group: "Colorado permitting and APEN", why: "Construction permit exemptions — a permit exemption does not remove the APEN requirement" },
       // General Permit options
+      { id: "sec-gp01-I-A", group: "General Permit options", why: "GP01 — condensate storage tank batteries" },
       { id: "sec-gp08-I-B", group: "General Permit options", why: "GP08 — oil and gas industry storage tanks (condensate, crude oil, intermediate hydrocarbon liquids, produced water)" },
       { id: "sec-gp05-I-A", group: "General Permit options", why: "GP05 — produced water storage tank batteries" },
       { id: "sec-gp12-I-A-3", group: "General Permit options", why: "GP12 — storage tanks at well production facilities, as one of the covered source types" },
@@ -243,6 +257,106 @@ export const QUESTION_MAPS: QuestionMap[] = [
       // Definitions
       { id: "sec-7-B-I-B-17", group: "Definitions", why: "Reg 7 Part B I.B — 'Glycol natural gas dehydrator'" },
       { id: "sec-7-B-II-A-16", group: "Definitions", why: "Reg 7 Part B II.A — 'Glycol natural gas dehydrator' (Section II)" },
+    ],
+  },
+  {
+    key: "combustion-devices",
+    name: "Flares and enclosed combustion devices",
+    // After the equipment maps: "flare on my tank battery" is a tanks question
+    // that happens to name its control device.
+    triggers: [
+      /\b(?:flares?|flaring|enclosed combustion devices?|ecds?|combustors?|vapor combust(?:ors?|ion)|thermal oxidi[sz]ers?|control devices?|destruction efficiency|auto-?igniters?)\b/i,
+    ],
+    factors:
+      "What applies depends on the kind of device (open flare, enclosed combustion device or other control device), what it controls (tanks, dehydrators, pneumatics, compressors, well completions), the design destruction efficiency it must meet and how that is shown (manufacturer test or an initial and periodic performance test), the auto-igniter, continuous-pilot and monitoring requirements, when the device was installed (Reg 7 Part B II.B.2.h performance tests apply from February 14, 2022), and federally which subpart the controlled affected facility falls under.",
+    provisions: [
+      // Colorado standards
+      { id: "sec-7-B-II-B-1", group: "Colorado standards", why: "Reg 7 Part B II.B.1 — good air pollution control practices and prevention of emissions" },
+      { id: "sec-7-B-II-B-2", group: "Colorado standards", why: "Reg 7 Part B II.B.2 — general requirements for air pollution control equipment used to comply with Section II" },
+      { id: "sec-7-B-II-B-2-h", group: "Colorado standards", why: "Reg 7 Part B II.B.2.h — performance tests for enclosed combustion devices (since February 14, 2022)" },
+      { id: "sec-7-B-I-C-1", group: "Colorado standards", why: "Reg 7 Part B I.C.1 — general requirements for Section I control equipment" },
+      { id: "sec-7-B-I-E-2", group: "Colorado standards", why: "Reg 7 Part B I.E.2 — monitoring requirements for storage-tank control equipment" },
+      { id: "sec-7-B-I-E-3", group: "Colorado standards", why: "Reg 7 Part B I.E.3 — performance testing requirements" },
+      // Federal NSPS
+      { id: "sec-oooob-60.5412b", group: "Federal NSPS", why: "OOOOb — control device requirements for initial compliance (destruction efficiency, design)" },
+      { id: "sec-oooob-60.5413b", group: "Federal NSPS", why: "OOOOb — performance testing procedures for control devices" },
+      { id: "sec-oooob-60.5417b", group: "Federal NSPS", why: "OOOOb — continuous monitoring requirements for control devices" },
+      { id: "sec-ooooa-60.5412a", group: "Federal NSPS", why: "OOOOa — control device requirements for initial compliance" },
+      { id: "sec-ooooa-60.5413a", group: "Federal NSPS", why: "OOOOa — performance testing procedures for control devices" },
+      { id: "sec-ooooc-60.5412c", group: "Federal NSPS", why: "OOOOc — control device requirements for existing designated facilities" },
+      // Definitions: no "Enclosed combustion device" or "Flare" row in Reg 7 Part B's
+      // definition sections (see the note above QUESTION_MAPS).
+      { id: "sec-7-B-II-A-1", group: "Definitions", why: "Reg 7 Part B II.A — 'Air pollution control equipment' (combustion devices, VRUs)" },
+      { id: "sec-7-B-II-A-2", group: "Definitions", why: "Reg 7 Part B II.A — 'Approved instrument monitoring method'" },
+    ],
+  },
+  {
+    key: "ldar",
+    name: "Leak detection and repair at well production facilities and compressor stations",
+    triggers: [
+      /\b(?:ldar|leak detection|leak inspections?|leak surveys?|fugitive emissions?|fugitives|avo|audio,? visual|ogi|infra-?red camera|ir camera|method 21|component inspections?|compressor stations?)\b/i,
+    ],
+    factors:
+      "What applies depends on the facility type (well production facility or natural gas compressor station), its estimated uncontrolled actual VOC emissions tier (which sets the Reg 7 inspection frequency), when it was constructed (October 15, 2014 for the state program; December 6, 2022 for OOOOb versus OOOOc), whether it sits in the 8-hour Ozone Control Area or within 1,000 feet of an occupied area, the monitoring method used (approved instrument monitoring method, OGI, Method 21 or AVO), and federally whether the site is an OOOOa or OOOOb affected facility or an OOOOc designated facility.",
+    provisions: [
+      // General Permit options
+      { id: "sec-gp12-I-A", group: "General Permit options", why: "GP12 — well production facilities (replaced GP09/GP10 for new applicants)" },
+      { id: "sec-gp11-I-A", group: "General Permit options", why: "GP11 — routine or predictable gas venting at well production and centralized production facilities" },
+      { id: "sec-gp09-I-A", group: "General Permit options", why: "GP09 — well production facilities, attainment areas; closed to new registrations July 15, 2026" },
+      { id: "sec-gp10-I-A", group: "General Permit options", why: "GP10 — well production facilities, nonattainment areas; closed to new registrations July 15, 2026" },
+      // Colorado standards
+      { id: "sec-7-B-I-L", group: "Colorado standards", why: "Reg 7 Part B I.L — statewide leak detection and repair program for well production facilities and compressor stations" },
+      { id: "sec-7-B-I-L-2", group: "Colorado standards", why: "Reg 7 Part B I.L.2 — well production facilities" },
+      { id: "sec-7-B-I-L-1", group: "Colorado standards", why: "Reg 7 Part B I.L.1 — natural gas compressor stations" },
+      { id: "sec-7-B-I-L-4", group: "Colorado standards", why: "Reg 7 Part B I.L.4 — leaks requiring repair" },
+      { id: "sec-7-B-II-E", group: "Colorado standards", why: "Reg 7 Part B II.E — (State Only) LDAR program" },
+      { id: "sec-7-B-II-E-4", group: "Colorado standards", why: "Reg 7 Part B II.E.4 — well production facility requirements: inspection frequency by emissions tier" },
+      { id: "sec-7-B-II-E-6", group: "Colorado standards", why: "Reg 7 Part B II.E.6 — leaks requiring repair and the approved methods" },
+      { id: "sec-7-B-II-F", group: "Colorado standards", why: "Reg 7 Part B II.F — well operation and maintenance at well production facilities" },
+      { id: "sec-7-B-II-G", group: "Colorado standards", why: "Reg 7 Part B II.G — (State Only) downhole maintenance and liquids unloading" },
+      // Federal NSPS
+      { id: "sec-oooob-60.5365b-(i)", group: "Federal NSPS", why: "OOOOb applicability — fugitive emissions components affected facility" },
+      { id: "sec-oooob-60.5397b", group: "Federal NSPS", why: "OOOOb — fugitive emissions standards (monitoring frequency, repair)" },
+      { id: "sec-oooob-60.5398b", group: "Federal NSPS", why: "OOOOb — alternative fugitive emissions standards (advanced methods)" },
+      { id: "sec-ooooa-60.5365a-(i)", group: "Federal NSPS", why: "OOOOa applicability — collection of fugitive emissions components" },
+      { id: "sec-ooooa-60.5397a", group: "Federal NSPS", why: "OOOOa — fugitive emissions standards" },
+      { id: "sec-ooooc-60.5386c-(h)", group: "Federal NSPS", why: "OOOOc applicability — fugitive emissions components designated facility (existing)" },
+      { id: "sec-ooooc-60.5397c", group: "Federal NSPS", why: "OOOOc — fugitive emissions standards for designated facilities" },
+      // Definitions
+      { id: "sec-7-B-I-B-34", group: "Definitions", why: "Reg 7 Part B I.B — 'Well production facility'" },
+      { id: "sec-7-B-I-B-21", group: "Definitions", why: "Reg 7 Part B I.B — 'Natural gas compressor station'" },
+      { id: "sec-7-B-I-B-3", group: "Definitions", why: "Reg 7 Part B I.B — 'Approved instrument monitoring method'" },
+      { id: "sec-7-B-II-A-10", group: "Definitions", why: "Reg 7 Part B II.A — 'Component'" },
+      { id: "sec-3-A-I-B-56", group: "Definitions", why: "Regulation 3 — 'Well production facility'" },
+    ],
+  },
+  {
+    key: "general-permits",
+    name: "APCD general permits: which one fits",
+    // After the equipment maps on purpose: a GP02 question keeps routing to
+    // engines and a GP08 question to tanks; this map catches GP03, GP11 and
+    // "which general permit…" questions. The gp\d\d catch-all is reached only
+    // when no earlier map claimed the number.
+    triggers: [/\b(?:general permits?|which (?:gp|general permit)|gp\s?0?1|gp\s?0?3|gp\s?11|gp\s?\d\d|register(?:ing|ed)? under)\b/i],
+    factors:
+      "Which general permit fits depends on the equipment (condensate or produced-water tank batteries, other storage tanks, natural gas or diesel engines, liquid loadout, routine gas venting, a whole well production facility, or land-development dust), whether the facility can meet every condition of the permit including its emission caps and the Section I.B exclusion for Title V and major sources, where it sits (attainment areas versus the 8-hour Ozone Control Area), and whether the permit is still open to new registrations — GP09 and GP10 closed on July 15, 2026 and GP12 replaces them.",
+    provisions: [
+      // Colorado permitting and APEN
+      { id: "sec-3-B-II-A", group: "Colorado permitting and APEN", why: "Regulation 3 Part B II.A — construction permits: general considerations (a general permit is one route to one)" },
+      { id: "sec-3-A-II-A", group: "Colorado permitting and APEN", why: "Regulation 3 Part A II.A — an APEN is still required under a general permit" },
+      // General Permit options
+      { id: "sec-gp01-I-A", group: "General Permit options", why: "GP01 — condensate storage tank batteries" },
+      { id: "sec-gp05-I-A", group: "General Permit options", why: "GP05 — produced water storage tank batteries" },
+      { id: "sec-gp08-I-B", group: "General Permit options", why: "GP08 — storage tanks (condensate, crude oil, intermediate hydrocarbon liquids, produced water)" },
+      { id: "sec-gp02-I-A", group: "General Permit options", why: "GP02 — natural gas-fired reciprocating internal combustion engines" },
+      { id: "sec-gp06-I-A", group: "General Permit options", why: "GP06 — diesel fuel-fired reciprocating internal combustion engines" },
+      { id: "sec-gp07-I-A", group: "General Permit options", why: "GP07 — hydrocarbon liquid loadout" },
+      { id: "sec-gp11-I-A", group: "General Permit options", why: "GP11 — routine or predictable gas venting emissions" },
+      { id: "sec-gp12-I-A", group: "General Permit options", why: "GP12 — well production facilities (natural gas and diesel engines, tanks, loading, separator venting)" },
+      { id: "sec-gp12-I-B", group: "General Permit options", why: "GP12 — who may register: a well production facility that can comply with every condition" },
+      { id: "sec-gp03-I-A", group: "General Permit options", why: "GP03 — land development projects (fugitive dust), not an oil and gas permit" },
+      { id: "sec-gp09-I-A", group: "General Permit options", why: "GP09 — well production facilities, attainment areas; closed to new registrations July 15, 2026" },
+      { id: "sec-gp10-I-A", group: "General Permit options", why: "GP10 — well production facilities, nonattainment areas; closed to new registrations July 15, 2026" },
     ],
   },
   {
