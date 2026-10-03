@@ -1,9 +1,12 @@
 /**
  * Ask timing report, signed-in group. Fetches the civil-penalties question's
  * Ask page grouped (the question map) and flat (?flat=1), three times each,
- * and prints the wall-clock time of each document request. A report, not a
- * test: nothing here asserts on latency. It exists to show the cost of the
- * question-map read on the page (PR "one-read breadcrumbs for map rows").
+ * and prints the wall-clock time of each document request; then prints the
+ * grouped page's rows (group, regulation, citation, breadcrumb) so the
+ * breadcrumbs can be checked against the PR screenshot. A report, not a
+ * test: nothing here asserts on latency or on the breadcrumbs. It exists to
+ * show the cost of the question-map read on the page (PR "one-read
+ * breadcrumbs for map rows").
  *
  * Runs only with SMOKE_EMAIL / SMOKE_PASSWORD set and SMOKE_SCOPE not
  * "anonymous", exactly like ask-report. Read-only.
@@ -94,5 +97,28 @@ test.describe("ask timing", () => {
       `| flat | ${fmt(ms.flat)} | ${median(ms.flat)} ms |`,
       "",
     ]);
+  });
+
+  test("breadcrumbs on the grouped civil-penalties page", async ({ page }) => {
+    const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(QUESTION));
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("link", { name: "Show as a flat list" })).toBeVisible();
+    // One line per card: group heading | regulation | citation | breadcrumb
+    // (or "(no path)") | "retrieved" when the card carries a match score.
+    // The breadcrumb is the mt-2 paragraph without a child span; the
+    // "Why it's here" paragraph carries one.
+    const rows = await page.locator("main section").evaluateAll((sections) =>
+      sections.flatMap((section) => {
+        const group = section.querySelector("h2")?.textContent?.trim() ?? "";
+        return Array.from(section.querySelectorAll("li > a")).map((a) => {
+          const name = a.querySelector(":scope > div span.text-xs")?.textContent?.trim() ?? "";
+          const cite = a.querySelector(":scope > p.font-mono")?.textContent?.trim() ?? "";
+          const crumb = Array.from(a.querySelectorAll(":scope > p.mt-2")).find((p) => !p.querySelector("span"));
+          const retrieved = a.querySelector(":scope > div .ml-auto") ? "retrieved" : "canonical only";
+          return `${group} | ${name} | ${cite} | ${crumb?.textContent?.trim() || "(no path)"} | ${retrieved}`;
+        });
+      })
+    );
+    report(["### Ask grouped page (signed in): civil penalties, rows and breadcrumbs", "", ...rows.map((r) => `- ${r}`), ""]);
   });
 });
