@@ -6,6 +6,13 @@
 --
 -- Baseline taken 2026-09-22 against 36,517 provisions. The "expected" column
 -- is what the corpus looked like then; investigate anything that moves.
+-- Checks 1, 2, 3 and 8 were corrected on 3 Oct 2026 after the first
+-- pull-request qa run (PR #42): 1 gained a hand-verified allowlist, 2
+-- allows a footnote "*", 3 matches the footer signature rather than the
+-- bare phrase, and 8 is a REVIEW trend (baseline 3,160) rather than a GUARD
+-- at 0, because Phase 0 put 3,163 regenerated parents into pending on
+-- purpose. Checks 1-3 and 8 print their hit ids so a failure can be read
+-- from the job summary without a second query.
 --
 -- Every check here corresponds to a defect that has ALREADY happened once and
 -- is recorded in EssentialRegs_Known_Issues_and_Fixes.md. This file exists so
@@ -274,27 +281,45 @@ with plain as (
                          '&nbsp;|\s+', ' ', 'g')) as txt
   from provisions
 ),
+-- Check 1 allowlist: rows whose opening clause legitimately recurs because
+-- the source is a run of parallel paragraphs, each read by hand on
+-- 2 Oct 2026. A NEW hit on check 1 must be read the same way, never added
+-- here blindly: the Reg 3 Part F signature it exists for looks identical.
+repeated_text_allowlist (id, reason) as (
+  values
+    ('sec-jjjj-60.4231-(b)',  'JJJJ s 60.4231(b): parallel paragraph; each sub-item reopens "Stationary SI internal combustion engine manufacturers must certify..."'),
+    ('sec-jjjj-60.4231-(c)',  'JJJJ s 60.4231(c): same parallel opening as (b) and (d)'),
+    ('sec-jjjj-60.4231-(d)',  'JJJJ s 60.4231(d): same parallel opening as (b) and (c)'),
+    ('sec-jjjj-60.4245-(b)',  'JJJJ s 60.4245(b): sub-items reopen "For all stationary SI emergency ICE greater than or equal to 500 HP..." (2 repeats on 3 Oct 2026, under the threshold; listed because it was read with the others)'),
+    ('sec-iiii-60.4210-(c)',  'IIII s 60.4210(c): sub-items reopen "Stationary CI internal combustion engine manufacturers must meet the requirements of 40 CFR..."'),
+    ('sec-ecmc-803-d-(1)',    'ECMC 803.d.(1): sub-items each reopen "Form 31, Underground Injection Formation Permit Application..."')
+),
 checks as (
 
   -- ---- ERRORS: investigate every hit ------------------------------------
 
   select 1 as ord, 'ERROR' as severity, 'repeated_text_block' as check_name, count(*) as n, 0 as expected,
-         'First 50 chars recur 3+ times inside one row. This is the Reg 3 Part F signature (a row that swallowed every restarted "3." in an entry) and the duplicate-label merge signature.' as what_it_catches
+         'First 50 chars recur 3+ times inside one row. This is the Reg 3 Part F signature (a row that swallowed every restarted "3." in an entry) and the duplicate-label merge signature. Hits in repeated_text_allowlist (above) are excluded: CFR parallel paragraphs that legitimately begin with the same clause (JJJJ s 60.4231(b)-(d), s 60.4245(b), IIII s 60.4210(c), ECMC 803.d.(1)), each verified by hand on 2 Oct 2026. A new hit must be read, not added to the allowlist blindly.'
+         || coalesce(' Hits: ' || string_agg(plain.id, ', ' order by plain.id), '') as what_it_catches
   from plain
   where length(txt) > 200 and (length(txt) - length(replace(txt, left(txt,50), ''))) / 50 >= 3
+    and plain.id not in (select id from repeated_text_allowlist)
 
   union all
   select 2, 'ERROR', 'truncated_summary', count(*), 0,
-         'ai_summary does not end in terminal punctuation - the summarizer MAX_TOKENS cut-off that produced four mid-sentence ZZZZ table summaries.'
+         'ai_summary does not end in terminal punctuation (. ! ? ) " ]), an optional footnote marker "*" allowed after it - the summarizer MAX_TOKENS cut-off that produced four mid-sentence ZZZZ table summaries and, on 3 Oct 2026, ten more. The summarizer now tests every primary answer with the same regex (WHOLE_ANSWER_RE in pipeline/summarize.py) and strips leaked <answer> tags before testing.'
+         || coalesce(' Hits: ' || string_agg(id, ', ' order by id), '')
   from provisions
-  where ai_summary is not null and btrim(ai_summary) <> '' and rtrim(ai_summary) !~ '[.!?)"\]]$'
+  where ai_summary is not null and btrim(ai_summary) <> '' and rtrim(ai_summary) !~ '[.!?)"\]]\*?$'
 
   union all
   select 3, 'ERROR', 'page_furniture_in_text', count(*), 0,
-         'Printed page header/footer captured mid-provision ("CODE OF COLORADO REGULATIONS ... 5 CCR"). This is how a page number once became "45 days".'
+         'Printed page header/footer captured mid-provision: "CODE OF COLORADO REGULATIONS" followed within 60 characters by a "5 CCR 1001-" citation or a page number ("Page 12", "12 of 40"), or preceded within 20 characters by a bare page number. This is how a page number once became "45 days". The bare phrase alone is NOT a hit (3 Oct 2026): Reg 8 Part B I.C.14 defines the abbreviation "CCR", Common Provisions I.F is the abbreviations list and Reg 11 Part H III is an adoption heading, all legitimate text that names the Code.'
+         || coalesce(' Hits: ' || string_agg(id, ', ' order by id), '')
   from plain
-  where txt ~* 'CODE OF COLORADO REGULATIONS'
-    and position('CODE OF COLORADO REGULATIONS' in upper(txt)) > 1
+  where position('CODE OF COLORADO REGULATIONS' in upper(txt)) > 1
+    and (txt ~* 'CODE OF COLORADO REGULATIONS.{0,60}(5 CCR 1001-|\mPage \d+|\d+ of \d+)'
+         or txt ~* '\m\d{1,4}\M[^.,;:a-z]{0,20}CODE OF COLORADO REGULATIONS')
 
   union all
   select 4, 'ERROR', 'empty_full_text', count(*), 0,
@@ -322,12 +347,12 @@ checks as (
          'Rows visible to logged-out visitors on /sample. Must be exactly 4. More than 4 means paid content is leaking past the paywall.'
   from provisions where is_public
 
-  union all
-  select 8, 'GUARD', 'real_review_backlog', count(*), 0,
-         'Has a summary AND is still pending review. This is the GENUINE backlog - do not confuse it with the ~16,840 structural rows that are pending with ai_summary IS NULL and are never summarised by design.'
-  from provisions where summary_status = 'pending' and ai_summary is not null
-
   -- ---- REVIEW: expected to be non-zero; watch the trend -----------------
+
+  union all
+  select 8, 'REVIEW', 'real_review_backlog', count(*), 3160,
+         'Has a summary AND is still pending review. This is the GENUINE backlog - do not confuse it with the ~16,840 structural rows that are pending with ai_summary IS NULL and are never summarised by design. Phase 0 (30 Sep 2026) regenerated 3,163 parent summaries into pending by design; the reader labels them "AI-assisted, not yet reviewed". This number must only go DOWN as reviews land; a rise means a new batch wrote pending rows (the summarizer''s regenerated writes do, on purpose) and must be matched to a known run.'
+  from provisions where summary_status = 'pending' and ai_summary is not null
 
   union all
   select 9, 'REVIEW', 'duplicate_citation_in_part', count(*), 83,

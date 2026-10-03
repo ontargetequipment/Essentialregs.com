@@ -842,7 +842,7 @@ def test_call_sites_use_per_row_system(monkeypatch):
 
     class _Block:
         type = "text"
-        text = "ok"
+        text = "ok."
 
     class _Message:
         content = [_Block()]
@@ -1929,7 +1929,7 @@ def test_write_back_not_regenerated_is_unchanged():
     assert set(payload) == {"ai_summary", "summary_model", "summary_generated_at"}
 
 
-def _fake_anthropic(answers: list[str], calls: list[dict]):
+def _fake_anthropic(answers: list[str], calls: list[dict], stop_reason: str = "end_turn"):
     class _Usage:
         input_tokens = 10
         output_tokens = 5
@@ -1945,6 +1945,7 @@ def _fake_anthropic(answers: list[str], calls: list[dict]):
 
         def __init__(self, text):
             self.content = [_Block(text)]
+            self.stop_reason = stop_reason
 
     class _Messages:
         def create(self, **kwargs):
@@ -2168,7 +2169,7 @@ def test_length_guard_retries_once_and_writes_the_shorter_clean_answer(monkeypat
     written: list = []
     monkeypatch.setattr(summarize, "write_summary", lambda c, pid, text, model, **kw: written.append(text))
     calls: list[dict] = []
-    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40))
+    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40)) + "."
     client = _fake_anthropic(["Short and clean."], calls)
     stats = summarize.RunStats()
     guard_and_write(client, None, "sec-x", _prompt_result(), long_text, "m", stats, regenerated=True)
@@ -2180,7 +2181,7 @@ def test_length_guard_retries_once_and_writes_the_shorter_clean_answer(monkeypat
 def test_length_retry_uses_the_word_budget_line_and_token_ceiling(monkeypatch):
     monkeypatch.setattr(summarize, "write_summary", lambda *a, **k: None)
     calls: list[dict] = []
-    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40))
+    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40)) + "."
     guard_and_write(_fake_anthropic(["Done."], calls), None, "sec-x", _prompt_result(),
                     long_text, "m", summarize.RunStats(), regenerated=True)
     assert calls[0]["max_tokens"] == summarize.LENGTH_RETRY_MAX_TOKENS
@@ -2190,7 +2191,7 @@ def test_length_retry_uses_the_word_budget_line_and_token_ceiling(monkeypatch):
 def test_length_guard_rejects_a_rewrite_cut_mid_sentence(monkeypatch):
     written: list = []
     monkeypatch.setattr(summarize, "write_summary", lambda c, pid, text, model, **kw: written.append(text))
-    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40))
+    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40)) + "."
     guard_and_write(_fake_anthropic(["Shorter but cut off in the middle of a"], []), None, "sec-x",
                     _prompt_result(), long_text, "m", summarize.RunStats(), regenerated=True)
     assert written == [long_text]
@@ -2199,7 +2200,7 @@ def test_length_guard_rejects_a_rewrite_cut_mid_sentence(monkeypatch):
 def test_length_guard_keeps_the_long_answer_when_the_rewrite_hedges_or_grows(monkeypatch):
     written: list = []
     monkeypatch.setattr(summarize, "write_summary", lambda c, pid, text, model, **kw: written.append(text))
-    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40))
+    long_text = " ".join(["word"] * (LENGTH_RETRY_WORDS + 40)) + "."
     stats = summarize.RunStats()
     guard_and_write(_fake_anthropic(["Shorter but the text does not say."], []), None, "sec-x",
                     _prompt_result(), long_text, "m", stats, regenerated=True)
@@ -2218,3 +2219,167 @@ def test_parents_longer_than_keeps_only_long_summaries():
                                             parent_ids=set(children_index), longer_than=900)]
     assert got == ["sec-6-B-I-C-2-b"]
     assert summarize.main(["--longer-than", "900"]) == 1   # needs --parents
+
+
+# --- Corpus QA (3 Oct 2026): cut-off primary answers and leaked tags --------
+
+import json  # noqa: E402
+from summarize import is_cut_off, is_whole, strip_wrapper_tags  # noqa: E402
+
+
+def _cut_off_fixture(monkeypatch, tmp_path):
+    written: list = []
+    monkeypatch.setattr(summarize, "write_summary", lambda c, pid, text, model, **kw: written.append(text))
+    monkeypatch.setattr(summarize, "FAILED_LOG_PATH", tmp_path / "failed.jsonl")
+    return written
+
+
+def test_primary_answer_stopped_at_max_tokens_triggers_the_retry(monkeypatch, tmp_path):
+    """stop_reason == "max_tokens" is cut off even when the text happens to
+    end in a period: the length retry runs and its whole answer is written."""
+    written = _cut_off_fixture(monkeypatch, tmp_path)
+    calls: list[dict] = []
+    stats = summarize.RunStats()
+    guard_and_write(_fake_anthropic(["Whole retry."], calls), None, "sec-x", _prompt_result(),
+                    "Looks finished but the API says otherwise.", "m", stats, regenerated=True,
+                    stop_reason="max_tokens")
+    assert written == ["Whole retry."]
+    assert len(calls) == 1
+    assert calls[0]["messages"][-1] == {"role": "user", "content": LENGTH_RETRY_LINE}
+    assert calls[0]["max_tokens"] == summarize.LENGTH_RETRY_MAX_TOKENS
+    assert stats.cut_off_retried == 1 and stats.cut_off == 0
+    assert stats.processed == 1 and stats.failed == 0 and stats.length_retried == 0
+
+
+def test_primary_answer_ending_mid_word_triggers_the_retry(monkeypatch, tmp_path):
+    """A primary answer with stop_reason end_turn that does not end in
+    terminal punctuation is cut off too."""
+    written = _cut_off_fixture(monkeypatch, tmp_path)
+    calls: list[dict] = []
+    stats = summarize.RunStats()
+    guard_and_write(_fake_anthropic(["Whole retry."], calls), None, "sec-x", _prompt_result(),
+                    "Natural gas engines may use propane as an alternative fuel for", "m", stats,
+                    regenerated=True, stop_reason="end_turn")
+    assert written == ["Whole retry."]
+    assert len(calls) == 1
+    assert stats.cut_off_retried == 1 and stats.cut_off == 0 and stats.processed == 1
+
+
+@pytest.mark.parametrize("text", [
+    "A whole answer.",
+    "A whole answer (with a bracket).",
+    "A whole answer ending in a bracket.)",
+    "A whole answer with a footnote.)*",
+    "A whole answer with a footnote.*",
+    'A whole answer ending in a quote."',
+    "A whole answer ending in a square bracket.]",
+])
+def test_whole_primary_answer_is_written_without_a_retry(monkeypatch, tmp_path, text):
+    written = _cut_off_fixture(monkeypatch, tmp_path)
+    calls: list[dict] = []
+    stats = summarize.RunStats()
+    guard_and_write(_fake_anthropic([], calls), None, "sec-x", _prompt_result(), text, "m", stats,
+                    regenerated=False, stop_reason="end_turn")
+    assert written == [text] and calls == []
+    assert stats.cut_off_retried == 0 and stats.cut_off == 0 and stats.processed == 1
+    assert not (tmp_path / "failed.jsonl").exists()
+
+
+def test_cut_off_primary_and_cut_off_retry_writes_nothing_and_logs_cut_off(monkeypatch, tmp_path):
+    written = _cut_off_fixture(monkeypatch, tmp_path)
+    stats = summarize.RunStats()
+    guard_and_write(_fake_anthropic(["Shorter but still cut off in the middle of"], []), None, "sec-x",
+                    _prompt_result(), "First answer cut off in the middle of a", "m", stats,
+                    regenerated=True, stop_reason="max_tokens")
+    assert written == []
+    assert stats.cut_off_retried == 1 and stats.cut_off == 1
+    assert stats.failed == 1 and stats.processed == 0
+    entry = json.loads((tmp_path / "failed.jsonl").read_text().strip())
+    assert entry == {"id": "sec-x", "reason": "cut_off", "at": entry["at"]}
+
+
+def test_is_cut_off_and_is_whole():
+    assert is_cut_off("Done.", "max_tokens")
+    assert is_cut_off("cut in the middle of a", "end_turn")
+    assert is_cut_off("cut in the middle of a", None)
+    assert not is_cut_off("Done.", "end_turn")
+    assert not is_cut_off("Done.", None)
+    assert is_whole("Done.)*") and not is_whole("Done*") and not is_whole("")
+
+
+def test_strip_wrapper_tags_removes_answer_tags_and_keeps_inner_text():
+    assert strip_wrapper_tags("<answer>VOC content is ((B minus C) divided by A) times 100.</answer>") \
+        == "VOC content is ((B minus C) divided by A) times 100."
+    assert strip_wrapper_tags("<ANSWER>\nText.\n</ANSWER >") == "Text."
+    assert strip_wrapper_tags("<summary>Text.</summary>") == "Text."
+    assert strip_wrapper_tags("Text with a trailing tag.</answer>") == "Text with a trailing tag."
+    # Not wrapper tags: left alone (the reader's markup never reaches this path, but be safe).
+    assert strip_wrapper_tags("<p>Text.</p>") == "<p>Text.</p>"
+    assert strip_wrapper_tags("<answers>Text.</answers>") == "<answers>Text.</answers>"
+    assert strip_wrapper_tags("the <answer> to this question is 42.") == "the  to this question is 42."
+
+
+def test_leaked_answer_tag_is_stripped_before_the_whole_answer_test(monkeypatch, tmp_path):
+    """The real row: a whole answer wrapped in <answer>...</answer> used to
+    fail the terminal-punctuation check (it ended in ">") and would now be
+    retried; stripping first writes the inner text with no API call."""
+    written = _cut_off_fixture(monkeypatch, tmp_path)
+    calls: list[dict] = []
+    stats = summarize.RunStats()
+    guard_and_write(_fake_anthropic([], calls), None, "sec-x", _prompt_result(),
+                    "<answer>VOC content is calculated per unit.</answer>", "m", stats,
+                    regenerated=True, stop_reason="end_turn")
+    assert written == ["VOC content is calculated per unit."] and calls == []
+    assert stats.processed == 1 and stats.cut_off_retried == 0
+
+
+def test_run_sync_passes_stop_reason_to_the_guard(monkeypatch, tmp_path):
+    """Sync mode threads the API's stop_reason through, so a max_tokens
+    primary is retried even when it happens to end in a period."""
+    written = _cut_off_fixture(monkeypatch, tmp_path)
+    calls: list[dict] = []
+    client = _fake_anthropic(["Cut at the ceiling but ends in a period.", "Whole retry."], calls,
+                             stop_reason="max_tokens")
+    stats = summarize.RunStats()
+    summarize.run_sync(client, None, [_row("sec-6-B-1")], {}, "m", stats, dry_run=False)
+    assert written == ["Whole retry."]
+    assert len(calls) == 2 and calls[1]["messages"][-1]["content"] == LENGTH_RETRY_LINE
+    assert stats.cut_off_retried == 1 and stats.processed == 1
+
+
+def test_batch_results_pass_stop_reason_to_the_guard(monkeypatch, tmp_path):
+    """Batch mode behaves the same as sync: a max_tokens result is retried
+    synchronously and the whole retry is written."""
+    written = _cut_off_fixture(monkeypatch, tmp_path)
+    calls: list[dict] = []
+    retry_client = _fake_anthropic(["Whole retry."], calls)
+
+    class _Usage:
+        input_tokens = 1; output_tokens = 1
+
+    class _Block:
+        type = "text"
+        def __init__(self, t): self.text = t
+
+    class _Msg:
+        usage = _Usage()
+        stop_reason = "max_tokens"
+        def __init__(self, t): self.content = [_Block(t)]
+
+    class _Res:
+        type = "succeeded"
+        def __init__(self, t): self.message = _Msg(t)
+
+    class _Item:
+        def __init__(self, cid, t): self.custom_id = cid; self.result = _Res(t)
+
+    class _Batches:
+        def results(self, bid):
+            return [_Item("sec-6-B-1", "Cut at the ceiling but ends in a period.")]
+
+    retry_client.messages.batches = _Batches()
+    stats = summarize.RunStats()
+    summarize._consume_batch_results(retry_client, None, "b0", {"sec-6-B-1": "sec-6-B-1"},
+                                     {"sec-6-B-1": _prompt_result()}, "m", stats, regenerated=False)
+    assert written == ["Whole retry."]
+    assert len(calls) == 1 and stats.cut_off_retried == 1 and stats.processed == 1

@@ -101,6 +101,22 @@ LENGTH_RETRY_LINE = (
     "one by one; drop everything else."
 )
 LENGTH_RETRY_MAX_TOKENS = 260  # ~190 words: room for a 100-word answer, never a wall of text
+
+# Corpus QA, 3 Oct 2026: ten rows carried a summary that stopped mid-sentence
+# at MAX_TOKENS. The "whole answer" test used to run only on the length
+# retry, never on the primary answer, so a cut-off primary was written as
+# is. Now every answer is tested: cut off = the API said stop_reason
+# "max_tokens", or the text does not end in terminal punctuation (an
+# optional footnote "*" may follow it -- the same regex as check 2 in
+# scripts/corpus_qa.sql). A cut-off answer gets the length retry; if that
+# is not whole either the row is NOT written and goes to failed.jsonl with
+# reason "cut_off".
+WHOLE_ANSWER_RE = re.compile(r'[.!?)"\]]\*?$')
+# One row also carried a leaked "</answer>" tag. Whole <answer>/<summary>
+# wrapper tags (either case) are stripped from every answer before any test.
+# This is the summary text only: the <p>/<span> markup the reader relies on
+# lives in full_text and is never touched here.
+WRAPPER_TAG_RE = re.compile(r"</?\s*(?:answer|summary)\s*>", re.IGNORECASE)
 TEMPERATURE = 0
 DEFAULT_MODEL = "claude-sonnet-4-5"
 BATCH_MAX_REQUESTS = 1000   # Anthropic Message Batches API limit per batch
@@ -1629,14 +1645,45 @@ def is_too_long(summary: str) -> bool:
     return len((summary or "").split()) > LENGTH_RETRY_WORDS
 
 
+def strip_wrapper_tags(summary: str) -> str:
+    """Removes whole <answer>, </answer>, <summary>, </summary> tags (any
+    case) from a summary and trims the result. Nothing else is touched."""
+    return WRAPPER_TAG_RE.sub("", summary or "").strip()
+
+
+def is_whole(summary: str) -> bool:
+    """True when the text ends in terminal punctuation (. ! ? ) " ]),
+    optionally followed by a footnote marker (*)."""
+    return bool(WHOLE_ANSWER_RE.search((summary or "").rstrip()))
+
+
+def is_cut_off(summary: str, stop_reason: Optional[str]) -> bool:
+    """True when the API hit its token ceiling (stop_reason "max_tokens") or
+    the text does not read as a whole answer."""
+    return stop_reason == "max_tokens" or not is_whole(summary)
+
+
+def _stop_reason(message) -> Optional[str]:
+    return getattr(message, "stop_reason", None)
+
+
 def guard_and_write(client_anthropic, client_supabase, provision_id: str, result: "PromptResult",
-                    summary_text: str, model: str, stats: "RunStats", regenerated: bool) -> None:
+                    summary_text: str, model: str, stats: "RunStats", regenerated: bool,
+                    stop_reason: Optional[str] = None) -> None:
     """Post-generation guard shared by sync and batch mode: a hedging summary
     gets one sync retry; if it still hedges it is NOT written and the id
-    goes to failed.jsonl with reason "hedging". Otherwise write it."""
+    goes to failed.jsonl with reason "hedging". A cut-off answer (the API's
+    stop_reason was "max_tokens", or the text does not end in terminal
+    punctuation) gets the length retry; if the retry is not a whole answer
+    either, the row is NOT written and goes to failed.jsonl with reason
+    "cut_off". An answer over LENGTH_RETRY_WORDS gets the same retry and the
+    shorter whole answer is written. Wrapper tags are stripped before every
+    test. Otherwise write it."""
+    summary_text = strip_wrapper_tags(summary_text)
     if is_hedging(summary_text):
         try:
-            summary_text = retry_without_hedging(client_anthropic, model, result, summary_text, stats)
+            summary_text = strip_wrapper_tags(
+                retry_without_hedging(client_anthropic, model, result, summary_text, stats))
         except Exception as exc:  # noqa: BLE001 -- treat like any other API failure
             stats.failed += 1
             log_failure(provision_id, f"hedging retry error: {exc}")
@@ -1646,7 +1693,28 @@ def guard_and_write(client_anthropic, client_supabase, provision_id: str, result
             stats.hedging_failed += 1
             log_failure(provision_id, "hedging")
             return
-    if is_too_long(summary_text):
+        # The hedging retry is a fresh answer; its own stop reason is not
+        # tracked, so only the text test applies from here.
+        stop_reason = None
+    if is_cut_off(summary_text, stop_reason):
+        stats.cut_off_retried += 1
+        try:
+            shorter = strip_wrapper_tags(
+                retry_with_line(client_anthropic, model, result, summary_text, stats,
+                                LENGTH_RETRY_LINE, max_tokens=LENGTH_RETRY_MAX_TOKENS))
+        except Exception as exc:  # noqa: BLE001 -- a cut-off answer is never written
+            stats.failed += 1
+            log_failure(provision_id, f"cut_off retry error: {exc}")
+            return
+        # Accept the retry only under the same whole-answer test; a second
+        # cut-off (or a hedge) means no summary rather than half of one.
+        if not shorter or not is_whole(shorter) or is_hedging(shorter):
+            stats.failed += 1
+            stats.cut_off += 1
+            log_failure(provision_id, "cut_off")
+            return
+        summary_text = shorter
+    elif is_too_long(summary_text):
         stats.length_retried += 1
         try:
             shorter = retry_with_line(client_anthropic, model, result, summary_text, stats,
@@ -1657,9 +1725,10 @@ def guard_and_write(client_anthropic, client_supabase, provision_id: str, result
         # Take the rewrite only when it is a real improvement, still clean and
         # a whole answer (the token ceiling must not have cut it mid-sentence);
         # a long, correct summary beats no summary.
+        shorter = strip_wrapper_tags(shorter)
         if (shorter and not is_hedging(shorter)
                 and len(shorter.split()) < len(summary_text.split())
-                and shorter.rstrip()[-1] in ".!?)\""):
+                and is_whole(shorter)):
             summary_text = shorter
         if is_too_long(summary_text):
             stats.length_still_long += 1
@@ -1869,6 +1938,8 @@ class RunStats:
     hedging_failed: int = 0     # retries that still hit it (logged, not written)
     length_retried: int = 0     # first answers over LENGTH_RETRY_WORDS words, retried once
     length_still_long: int = 0  # retries still over the limit (the shorter one is written)
+    cut_off_retried: int = 0    # first answers cut off (max_tokens / no terminal punctuation), retried once
+    cut_off: int = 0            # retries still cut off (logged with reason "cut_off", not written)
 
     def note_prompt(self, result: "PromptResult") -> None:
         if result.descendant_count:
@@ -1898,6 +1969,8 @@ def print_report(stats: RunStats, model: str, batch: bool, dry_run: bool) -> Non
     print(f"{'Hedging: still hedging (not written)':38}{stats.hedging_failed:>12,}")
     print(f"{'Length: retried once':38}{stats.length_retried:>12,}")
     print(f"{'Length: still long after retry':38}{stats.length_still_long:>12,}")
+    print(f"{'Cut off: retried once':38}{stats.cut_off_retried:>12,}")
+    print(f"{'Cut off: still cut off (not written)':38}{stats.cut_off:>12,}")
     print(f"{'Input tokens':38}{stats.input_tokens:>12,}")
     print(f"{'Output tokens':38}{stats.output_tokens:>12,}")
     print(f"{'Estimated cost (USD)':38}{'$' + format(cost, ',.4f'):>12}")
@@ -1976,7 +2049,8 @@ def run_sync(client_anthropic, client_supabase, rows: list[dict], meta: dict, mo
             continue
 
         guard_and_write(client_anthropic, client_supabase, provision["id"], result,
-                        summary_text, model, stats, regenerated)
+                        summary_text, model, stats, regenerated,
+                        stop_reason=_stop_reason(message))
 
 
 CUSTOM_ID_INVALID_RE = re.compile(r"[^a-zA-Z0-9_-]")
@@ -2130,7 +2204,8 @@ def _consume_batch_results(client_anthropic, client_supabase, batch_id: str,
                 log_failure(provision_id, "empty response")
                 continue
             guard_and_write(client_anthropic, client_supabase, provision_id,
-                            prompts[provision_id], summary_text, model, stats, regenerated)
+                            prompts[provision_id], summary_text, model, stats, regenerated,
+                            stop_reason=_stop_reason(message))
         else:
             stats.failed += 1
             error_detail = getattr(getattr(outcome, "error", None), "message", outcome.type)
