@@ -420,7 +420,7 @@ checks as (
 
   union all
   select 15, 'GUARD', 'definer_without_entitlement_check', count(*), 0,
-         'Any SECURITY DEFINER function in public that authenticated may execute, whose body reads provisions or provision_embeddings (so RLS is bypassed) and does NOT call has_full_access(). Today those functions are match_provisions and match_provisions_hybrid, and the one has_full_access() line at the top of each body is the entire paywall on the Ask tab (see the PAYWALL comment in each body). provision_path is exempt: its guard is inlined and documented (20260923035949). Comment lines are stripped before matching so the warning comment cannot satisfy the check. Expect 0.'
+         'Any SECURITY DEFINER function in public that authenticated may execute, whose body reads provisions or provision_embeddings (so RLS is bypassed) and does NOT call has_full_access(). Today those functions are match_provisions and match_provisions_hybrid, and the one has_full_access() line at the top of each body is the entire paywall on the Ask tab (see the PAYWALL comment in each body). provision_path is exempt: its guard is inlined and documented (20260923035949). changelog_public is exempt (20261003160524): it joins provisions only for reg_key, returns counts per day/regulation/change type and no text, notes or ids, and is the public /changelog by design. Comment lines are stripped before matching so the warning comment cannot satisfy the check. Expect 0.'
          || coalesce(' Offenders: ' || string_agg(o.fn, '; '), '')
   from (
     select n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' as fn
@@ -429,7 +429,7 @@ checks as (
       and has_function_privilege('authenticated', p.oid, 'EXECUTE')
       and regexp_replace(p.prosrc, '--[^\n]*', '', 'g') ~ '\m(provisions|provision_embeddings)\M'
       and regexp_replace(p.prosrc, '--[^\n]*', '', 'g') !~ '\mhas_full_access\s*\(\s*\)'
-      and p.proname <> 'provision_path'
+      and p.proname not in ('provision_path', 'changelog_public')
   ) o
 
   -- ---- RANKING: keyword search must put the rules first -------------------

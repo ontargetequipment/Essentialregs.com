@@ -23,6 +23,7 @@ import {
   MAX_ASK_LENGTH,
   SemanticError,
   hrefForHit,
+  isIncorporatedFederal,
   jurisdictionOfKey,
   regBadge,
   semanticSearch,
@@ -154,6 +155,11 @@ function AskCard({
           {isClosedPermit(row.reg_key) && (
             <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title={CLOSED_PERMIT_BADGE.title}>
               {CLOSED_PERMIT_BADGE.label}
+            </span>
+          )}
+          {isIncorporatedFederal(row.reg_key, row.jurisdiction_level) && (
+            <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title="Federal text this Colorado regulation incorporates by reference. The badge names the regulation you are reading; the federal rule itself is in the corpus under Federal.">
+              Incorporated federal text
             </span>
           )}
           {/* Since 20260930003557 a keyword-only row carries its real cosine, so the

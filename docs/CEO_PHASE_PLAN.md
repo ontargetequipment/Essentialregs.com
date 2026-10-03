@@ -2,6 +2,12 @@
 
 Operating model the owner (Brody) set: Claude acts as CEO — plans in phases, delegates all build work to agents, reviews their output and sends it back for revision, and asks permission before anything that costs money. Brody is non-technical with git; keep instructions to him concrete and click-by-click.
 
+## Status as of Oct 3 2026 (Cowork CEO session)
+
+Three outside reviews run Sep 25 – Oct 3. The third scored 8.4/10 overall (Ask 8, keyword 9, trust 8, reader 8.5, navigation 7.5) and said "ready to charge." The working plan to take every area to 9 is the Cowork doc "EssentialRegs: Path to 9/10" (https://claude.ai/code/artifact/c0b17668-e935-465e-be84-9e28aa651a1e): day-one trust fixes, then Sprint 2 (citation parser and exact deep links, citation preview, back-to-origin trail, jump-field Enter and URL hash, exact official PDFs), then Sprint 3 (GP12 equations, extraction fixes with a [sic] convention, shorter parent summaries, Ask tab click), then the same reviewer again. Its regression-protocol table is the acceptance suite.
+
+Day-one fixes are on branch `claude/third-review-trust-fixes` (also as a patch Brody holds): customer-facing /changelog via `changelog_public()` (migration 20261003160524, already applied), trial terms in /terms, jurisdiction badge from the document (Reg 26's incorporated JJJJ rows no longer read "Federal"), /pricing for subscribers, OOOO-family wording in the tanks and controller maps. Two owner decisions open: (1) 6,300 of the 6,410 "approved" summaries were approved by the AI second pass, and the reader's "Reviewed" badge reads as human review — relabel or do the human pass on the GPs and Reg 3 Part A first; (2) the 20 Subpart JJJJ rows inside Reg 26 Part C are not in the Reg 26 PDF and duplicate the corpus's own JJJJ document — drop them and link, or keep them badged.
+
 ## Status as of Sep 13 2026
 
 **Phase 1 — LIVE, verified on production (www.essentialregs.com):** Stripe annual subscription (checkout/portal/webhook routes; RLS = active/trialing subscriber OR `profiles.access_granted`; pricing card with $299/yr placeholder in `src/lib/pricing.ts`; `/regulations` upsell when no access); plain-English summary panel in the reader (`summaryPanelHtml()`, renders nothing while `ai_summary` is empty, hides `rejected`); site-wide search (`search_vector` + `search_provisions()` RPC, `/search`, header box); legal + marketing pages (`/terms`, `/privacy`, `/disclaimer`, `/about`, `/contact`, sitemap, robots, OG metadata — legal text is a draft awaiting attorney review); summary pipeline (`pipeline/summarize.py` + `.github/workflows/summarize.yml`, GitHub Actions + Anthropic Batches API, resumable).
@@ -38,6 +44,8 @@ Done when: a handful of unaffiliated paying subscribers exist.
 - Expansion (adjacent state vs. vertical) driven by what paying customers ask for.
 
 ## Operating rules (hard-won)
+
+- Brody's standing instruction (Oct 3 2026): when Claude Code can do something, Claude Code does it — git branches, pushes, pull requests, CI, and any build step that needs the repo's own credentials. The Cowork CEO session plans, delegates builds to agents (Sonnet by default; Opus only for design-heavy or correctness-critical pieces; Haiku for lookups and checks), reviews diffs, runs lint/typecheck/tests, and hands finished branches to Code as patches with a one-paragraph brief. It does not ask Brody to run git commands. It has Supabase and Vercel connectors and uses them directly under the Sep 13 rule below.
 
 - Delegate builds to agents (Sonnet is proven on this codebase); the CEO session reviews diffs, runs `npm run build` + `npm run lint`, then commits and pushes to `main`. Always `git log <branch> -3` before merging an agent branch — one worktree once branched from a stale base.
 - `AGENTS.md` matters: this is Next.js 16.3.4 — read `node_modules/next/dist/docs/` before writing code. ESLint has `react-hooks/set-state-in-effect` on. Never add jsdom-based deps (they crashed Vercel's runtime before).

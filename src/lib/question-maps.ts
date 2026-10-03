@@ -198,7 +198,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
       /\b(?:storage (?:tanks?|vessels?)|tank batter(?:y|ies)|(?:condensate|produced[- ]water|crude[- ]oil|oil|hydrocarbon liquid) tanks?|thief hatch(?:es)?|gp\s?0?1|gp\s?0?5|gp\s?0?8|gp\s?0?7)\b/i,
     ],
     factors:
-      "What applies depends on the tank's uncontrolled and controlled VOC emissions, what it stores (condensate, crude oil, intermediate hydrocarbon liquids or produced water), its throughput, when it was built or modified, whether it sits at a well production facility or a midstream or E&P site, whether that site is in the 8-hour Ozone Control Area or Northern Weld County, and — federally — whether the tank battery was constructed, modified or reconstructed after December 6, 2022 (OOOOb) or before (OOOOc).",
+      "What applies depends on the tank's uncontrolled and controlled VOC emissions, what it stores (condensate, crude oil, intermediate hydrocarbon liquids or produced water), its throughput, when it was built or modified, whether it sits at a well production facility or a midstream or E&P site, whether that site is in the 8-hour Ozone Control Area or Northern Weld County, and — federally — which NSPS subpart reaches the tank battery: OOOOb if it was constructed, modified or reconstructed after December 6, 2022; OOOOa if that happened between September 18, 2015 and December 6, 2022 (the original Subpart OOOO covers August 23, 2011 to September 18, 2015 and is not in this corpus); and OOOOc for existing tank batteries, on the schedule in Colorado's state plan once that plan takes effect. A tank battery modified after a subpart's date moves into that subpart, and each subpart's own storage vessel threshold (potential VOC or methane emissions) decides whether the battery is covered at all.",
     provisions: [
       // Colorado permitting and APEN
       { id: "sec-3-A-II-A", group: "Colorado permitting and APEN", why: "APENs are required for new, modified and existing sources unless exempt under II.D" },
@@ -240,7 +240,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
       /\b(?:pneumatic (?:controllers?|devices?|pumps?)|process controllers?|(?:high|low|no|zero)[- ]bleed|natural gas[- ](?:driven|actuated) controllers?|intermittent (?:vent )?controllers?)\b/i,
     ],
     factors:
-      "What applies depends on whether the controller or pump is driven by natural gas, whether it is continuous-bleed (high or low) or intermittent, when the facility was built or modified (after December 6, 2022 → OOOOb; earlier → OOOOc and Colorado's 111(d) plan), whether the site has access to electrical power, whether it is a natural gas processing plant, and whether it sits in the 8-hour Ozone Control Area or Northern Weld County.",
+      "What applies depends on whether the controller or pump is driven by natural gas, whether it is continuous-bleed (high or low) or intermittent, when the facility was built or modified (after December 6, 2022 → OOOOb; September 18, 2015 to December 6, 2022 → OOOOa; existing facilities → OOOOc, on the schedule in Colorado's 111(d) state plan once it takes effect), whether the site has access to electrical power, whether it is a natural gas processing plant, and whether it sits in the 8-hour Ozone Control Area or Northern Weld County.",
     provisions: [
       // Colorado standards
       { id: "sec-7-B-III", group: "Colorado standards", why: "Reg 7 Part B III — natural gas-actuated pneumatic controllers and pumps (the section)" },

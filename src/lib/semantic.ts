@@ -83,20 +83,7 @@ export class SemanticError extends Error {
   }
 }
 
-/** Human label for the reg badge on results and related panels. */
-export function regBadge(regKey: string | null, jurisdiction: string): string {
-  if (jurisdiction === "federal") return "Federal";
-  if (regKey === "ecmc") return "ECMC";
-  return "Colorado";
-}
-
-/** Federal reg keys: 40 CFR 60 Subparts OOOO, OOOOa/b/c, JJJJ, IIII, 40 CFR 63 Subpart ZZZZ and the 49 CFR PHMSA parts (p190..p199). */
-const FEDERAL_KEY = /^(oooo[abc]?|jjjj|iiii|zzzz|p\d{3})$/;
-
-/** "state" | "federal" from the reg key alone (for rows that don't carry jurisdiction_level). */
-export function jurisdictionOfKey(regKey: string | null): "state" | "federal" {
-  return regKey && FEDERAL_KEY.test(regKey) ? "federal" : "state";
-}
+export { isIncorporatedFederal, jurisdictionOfKey, regBadge } from "@/lib/regulation-names";
 
 /**
  * Display name for a hit's reg key ("Regulation 7", "40 CFR Part 60 Subpart
