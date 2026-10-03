@@ -2369,13 +2369,20 @@ def main(argv: Optional[list[str]] = None) -> int:
         print("Nothing to do.")
         return 0
 
+    # Rows named by --ids / --ids-file already carry a summary (they ignore
+    # the ai_summary IS NULL gate), so their write is a regeneration too:
+    # summary_original kept, summary_status back to 'pending', a
+    # provision_changes row. Until 3 Oct 2026 only --parents took that
+    # path, and an --ids run would have overwritten an approved row's text
+    # while leaving it marked approved.
+    regenerated = bool(args.parents or ids)
     stats = RunStats()
     if args.sync or args.dry_run:
         run_sync(client_anthropic, client_supabase, rows, meta, args.model, stats, args.dry_run,
-                 regenerated=args.parents, children_index=children_index)
+                 regenerated=regenerated, children_index=children_index)
     else:
         run_batch(client_anthropic, client_supabase, rows, meta, args.model, stats,
-                  args.poll_interval, regenerated=args.parents, children_index=children_index)
+                  args.poll_interval, regenerated=regenerated, children_index=children_index)
 
     print_report(stats, args.model, batch=not (args.sync or args.dry_run), dry_run=args.dry_run)
     return 0

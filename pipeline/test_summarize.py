@@ -2383,3 +2383,26 @@ def test_batch_results_pass_stop_reason_to_the_guard(monkeypatch, tmp_path):
                                      {"sec-6-B-1": _prompt_result()}, "m", stats, regenerated=False)
     assert written == ["Whole retry."]
     assert len(calls) == 1 and stats.cut_off_retried == 1 and stats.processed == 1
+
+
+@pytest.mark.parametrize("argv, want", [
+    (["--ids", "sec-6-B-1", "--sync"], True),
+    (["--parents", "--sync"], True),
+    (["--reg", "6", "--sync"], False),
+])
+def test_main_routes_ids_runs_through_the_regenerated_write(monkeypatch, tmp_path, argv, want):
+    """An --ids row already has a summary, so its write must keep
+    summary_original and put the row back to pending, like --parents."""
+    for var in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "ANTHROPIC_API_KEY"):
+        monkeypatch.setenv(var, "x")
+    monkeypatch.setattr(summarize, "FAILED_LOG_PATH", tmp_path / "failed.jsonl")
+    monkeypatch.setattr(summarize, "make_supabase_client", lambda: object())
+    import anthropic
+    monkeypatch.setattr(anthropic, "Anthropic", lambda api_key: object())
+    monkeypatch.setattr(summarize, "fetch_meta", lambda client, reg: {})
+    monkeypatch.setattr(summarize, "iter_candidates", lambda *a, **k: iter([_row("sec-6-B-1")]))
+    seen: list[bool] = []
+    monkeypatch.setattr(summarize, "run_sync",
+                        lambda *a, **k: seen.append(k["regenerated"]))
+    assert summarize.main(argv) == 0
+    assert seen == [want]
