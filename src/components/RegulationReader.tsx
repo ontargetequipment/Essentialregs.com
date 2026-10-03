@@ -8,7 +8,18 @@ import {
   fillSummaryLinks,
   readReaderModel,
 } from "@/lib/reader-client";
-import { popupEyebrow, ReturnTrail, rowAtViewportTop, rowLabel } from "@/lib/reader-nav";
+import {
+  foreignOriginOf,
+  hashTargetOf,
+  originTrailLabel,
+  popupEyebrow,
+  regulationHref,
+  ReturnTrail,
+  rowAtViewportTop,
+  rowLabel,
+  validProvisionId,
+} from "@/lib/reader-nav";
+import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
 import type { SearchRow } from "@/lib/snippet";
 
 /**
@@ -27,8 +38,20 @@ import type { SearchRow } from "@/lib/snippet";
  */
 export type GoToOptions = { push: boolean; from?: string | null };
 
-/** What the reader writes into history.state; Next keeps its own keys beside it. */
-type ReaderHistoryState = { readerAnchor?: string } | null;
+/**
+ * What the reader writes into history.state; Next keeps its own keys beside
+ * it. `readerReturnFrom` is the provision of ANOTHER regulation this page was
+ * opened from (the `?from=` the URL carried, which is stripped on load): kept
+ * in the entry so a reload, or React re-running the effect, still shows the
+ * "Back to <other regulation>" bar.
+ */
+type ReaderHistoryState = { readerAnchor?: string; readerReturnFrom?: string } | null;
+
+/** The popup footer link's default text; a cross-regulation preview swaps it for "Open in <name> →". */
+const GOTO_LABEL = "Go to full section →";
+
+/** The fields of /api/provision/<id> the preview uses. */
+type ProvisionPreviewPayload = { id: string; citation: string; html: string };
 
 /**
  * Viewport y of "the top of the reading pane": just under the sticky site
@@ -101,6 +124,12 @@ export function RegulationReader() {
 
     const trail = new ReturnTrail();
 
+    // This page's regulation key: the root row's, else the URL's
+    // (/regulations/<reg>).
+    const rootRow = model.rows.find((r) => r.kind === "reg");
+    const pageKey =
+      (rootRow ? regKeyOf(rootRow.id) : null) ?? window.location.pathname.split("/")[2] ?? null;
+
     // Every lookup of a provision's element goes through the model, never
     // document.getElementById: the popup clones the row it previews, id and
     // all, and #backdrop precedes #doc in the DOM, so while a popup is open
@@ -144,12 +173,26 @@ export function RegulationReader() {
     // was clicked in (null when clicked inside the popup itself).
     let popupSlug: string | null = null;
     let popupOrigin: string | null = null;
+    // True while the popup previews a provision of ANOTHER regulation: its
+    // footer link is then a real link to that reader, left to navigate.
+    let popupRemote = false;
+    // The newest cross-regulation preview request; a stale answer (or one
+    // that lands after the popup was closed or the page left) is dropped.
+    let previewSeq = 0;
+    let previewAbort: AbortController | null = null;
+    // The link whose click is being replayed as plain navigation (see
+    // fallBackToNavigation); onDocClick lets exactly that click through.
+    let replayed: Element | null = null;
 
     function showPopup(slug: string, origin: string | null) {
       const el = rowEl(slug);
       if (!el || !backdrop || !popupBody || !popupTitle) return;
+      previewSeq++;
+      previewAbort?.abort();
       popupSlug = slug;
       popupOrigin = origin;
+      popupRemote = false;
+      if (popupGoto) popupGoto.textContent = GOTO_LABEL;
       popupTitle.textContent = labelFor(el) || slug;
       // "Regulation 3 · Part A · II. · II.B." -- the display name, then the
       // ancestors' short labels (reader-nav.ts); never the internal id.
@@ -165,18 +208,94 @@ export function RegulationReader() {
       backdrop.classList.add("show");
     }
     function closePopup() {
+      previewSeq++; // a preview still in flight must not open a popup nobody asked for now
+      previewAbort?.abort();
       backdrop?.classList.remove("show");
+    }
+
+    // A reference into another regulation. The link is an ordinary <a href=
+    // "/regulations/<key>#<id>"> that works with no script; a plain left
+    // click fetches the target through the gated /api/provision route and
+    // previews it here. Anything that does not come back as a clean preview
+    // (signed out, no access, 404, network, junk) replays the click as plain
+    // navigation -- the click is never swallowed.
+    function fallBackToNavigation(link: HTMLAnchorElement) {
+      if (link.isConnected) {
+        replayed = link;
+        link.click();
+        replayed = null;
+      } else {
+        window.location.assign(link.href);
+      }
+    }
+    async function previewOtherRegulation(fallBack: () => void, targetId: string, origin: string | null) {
+      const seq = ++previewSeq;
+      previewAbort?.abort();
+      const abort = (previewAbort = new AbortController());
+      let data: ProvisionPreviewPayload;
+      try {
+        const res = await fetch(`/api/provision/${encodeURIComponent(targetId)}`, {
+          credentials: "same-origin",
+          signal: abort.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = (await res.json()) as ProvisionPreviewPayload;
+        if (!data || data.id !== targetId || typeof data.html !== "string") throw new Error("bad payload");
+      } catch {
+        if (seq === previewSeq) fallBack();
+        return;
+      }
+      if (seq !== previewSeq || !backdrop || !popupBody || !popupTitle) return;
+      const key = regKeyOf(targetId);
+      const name = key ? regulationDisplayName(key) : targetId;
+      popupSlug = null;
+      popupOrigin = null;
+      popupRemote = true;
+      popupTitle.textContent = data.citation || targetId;
+      if (popupEyebrowEl) popupEyebrowEl.textContent = name;
+      const wrap = document.createElement("div");
+      wrap.className = "item";
+      wrap.innerHTML = data.html; // sanitised server-side (provision-preview.ts)
+      popupBody.innerHTML = "";
+      popupBody.appendChild(wrap);
+      if (popupTextLabel) popupTextLabel.hidden = true;
+      if (popupGoto) {
+        popupGoto.setAttribute("href", regulationHref(targetId, origin));
+        popupGoto.textContent = `Open in ${name} →`;
+      }
+      backdrop.classList.add("show");
     }
 
     function currentProvisionId(): string | null {
       return rowAtViewportTop(model.rows, PANE_TOP_Y)?.id ?? null;
     }
 
+    // The provision of another regulation this page was opened from
+    // (?from=, see the load block below): a real link back to it, shown when
+    // the in-document trail has nothing on it.
+    let otherOrigin: { href: string; label: string } | null = null;
+    let otherLink: HTMLAnchorElement | null = null;
+
     function renderTrail() {
       if (!trailBar || !trailLabel) return;
       const top = trail.peek();
+      if (otherLink) otherLink.hidden = true;
+      if (trailBack) trailBack.hidden = false;
       if (!top) {
-        trailBar.hidden = true;
+        if (!otherOrigin || !trailBack) {
+          trailBar.hidden = true;
+          return;
+        }
+        if (!otherLink) {
+          otherLink = document.createElement("a");
+          otherLink.id = "return-trail-ext";
+          trailBack.insertAdjacentElement("beforebegin", otherLink);
+        }
+        otherLink.href = otherOrigin.href;
+        otherLink.textContent = `← Back to ${otherOrigin.label}`;
+        otherLink.hidden = false;
+        trailBack.hidden = true;
+        trailBar.hidden = false;
         return;
       }
       trailLabel.textContent = labelOf(top);
@@ -238,12 +357,57 @@ export function RegulationReader() {
       return true;
     }
 
+    // The provision of THIS regulation a link sits in: its #doc row, or, for
+    // a link inside the popup's clone of a row, that row (the clone keeps the
+    // row's id). null inside a preview of another regulation's provision.
+    function originOf(el: Element): string | null {
+      const row = el.closest("#doc > [id]");
+      if (row) return row.id;
+      const clone = el.closest("#popup-body > [id]");
+      return clone && !popupRemote && model.byId.has(clone.id) ? clone.id : null;
+    }
+
     function onDocClick(e: MouseEvent) {
       const target = e.target as HTMLElement;
+      const external = target.closest("a.xref-external-reg") as HTMLAnchorElement | null;
+      if (external) {
+        // Plain navigation, untouched: the replay of a failed preview, a
+        // modified or non-primary click (new tab / window / download), a
+        // link that opens elsewhere or with no provision in its hash, a
+        // target that is on this very page, or a click something else
+        // already handled.
+        if (replayed === external) return;
+        const targetId = hashTargetOf(external.getAttribute("href"));
+        if (
+          !targetId ||
+          model.byId.has(targetId) ||
+          e.defaultPrevented ||
+          e.button !== 0 ||
+          e.metaKey ||
+          e.ctrlKey ||
+          e.shiftKey ||
+          e.altKey ||
+          (external.target && external.target !== "_self") ||
+          external.hasAttribute("download")
+        ) {
+          return;
+        }
+        e.preventDefault();
+        void previewOtherRegulation(() => fallBackToNavigation(external), targetId, originOf(external));
+        return;
+      }
       const xref = target.closest(".xref");
       if (xref) {
         e.preventDefault();
         const slug = xref.getAttribute("data-target");
+        // A reference inside a preview of another regulation's provision
+        // points at that regulation's own provisions, none of which are on
+        // this page: preview it the same way, or go there.
+        const remote = slug && !model.byId.has(slug) ? validProvisionId(slug) : null;
+        if (remote && regKeyOf(remote)?.toLowerCase() !== pageKey?.toLowerCase()) {
+          void previewOtherRegulation(() => window.location.assign(regulationHref(remote)), remote, originOf(xref));
+          return;
+        }
         // The row the reference sits in, when it is on the page itself (a
         // reference inside the popup's clone has no #doc row).
         const originRow = xref.closest("#doc > [id]");
@@ -251,6 +415,8 @@ export function RegulationReader() {
         return;
       }
       if (target.closest("#popup-goto")) {
+        // A preview of another regulation: the footer is a real link to it.
+        if (popupRemote) return;
         e.preventDefault();
         if (popupSlug) goToProvision(popupSlug, { push: true, from: popupOrigin ?? undefined });
         return;
@@ -263,9 +429,7 @@ export function RegulationReader() {
         closePopup();
         return;
       }
-      if (!target.closest("#jump-wrap")) {
-        jumpResults?.classList.remove("show");
-      }
+      if (!target.closest("#jump-wrap")) hideResults();
     }
     function onKeydown(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -282,6 +446,12 @@ export function RegulationReader() {
     }
     function onTrailDismiss() {
       trail.clear();
+      otherOrigin = null;
+      // Forget it in the history entry too, so a reload does not bring it back.
+      const state = window.history.state as ReaderHistoryState;
+      if (state?.readerReturnFrom) {
+        window.history.replaceState({ ...state, readerReturnFrom: undefined }, "", window.location.href);
+      }
       renderTrail();
     }
     trailBack?.addEventListener("click", onTrailBack);
@@ -345,12 +515,63 @@ export function RegulationReader() {
     function escapeHtml(s: string) {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
+    function escapeAttr(s: string) {
+      return escapeHtml(s).replace(/"/g, "&quot;");
+    }
+
+    // The jump box is an ARIA combobox over a listbox: the input keeps focus
+    // while ArrowUp/ArrowDown move an "active" option (aria-activedescendant),
+    // Enter opens it, Escape closes the list. Options carry stable ids
+    // ("jump-opt-<provision id>") and aria-selected.
+    jumpbox.setAttribute("role", "combobox");
+    jumpbox.setAttribute("aria-autocomplete", "list");
+    jumpbox.setAttribute("aria-haspopup", "listbox");
+    jumpbox.setAttribute("aria-controls", jumpResults.id);
+    jumpbox.setAttribute("aria-expanded", "false");
+    jumpResults.setAttribute("role", "listbox");
+    jumpResults.setAttribute("aria-label", "Matching provisions");
+
+    let activeIdx = -1;
+    function optionEls(): HTMLElement[] {
+      return jumpResults
+        ? Array.from(jumpResults.querySelectorAll<HTMLElement>('.jr-item[role="option"][data-slug]'))
+        : [];
+    }
+    function setActive(idx: number) {
+      const opts = optionEls();
+      activeIdx = opts.length ? idx : -1;
+      opts.forEach((el, i) => {
+        const on = i === activeIdx;
+        el.classList.toggle("active", on);
+        el.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      if (activeIdx >= 0) {
+        jumpbox?.setAttribute("aria-activedescendant", opts[activeIdx].id);
+        opts[activeIdx].scrollIntoView?.({ block: "nearest" });
+      } else {
+        jumpbox?.removeAttribute("aria-activedescendant");
+      }
+    }
+    function resultsShown(): boolean {
+      return !!jumpResults?.classList.contains("show");
+    }
+    function showResults() {
+      jumpResults?.classList.add("show");
+      jumpbox?.setAttribute("aria-expanded", "true");
+    }
+    function hideResults() {
+      jumpResults?.classList.remove("show");
+      jumpbox?.setAttribute("aria-expanded", "false");
+      setActive(-1);
+    }
+
     function runSearch(qRaw: string) {
       const q = qRaw.trim().toLowerCase();
       if (!jumpResults) return;
+      setActive(-1);
       if (!q) {
-        jumpResults.classList.remove("show");
         jumpResults.innerHTML = "";
+        hideResults();
         return;
       }
       const idMatches: SearchRow[] = [];
@@ -366,8 +587,8 @@ export function RegulationReader() {
       }
       const combined = idMatches.concat(textMatches).slice(0, 15);
       if (!combined.length) {
-        jumpResults.innerHTML = '<div class="jr-item">No matches</div>';
-        jumpResults.classList.add("show");
+        jumpResults.innerHTML = '<div class="jr-item jr-empty">No matches</div>';
+        showResults();
         return;
       }
       jumpResults.innerHTML = combined
@@ -376,12 +597,14 @@ export function RegulationReader() {
           // (snippetAfterCitation no longer falls back to the label) --
           // skip the span rather than emit an empty one.
           const snip = row[2] ? `<span class="jr-snip">${escapeHtml(row[2])}</span>` : "";
-          return `<div class="jr-item" data-slug="${escapeHtml(row[0])}"><span class="jr-id">${escapeHtml(
+          return `<div class="jr-item" role="option" id="jump-opt-${escapeAttr(
+            row[0]
+          )}" aria-selected="false" data-slug="${escapeAttr(row[0])}"><span class="jr-id">${escapeHtml(
             row[1]
           )}</span>${snip}</div>`;
         })
         .join("");
-      jumpResults.classList.add("show");
+      showResults();
     }
     function onJumpInput() {
       if (jumpbox) runSearch(jumpbox.value);
@@ -389,22 +612,91 @@ export function RegulationReader() {
     function onJumpFocus() {
       if (jumpbox?.value) runSearch(jumpbox.value);
     }
+    function openResult(slug: string) {
+      if (!jumpbox) return;
+      hideResults();
+      jumpbox.value = "";
+      goToProvision(slug, { push: true });
+    }
     function onJumpResultsClick(e: MouseEvent) {
       const item = (e.target as HTMLElement).closest(".jr-item") as HTMLElement | null;
       const slug = item?.dataset.slug;
-      if (slug && jumpbox && jumpResults) {
-        jumpResults.classList.remove("show");
-        jumpbox.value = "";
-        goToProvision(slug, { push: true });
+      if (slug) openResult(slug);
+    }
+
+    // What an exact entry names -- a provision id as typed, or a citation
+    // ("II.B.4" == "II.B.4.") -- for Enter when no result is on screen.
+    const normCitation = (s: string) => s.trim().toLowerCase().replace(/\.+$/, "");
+    function exactMatch(value: string): string | null {
+      const v = value.trim();
+      if (!v) return null;
+      if (model.byId.has(v)) return v;
+      const c = normCitation(v);
+      return model.rows.find((r) => r.citation && normCitation(r.citation) === c)?.id ?? null;
+    }
+
+    function onJumpKeydown(e: KeyboardEvent) {
+      if (e.isComposing || !jumpbox) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        if (!resultsShown()) {
+          if (!jumpbox.value.trim()) return;
+          runSearch(jumpbox.value);
+        }
+        const n = optionEls().length;
+        if (!n) return;
+        e.preventDefault();
+        const down = e.key === "ArrowDown";
+        setActive(activeIdx < 0 ? (down ? 0 : n - 1) : (activeIdx + (down ? 1 : n - 1)) % n);
+        return;
       }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (!resultsShown() && jumpbox.value.trim()) runSearch(jumpbox.value);
+        const opts = optionEls();
+        const slug = (opts[activeIdx] ?? opts[0])?.dataset.slug ?? exactMatch(jumpbox.value);
+        if (slug) openResult(slug);
+        return;
+      }
+      if (e.key === "Escape" && (resultsShown() || activeIdx >= 0)) hideResults();
     }
     jumpbox.addEventListener("input", onJumpInput);
     jumpbox.addEventListener("focus", onJumpFocus);
+    jumpbox.addEventListener("keydown", onJumpKeydown);
     jumpResults.addEventListener("click", onJumpResultsClick);
 
     // Deep link (/regulations/3#sec-3-A-II-B-3): the browser already jumped
     // to the row before hydration; land on it again now that the contains
     // boxes have changed the layout. No history entry, no trail.
+    //
+    // Opened from another regulation (/regulations/7?from=sec-gp12-I-A#sec-7-B-I-B-33,
+    // the "Open in Regulation 7" link of a cross-regulation preview, or any
+    // such reference followed as a plain link): `from` names the provision
+    // the reader came from. Only a valid provision id of a DIFFERENT
+    // regulation counts; it becomes the return bar's link back, is stripped
+    // from the URL (hash and the other params stay) and is kept in the
+    // history entry's state so a reload still shows the bar.
+    const fromUrl = foreignOriginOf(window.location.search, pageKey);
+    const fromState = (window.history.state as ReaderHistoryState)?.readerReturnFrom;
+    const fromOther = fromUrl ?? foreignOriginOf(`?from=${encodeURIComponent(fromState ?? "")}`, pageKey);
+    if (fromUrl) {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("from");
+      const qs = params.toString();
+      window.history.replaceState(
+        { ...(window.history.state ?? {}), readerReturnFrom: fromUrl },
+        "",
+        `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`
+      );
+    }
+    if (fromOther) {
+      const key = regKeyOf(fromOther);
+      otherOrigin = {
+        href: `/regulations/${key}#${fromOther}`,
+        label: originTrailLabel(fromOther),
+      };
+      renderTrail();
+    }
+
     let deepLink: ReturnType<typeof setTimeout> | null = null;
     if (window.location.hash) {
       const slug = decodeHash(window.location.hash.slice(1));
@@ -413,6 +705,10 @@ export function RegulationReader() {
     }
 
     return () => {
+      previewSeq++;
+      previewAbort?.abort();
+      otherLink?.remove();
+      if (trailBack) trailBack.hidden = false;
       if (idle !== null) window.cancelIdleCallback(idle);
       if (deepLink !== null) clearTimeout(deepLink);
       document.removeEventListener("click", onDocClick);
@@ -426,6 +722,7 @@ export function RegulationReader() {
       sidebarScrim?.removeEventListener("click", closeSidebar);
       jumpbox.removeEventListener("input", onJumpInput);
       jumpbox.removeEventListener("focus", onJumpFocus);
+      jumpbox.removeEventListener("keydown", onJumpKeydown);
       jumpResults.removeEventListener("click", onJumpResultsClick);
     };
   }, []);

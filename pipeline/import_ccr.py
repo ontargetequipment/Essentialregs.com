@@ -12,6 +12,11 @@ Subcommands:
             Read-only Supabase SELECT of a regulation's current provisions
             rows (id LIKE 'sec-<reg>-%'), for use as `diff`/`apply`'s --db
             input. Requires SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.
+    dump-ids --out pipeline/out/corpus_ids.json
+            Read-only Supabase SELECT of every provision id, grouped by
+            regulation key -- the index `parse` resolves cross-regulation
+            deep links against. Requires SUPABASE_URL /
+            SUPABASE_SERVICE_ROLE_KEY.
     parse   pipeline/sources/REG_7.pdf --reg 7 --out pipeline/out/reg7_parsed.json
     diff    --reg 7 --parsed pipeline/out/reg7_parsed.json --db pipeline/out/reg7_db.json
             --out pipeline/out/reg7_diff_report.md
@@ -3883,7 +3888,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
         "labels_without_trailing_dot": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306933",
         "root_citation": "APCD General Permit GP01",
         "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Condensate Storage Tank Batteries — GP01 Issuance 6, July 23, 2025",
     },
@@ -3903,7 +3908,7 @@ REG_META: dict[str, dict] = {
         "labels_without_trailing_dot": True,
         "attachments": ("A",),
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306935",
         "root_citation": "APCD General Permit GP02",
         "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Natural Gas Fired Reciprocating Internal Combustion Engines (RICE) — GP02 Issuance 4, July 23, 2025",
     },
@@ -3920,7 +3925,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
         "labels_without_trailing_dot": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=6159373",
         "root_citation": "APCD General Permit GP03",
         "root_title": "GENERAL CONSTRUCTION PERMIT — Land Development Projects — GP03 Issuance 2, January 24, 2020",
     },
@@ -3928,7 +3933,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
         "labels_without_trailing_dot": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306936",
         "root_citation": "APCD General Permit GP05",
         "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Produced Water Storage Tank Batteries — GP05 Issuance 5, July 23, 2025",
     },
@@ -3936,7 +3941,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
         "labels_without_trailing_dot": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306939",
         "root_citation": "APCD General Permit GP06",
         # Title page prints an en-dash: "Diesel Fuel – Fired Reciprocating
         # Internal Combustion Engines (RICE)" — kept verbatim.
@@ -3946,7 +3951,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
         "labels_without_trailing_dot": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306940",
         "root_citation": "APCD General Permit GP07",
         "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Hydrocarbon Liquid Loadout — GP07 Issuance 4, July 23, 2025",
     },
@@ -3954,7 +3959,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
         "labels_without_trailing_dot": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306945",
         "root_citation": "APCD General Permit GP08",
         "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Storage Tanks — GP08 Issuance 4, July 23, 2025",
     },
@@ -3968,7 +3973,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
         "labels_without_trailing_dot": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=6754291",
         "root_citation": "APCD General Permit GP09",
         # The two Well Production Facilities permits print identical title pages; the
         # attainment/nonattainment split (which the body states) is added here so
@@ -3981,7 +3986,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
         "labels_without_trailing_dot": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306946",
         "root_citation": "APCD General Permit GP10",
         "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas — Well Production Facilities (nonattainment areas) — GP10 Issuance 4, July 23, 2025",
     },
@@ -3989,7 +3994,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True, "page_of_total_footer": True, "toc_has_page_leaders": True,
         "labels_without_trailing_dot": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306947",
         "root_citation": "APCD General Permit GP11",
         "root_title": "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Routine or Predictable Gas Venting Emissions — GP11 Issuance 3, July 23, 2025",
     },
@@ -4012,13 +4017,13 @@ REG_META: dict[str, dict] = {
         "labels_without_trailing_dot": True,
         "attachments": ("A", "B"),
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/apcd/general-air-permits",
+        "source_url": "https://oitco.hylandcloud.com/cdphermpop/docpop/docpop.aspx?docid=63372084",
         "root_citation": "APCD General Permit GP12",
         "root_title": "GENERAL PERMIT 12 (GP12) — Well Production Facilities — GP12 Issuance 1, May 28, 2026",
     },
     "2": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2336&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 2",
         # Title-page line is "REGULATION NUMBER 2 ODOR EMISSION" (the name is
         # printed on the same line as the number), cite "5 CCR 1001-4".
@@ -4056,7 +4061,7 @@ REG_META: dict[str, dict] = {
     "1": {
         "no_parts": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2335&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 1",
         "root_title": "EMISSION CONTROL FOR PARTICULATE MATTER, SMOKE, CARBON MONOXIDE, AND SULFUR OXIDES 5 CCR 1001-3",
     },
@@ -4081,13 +4086,13 @@ REG_META: dict[str, dict] = {
     "cp": {
         "no_parts": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2334&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Common Provisions Regulation",
         "root_title": "COMMON PROVISIONS REGULATION 5 CCR 1001-2",
     },
     "3": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2337&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 3",
         "root_title": "STATIONARY SOURCE PERMITTING AND AIR POLLUTANT EMISSION NOTICE REQUIREMENTS 5 CCR 1001-5",
     },
@@ -4101,19 +4106,19 @@ REG_META: dict[str, dict] = {
     "9": {
         "no_parts": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2344&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 9",
         "root_title": "OPEN BURNING, PRESCRIBED FIRE, AND PERMITTING 5 CCR 1001-11",
     },
     "6": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2340&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 6",
         "root_title": "STANDARDS OF PERFORMANCE FOR NEW STATIONARY SOURCES 5 CCR 1001-8",
     },
     "7": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2341&deptID=16&agencyID=7",
         # root_citation is deliberately the short "Regulation 7" (the reader
         # <h1>, the /sample labels and e2e SAMPLE_HEADINGS read it); the
         # title is the printed one in the same shape as every other numbered
@@ -4125,7 +4130,7 @@ REG_META: dict[str, dict] = {
     },
     "22": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3325&deptID=16&agencyID=7",
         # root_citation stays the short "Regulation 22" (reader <h1>, sidebar
         # and preview eyebrow read it); the title is the printed one in the
         # same shape as every other numbered regulation. The old value,
@@ -4138,19 +4143,19 @@ REG_META: dict[str, dict] = {
     },
     "26": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3411&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 26",
         "root_title": "CONTROL OF EMISSIONS FROM ENGINES AND MAJOR STATIONARY SOURCES 5 CCR 1001-30",
     },
     "8": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2343&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 8",
         "root_title": "CONTROL OF HAZARDOUS AIR POLLUTANTS 5 CCR 1001-10",
     },
     "24": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3409&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 24",
         # Title page (sources/REG_24.txt lines 12-15) prints "REGULATION
         # NUMBER 24" and the title on one wrapped block, then "5 CCR 1001-28"
@@ -4228,7 +4233,7 @@ REG_META: dict[str, dict] = {
     "ecmc": {
         "family": "rule_series",
         "jurisdiction_level": "state", "issuing_body": "ECMC",
-        "source_url": "https://ecmc.colorado.gov/regulatory/rules",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2124&deptID=13&agencyID=79",
         "root_citation": "Code of Colorado Regulations · 2 CCR 404-1",
         # Title page (page 1 of ECMC.pdf / ECMC.txt lines 1-24) prints, after
         # the Dept./Commission lines: "PRACTICE AND PROCEDURE" then "2 CCR
@@ -4239,7 +4244,7 @@ REG_META: dict[str, dict] = {
     },
     "11": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2346&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 11",
         # Title page (REG_11.txt lines 18-24) prints "REGULATION NUMBER 11" /
         # "MOTOR VEHICLE EMISSIONS INSPECTION PROGRAM" / "5 CCR 1001-13" on
@@ -4282,7 +4287,7 @@ REG_META: dict[str, dict] = {
     # ITEM_TABLE_SPLICE_REGS / UNCAPTIONED_TABLES["27"] (its eight tables).
     "27": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3412&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 27",
         "root_title": "GREENHOUSE GAS EMISSIONS AND ENERGY MANAGEMENT FOR MANUFACTURING 5 CCR 1001-31",
         # clean_pages splices pages together with NO blank line at the seam
@@ -4330,13 +4335,13 @@ REG_META: dict[str, dict] = {
     # table, Part C Table 1, reprinted across PDF pages 25-28).
     "28": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3408&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations \u00b7 Regulation Number 28",
         "root_title": "BUILDING BENCHMARKING AND PERFORMANCE STANDARDS 5 CCR 1001-32",
     },
     "30": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3464&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 30",
         # Title page (REG_30.txt lines 1-25) prints "REGULATION NUMBER 30
         # TOXIC AIR CONTAMINANTS" then "5 CCR 1001-34" on its own line — the
@@ -4356,13 +4361,13 @@ REG_META: dict[str, dict] = {
     # here to match every other root_title in this dict.
     "31": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3469&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 31",
         "root_title": "CONTROL OF METHANE EMISSIONS FROM MUNICIPAL SOLID WASTE LANDFILLS 5 CCR 1001-35",
     },
     "12": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2348&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations \u00b7 Regulation Number 12",
         # Title page (REG_12.txt lines 16-18) prints "REGULATION NUMBER 12
         # REDUCTION OF DIESEL VEHICLE EMISSIONS" then "5 CCR 1001-15" on its
@@ -4382,7 +4387,7 @@ REG_META: dict[str, dict] = {
     # SOB_PART_CONFIG["19"] (Part C) and `centered_appendix_headings` below.
     "19": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2355&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 19",
         "root_title": "THE CONTROL OF LEAD HAZARDS 5 CCR 1001-23",
         # Reg 19's one appendix (Part A's "APPENDIX A — Number of Units to
@@ -4428,7 +4433,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True,
         "seam_paragraph_breaks": True,  # every page seam is a paragraph break — see clean_pages
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2350&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 16",
         "root_title": "STREET SANDING EMISSIONS 5 CCR 1001-18",
     },
@@ -4459,7 +4464,7 @@ REG_META: dict[str, dict] = {
         "seam_paragraph_breaks": True,  # every page seam is a paragraph break — see clean_pages
         "preamble_heading": "INTRODUCTION",
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2352&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · SIP Local Elements",
         "root_title": (
             "STATE IMPLEMENTATION PLAN, SPECIFIC REGULATIONS FOR NONATTAINMENT-"
@@ -4482,13 +4487,13 @@ REG_META: dict[str, dict] = {
         "no_parts": True,
         "seam_paragraph_breaks": True,  # every page seam is a paragraph break — see clean_pages
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2354&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 18",
         "root_title": "CONTROL OF EMISSIONS OF ACID DEPOSITION PRECURSORS 5 CCR 1001-22",
     },
     "25": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3410&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 25",
         # Title page (REG_25.txt lines 16-22) prints "REGULATION NUMBER 25",
         # then the title on two wrapped lines, then "5 CCR 1001-29" on its
@@ -4530,7 +4535,7 @@ REG_META: dict[str, dict] = {
         # regulation.
         "heading_line_own_paragraph": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2347&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Air Quality Standards, Designations and Emission Budgets",
         "root_title": "AIR QUALITY STANDARDS, DESIGNATIONS AND EMISSION BUDGETS 5 CCR 1001-14",
     },
@@ -4582,7 +4587,7 @@ REG_META: dict[str, dict] = {
         # the same reason, as Reg 2's Part A lead-in sentence.
         "part_intro_text": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2333&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · AQCC Procedural Rules",
         "root_title": "PROCEDURAL RULES 5 CCR 1001-1",
     },
@@ -4611,7 +4616,7 @@ REG_META: dict[str, dict] = {
     # reference part whose body is one six-page table).
     "20": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3282&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 20",
         "root_title": "COLORADO CLEAN CARS AND TRUCKS REGULATION 5 CCR 1001-24",
         "labels_without_trailing_dot": True,
@@ -4638,7 +4643,7 @@ REG_META: dict[str, dict] = {
     # (the five whitespace-aligned determination tables in Section IV).
     "23": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3344&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 23",
         "root_title": "REGIONAL HAZE LIMITS 5 CCR 1001-27",
     },
@@ -4662,7 +4667,7 @@ REG_META: dict[str, dict] = {
     # KNOWN_LABEL_ANOMALIES["21"] (the Part A definitions list's misprints).
     "21": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3303&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 21",
         "root_title": (
             "CONTROL OF VOLATILE ORGANIC COMPOUNDS FROM CONSUMER PRODUCTS AND "
@@ -4722,7 +4727,7 @@ REG_META: dict[str, dict] = {
         # as 11 paragraphs instead of the 13 printed. See clean_pages.
         "seam_paragraph_breaks": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2345&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 10",
         "root_title": "CRITERIA FOR ANALYSIS OF TRANSPORTATION CONFORMITY 5 CCR 1001-12",
     },
@@ -4764,7 +4769,7 @@ REG_META: dict[str, dict] = {
         # 16/18/sip carry. See clean_pages.
         "seam_paragraph_breaks": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2351&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 15",
         "root_title": "CONTROL OF EMISSIONS OF OZONE-DEPLETING COMPOUNDS 5 CCR 1001-19",
     },
@@ -4799,7 +4804,7 @@ REG_META: dict[str, dict] = {
         # clean_pages.
         "seam_paragraph_breaks": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3435&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 29",
         "root_title": "EMISSION REDUCTION REQUIREMENTS FOR LAWN AND GARDEN EQUIPMENT 5 CCR 1001-33",
     },
@@ -4832,7 +4837,7 @@ REG_META: dict[str, dict] = {
     # lines get KNOWN_LABEL_FIXES entries).
     "4": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2338&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 4",
         "root_title": (
             "SALE AND INSTALLATION OF WOOD-BURNING APPLIANCES AND THE USE OF "
@@ -4872,8 +4877,17 @@ BUCKET_CRS = "crs"                   # "§ 34-60-106, C.R.S." statute citations
 # for every other regulation the bucket is present but empty (the same
 # additive shape the ECMC-only `form`/`crs` buckets already have).
 BUCKET_OTHER_CCR = "other_ccr"
+# Cross-regulation citations that could not be deep-linked to the exact cited
+# provision (Sprint 2, see `resolve_cross_reg_target`): the cited section does
+# not exist in the cited regulation (so the link fell back to the part root),
+# or even the cited part does not (reg root / no link at all). Unlike the other
+# buckets its keys are not bare citation text but tab-joined records
+# "<source provision id>\t<citation as printed>\t<resolution kind>\t<target id>"
+# so the diff report can say WHERE each fallback happened. Only ever filled
+# when a corpus id index is active (see `set_corpus_ids`); empty otherwise.
+BUCKET_CROSS_REG = "unresolved_cross_reg"
 ALL_BUCKETS = [BUCKET_HISTORICAL, BUCKET_OTHER_REG, BUCKET_CFR, BUCKET_UNPARSEABLE, BUCKET_FORM, BUCKET_CRS,
-               BUCKET_OTHER_CCR]
+               BUCKET_OTHER_CCR, BUCKET_CROSS_REG]
 
 # Regulations that cite the California Code of Regulations, Title 13 (see
 # BUCKET_OTHER_CCR). CAL_CCR_RE accepts the citation shapes REG_20.txt
@@ -5402,7 +5416,7 @@ def _cp_known_ids() -> set[str]:
 
 def _emit_cp_section_list(list_text: str, list_start: int, keyword_start: int, keyword: str,
                            pieces: list[tuple[int, int, str]], buckets: dict[str, Counter],
-                           cp_ids: set[str]) -> None:
+                           cp_ids: set[str], deep_ids=None) -> None:
     """Cross-regulation twin of `_emit_section_list`, for a "Section(s)
     <list>" clause naming a Common Provisions section from another
     regulation's text. Same first-citation-carries-the-keyword convention,
@@ -5410,7 +5424,10 @@ def _emit_cp_section_list(list_text: str, list_start: int, keyword_start: int, k
     reader is leaving this regulation's own page — carrying BOTH
     `data-provision-id` (the resolved sec-cp-... id, for a deep link/scroll
     on the target page) and `href="/regulations/cp"` (an ordinary page
-    link), mirroring the plain external-reg link's class."""
+    link), mirroring the plain external-reg link's class. `deep_ids` (the
+    corpus index's "cp" ids, only passed when an index is active) also puts
+    the target in the href hash -- `data-provision-id` is stripped by the
+    app's sanitizer, so the hash is what actually deep-links."""
     matches = list(CITATION_RE.finditer(list_text))
     keyword_used = False
     for idx, cm in enumerate(matches):
@@ -5421,9 +5438,10 @@ def _emit_cp_section_list(list_text: str, list_start: int, keyword_start: int, k
         if target:
             text = f"{keyword} {cite}" if (not keyword_used and idx == 0) else cite
             start = keyword_start if (not keyword_used and idx == 0) else abs_start
+            href = f"/regulations/cp#{target}" if deep_ids is not None and target in deep_ids else "/regulations/cp"
             pieces.append((start, abs_end,
                             f'<a class="xref-external-reg" data-provision-id="{target}" '
-                            f'href="/regulations/cp">{text}</a>'))
+                            f'href="{href}">{text}</a>'))
             keyword_used = True
         else:
             buckets[bucket][cite] += 1
@@ -5558,8 +5576,349 @@ def _link_cfr49_citations(
             buckets[BUCKET_CFR][m.group(0)] += 1
 
 
+# --------------------------------------------------------------------------
+# Cross-regulation deep links (Sprint 2)
+#
+# A citation of ANOTHER regulation's provision ("Regulation Number 7, Part B,
+# Section I.B.33") used to link only the regulation name, to the top of the
+# other regulation; the rest of the citation stayed plain text. With a corpus
+# id index (every provision id in the live database, grouped by regulation
+# key -- `pipeline/out/corpus_ids.json`, written by `dump-ids`), each cited
+# section is resolved against the CITED regulation's ids and linked to
+# `/regulations/<key>#<provision id>` (the reader resolves the hash on load;
+# the app's sanitizer strips `data-provision-id`, so the hash is what carries
+# the target).
+#
+# Everything here is inert until an index is supplied: with no index
+# (`corpus_ids` empty/absent) `link_citations` takes none of these paths and
+# its output is byte-for-byte what it was before this feature existed.
+# --------------------------------------------------------------------------
+
+CORPUS_IDS_DEFAULT_PATH = Path(__file__).resolve().parent / "out" / "corpus_ids.json"
+
+# The index `link_citations` consults when called without an explicit
+# `corpus_ids` (every call inside parse_reg). Set once per process by
+# `cmd_parse` (or a test) through `set_corpus_ids`; empty = feature off.
+_ACTIVE_CORPUS_IDS: dict[str, frozenset] = {}
+
+# Optional recorder: when a list, every cross-reg resolution appends
+# (source provision id, citation as printed, kind, target id). Used by the
+# link-change report script; None (the default) costs nothing.
+XREG_EVENTS: list | None = None
+
+
+def reg_key_of_id(provision_id_: str) -> str:
+    """'sec-7-B-I-B-33' -> '7'; 'sec-gp12-I-A' -> 'gp12' (same rule as the
+    database's generated `reg_key` column: the second dash-separated field)."""
+    return provision_id_.split("-", 2)[1]
+
+
+def _normalise_corpus_ids(corpus_ids) -> dict[str, frozenset]:
+    """{reg key: any iterable of ids} -> {reg key: frozenset}. Returns the
+    input itself when it is already in that shape (cheap to call per paragraph)."""
+    if not corpus_ids:
+        return {}
+    if all(isinstance(v, (set, frozenset)) for v in corpus_ids.values()):
+        return corpus_ids  # type: ignore[return-value]
+    return {str(k): frozenset(v) for k, v in corpus_ids.items()}
+
+
+def set_corpus_ids(corpus_ids) -> None:
+    """Install (or, with None/{}, clear) the process-wide corpus id index."""
+    global _ACTIVE_CORPUS_IDS
+    _ACTIVE_CORPUS_IDS = {k: frozenset(v) for k, v in (corpus_ids or {}).items()}
+
+
+def load_corpus_ids(path) -> dict[str, frozenset]:
+    """Read a corpus_ids.json ({"7": ["sec-7-top-REG-7", ...], ...})."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    return {str(k): frozenset(v) for k, v in data.items()}
+
+
+def group_ids_by_reg(ids) -> dict[str, list[str]]:
+    """Group provision ids by regulation key; each list sorted bytewise
+    (UTF-8), the order Postgres' COLLATE "C" gives, so the file is stable and
+    can be compared with `md5(string_agg(id, ',' order by id collate "C"))`."""
+    out: dict[str, set[str]] = defaultdict(set)
+    for i in ids:
+        out[reg_key_of_id(i)].add(i)
+    return {k: sorted(v, key=lambda s: s.encode("utf-8")) for k, v in sorted(out.items())}
+
+
+def write_corpus_ids(path, ids_by_reg: dict) -> None:
+    """Deterministic writer shared by `dump-ids` and any offline rebuild:
+    regulation keys sorted, ids bytewise-sorted, one id per line."""
+    ordered = {k: sorted(set(ids_by_reg[k]), key=lambda s: s.encode("utf-8")) for k in sorted(ids_by_reg)}
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(ordered, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+
+class CrossRegTarget(tuple):
+    """Result of `resolve_cross_reg_target`: (target, kind, detail).
+
+    kind is one of
+      "exact"      the cited provision exists as printed
+      "trimmed"    it does not; `target` is its nearest existing ancestor
+                   obtained by dropping trailing tokens ("I.B.33.c.(iv)" ->
+                   "I.B.33.c" -> "I.B.33" ...)
+      "part_root"  nothing under the part matched; `target` is the part's root
+      "reg_root"   the part (or the part-less lookup) failed too; `target` is
+                   the regulation's root row
+      "unresolved" not even a root exists in the index (or the cited
+                   regulation is not in it); `target` is None
+    `detail` says why a fallback happened ("" for exact/trimmed):
+    "no_such_part", "reg_has_no_parts", "part_not_stated",
+    "ambiguous_part", "reg_not_in_index", "no_root".
+    Behaves like a plain 3-tuple (unpackable) with named accessors."""
+
+    __slots__ = ()
+
+    def __new__(cls, target, kind, detail=""):
+        return tuple.__new__(cls, (target, kind, detail))
+
+    target = property(lambda self: self[0])
+    kind = property(lambda self: self[1])
+    detail = property(lambda self: self[2])
+
+
+XREG_LINKABLE_KINDS = ("exact", "trimmed", "part_root")
+
+
+def resolve_cross_reg_target(reg: str, part: str | None, citation: str, corpus_ids) -> CrossRegTarget:
+    """Resolve a printed section citation inside ANOTHER regulation to a
+    provision id that exists in `corpus_ids` (the index: {reg key: ids}).
+
+    `reg` is the cited regulation's key ("7", "26", "gp12"), `part` the cited
+    part letter or None when the citation names none, `citation` the printed
+    section citation ("I.B.33", "II.A.46.", "I.D.3.b.(x)").
+
+    1. Build the candidate id from reg/part/citation using the CITED
+       regulation's own token cycle and id scheme (`provision_id`: part-less
+       regulations such as the GPs and Reg 1 carry no part segment;
+       parenthesised tokens keep their parentheses).
+    2. If it does not exist, drop trailing tokens one at a time until a
+       shorter id does ("trimmed").
+    3. Otherwise fall back to the part root `sec-<reg>-P-<part>`
+       ("part_root"), then to the regulation root `sec-<reg>-top-REG-<reg>`
+       ("reg_root").
+    With no part named, a regulation with parts is only resolved when the
+    exact citation exists in exactly ONE part; an ambiguous or missing match
+    falls to the regulation root rather than guessing a part."""
+    ids = (corpus_ids or {}).get(reg)
+    if not ids:
+        return CrossRegTarget(None, "unresolved", "reg_not_in_index")
+    if not isinstance(ids, (set, frozenset)):
+        ids = frozenset(ids)
+    root = f"sec-{reg}-top-REG-{reg}"
+
+    def reg_root(detail: str) -> CrossRegTarget:
+        if root in ids:
+            return CrossRegTarget(root, "reg_root", detail)
+        return CrossRegTarget(None, "unresolved", "no_root")
+
+    no_parts = reg_has_no_parts(reg)
+    part_root = None
+    if part:
+        if no_parts:
+            return reg_root("reg_has_no_parts")
+        part_root = f"sec-{reg}-P-{part}"
+        if part_root not in ids:
+            return reg_root("no_such_part")
+        parts = [part]
+    elif no_parts:
+        parts = [NO_PART]
+    else:
+        parts = _roman_part_letters(reg, ids)
+        hits = [(p, _resolve_cite(citation, reg, ids, [p])[0]) for p in parts]
+        hits = [(p, t) for p, t in hits if t]
+        if len(hits) == 1:
+            return CrossRegTarget(hits[0][1], "exact", "")
+        return reg_root("ambiguous_part" if hits else "part_not_stated")
+
+    p = parts[0]
+    exact, _bucket = _resolve_cite(citation, reg, ids, [p])
+    if exact:
+        return CrossRegTarget(exact, "exact", "")
+    cycle = cycle_ab_for(reg)
+    norm = citation if citation.endswith((".", ")")) else citation + "."
+    tokens, consumed = tokenize_by_cycle(norm, cycle)
+    fully_consumed = norm[consumed:] in ("", ".")
+    # A citation the cycle only partly tokenizes still names its consumed
+    # prefix; a fully tokenized one has already been tried whole above.
+    start = len(tokens) - 1 if fully_consumed else len(tokens)
+    for k in range(start, 0, -1):
+        cand = provision_id(reg, p, tokens_to_id_suffix(tokens[:k]))
+        if cand in ids:
+            return CrossRegTarget(cand, "trimmed", "")
+    if part_root:
+        return CrossRegTarget(part_root, "part_root", "")
+    return reg_root("part_not_stated")
+
+
+# One clause of a cross-regulation citation tail, tried in this order at a
+# given position:
+#   A  "Part B, Section(s) <list>"   (also "Part B. Section ..." and
+#                                      "Part B, (fkna Part F) Section ...")
+#   B  "Part B, <list>"              (no Section keyword: "Part B, III.E.)")
+#   D  "Section(s) <list>"           (no part: inherits the previous clause's)
+#   C  "Part B"                      (the part alone)
+_XREG_CLAUSE_RE = re.compile(
+    r"Part\s+(?P<pa>[A-Z])\b(?:[,.]+\s*|\s+)(?:\((?:fkna|formerly)[^)]*\)\s*)?(?P<kwa>Sections?)\s+(?P<la>" + _CITATION_LIST + r")"
+    r"|Part\s+(?P<pb>[A-Z])\b,\s*(?P<lb>" + _CITATION_LIST + r")"
+    r"|(?P<kwd>Sections?)\s+(?P<ld>" + _CITATION_LIST + r")"
+    r"|Part\s+(?P<pc>[A-Z])\b"
+)
+# General-permit citations name conditions: "GP02 Condition II.B.3",
+# "GP01, Sections I.A. and I.B." -- no parts.
+_XREG_GP_CLAUSE_RE = re.compile(r"(?P<kwd>Sections?|Conditions?)\s+(?P<ld>" + _CITATION_LIST + r")")
+# What may sit between the cited regulation's name and its first clause, and
+# between one clause and the next ("..., Section II.B and Section II.C.",
+# "...Section III.E.; Part C, Section IV.", "Part A, Section II.C and Part B,
+# Section III.E."). Only separators: any other word ends the tail.
+_XREG_LEAD_RE = re.compile(r",\s*|\s+")
+_XREG_SEP_RE = re.compile(r"\s*,\s*(?:and/or\s+|and\s+|or\s+)?|\s*;\s*|\s+(?:and/or|and|or)\s+")
+# Used when the scan starts right after a clause the caller already matched
+# (a regulation outside the corpus): what may follow is a separator.
+_XREG_AFTER_CLAUSE_RE = re.compile(_XREG_SEP_RE.pattern + r"|\s*[;.]\s*|\s+")
+# A continuation clause followed by "of this permit/regulation/..." names the
+# CURRENT document ("... and Section III.A of this permit"), not the cited one.
+_XREG_LOCAL_TAIL_RE = re.compile(r"\s*,?\s*of\s+(?:this|the\s+(?:general\s+)?permit|GP-?\d)", re.I)
+
+
+def _scan_xreg_clauses(text: str, pos: int, gp_mode: bool = False, lead_re=None) -> list[dict]:
+    """Parse the run of Part/Section clauses that follows a cross-regulation
+    mention ending at `pos`. Returns clause dicts (start, end, kind, part,
+    kw, kw_start, list_text, list_start) -- empty when none follows. `part`
+    is the part in force for the clause: its own when it names one, else the
+    last one named earlier in the run (None when none has been)."""
+    clauses: list[dict] = []
+    clause_re = _XREG_GP_CLAUSE_RE if gp_mode else _XREG_CLAUSE_RE
+    cur_part: str | None = None
+    cursor = pos
+    first = True
+    while True:
+        sep = ((lead_re or _XREG_LEAD_RE) if first else _XREG_SEP_RE).match(text, cursor)
+        if not sep:
+            break
+        cm = clause_re.match(text, sep.end())
+        if not cm:
+            break
+        if not first and _XREG_LOCAL_TAIL_RE.match(text, cm.end()):
+            break
+        gd = cm.groupdict()
+        if gd.get("pa"):
+            kind, part, kw, lst = "A", gd["pa"], gd["kwa"], gd["la"]
+        elif gd.get("pb"):
+            kind, part, kw, lst = "B", gd["pb"], None, gd["lb"]
+        elif gd.get("kwd"):
+            kind, part, kw, lst = "D", None, gd["kwd"], gd["ld"]
+        else:
+            kind, part, kw, lst = "C", gd["pc"], None, None
+        if part:
+            cur_part = part
+        clause = dict(start=cm.start(), end=cm.end(), kind=kind, part=part or cur_part, kw=kw, list_text=lst,
+                      kw_start=cm.start(("kwa" if kind == "A" else "kwd")) if kw else None,
+                      list_start=(cm.start({"A": "la", "B": "lb", "D": "ld"}[kind]) if lst else None))
+        if gp_mode:
+            clause["part"] = None
+        clauses.append(clause)
+        cursor = cm.end()
+        first = False
+    return clauses
+
+
+def _emit_xreg_clauses(html_text: str, num: str, clauses: list[dict], corpus_ids, pieces: list,
+                       buckets: dict, own_id: str | None, display: str) -> None:
+    """Turn parsed clauses into deep links to regulation `num` (see
+    `resolve_cross_reg_target`). `display` is the printed regulation mention
+    ("Regulation Number 7"), used only to describe a fallback in the
+    `unresolved_cross_reg` bucket. The part itself ("Part B,") stays plain
+    text between the links unless it is cited alone (clause kind C), in which
+    case "Part B" links to the part root. A cite that only reaches the
+    regulation root gets NO link (the regulation name already links there)
+    and is recorded in the bucket; a part-root or trimmed link is recorded
+    too, because it is not the exact provision the text names."""
+    href_base = f"/regulations/{num}"
+
+    def record(cited: str, res: CrossRegTarget) -> None:
+        if XREG_EVENTS is not None:
+            XREG_EVENTS.append((own_id or "", cited, res.kind, res.target or ""))
+        if res.kind != "exact":
+            key = "\t".join((own_id or "?", cited, res.kind + (f":{res.detail}" if res.detail else ""), res.target or ""))
+            buckets[BUCKET_CROSS_REG][key] += 1
+
+    for cl in clauses:
+        part = cl["part"]
+        part_txt = f", Part {part}" if part else ""
+        if cl["kind"] == "C":
+            target = f"sec-{num}-P-{part}"
+            ids = (corpus_ids or {}).get(num) or ()
+            cited = f"{display}, Part {part}"
+            if target in ids:
+                pieces.append((cl["start"], cl["end"],
+                               f'<a class="xref-external-reg" href="{href_base}#{target}">{html_text[cl["start"]:cl["end"]]}</a>'))
+                if XREG_EVENTS is not None:
+                    XREG_EVENTS.append((own_id or "", cited, "part_cited", target))
+            else:
+                # a part that no longer exists ("Regulation Number 7, Part E"):
+                # nothing to link; the regulation name already links to the top
+                root = f"sec-{num}-top-REG-{num}"
+                record(cited, CrossRegTarget(root, "reg_root", "no_such_part") if root in ids
+                       else CrossRegTarget(None, "unresolved", "no_such_part"))
+            continue
+        keyword_pending = cl["kw"] is not None
+        for idx, cm in enumerate(CITATION_RE.finditer(cl["list_text"])):
+            cite = cm.group(0)
+            abs_start = cl["list_start"] + cm.start()
+            abs_end = cl["list_start"] + cm.end()
+            if re.fullmatch(r"[IVXLCDM]+\.?", cite) and roman_to_int(cite.rstrip(".")) >= 50:
+                # "Section I.A. through C." -- a bare range-end LETTER that
+                # reads as a roman numeral (C = 100); no section is numbered
+                # that high, so leave it plain and unbucketed
+                continue
+            res = resolve_cross_reg_target(num, cl["part"], cite, corpus_ids)
+            record(f"{display}{part_txt}, {cite}", res)
+            if res.kind in XREG_LINKABLE_KINDS:
+                start = cl["kw_start"] if keyword_pending else abs_start
+                pieces.append((start, abs_end,
+                               f'<a class="xref-external-reg" href="{href_base}#{res.target}">{html_text[start:abs_end]}</a>'))
+                keyword_pending = False
+            elif idx == 0:
+                # first cite unresolved: the keyword stays plain and no later
+                # cite takes it over (same convention as _emit_section_list)
+                keyword_pending = False
+
+
+def _link_xreg_tail(html_text: str, pos: int, num: str, corpus_ids, pieces: list, buckets: dict, own_id: str | None,
+                    display: str, is_claimed, claim, *, gp_mode: bool = False, free_until: int = 0,
+                    in_corpus: bool = True) -> None:
+    """Link (or, for a regulation outside the corpus, merely claim) the
+    Part/Section clauses that follow a cross-regulation mention ending at
+    `pos`, so that none of them -- in particular a trailing "and Section
+    II.B." -- falls through to the later same-regulation steps and binds to
+    the CURRENT document's own ids. `free_until`: text before it is the
+    caller's own already-claimed match and is not checked against claims."""
+    clauses = _scan_xreg_clauses(html_text, pos, gp_mode, None if in_corpus else _XREG_AFTER_CLAUSE_RE)
+    kept: list[dict] = []
+    for cl in clauses:
+        if cl["start"] >= free_until and is_claimed(cl["start"], cl["end"]):
+            break
+        kept.append(cl)
+    if not kept:
+        return
+    claim(pos, kept[-1]["end"])
+    if in_corpus:
+        _emit_xreg_clauses(html_text, num, kept, corpus_ids, pieces, buckets, own_id, display)
+    else:
+        for cl in kept:
+            if cl["start"] >= free_until:
+                buckets[BUCKET_OTHER_REG][html_text[cl["start"]:cl["end"]]] += 1
+
+
 def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: set[str],
-                    own_part: str | None = None, own_id: str | None = None) -> tuple[str, dict[str, Counter]]:
+                    own_part: str | None = None, own_id: str | None = None,
+                    corpus_ids: dict | None = None) -> tuple[str, dict[str, Counter]]:
     """Find cross-references in `html_text` (plain text at this point — call
     BEFORE other HTML is added, i.e. on the assembled paragraph text, and
     call it exactly once per paragraph) and wrap them in the app's xref
@@ -5575,10 +5934,15 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
       own part (`own_part`) is tried first — see `_default_parts_order`.
     - Another regulation in the corpus ("Regulation Number 26") becomes
       <a class="xref-external-reg" href="/regulations/...">Regulation Number
-      26</a> (bare — a trailing ", Part X, Section Y" on THAT regulation is
-      left as plain text; linking it against our own `known_ids` would point
-      at the wrong regulation's Part X, so deeper cross-reg targets remain a
-      later improvement per IMPORTER_SPEC.md).
+      26</a>. Without a corpus id index (`corpus_ids` empty/absent -- the
+      historical behaviour, byte-for-byte) a trailing ", Part X, Section Y"
+      on THAT regulation is left as plain text. With one, every section in
+      that tail (and any "and Section Z" continuation) becomes its own deep
+      link `/regulations/<key>#<provision id>` resolved against the CITED
+      regulation's ids -- see `resolve_cross_reg_target` -- and the tail is
+      claimed so it can never bind to this document's own ids.
+    - `corpus_ids` ({reg key: ids}) defaults to the process-wide index
+      installed by `set_corpus_ids`.
     - Anything else that looks like a regulation/CFR/section reference but
       can't be resolved is left as plain text and counted into `buckets`
       (see BUCKET_* above) rather than a single flat counter, so the report
@@ -5598,6 +5962,11 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         claimed.append((s, e))
 
     default_order = _default_parts_order(own_part, reg, known_ids)
+    # Cross-regulation deep links are on only when a non-empty corpus id index
+    # is in force; every `use_ids` branch below is skipped otherwise, so the
+    # output is unchanged from before the feature existed.
+    ids_index = _ACTIVE_CORPUS_IDS if corpus_ids is None else _normalise_corpus_ids(corpus_ids)
+    use_ids = bool(ids_index)
 
     # 1) "40 CFR Part NN, Subpart XXXX" — only OOOOb is in the corpus today.
     cfr_re = CFR_RE_DOTTED if reg in CFR_DOTTED_REGS else CFR_RE
@@ -5710,7 +6079,8 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
                 _emit_section_list(html_text, m.start(1), keyword, m.start(2), seclist,
                                     [NO_PART], pieces, buckets, reg, cp_ids)
             else:
-                _emit_cp_section_list(seclist, m.start(2), m.start(1), keyword, pieces, buckets, cp_ids)
+                _emit_cp_section_list(seclist, m.start(2), m.start(1), keyword, pieces, buckets, cp_ids,
+                                      ids_index.get("cp") if use_ids else None)
 
     # 1.6) "GP01".."GP12" / "GP-07" / "General Permit GP02" mentions -> that
     # permit's own root row (see GP_MENTION_RE). Run before step 2 for the
@@ -5739,6 +6109,11 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
                 buckets[BUCKET_UNPARSEABLE][m.group(0)] += 1
         elif gp_key in corpus_regs:
             pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{gp_key}">{m.group(0)}</a>'))
+            if use_ids:
+                # "GP02 Condition II.B.3" / "GP01, Sections I.A. and I.B." --
+                # the conditions belong to THAT permit, never to this document.
+                _link_xreg_tail(html_text, m.end(), gp_key, ids_index, pieces, buckets, own_id, m.group(0),
+                                is_claimed, claim, gp_mode=True, free_until=m.end())
         else:
             buckets[BUCKET_OTHER_REG][m.group(0)] += 1
 
@@ -5831,11 +6206,21 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
 
         if num != reg:
             if num in corpus_regs and not _non_aqcc_ccr_series(html_text, m.start(), num_span[1], num):
-                # Bare "Regulation Number N" only — a trailing Part/Section
-                # on THAT regulation is left unlinked (see docstring).
+                # The regulation name links to the top of THAT regulation. Its
+                # trailing Part/Section clauses stay plain text unless a corpus
+                # id index is active (see docstring), in which case each cited
+                # section becomes its own deep link into that regulation.
                 pieces.append((num_span[0], num_span[1], f'<a class="xref-external-reg" href="/regulations/{num}">{num_text}</a>'))
+                if use_ids:
+                    _link_xreg_tail(html_text, num_span[1], num, ids_index, pieces, buckets, own_id, num_text,
+                                    is_claimed, claim, free_until=m.end())
             else:
                 buckets[BUCKET_OTHER_REG][m.group(0)] += 1
+                if use_ids:
+                    # Another regulation's (or another commission's) citation:
+                    # a trailing "and Section II.B." is still not ours.
+                    _link_xreg_tail(html_text, m.end(), num, ids_index, pieces, buckets, own_id, num_text,
+                                    is_claimed, claim, free_until=m.end(), in_corpus=False)
             continue
 
         # num == reg: a self-reference. "Regulation Number 7" always links to
@@ -5855,6 +6240,25 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         elif seclist is not None:
             _emit_section_list(html_text, m.start("kw_np"), keyword, m.start("seclist_np"), seclist,
                                 default_order, pieces, buckets, reg, known_ids)
+
+    # 2b) With a corpus id index: a bare "Regulation N[, Part X, Section(s)
+    #     list]" naming ANOTHER corpus regulation (step 5's shape, no "Number")
+    #     is handled here, before steps 3/4, because PART_RE/SECTION_RE would
+    #     otherwise bind its "Part B, Sections ..." tail to THIS document's own
+    #     Part B. Same filters and same link on the regulation name as step 5.
+    if use_ids:
+        for m in BARE_REG_RE.finditer(html_text):
+            num = m.group(1)
+            if num == reg or num not in corpus_regs or is_claimed(m.start(), m.end()):
+                continue
+            if _NON_AQCC_REG_PREFIX_RE.search(html_text[max(0, m.start() - 8):m.start()]):
+                continue
+            if _non_aqcc_ccr_series(html_text, m.start(), m.end(), num):
+                continue
+            claim(m.start(), m.end())
+            pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{num}">{m.group(0)}</a>'))
+            _link_xreg_tail(html_text, m.end(), num, ids_index, pieces, buckets, own_id, m.group(0),
+                            is_claimed, claim, free_until=m.end())
 
     # 3) "Part X[, Section(s) list]" not already claimed above.
     for m in PART_RE.finditer(html_text):
@@ -10765,6 +11169,12 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
 
 
 def cmd_parse(args):
+    corpus_ids_path = getattr(args, "corpus_ids", None)
+    if corpus_ids_path:
+        index = load_corpus_ids(corpus_ids_path)
+        set_corpus_ids(index)
+        print(f"Cross-regulation deep links ON: corpus id index {corpus_ids_path} "
+              f"({len(index)} regulations, {sum(len(v) for v in index.values())} ids).")
     if args.reg.lower() in ECFR_REGS:
         # eCFR subparts (ooooa/oooob/ooooc, jjjj, iiii, zzzz) use a
         # different source layout (eCFR "enhanced display" PDF prints, not
@@ -10924,6 +11334,10 @@ def _xref_report_section(reg: str, parsed: list[dict], db: list[dict], parsed_by
 
     lines.append(f"- `<span class=\"xref\">` spans — parsed: **{len(parsed_xrefs)}**, DB: **{len(db_xrefs)}**")
     lines.append(f"- `<a class=\"xref-external-reg\">` anchors — parsed: **{parsed_ext}**, DB: **{db_ext}**")
+    deep_re = re.compile(r'<a class="xref-external-reg"[^>]*href="/regulations/[^"#]*#[^"]+"')
+    parsed_deep = sum(len(deep_re.findall(r.get("full_text") or "")) for r in parsed)
+    db_deep = sum(len(deep_re.findall(r.get("full_text") or "")) for r in db)
+    lines.append(f"  - of which deep links into the cited provision (`href=\"/regulations/<key>#<id>\"`) — parsed: **{parsed_deep}**, DB: **{db_deep}**")
     lines.append("")
 
     lines.append("### Spans by target part\n")
@@ -10945,12 +11359,29 @@ def _xref_report_section(reg: str, parsed: list[dict], db: list[dict], parsed_by
         BUCKET_FORM: "Form N (ECMC) — recognized, deliberately left as plain text",
         BUCKET_CRS: "C.R.S. statute citation (ECMC) — recognized, deliberately left as plain text",
         BUCKET_OTHER_CCR: "California Code of Regulations, Title 13 (Reg 20) — recognized, deliberately left as plain text",
+        BUCKET_CROSS_REG: "Cross-regulation citations that did NOT deep-link to the exact cited provision (linked to the nearest ancestor or the part root, or left unlinked when only the regulation root was left) — fix the citation or the target regulation, or accept the fallback",
     }
     if not unresolved_buckets:
         lines.append("_none recorded (run `parse` first to generate the sidecar file)_\n")
     for bucket in ALL_BUCKETS:
         items = unresolved_buckets.get(bucket, [])
         total_mentions = sum(c for _, c in items)
+        if bucket == BUCKET_CROSS_REG:
+            # Every record, not the top 15: each is a specific place in the text
+            # a reviewer may want to check. Keys are tab-joined records (see
+            # BUCKET_CROSS_REG), sorted by source provision for reading.
+            lines.append(f"**{bucket_titles[bucket]}** — {len(items)} distinct, {total_mentions} mentions\n")
+            if items:
+                lines.append("| source provision | citation as printed | resolution | resolved to | count |")
+                lines.append("|---|---|---|---|---|")
+                for text, cnt in sorted(items, key=lambda kv: kv[0]):
+                    src, cited, kind, target = (str(text).split("\t") + ["", "", "", ""])[:4]
+                    lines.append(f"| `{src}` | {cited.replace('|', chr(92) + '|')} | {kind} | "
+                                 f"{('`' + target + '`') if target else '(no link)'} | {cnt} |")
+            else:
+                lines.append("_none_")
+            lines.append("")
+            continue
         lines.append(f"**{bucket_titles.get(bucket, bucket)}** — {len(items)} distinct, {total_mentions} mentions\n")
         if items:
             lines.append("| citation text | count |")
@@ -11437,6 +11868,52 @@ def cmd_export(args) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"Exported {len(rows)} provisions for Reg {args.reg} (id LIKE 'sec-{args.reg.lower()}-%') -> {out_path}")
+
+
+def fetch_all_provision_ids(client, page_size: int = EXPORT_PAGE_SIZE) -> list[str]:
+    """Every `provisions.id` in the database, ordered by id, paged with
+    `.range()` past PostgREST's per-response row cap (same paging contract as
+    `fetch_export_rows`). Selects the id column only."""
+    ids: list[str] = []
+    start = 0
+    while True:
+        resp = (
+            client.table("provisions")
+            .select("id")
+            .order("id")
+            .range(start, start + page_size - 1)
+            .execute()
+        )
+        page = resp.data or []
+        ids.extend(r["id"] for r in page)
+        if len(page) < page_size:
+            break
+        start += page_size
+    return ids
+
+
+def cmd_dump_ids(args) -> None:
+    """Read-only: write the corpus id index (`{reg key: [provision ids]}`) that
+    `parse` uses to deep-link cross-regulation citations. Requires
+    SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY, same as `export`; no writes."""
+    import os
+
+    missing = [n for n in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY") if not os.environ.get(n)]
+    if missing:
+        print(
+            f"dump-ids requires {' and '.join(missing)} in the environment "
+            "(same as export / summarize.py).",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    from supabase import create_client
+
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    ids = fetch_all_provision_ids(client)
+    by_reg = group_ids_by_reg(ids)
+    write_corpus_ids(args.out, by_reg)
+    print(f"Dumped {len(ids)} provision ids across {len(by_reg)} regulations -> {args.out}")
 
 
 # --------------------------------------------------------------------------
@@ -12238,6 +12715,12 @@ def main():
     p_parse.add_argument("--txt", default=None, help="Path to pdftotext -layout output (defaults to sources/REG_<reg>.txt).")
     p_parse.add_argument("--xml", default=None, help="Path to the eCFR versioner XML; required for the whole-PART eCFR regs (p190/p191/p192/p193/p194/p195/p196/p199).")
     p_parse.add_argument("--out", required=True)
+    p_parse.add_argument("--corpus-ids", default=None,
+                         help="Corpus id index (JSON {reg key: [provision ids]}, written by `dump-ids`) used to deep-link "
+                              "cross-regulation citations. Default: pipeline/out/corpus_ids.json when it exists.")
+    p_parse.add_argument("--no-corpus-ids", action="store_true",
+                         help="Ignore any corpus id index: cross-regulation citations link only the regulation name, "
+                              "exactly as before deep links existed.")
     p_parse.set_defaults(func=cmd_parse)
 
     p_export = sub.add_parser(
@@ -12249,6 +12732,15 @@ def main():
     p_export.add_argument("--reg", required=True)
     p_export.add_argument("--out", required=True)
     p_export.set_defaults(func=cmd_export)
+
+    p_dump = sub.add_parser(
+        "dump-ids",
+        help="Read-only dump of every provision id in Supabase, grouped by regulation key, to "
+             "pipeline/out/corpus_ids.json (the index `parse` resolves cross-regulation deep links "
+             "against). Requires SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY; makes no writes.",
+    )
+    p_dump.add_argument("--out", default=str(CORPUS_IDS_DEFAULT_PATH))
+    p_dump.set_defaults(func=cmd_dump_ids)
 
     p_diff = sub.add_parser("diff", help="Diff parsed output against an exported DB snapshot.")
     p_diff.add_argument("--reg", required=True)
@@ -12279,6 +12771,14 @@ def main():
     args = ap.parse_args()
     if args.cmd == "parse" and args.txt is None:
         args.txt = str(Path(args.pdf).with_suffix(".txt"))
+    if args.cmd == "parse":
+        if args.no_corpus_ids:
+            args.corpus_ids = None
+        elif args.corpus_ids is not None:
+            if not Path(args.corpus_ids).exists():
+                raise SystemExit(f"--corpus-ids file not found: {args.corpus_ids}")
+        elif CORPUS_IDS_DEFAULT_PATH.exists():
+            args.corpus_ids = str(CORPUS_IDS_DEFAULT_PATH)
     args.func(args)
 
 

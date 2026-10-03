@@ -117,8 +117,12 @@
 .reg-reader .jr-item:last-child {
   border-bottom: none;
 }
-.reg-reader .jr-item:hover {
+.reg-reader .jr-item:hover,
+.reg-reader .jr-item.active {
   background: var(--accent-soft);
+}
+.reg-reader .jr-item.jr-empty {
+  cursor: default;
 }
 .reg-reader .jr-id {
   font-family: var(--mono);
@@ -668,7 +672,8 @@
 .reg-reader #return-trail[hidden] {
   display: none;
 }
-.reg-reader #return-trail button {
+.reg-reader #return-trail button,
+.reg-reader #return-trail a {
   pointer-events: auto;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -682,6 +687,22 @@
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(20, 30, 25, 0.14);
 }
+/* "Back to <other regulation>": a real link (the reader was opened from a
+   provision of another regulation), shown in place of the button. */
+.reg-reader #return-trail a {
+  text-decoration: none;
+  display: inline-block;
+}
+.reg-reader #return-trail a[hidden] {
+  display: none;
+}
+.reg-reader #return-trail-ext {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .reg-reader #return-trail-back {
   min-width: 0;
   max-width: 100%;
@@ -694,10 +715,12 @@
   color: var(--ink-soft);
   padding: 9px 12px;
 }
-.reg-reader #return-trail button:hover {
+.reg-reader #return-trail button:hover,
+.reg-reader #return-trail a:hover {
   background: var(--accent-soft);
 }
-.reg-reader #return-trail button:focus-visible {
+.reg-reader #return-trail button:focus-visible,
+.reg-reader #return-trail a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }

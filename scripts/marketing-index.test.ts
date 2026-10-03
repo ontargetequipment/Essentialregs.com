@@ -142,3 +142,16 @@ test("card xref-external-reg links go to the preview logged out and the reader f
   // The reader (entitled only) keeps the stored href.
   assert.match(sanitizeHtml(html), /href="\/regulations\/3"/);
 });
+
+test("a deep-linked xref-external-reg keeps its hash for a subscriber and goes to the preview logged out", () => {
+  const html =
+    '<p><a class="xref-external-reg" href="/regulations/7#sec-7-B-I-B-33">Section I.B.33</a> and ' +
+    '<a class="xref-external-reg" href="/regulations/gp12#sec-gp12-I-A-8-d-(i)">Condition I.A.8.d.(i)</a></p>';
+  const anon = sanitizeCardHtml(html, false);
+  assert.match(anon, /href="\/regulations\/7\/preview"/);
+  assert.match(anon, /href="\/regulations\/gp12\/preview"/);
+  assert.doesNotMatch(anon, /#sec-/);
+  const sub = sanitizeCardHtml(html, true);
+  assert.match(sub, /href="\/regulations\/7#sec-7-B-I-B-33"/);
+  assert.match(sub, /href="\/regulations\/gp12#sec-gp12-I-A-8-d-\(i\)"/);
+});

@@ -1,0 +1,86 @@
+{
+ "1": [
+  "sec-1-II",
+  "sec-1-II-A",
+  "sec-1-II-A-1",
+  "sec-1-II-A-2",
+  "sec-1-top-REG-1"
+ ],
+ "2": [
+  "sec-2-B-IV",
+  "sec-2-B-IV-A",
+  "sec-2-B-IV-A-3",
+  "sec-2-B-IV-A-3-c",
+  "sec-2-B-IV-A-3-c-(1)",
+  "sec-2-P-A",
+  "sec-2-P-B",
+  "sec-2-top-REG-2"
+ ],
+ "3": [
+  "sec-3-A-I",
+  "sec-3-A-I-B",
+  "sec-3-A-I-B-30",
+  "sec-3-B-III",
+  "sec-3-B-III-E",
+  "sec-3-P-A",
+  "sec-3-P-B",
+  "sec-3-P-C",
+  "sec-3-P-D",
+  "sec-3-P-E",
+  "sec-3-P-F",
+  "sec-3-top-REG-3"
+ ],
+ "7": [
+  "sec-7-A-I",
+  "sec-7-A-II",
+  "sec-7-A-II-A",
+  "sec-7-A-II-A-1",
+  "sec-7-B-I",
+  "sec-7-B-I-B",
+  "sec-7-B-I-B-33",
+  "sec-7-B-II",
+  "sec-7-B-II-A",
+  "sec-7-B-II-A-46",
+  "sec-7-B-II-B",
+  "sec-7-B-II-B-1",
+  "sec-7-B-III",
+  "sec-7-B-III-C",
+  "sec-7-B-III-C-4",
+  "sec-7-B-III-C-4-d",
+  "sec-7-B-III-C-4-d-(i)",
+  "sec-7-B-III-C-4-d-(ii)",
+  "sec-7-B-III-C-4-d-(ii)-(A)",
+  "sec-7-B-V",
+  "sec-7-B-V-B",
+  "sec-7-B-V-B-1",
+  "sec-7-B-V-B-1-h",
+  "sec-7-C-AA",
+  "sec-7-P-A",
+  "sec-7-P-B",
+  "sec-7-P-C",
+  "sec-7-top-REG-7"
+ ],
+ "cp": [
+  "sec-cp-I-G",
+  "sec-cp-top-REG-cp"
+ ],
+ "gp02": [
+  "sec-gp02-II",
+  "sec-gp02-II-B",
+  "sec-gp02-II-B-3",
+  "sec-gp02-II-B-4",
+  "sec-gp02-II-C",
+  "sec-gp02-top-REG-gp02"
+ ],
+ "gp12": [
+  "sec-gp12-I",
+  "sec-gp12-I-A",
+  "sec-gp12-I-A-8",
+  "sec-gp12-I-A-8-a",
+  "sec-gp12-I-A-8-a-(i)",
+  "sec-gp12-I-A-8-a-(ii)",
+  "sec-gp12-X",
+  "sec-gp12-X-A",
+  "sec-gp12-top-REG-gp12"
+ ]
+}

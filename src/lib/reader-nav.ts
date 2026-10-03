@@ -8,6 +8,7 @@
  */
 import type { ReaderModel, ReaderRow } from "@/lib/reader-client";
 import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
+import { PROVISION_ID } from "@/lib/types";
 
 /** Ancestor labels the popup eyebrow prints before eliding the middle. */
 export const EYEBROW_MAX_LEVELS = 4;
@@ -125,4 +126,97 @@ export function rowAtViewportTop(rows: readonly ReaderRow[], anchorY: number): R
     else lo = mid + 1;
   }
   return rows[lo];
+}
+
+// ---------------------------------------------------------------------------
+// Cross-regulation navigation: the preview popup for a link into another
+// regulation and the "Back to <origin regulation>" bar the target reader
+// shows. All pure string work, so scripts/reader-nav.test.ts covers it.
+// ---------------------------------------------------------------------------
+
+/** A provision id as the reader and the API accept it: the strict pattern, bounded, and "sec-<reg>-" shaped. */
+export function validProvisionId(raw: string | null | undefined): string | null {
+  if (!raw || raw.length > 200 || !PROVISION_ID.test(raw)) return null;
+  return regKeyOf(raw) ? raw : null;
+}
+
+/** The provision id in a link's "#hash", or null when there is none / it is not a provision id. */
+export function hashTargetOf(href: string | null | undefined): string | null {
+  if (!href) return null;
+  const i = href.indexOf("#");
+  if (i < 0) return null;
+  let raw = href.slice(i + 1);
+  try {
+    raw = decodeURIComponent(raw);
+  } catch {
+    /* keep the raw text; validProvisionId decides */
+  }
+  return validProvisionId(raw);
+}
+
+/** "/regulations/<reg>#<id>", with `?from=<origin>` between them when the origin is known. */
+export function regulationHref(targetId: string, fromId?: string | null): string {
+  const key = regKeyOf(targetId) ?? "";
+  const from = fromId ? `?from=${encodeURIComponent(fromId)}` : "";
+  return `/regulations/${key}${from}#${targetId}`;
+}
+
+/**
+ * The `?from=` of a reader URL, validated: a provision id of a DIFFERENT
+ * regulation than `currentKey`, else null (absent, junk, or the same
+ * regulation -- the in-document trail owns that case).
+ */
+export function foreignOriginOf(search: string, currentKey: string | null): string | null {
+  const from = validProvisionId(new URLSearchParams(search).get("from"));
+  if (!from || !currentKey) return null;
+  return regKeyOf(from)!.toLowerCase() === currentKey.toLowerCase() ? null : from;
+}
+
+/** Roman numerals I..XX: the section level of the AQCC regulations and the general permits. */
+const SECTION_ROMAN = /^(?:XX|X?(?:IX|IV|V?I{0,3}))$/;
+const isSectionRoman = (s: string) => s !== "" && SECTION_ROMAN.test(s);
+
+/**
+ * A provision id's short citation, derived from the id alone -- no row, no
+ * network: "sec-gp12-I-A-8-d-(i)" -> "I.A.8.d.(i)"; "sec-7-B-I-B-33" ->
+ * "Part B · I.B.33" (a leading single letter that is not itself a section
+ * numeral and is followed by one is the Part); "sec-3-P-A" -> "Part A";
+ * "sec-3-A-APPENDIX-B" -> "Appendix B". Consecutive parenthesised levels
+ * join without a dot, as citations are stored ("II.B.4.a.(i)(A)"). null for
+ * a regulation root or an id that yields nothing.
+ */
+export function citationLabelFromId(id: string): string | null {
+  const key = regKeyOf(id);
+  if (!key || id.includes("-top-REG-")) return null;
+  let segs = id.slice(`sec-${key}-`.length).split("-").filter(Boolean);
+  if (!segs.length) return null;
+  if (segs.length >= 2) {
+    const word = segs[segs.length - 2];
+    const last = segs[segs.length - 1];
+    if (/^(PART|APPENDIX|ATTACHMENT|SUBPART)$/.test(word)) return `${word[0]}${word.slice(1).toLowerCase()} ${last}`;
+    if (segs.length === 2 && word === "P") return `Part ${last}`;
+  }
+  let part = "";
+  if (segs.length > 1 && /^[A-Z]$/.test(segs[0]) && !isSectionRoman(segs[0]) && isSectionRoman(segs[1])) {
+    part = `Part ${segs[0]}`;
+    segs = segs.slice(1);
+  }
+  let cit = "";
+  for (const seg of segs) {
+    cit += cit && !(seg.startsWith("(") && cit.endsWith(")")) ? `.${seg}` : seg;
+  }
+  return [part, cit].filter(Boolean).join(" · ") || null;
+}
+
+/**
+ * The return bar's text for an origin in another regulation: the
+ * regulation's display name (never the key), then the short citation when
+ * the id yields one -- "Regulation 7 · Part B · I.B.33". A general permit
+ * goes by its number alone ("GP12 · I.A"), the way permit holders say it;
+ * the bar has no room for "APCD General Permit GP12".
+ */
+export function originTrailLabel(originId: string): string {
+  const key = regKeyOf(originId);
+  const name = !key ? "" : /^gp\d+$/i.test(key) ? key.toUpperCase() : regulationDisplayName(key);
+  return [name, citationLabelFromId(originId)].filter(Boolean).join(" · ");
 }
