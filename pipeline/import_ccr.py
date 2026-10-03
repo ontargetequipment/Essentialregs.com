@@ -4023,7 +4023,7 @@ REG_META: dict[str, dict] = {
     },
     "2": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2336&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 2",
         # Title-page line is "REGULATION NUMBER 2 ODOR EMISSION" (the name is
         # printed on the same line as the number), cite "5 CCR 1001-4".
@@ -4061,7 +4061,7 @@ REG_META: dict[str, dict] = {
     "1": {
         "no_parts": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2335&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 1",
         "root_title": "EMISSION CONTROL FOR PARTICULATE MATTER, SMOKE, CARBON MONOXIDE, AND SULFUR OXIDES 5 CCR 1001-3",
     },
@@ -4086,13 +4086,13 @@ REG_META: dict[str, dict] = {
     "cp": {
         "no_parts": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2334&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Common Provisions Regulation",
         "root_title": "COMMON PROVISIONS REGULATION 5 CCR 1001-2",
     },
     "3": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2337&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 3",
         "root_title": "STATIONARY SOURCE PERMITTING AND AIR POLLUTANT EMISSION NOTICE REQUIREMENTS 5 CCR 1001-5",
     },
@@ -4106,19 +4106,19 @@ REG_META: dict[str, dict] = {
     "9": {
         "no_parts": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2344&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 9",
         "root_title": "OPEN BURNING, PRESCRIBED FIRE, AND PERMITTING 5 CCR 1001-11",
     },
     "6": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2340&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 6",
         "root_title": "STANDARDS OF PERFORMANCE FOR NEW STATIONARY SOURCES 5 CCR 1001-8",
     },
     "7": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2341&deptID=16&agencyID=7",
         # root_citation is deliberately the short "Regulation 7" (the reader
         # <h1>, the /sample labels and e2e SAMPLE_HEADINGS read it); the
         # title is the printed one in the same shape as every other numbered
@@ -4130,7 +4130,7 @@ REG_META: dict[str, dict] = {
     },
     "22": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3325&deptID=16&agencyID=7",
         # root_citation stays the short "Regulation 22" (reader <h1>, sidebar
         # and preview eyebrow read it); the title is the printed one in the
         # same shape as every other numbered regulation. The old value,
@@ -4143,19 +4143,19 @@ REG_META: dict[str, dict] = {
     },
     "26": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3411&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 26",
         "root_title": "CONTROL OF EMISSIONS FROM ENGINES AND MAJOR STATIONARY SOURCES 5 CCR 1001-30",
     },
     "8": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2343&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 8",
         "root_title": "CONTROL OF HAZARDOUS AIR POLLUTANTS 5 CCR 1001-10",
     },
     "24": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3409&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 24",
         # Title page (sources/REG_24.txt lines 12-15) prints "REGULATION
         # NUMBER 24" and the title on one wrapped block, then "5 CCR 1001-28"
@@ -4233,7 +4233,7 @@ REG_META: dict[str, dict] = {
     "ecmc": {
         "family": "rule_series",
         "jurisdiction_level": "state", "issuing_body": "ECMC",
-        "source_url": "https://ecmc.colorado.gov/regulatory/rules",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2124&deptID=13&agencyID=79",
         "root_citation": "Code of Colorado Regulations · 2 CCR 404-1",
         # Title page (page 1 of ECMC.pdf / ECMC.txt lines 1-24) prints, after
         # the Dept./Commission lines: "PRACTICE AND PROCEDURE" then "2 CCR
@@ -4244,7 +4244,7 @@ REG_META: dict[str, dict] = {
     },
     "11": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2346&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 11",
         # Title page (REG_11.txt lines 18-24) prints "REGULATION NUMBER 11" /
         # "MOTOR VEHICLE EMISSIONS INSPECTION PROGRAM" / "5 CCR 1001-13" on
@@ -4287,7 +4287,7 @@ REG_META: dict[str, dict] = {
     # ITEM_TABLE_SPLICE_REGS / UNCAPTIONED_TABLES["27"] (its eight tables).
     "27": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3412&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 27",
         "root_title": "GREENHOUSE GAS EMISSIONS AND ENERGY MANAGEMENT FOR MANUFACTURING 5 CCR 1001-31",
         # clean_pages splices pages together with NO blank line at the seam
@@ -4335,13 +4335,13 @@ REG_META: dict[str, dict] = {
     # table, Part C Table 1, reprinted across PDF pages 25-28).
     "28": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3408&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations \u00b7 Regulation Number 28",
         "root_title": "BUILDING BENCHMARKING AND PERFORMANCE STANDARDS 5 CCR 1001-32",
     },
     "30": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3464&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 30",
         # Title page (REG_30.txt lines 1-25) prints "REGULATION NUMBER 30
         # TOXIC AIR CONTAMINANTS" then "5 CCR 1001-34" on its own line — the
@@ -4361,13 +4361,13 @@ REG_META: dict[str, dict] = {
     # here to match every other root_title in this dict.
     "31": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3469&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 31",
         "root_title": "CONTROL OF METHANE EMISSIONS FROM MUNICIPAL SOLID WASTE LANDFILLS 5 CCR 1001-35",
     },
     "12": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2348&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations \u00b7 Regulation Number 12",
         # Title page (REG_12.txt lines 16-18) prints "REGULATION NUMBER 12
         # REDUCTION OF DIESEL VEHICLE EMISSIONS" then "5 CCR 1001-15" on its
@@ -4387,7 +4387,7 @@ REG_META: dict[str, dict] = {
     # SOB_PART_CONFIG["19"] (Part C) and `centered_appendix_headings` below.
     "19": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2355&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 19",
         "root_title": "THE CONTROL OF LEAD HAZARDS 5 CCR 1001-23",
         # Reg 19's one appendix (Part A's "APPENDIX A — Number of Units to
@@ -4433,7 +4433,7 @@ REG_META: dict[str, dict] = {
         "no_parts": True,
         "seam_paragraph_breaks": True,  # every page seam is a paragraph break — see clean_pages
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2350&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 16",
         "root_title": "STREET SANDING EMISSIONS 5 CCR 1001-18",
     },
@@ -4464,7 +4464,7 @@ REG_META: dict[str, dict] = {
         "seam_paragraph_breaks": True,  # every page seam is a paragraph break — see clean_pages
         "preamble_heading": "INTRODUCTION",
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2352&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · SIP Local Elements",
         "root_title": (
             "STATE IMPLEMENTATION PLAN, SPECIFIC REGULATIONS FOR NONATTAINMENT-"
@@ -4487,13 +4487,13 @@ REG_META: dict[str, dict] = {
         "no_parts": True,
         "seam_paragraph_breaks": True,  # every page seam is a paragraph break — see clean_pages
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2354&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 18",
         "root_title": "CONTROL OF EMISSIONS OF ACID DEPOSITION PRECURSORS 5 CCR 1001-22",
     },
     "25": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3410&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 25",
         # Title page (REG_25.txt lines 16-22) prints "REGULATION NUMBER 25",
         # then the title on two wrapped lines, then "5 CCR 1001-29" on its
@@ -4535,7 +4535,7 @@ REG_META: dict[str, dict] = {
         # regulation.
         "heading_line_own_paragraph": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2347&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Air Quality Standards, Designations and Emission Budgets",
         "root_title": "AIR QUALITY STANDARDS, DESIGNATIONS AND EMISSION BUDGETS 5 CCR 1001-14",
     },
@@ -4587,7 +4587,7 @@ REG_META: dict[str, dict] = {
         # the same reason, as Reg 2's Part A lead-in sentence.
         "part_intro_text": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2333&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · AQCC Procedural Rules",
         "root_title": "PROCEDURAL RULES 5 CCR 1001-1",
     },
@@ -4616,7 +4616,7 @@ REG_META: dict[str, dict] = {
     # reference part whose body is one six-page table).
     "20": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3282&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 20",
         "root_title": "COLORADO CLEAN CARS AND TRUCKS REGULATION 5 CCR 1001-24",
         "labels_without_trailing_dot": True,
@@ -4643,7 +4643,7 @@ REG_META: dict[str, dict] = {
     # (the five whitespace-aligned determination tables in Section IV).
     "23": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3344&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 23",
         "root_title": "REGIONAL HAZE LIMITS 5 CCR 1001-27",
     },
@@ -4667,7 +4667,7 @@ REG_META: dict[str, dict] = {
     # KNOWN_LABEL_ANOMALIES["21"] (the Part A definitions list's misprints).
     "21": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3303&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 21",
         "root_title": (
             "CONTROL OF VOLATILE ORGANIC COMPOUNDS FROM CONSUMER PRODUCTS AND "
@@ -4727,7 +4727,7 @@ REG_META: dict[str, dict] = {
         # as 11 paragraphs instead of the 13 printed. See clean_pages.
         "seam_paragraph_breaks": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2345&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 10",
         "root_title": "CRITERIA FOR ANALYSIS OF TRANSPORTATION CONFORMITY 5 CCR 1001-12",
     },
@@ -4769,7 +4769,7 @@ REG_META: dict[str, dict] = {
         # 16/18/sip carry. See clean_pages.
         "seam_paragraph_breaks": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2351&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 15",
         "root_title": "CONTROL OF EMISSIONS OF OZONE-DEPLETING COMPOUNDS 5 CCR 1001-19",
     },
@@ -4804,7 +4804,7 @@ REG_META: dict[str, dict] = {
         # clean_pages.
         "seam_paragraph_breaks": True,
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=3435&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 29",
         "root_title": "EMISSION REDUCTION REQUIREMENTS FOR LAWN AND GARDEN EQUIPMENT 5 CCR 1001-33",
     },
@@ -4837,7 +4837,7 @@ REG_META: dict[str, dict] = {
     # lines get KNOWN_LABEL_FIXES entries).
     "4": {
         "jurisdiction_level": "state", "issuing_body": "CDPHE-APCD",
-        "source_url": "https://cdphe.colorado.gov/aqcc-regulations",
+        "source_url": "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo&ruleId=2338&deptID=16&agencyID=7",
         "root_citation": "Code of Colorado Regulations · Regulation Number 4",
         "root_title": (
             "SALE AND INSTALLATION OF WOOD-BURNING APPLIANCES AND THE USE OF "

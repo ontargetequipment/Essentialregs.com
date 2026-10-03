@@ -26,6 +26,21 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import import_ccr as ic  # noqa: E402
 
 
+def _sos_ruleinfo(rule_id, dept_id="16", agency_id="7"):
+    """The Colorado Secretary of State's stable per-rule page: it always
+    shows the CURRENT version of the rule (unlike a ruleVersionId PDF link,
+    which goes stale at the next rulemaking). Defaults are the AQCC's
+    (dept 16 / agency 7)."""
+    return (
+        "https://www.sos.state.co.us/CCR/DisplayRule.do?action=ruleinfo"
+        f"&ruleId={rule_id}&deptID={dept_id}&agencyID={agency_id}"
+    )
+
+
+# Rule ids for the three regs checked in a loop (the rest are written inline).
+_SOS_RULE_ID = {"16": "2350", "sip": "2352", "18": "2354"}
+
+
 # ---------------------------------------------------------------------------
 # HTML escaping — full_text is rendered client-side with
 # dangerouslySetInnerHTML, so literal '&', '<', '>' in the source text must
@@ -3068,7 +3083,7 @@ class Reg30MetaTests(unittest.TestCase):
         meta = ic.REG_META["30"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("3464"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 30")
         self.assertEqual(meta["root_title"], "TOXIC AIR CONTAMINANTS 5 CCR 1001-34")
         self.assertNotIn("no_parts", meta)
@@ -3919,7 +3934,7 @@ class Reg11MetaTests(unittest.TestCase):
         meta = ic.REG_META["11"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("2346"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 11")
         self.assertEqual(meta["root_title"], "MOTOR VEHICLE EMISSIONS INSPECTION PROGRAM 5 CCR 1001-13")
         self.assertNotIn("no_parts", meta)
@@ -4607,7 +4622,7 @@ class Reg12MetaTests(unittest.TestCase):
         meta = ic.REG_META["12"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("2348"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 12")
         self.assertEqual(meta["root_title"], "REDUCTION OF DIESEL VEHICLE EMISSIONS 5 CCR 1001-15")
         self.assertNotIn("no_parts", meta)
@@ -5072,7 +5087,7 @@ class Reg25MetaTests(unittest.TestCase):
         meta = ic.REG_META["25"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("3410"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 25")
         self.assertEqual(
             meta["root_title"],
@@ -5605,7 +5620,7 @@ class Reg27MetaTests(unittest.TestCase):
         meta = ic.REG_META["27"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("3412"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 27")
         self.assertEqual(meta["root_title"],
                          "GREENHOUSE GAS EMISSIONS AND ENERGY MANAGEMENT FOR MANUFACTURING 5 CCR 1001-31")
@@ -6045,7 +6060,7 @@ class RegAqsMetaTests(unittest.TestCase):
         self.assertTrue(meta["heading_line_own_paragraph"])
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("2347"))
         self.assertEqual(meta["root_citation"],
                          "Code of Colorado Regulations · Air Quality Standards, Designations and Emission Budgets")
         self.assertEqual(meta["root_title"],
@@ -6572,7 +6587,7 @@ class Batch6SmallConfigTests(unittest.TestCase):
             self.assertTrue(meta["seam_paragraph_breaks"])
             self.assertEqual(meta["jurisdiction_level"], "state")
             self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-            self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+            self.assertEqual(meta["source_url"], _sos_ruleinfo(_SOS_RULE_ID[key]))
             self.assertTrue(ic.reg_has_no_parts(key))
         self.assertEqual(ic.REG_META["16"]["root_citation"], "Code of Colorado Regulations · Regulation Number 16")
         self.assertEqual(ic.REG_META["16"]["root_title"], "STREET SANDING EMISSIONS 5 CCR 1001-18")
@@ -7408,7 +7423,7 @@ class Reg19MetaTests(unittest.TestCase):
         meta = ic.REG_META["19"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("2355"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 19")
         self.assertEqual(meta["root_title"], "THE CONTROL OF LEAD HAZARDS 5 CCR 1001-23")
         self.assertNotIn("no_parts", meta)
@@ -8091,7 +8106,7 @@ class Reg20MetaTests(unittest.TestCase):
         meta = ic.REG_META["20"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("3282"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 20")
         self.assertEqual(meta["root_title"], "COLORADO CLEAN CARS AND TRUCKS REGULATION 5 CCR 1001-24")
         self.assertNotIn("no_parts", meta)
@@ -8664,7 +8679,7 @@ class Reg21MetaTests(unittest.TestCase):
         meta = ic.REG_META["21"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("3303"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 21")
         self.assertEqual(meta["root_title"],
                          "CONTROL OF VOLATILE ORGANIC COMPOUNDS FROM CONSUMER PRODUCTS AND "
@@ -9078,7 +9093,7 @@ class ProcMetaTests(unittest.TestCase):
         meta = ic.REG_META["proc"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("2333"))
         self.assertEqual(meta["root_citation"],
                          "Code of Colorado Regulations · AQCC Procedural Rules")
         self.assertEqual(meta["root_title"], "PROCEDURAL RULES 5 CCR 1001-1")
@@ -9445,7 +9460,7 @@ class Reg4ConfigTests(unittest.TestCase):
         meta = ic.REG_META["4"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("2338"))
         self.assertEqual(meta["root_citation"],
                          "Code of Colorado Regulations · Regulation Number 4")
         self.assertEqual(
@@ -9812,7 +9827,7 @@ class Batch7SmallConfigTests(unittest.TestCase):
         meta = ic.REG_META["10"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("2345"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 10")
         self.assertEqual(meta["root_title"],
                          "CRITERIA FOR ANALYSIS OF TRANSPORTATION CONFORMITY 5 CCR 1001-12")
@@ -10240,7 +10255,7 @@ class Reg23MetaTests(unittest.TestCase):
         meta = ic.REG_META["23"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("3344"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 23")
         self.assertEqual(meta["root_title"], "REGIONAL HAZE LIMITS 5 CCR 1001-27")
         # Ordinary part-structured AQCC reg: no part-less / label / seam flags.
@@ -10562,7 +10577,7 @@ class Reg28MetaTests(unittest.TestCase):
         meta = ic.REG_META["28"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("3408"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 28")
         self.assertEqual(meta["root_title"],
                          "BUILDING BENCHMARKING AND PERFORMANCE STANDARDS 5 CCR 1001-32")
@@ -10828,7 +10843,7 @@ class Reg31MetaTests(unittest.TestCase):
         meta = ic.REG_META["31"]
         self.assertEqual(meta["jurisdiction_level"], "state")
         self.assertEqual(meta["issuing_body"], "CDPHE-APCD")
-        self.assertEqual(meta["source_url"], "https://cdphe.colorado.gov/aqcc-regulations")
+        self.assertEqual(meta["source_url"], _sos_ruleinfo("3469"))
         self.assertEqual(meta["root_citation"], "Code of Colorado Regulations · Regulation Number 31")
         self.assertEqual(
             meta["root_title"],
@@ -11596,3 +11611,55 @@ class CorpusIdIndexTests(XregBase):
             self.assertTrue(all(ic.reg_key_of_id(i) == key for i in ids), key)
         for key, ids in self.idx.items():
             self.assertLessEqual(set(ids), set(full[key]), key)
+
+
+# ---------------------------------------------------------------------------
+# Exact official-source links. "View official source" must land on the exact
+# official document, not a generic agency index page. For the AQCC rules and
+# ECMC's 2 CCR 404-1 that is the Secretary of State's stable per-rule page
+# (it always shows the current version, so it does not go stale at the next
+# rulemaking the way a ruleVersionId PDF link does).
+# ---------------------------------------------------------------------------
+
+class ExactSosSourceUrlTests(unittest.TestCase):
+    GENERIC = {"https://cdphe.colorado.gov/aqcc-regulations", "https://ecmc.colorado.gov/regulatory/rules"}
+
+    @classmethod
+    def setUpClass(cls):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "manifest.json")
+        with open(path, encoding="utf-8") as f:
+            cls.manifest = json.load(f)["sources"]
+        cls.sos_keys = sorted(k for k, v in cls.manifest.items() if v.get("kind") == "sos")
+
+    def test_manifest_covers_all_32_sos_documents(self):
+        self.assertEqual(len(self.sos_keys), 32)  # 31 AQCC documents + ECMC 2 CCR 404-1
+        for k in self.sos_keys:
+            self.assertIn(k, ic.REG_META, k)
+
+    def test_every_sos_reg_links_to_its_exact_rule_page(self):
+        for k in self.sos_keys:
+            e = self.manifest[k]
+            self.assertEqual(
+                ic.REG_META[k]["source_url"],
+                _sos_ruleinfo(e["ruleId"], e["deptID"], e["agencyID"]),
+                k,
+            )
+
+    def test_no_sos_reg_keeps_a_generic_agency_index_url(self):
+        for k in self.sos_keys:
+            self.assertNotIn(ic.REG_META[k]["source_url"], self.GENERIC, k)
+
+    def test_the_ccr_number_in_the_root_title_matches_the_manifest(self):
+        # The ruleId in the URL and the CCR number the reader prints must agree.
+        for k in self.sos_keys:
+            self.assertIn(self.manifest[k]["ccr"], ic.REG_META[k]["root_title"], k)
+
+    def test_urls_are_unique_per_document(self):
+        urls = [ic.REG_META[k]["source_url"] for k in self.sos_keys]
+        self.assertEqual(len(urls), len(set(urls)))
+
+    def test_pinned_examples(self):
+        self.assertEqual(ic.REG_META["3"]["source_url"], _sos_ruleinfo("2337"))    # 5 CCR 1001-5
+        self.assertEqual(ic.REG_META["7"]["source_url"], _sos_ruleinfo("2341"))    # 5 CCR 1001-9
+        self.assertEqual(ic.REG_META["26"]["source_url"], _sos_ruleinfo("3411"))   # 5 CCR 1001-30
+        self.assertEqual(ic.REG_META["ecmc"]["source_url"], _sos_ruleinfo("2124", "13", "79"))  # 2 CCR 404-1
