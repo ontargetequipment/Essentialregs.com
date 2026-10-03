@@ -1,0 +1,1037 @@
+From 56a440016140fc8451886af616bcf299c2add735 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 3 Oct 2026 10:12:51 -0600
+Subject: [PATCH 1/2] Third review, day-one trust fixes: customer changelog,
+ trial terms, Reg 26 badge, pricing for subscribers, OOOO-family intros
+
+- /changelog reads changelog_public() (new migration 20261003160524), an
+  aggregate RPC granted to anon: counts by day, regulation and change type,
+  no notes, no ids. The page no longer renders provision_changes rows, so the
+  pipeline's working log ("Phase 0: regenerated ...", model names, owner
+  instructions) and raw change_type values stay in the database. Same page
+  logged in or out; the "log in to see the full history" banner is gone.
+- Terms of Service: a Free trial paragraph under section 4 (7 days, card
+  required, charge at trial end, cancel before to avoid it with access kept
+  through the trial, reminder email, one trial per customer, failed charge).
+  Last updated October 3, 2026.
+- Jurisdiction badge follows the document, not the row: Regulation 26's
+  incorporated Subpart JJJJ rows (jurisdiction_level 'federal') now read
+  "Colorado" with an "Incorporated federal text" tag on Ask cards. Helpers
+  moved to regulation-names.ts so the test can import them without
+  server-only.
+- /pricing for a subscriber shows the two plans read-only with their own
+  marked, instead of redirecting to the Colorado catalog.
+- Storage-tank and pneumatic-controller question-map intros name OOOO,
+  OOOOa, OOOOb and OOOOc by date window and state-plan status instead of a
+  two-way OOOOb/OOOOc split.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01MnuGsk5pewwiJKykX4kVgF
+---
+ scripts/changelog-group.test.ts               |  75 +++++----
+ scripts/jurisdiction-badge.test.ts            |  37 +++++
+ src/app/changelog/page.tsx                    | 145 ++++--------------
+ src/app/pricing/page.tsx                      |  61 +++++++-
+ src/app/search/page.tsx                       |   6 +
+ src/app/terms/page.tsx                        |  24 +++
+ src/lib/changelog-group.ts                    | 130 +++++++++++-----
+ src/lib/changelog.ts                          | 114 ++------------
+ src/lib/question-maps.ts                      |   4 +-
+ src/lib/regulation-names.ts                   |  37 +++++
+ src/lib/semantic.ts                           |  15 +-
+ .../20261003160524_changelog_public_rpc.sql   |  54 +++++++
+ 12 files changed, 397 insertions(+), 305 deletions(-)
+ create mode 100644 scripts/jurisdiction-badge.test.ts
+ create mode 100644 supabase/migrations/20261003160524_changelog_public_rpc.sql
+
+diff --git a/scripts/changelog-group.test.ts b/scripts/changelog-group.test.ts
+index 263119b..b9942fb 100644
+--- a/scripts/changelog-group.test.ts
++++ b/scripts/changelog-group.test.ts
+@@ -1,44 +1,59 @@
+ /**
+- * /changelog folds the importer's per-provision `text_updated` rows into one
+- * line per regulation per day (src/lib/changelog-group.ts). Pure grouping,
+- * no database.
++ * /changelog folds changelog_public()'s count rows (one per day, regulation
++ * and change type) into one line per regulation per day, with customer
++ * wording (src/lib/changelog-group.ts). Pure grouping, no database.
+  *
+  *   npm test
+  */
+ import assert from "node:assert/strict";
+ import { test } from "node:test";
+-import { groupTextUpdates } from "../src/lib/changelog-group";
++import { describeLine, foldChangelog } from "../src/lib/changelog-group";
+ 
+-const day = (iso: string) => iso.slice(0, 10);
+-
+-test("one group per regulation per day, newest first, counting distinct provisions", () => {
+-  const groups = groupTextUpdates(
+-    [
+-      { provision_id: "sec-7-B-I-D-3-a-(i)", created_at: "2026-09-14T01:00:00Z" },
+-      { provision_id: "sec-7-B-I-D-3-a-(ii)", created_at: "2026-09-14T01:00:01Z" },
+-      // the same provision touched twice on the same day counts once
+-      { provision_id: "sec-7-B-I-D-3-a-(i)", created_at: "2026-09-14T02:00:00Z" },
+-      { provision_id: "sec-3-A-I", created_at: "2026-09-16T01:00:00Z" },
+-      { provision_id: "sec-3-A-II", created_at: "2026-09-16T01:00:00Z" },
+-      // a different day for the same regulation is its own line
+-      { provision_id: "sec-7-A-I", created_at: "2026-09-19T01:00:00Z" },
+-      // a cascade-deleted provision has no id: still counted, grouped under null
+-      { provision_id: null, created_at: "2026-09-16T03:00:00Z" },
+-      { provision_id: null, created_at: "2026-09-16T03:00:01Z" },
+-    ],
+-    day
+-  );
++test("one line per regulation per day, newest first, change types folded in", () => {
++  const lines = foldChangelog([
++    { day: "2026-09-14", reg_key: "7", change_type: "text_updated", provision_count: 1496, latest: "2026-09-14T02:00:00Z" },
++    { day: "2026-09-14", reg_key: "7", change_type: "summary_approved", provision_count: 200, latest: "2026-09-14T03:00:00Z" },
++    { day: "2026-09-14", reg_key: "7", change_type: "summary_edited", provision_count: 12, latest: "2026-09-14T01:00:00Z" },
++    { day: "2026-09-16", reg_key: "3", change_type: "summary_regenerated", provision_count: 40, latest: "2026-09-16T01:00:00Z" },
++    // a cascade-deleted provision has no regulation: grouped under null
++    { day: "2026-09-16", reg_key: null, change_type: "text_updated", provision_count: 2, latest: "2026-09-16T03:00:00Z" },
++    // the one change type with no customer wording is dropped, not shown raw
++    { day: "2026-09-19", reg_key: "7", change_type: "summary_rejected", provision_count: 1, latest: "2026-09-19T01:00:00Z" },
++  ]);
+   assert.deepEqual(
+-    groups.map((g) => [g.dateKey, g.regKey, g.provisionCount, g.latest]),
++    lines.map((l) => [l.dateKey, l.regKey, l.textUpdated, l.reviewed, l.corrected, l.regenerated, l.latest]),
+     [
+-      ["2026-09-19", "7", 1, "2026-09-19T01:00:00Z"],
+-      ["2026-09-16", null, 2, "2026-09-16T03:00:01Z"],
+-      ["2026-09-16", "3", 2, "2026-09-16T01:00:00Z"],
+-      ["2026-09-14", "7", 2, "2026-09-14T02:00:00Z"],
++      ["2026-09-16", null, 2, 0, 0, 0, "2026-09-16T03:00:00Z"],
++      ["2026-09-16", "3", 0, 0, 0, 40, "2026-09-16T01:00:00Z"],
++      ["2026-09-14", "7", 1496, 212, 12, 0, "2026-09-14T03:00:00Z"],
+     ]
+   );
+ });
+ 
+-test("no rows, no groups", () => {
+-  assert.deepEqual(groupTextUpdates([], day), []);
++test("wording: text first, then summaries; corrected shown inside reviewed", () => {
++  const [reg7] = foldChangelog([
++    { day: "2026-09-14", reg_key: "7", change_type: "text_updated", provision_count: 1496, latest: "2026-09-14T02:00:00Z" },
++    { day: "2026-09-14", reg_key: "7", change_type: "summary_approved", provision_count: 200, latest: "2026-09-14T03:00:00Z" },
++    { day: "2026-09-14", reg_key: "7", change_type: "summary_edited", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
++    { day: "2026-09-14", reg_key: "7", change_type: "added", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
++    { day: "2026-09-14", reg_key: "7", change_type: "summary_regenerated", provision_count: 3, latest: "2026-09-14T01:00:00Z" },
++  ]);
++  assert.deepEqual(describeLine(reg7), [
++    "1,496 provisions updated",
++    "1 provision added",
++    "201 summaries reviewed (1 corrected)",
++    "3 summaries rewritten, awaiting review",
++  ]);
++});
++
++test("counts arrive as strings from PostgREST bigint and still add up", () => {
++  const [line] = foldChangelog([
++    { day: "2026-09-14", reg_key: "gp12", change_type: "summary_approved", provision_count: "7" as unknown as number, latest: "2026-09-14T03:00:00Z" },
++  ]);
++  assert.equal(line.reviewed, 7);
++  assert.deepEqual(describeLine(line), ["7 summaries reviewed"]);
++});
++
++test("no rows, no lines", () => {
++  assert.deepEqual(foldChangelog([]), []);
+ });
+diff --git a/scripts/jurisdiction-badge.test.ts b/scripts/jurisdiction-badge.test.ts
+new file mode 100644
+index 0000000..0828d3c
+--- /dev/null
++++ b/scripts/jurisdiction-badge.test.ts
+@@ -0,0 +1,37 @@
++/**
++ * The jurisdiction badge on Ask, keyword and related-provision cards follows
++ * the document, not the row (src/lib/semantic.ts). Regulation 26 Part C
++ * carries 40 CFR 60 Subpart JJJJ text incorporated by reference, stored
++ * with jurisdiction_level 'federal'; a reviewer saw one of those rows
++ * badged "Federal" beside "Regulation 26" and called it a provenance error.
++ *
++ *   npm test
++ */
++import assert from "node:assert/strict";
++import { test } from "node:test";
++import { isIncorporatedFederal, regBadge } from "../src/lib/regulation-names";
++
++test("a row inside a Colorado regulation is Colorado even when stored as federal text", () => {
++  assert.equal(regBadge("26", "federal"), "Colorado");
++  assert.equal(regBadge("26", "state"), "Colorado");
++  assert.equal(regBadge("gp12", "state"), "Colorado");
++  assert.equal(regBadge("ecmc", "state"), "ECMC");
++});
++
++test("federal documents stay Federal whatever the row says", () => {
++  assert.equal(regBadge("jjjj", "federal"), "Federal");
++  assert.equal(regBadge("oooob", "state"), "Federal");
++  assert.equal(regBadge("p192", "federal"), "Federal");
++});
++
++test("with no regulation the row's own jurisdiction decides", () => {
++  assert.equal(regBadge(null, "federal"), "Federal");
++  assert.equal(regBadge(null, "state"), "Colorado");
++});
++
++test("only federal text inside a Colorado document is flagged as incorporated", () => {
++  assert.equal(isIncorporatedFederal("26", "federal"), true);
++  assert.equal(isIncorporatedFederal("26", "state"), false);
++  assert.equal(isIncorporatedFederal("jjjj", "federal"), false);
++  assert.equal(isIncorporatedFederal(null, "federal"), false);
++});
+diff --git a/src/app/changelog/page.tsx b/src/app/changelog/page.tsx
+index 407676b..9965c3f 100644
+--- a/src/app/changelog/page.tsx
++++ b/src/app/changelog/page.tsx
+@@ -1,16 +1,10 @@
+ import Link from "next/link";
+-import { createClient } from "@/lib/supabase/server";
+ import {
+-  changeTypeLabel,
+-  denverDateKey,
+   denverDateLabel,
+-  denverTimeLabel,
+-  fetchRecentChanges,
+-  fetchTextUpdates,
+-  groupTextUpdates,
+-  regKeyOf,
+-  type ProvisionChangeRow,
+-  type TextUpdateGroup,
++  describeLine,
++  fetchChangelog,
++  foldChangelog,
++  type ChangelogLine,
+ } from "@/lib/changelog";
+ import { regulationDisplayName } from "@/lib/regulation-names";
+ 
+@@ -18,48 +12,25 @@ export const metadata = {
+   title: "Changelog",
+ };
+ 
++type Group = { key: string; label: string; lines: ChangelogLine[] };
++
+ /**
+- * One line of the changelog: a moderation entry as stored (one row), or the
+- * importer's `text_updated` rows for one regulation on one day folded into
+- * a single "Regulation 7 — 1,496 provisions updated" line (see
+- * changelog-group.ts). Page-side grouping only; nothing in the database
+- * changes.
++ * What changed in the corpus, for customers: one line per regulation per
++ * day, counts only ("Regulation 7 — 1,496 provisions updated · 212
++ * summaries reviewed"). The same page logged in or out. The per-row
++ * moderation log, with its notes, is internal and stays in the database
++ * (changelog_public() cannot return it).
+  */
+-type Item =
+-  | { kind: "entry"; at: string; row: ProvisionChangeRow }
+-  | { kind: "import"; at: string; group: TextUpdateGroup };
+-
+-type Group = { key: string; label: string; items: Item[] };
+-
+-const COUNT = new Intl.NumberFormat("en-US");
+-
+ export default async function ChangelogPage() {
+-  const supabase = await createClient();
+-  const {
+-    data: { user },
+-  } = await supabase.auth.getUser();
+-
+-  // RLS on provision_changes has no `anon` select policy (see
+-  // supabase/migrations/004_review.sql), so a logged-out visitor always gets
+-  // zero rows here — that's expected, not an error, and is why the "log in"
+-  // banner below doesn't depend on `changes.length === 0`.
+-  const [changes, textUpdates] = await Promise.all([fetchRecentChanges(50), fetchTextUpdates()]);
+-
+-  const items: Item[] = [
+-    ...changes.map((row): Item => ({ kind: "entry", at: row.created_at, row })),
+-    ...groupTextUpdates(textUpdates, denverDateKey).map(
+-      (group): Item => ({ kind: "import", at: group.latest, group })
+-    ),
+-  ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
++  const lines = foldChangelog(await fetchChangelog());
+ 
+   const groups: Group[] = [];
+-  for (const item of items) {
+-    const key = denverDateKey(item.at);
+-    const existing = groups.find((g) => g.key === key);
++  for (const line of lines) {
++    const existing = groups.find((g) => g.key === line.dateKey);
+     if (existing) {
+-      existing.items.push(item);
++      existing.lines.push(line);
+     } else {
+-      groups.push({ key, label: denverDateLabel(key), items: [item] });
++      groups.push({ key: line.dateKey, label: denverDateLabel(line.dateKey), lines: [line] });
+     }
+   }
+ 
+@@ -70,34 +41,13 @@ export default async function ChangelogPage() {
+           Changelog
+         </h1>
+         <p className="mt-2 text-sm text-ink-soft">
+-          What&apos;s changed in the regulation corpus — plain-English
+-          summaries reviewed, edited, or rejected by a human, and regulatory
+-          text updates.
++          What&apos;s changed in the regulation corpus: official text updated
++          from the agency source, and plain-English summaries reviewed,
++          corrected, or rewritten. Each regulation&apos;s page shows the date
++          its text was last verified.
+         </p>
+ 
+-        {!user && (
+-          <div className="mt-6 rounded-lg border border-line bg-accent-soft p-5 text-sm text-ink">
+-            <p className="font-medium">
+-              <Link href="/login" className="inline-flex min-h-11 items-center underline hover:text-accent sm:inline sm:min-h-0">
+-                Log in
+-              </Link>{" "}
+-              to see the full update history.
+-            </p>
+-            <p className="mt-2 text-ink-soft">
+-              The{" "}
+-              <Link href="/states/colorado" className="inline-flex min-h-11 items-center underline hover:text-accent sm:inline sm:min-h-0">
+-                Colorado
+-              </Link>{" "}
+-              and{" "}
+-              <Link href="/federal" className="inline-flex min-h-11 items-center underline hover:text-accent sm:inline sm:min-h-0">
+-                federal
+-              </Link>{" "}
+-              indexes list what the corpus covers today.
+-            </p>
+-          </div>
+-        )}
+-
+-        {user && groups.length === 0 && (
++        {groups.length === 0 && (
+           <p className="mt-10 text-sm text-muted">No changes recorded yet.</p>
+         )}
+ 
+@@ -109,13 +59,9 @@ export default async function ChangelogPage() {
+                   {g.label}
+                 </h2>
+                 <ul className="mt-3 flex flex-col gap-3">
+-                  {g.items.map((item) =>
+-                    item.kind === "import" ? (
+-                      <ImportLine key={`import-${item.group.dateKey}-${item.group.regKey ?? ""}`} group={item.group} />
+-                    ) : (
+-                      <EntryLine key={item.row.id} c={item.row} />
+-                    )
+-                  )}
++                  {g.lines.map((line) => (
++                    <Line key={`${line.dateKey}-${line.regKey ?? ""}`} line={line} />
++                  ))}
+                 </ul>
+               </section>
+             ))}
+@@ -129,54 +75,23 @@ export default async function ChangelogPage() {
+ const LINE_CLASS =
+   "flex flex-wrap items-start justify-between gap-x-3 gap-y-1 rounded-lg border border-line bg-panel px-4 py-3 shadow-sm";
+ 
+-/** A moderation entry, rendered as it always was. */
+-function EntryLine({ c }: { c: ProvisionChangeRow }) {
+-  const p = c.provisions;
+-  const reg = p ? regKeyOf(p.id) : null;
+-  const href = p ? (reg ? `/regulations/${reg}#${p.id}` : `/regs/${p.id}`) : null;
+-  return (
+-    <li className={LINE_CLASS}>
+-      <div className="min-w-0">
+-        {href && p ? (
+-          <Link href={href} className="font-mono text-sm font-semibold text-accent hover:underline">
+-            {p.citation}
+-          </Link>
+-        ) : (
+-          <span className="font-mono text-sm font-semibold text-muted">(provision removed)</span>
+-        )}
+-        <span className="ml-2 text-sm text-ink-soft">{changeTypeLabel(c.change_type)}</span>
+-        {c.note && (
+-          <p className="mt-1 text-xs italic text-muted">
+-            &ldquo;{c.note}&rdquo;
+-          </p>
+-        )}
+-      </div>
+-      <span className="whitespace-nowrap text-xs text-muted">{denverTimeLabel(c.created_at)}</span>
+-    </li>
+-  );
+-}
+-
+-/** One regulation's importer rows for one day, as a single line. */
+-function ImportLine({ group }: { group: TextUpdateGroup }) {
+-  const noun = group.provisionCount === 1 ? "provision" : "provisions";
++/** One regulation's changes for one day, as a single line. */
++function Line({ line }: { line: ChangelogLine }) {
+   return (
+     <li className={LINE_CLASS}>
+       <div className="min-w-0">
+-        {group.regKey ? (
++        {line.regKey ? (
+           <Link
+-            href={`/regulations/${group.regKey}`}
++            href={`/regulations/${line.regKey}`}
+             className="font-serif text-card font-semibold text-ink hover:text-accent hover:underline"
+           >
+-            {regulationDisplayName(group.regKey)}
++            {regulationDisplayName(line.regKey)}
+           </Link>
+         ) : (
+           <span className="font-serif text-card font-semibold text-muted">Removed provisions</span>
+         )}
+-        <span className="ml-2 text-sm text-ink-soft">
+-          — {COUNT.format(group.provisionCount)} {noun} updated
+-        </span>
++        <span className="ml-2 text-sm text-ink-soft">— {describeLine(line).join(" · ")}</span>
+       </div>
+-      <span className="whitespace-nowrap text-xs text-muted">{denverTimeLabel(group.latest)}</span>
+     </li>
+   );
+ }
+diff --git a/src/app/pricing/page.tsx b/src/app/pricing/page.tsx
+index 9b84872..ebdeb7c 100644
+--- a/src/app/pricing/page.tsx
++++ b/src/app/pricing/page.tsx
+@@ -1,9 +1,15 @@
+ import type { Metadata } from "next";
+ import Link from "next/link";
+-import { redirect } from "next/navigation";
+ import { getAccessStatus } from "@/lib/access";
+-import { PLAN_NAMES, TRIAL_DAYS, parseBillingInterval } from "@/lib/pricing";
+-import { PlanChoice } from "@/components/PlanChoice";
++import {
++  PLAN_NAMES,
++  PRICE_DISPLAY,
++  PRICE_LOOKUP,
++  TRIAL_DAYS,
++  parseBillingInterval,
++  type BillingInterval,
++} from "@/lib/pricing";
++import { PLAN_ORDER, PlanCards, PlanChoice } from "@/components/PlanChoice";
+ 
+ export const metadata: Metadata = {
+   title: "Pricing",
+@@ -20,12 +26,55 @@ export const metadata: Metadata = {
+ export default async function PricingPage(props: PageProps<"/pricing">) {
+   const [access, searchParams] = await Promise.all([getAccessStatus(), props.searchParams]);
+ 
+-  // Nothing to choose for a subscriber (or a comped account).
+-  if (access.hasAccess) redirect("/states/colorado");
+-
+   const confirmed = searchParams.confirmed === "1";
+   const chosen = parseBillingInterval(searchParams.plan);
+ 
++  // A subscriber (or a comped account) has nothing to buy here, but the
++  // Pricing link in the header still has to show them the prices: until
++  // 3 Oct 2026 this redirected to the Colorado catalog, so a paying
++  // customer could not see what the plans cost (reviewer, Oct 2026). Show
++  // the same two boxes, read-only, with their own plan marked and billing
++  // changes pointed at the account page.
++  if (access.hasAccess) {
++    const current = (PLAN_ORDER as readonly BillingInterval[]).find((i) => PRICE_LOOKUP[i] === access.plan) ?? null;
++    return (
++      <div className="mx-auto max-w-md px-6 py-10 sm:py-14">
++        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Plans and pricing</h1>
++        <p className="mt-2 text-sm text-ink-soft">
++          {access.manualOverride && !current
++            ? "Your account has complimentary access; no plan is needed."
++            : current
++              ? `You are on the ${PLAN_NAMES[current]} plan.`
++              : "You have an active subscription."}{" "}
++          Change plans, update your card, or cancel from your{" "}
++          <Link href="/account" className="font-medium underline underline-offset-2 hover:text-accent">
++            account page
++          </Link>
++          .
++        </p>
++        <PlanCards
++          chosen={current}
++          className="mt-5"
++          cta={(interval) => (
++            <p className="text-xs text-muted">
++              {interval === current ? "Your current plan." : `${PRICE_DISPLAY[interval]}, billed ${interval === "year" ? "yearly" : "monthly"}.`}
++            </p>
++          )}
++        />
++        <p className="mt-6 text-xs text-muted">
++          Need multiple seats for your team?{" "}
++          <Link
++            href="/contact-sales"
++            className="inline-flex min-h-11 items-center font-medium text-ink-soft underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
++          >
++            Contact sales
++          </Link>
++          .
++        </p>
++      </div>
++    );
++  }
++
+   return (
+     <div className="mx-auto max-w-md px-6 py-10 sm:py-14">
+       {confirmed && (
+diff --git a/src/app/search/page.tsx b/src/app/search/page.tsx
+index ec8adf4..c0132b3 100644
+--- a/src/app/search/page.tsx
++++ b/src/app/search/page.tsx
+@@ -23,6 +23,7 @@ import {
+   MAX_ASK_LENGTH,
+   SemanticError,
+   hrefForHit,
++  isIncorporatedFederal,
+   jurisdictionOfKey,
+   regBadge,
+   semanticSearch,
+@@ -156,6 +157,11 @@ function AskCard({
+               {CLOSED_PERMIT_BADGE.label}
+             </span>
+           )}
++          {isIncorporatedFederal(row.reg_key, row.jurisdiction_level) && (
++            <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title="Federal text this Colorado regulation incorporates by reference. The badge names the regulation you are reading; the federal rule itself is in the corpus under Federal.">
++              Incorporated federal text
++            </span>
++          )}
+           {/* Since 20260930003557 a keyword-only row carries its real cosine, so the
+               null branch is rare: only a row with no embedding still lands here. A
+               canonical map row retrieval did not return has no score at all. */}
+diff --git a/src/app/terms/page.tsx b/src/app/terms/page.tsx
+index 3648a73..e7ddced 100644
+--- a/src/app/terms/page.tsx
++++ b/src/app/terms/page.tsx
+@@ -2,6 +2,7 @@
+ import type { Metadata } from "next";
+ import Link from "next/link";
+ import { LegalList, LegalPage, LegalSection } from "@/components/LegalPage";
++import { TRIAL_DAYS } from "@/lib/pricing";
+ 
+ export const metadata: Metadata = {
+   title: "Terms of Service",
+@@ -15,6 +16,7 @@ export default function TermsPage() {
+   return (
+     <LegalPage
+       title="Terms of Service"
++      lastUpdated="October 3, 2026"
+       intro={
+         <p>
+           These Terms of Service (the &ldquo;Terms&rdquo;) govern your access
+@@ -105,6 +107,28 @@ export default function TermsPage() {
+           retry it and may suspend or terminate your access until payment is
+           received.
+         </p>
++        <p>
++          <strong>Free trial.</strong> If you have never held an EssentialRegs
++          subscription, your first subscription on either plan begins with a
++          free trial of {TRIAL_DAYS} days. A valid payment method is required
++          to start the trial, but nothing is charged when it starts. When the
++          trial ends, the payment method on file is charged the full price of
++          the plan you chose and the paid term begins. To avoid the charge,
++          cancel before the trial ends from your account page or by emailing{" "}
++          <a href={`mailto:${SUPPORT_EMAIL}`} className="underline underline-offset-2">
++            {SUPPORT_EMAIL}
++          </a>
++          . If you cancel during the trial, you are not charged and you keep
++          access to subscriber content until the trial ends. We send a
++          reminder email before the trial ends. The trial is
++          offered once per customer: an account that has previously held a
++          subscription, whether or not it was canceled during its trial, is
++          charged at checkout with no trial. If the charge at the end of the
++          trial fails, we may retry it and may suspend your access until
++          payment is received. We may change or withdraw the trial offer for
++          new customers at any time; a change does not affect a trial already
++          in progress.
++        </p>
+       </LegalSection>
+ 
+       <LegalSection number={5} title="Cancellation and refunds">
+diff --git a/src/lib/changelog-group.ts b/src/lib/changelog-group.ts
+index a3f725d..1614546 100644
+--- a/src/lib/changelog-group.ts
++++ b/src/lib/changelog-group.ts
+@@ -1,54 +1,110 @@
+ /**
+- * Page-side collapsing of the importer's changelog rows. Every re-import
+- * writes one `text_updated` row per provision whose text changed (the
+- * provisions_log_text_updated trigger), so a single Regulation 3 import
+- * leaves ~2,000 identical "Regulatory text updated" lines. /changelog folds
+- * them into one line per regulation per day ("Regulation 3 — 2,105
+- * provisions updated"). Pure, dependency-free: no schema change, no
+- * migration, nothing deleted; the rows are only grouped for display.
++ * Page-side folding of the changelog_public() rows (one per Denver day,
++ * regulation and change type -- see
++ * supabase/migrations/20261003160524_changelog_public_rpc.sql) into one line
++ * per regulation per day: "Regulation 7 — 1,496 provisions updated · 212
++ * summaries reviewed". Pure, dependency-free; the rows carry counts only,
++ * never a note or an id, so nothing here can leak the pipeline's working log.
+  */
+-import { regKeyOf } from "@/lib/regulation-names";
+ 
+-export type TextUpdateRow = {
+-  provision_id: string | null;
+-  created_at: string;
++export type ChangelogCountRow = {
++  /** Calendar day in America/Denver, "YYYY-MM-DD". */
++  day: string;
++  /** The regulation the provisions belong to, or null when the provision row is gone. */
++  reg_key: string | null;
++  change_type: string;
++  provision_count: number;
++  /** ISO timestamp of the most recent row in the group. */
++  latest: string;
+ };
+ 
+-export type TextUpdateGroup = {
+-  /** Calendar day (the caller's date key, e.g. "2026-09-16" in Denver). */
++export type ChangelogLine = {
+   dateKey: string;
+-  /** The regulation the provisions belong to, or null when the provision row is gone. */
+   regKey: string | null;
+-  /** Distinct provisions updated that day -- a provision touched twice counts once. */
+-  provisionCount: number;
+-  /** ISO timestamp of the most recent row in the group. */
++  /** Importer rows: provisions whose official text changed. */
++  textUpdated: number;
++  /** Provisions added to the corpus. */
++  added: number;
++  /** Summaries a reviewer approved as-is or corrected. */
++  reviewed: number;
++  /** Of those, the ones the reviewer corrected before approving. */
++  corrected: number;
++  /** Summaries rewritten by the pipeline (back in the review queue). */
++  regenerated: number;
++  /** ISO timestamp of the most recent row folded into the line. */
+   latest: string;
+ };
+ 
+ /**
+- * Groups `text_updated` rows by (day, regulation). `dateKeyOf` turns a
+- * timestamp into the day it belongs to (denverDateKey in changelog.ts).
+- * Groups come back newest first, by their latest row.
++ * One line per (day, regulation), newest first by the latest row folded in.
++ * Change types the page has no words for are dropped rather than shown raw.
+  */
+-export function groupTextUpdates(
+-  rows: TextUpdateRow[],
+-  dateKeyOf: (iso: string) => string
+-): TextUpdateGroup[] {
+-  const groups = new Map<string, { dateKey: string; regKey: string | null; ids: Set<string>; latest: string }>();
++export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
++  const lines = new Map<string, ChangelogLine>();
+   for (const row of rows) {
+-    const dateKey = dateKeyOf(row.created_at);
+-    const regKey = row.provision_id ? regKeyOf(row.provision_id) : null;
+-    const key = `${dateKey}\u0000${regKey ?? ""}`;
+-    let g = groups.get(key);
+-    if (!g) {
+-      g = { dateKey, regKey, ids: new Set(), latest: row.created_at };
+-      groups.set(key, g);
++    const key = `${row.day}\u0000${row.reg_key ?? ""}`;
++    let line = lines.get(key);
++    if (!line) {
++      line = {
++        dateKey: row.day,
++        regKey: row.reg_key,
++        textUpdated: 0,
++        added: 0,
++        reviewed: 0,
++        corrected: 0,
++        regenerated: 0,
++        latest: row.latest,
++      };
++      lines.set(key, line);
++    }
++    const n = Number(row.provision_count) || 0;
++    switch (row.change_type) {
++      case "text_updated":
++        line.textUpdated += n;
++        break;
++      case "added":
++        line.added += n;
++        break;
++      case "summary_approved":
++        line.reviewed += n;
++        break;
++      case "summary_edited":
++        line.reviewed += n;
++        line.corrected += n;
++        break;
++      case "summary_regenerated":
++        line.regenerated += n;
++        break;
++      default:
++        // Unknown or internal change type: not a customer-facing event.
++        break;
+     }
+-    // A cascade-deleted provision has no id left to count; count the row.
+-    g.ids.add(row.provision_id ?? `\u0000${g.ids.size}`);
+-    if (row.created_at > g.latest) g.latest = row.created_at;
++    if (row.latest > line.latest) line.latest = row.latest;
+   }
+-  return Array.from(groups.values())
+-    .map((g) => ({ dateKey: g.dateKey, regKey: g.regKey, provisionCount: g.ids.size, latest: g.latest }))
++  return Array.from(lines.values())
++    .filter((l) => l.textUpdated + l.added + l.reviewed + l.regenerated > 0)
+     .sort((a, b) => (a.latest < b.latest ? 1 : a.latest > b.latest ? -1 : 0));
+ }
++
++const COUNT = new Intl.NumberFormat("en-US");
++
++function plural(n: number, one: string, many: string): string {
++  return `${COUNT.format(n)} ${n === 1 ? one : many}`;
++}
++
++/**
++ * The customer-facing phrases for one line, in the order a reader cares
++ * about them: what changed in the official text first, then what happened
++ * to the summaries. Empty when the line has nothing to say.
++ */
++export function describeLine(line: ChangelogLine): string[] {
++  const parts: string[] = [];
++  if (line.textUpdated > 0) parts.push(`${plural(line.textUpdated, "provision", "provisions")} updated`);
++  if (line.added > 0) parts.push(`${plural(line.added, "provision", "provisions")} added`);
++  if (line.reviewed > 0) {
++    const reviewed = `${plural(line.reviewed, "summary", "summaries")} reviewed`;
++    parts.push(line.corrected > 0 ? `${reviewed} (${COUNT.format(line.corrected)} corrected)` : reviewed);
++  }
++  if (line.regenerated > 0) parts.push(`${plural(line.regenerated, "summary", "summaries")} rewritten, awaiting review`);
++  return parts;
++}
+diff --git a/src/lib/changelog.ts b/src/lib/changelog.ts
+index e538a7d..a143284 100644
+--- a/src/lib/changelog.ts
++++ b/src/lib/changelog.ts
+@@ -1,21 +1,8 @@
+ import { createClient } from "@/lib/supabase/server";
+-import type { TextUpdateRow } from "@/lib/changelog-group";
++import type { ChangelogCountRow } from "@/lib/changelog-group";
+ 
+-export type { TextUpdateGroup, TextUpdateRow } from "@/lib/changelog-group";
+-export { groupTextUpdates } from "@/lib/changelog-group";
+-
+-/** Human-readable label for each provision_changes.change_type value. */
+-const CHANGE_TYPE_LABELS: Record<string, string> = {
+-  summary_approved: "Summary reviewed and approved",
+-  summary_edited: "Summary edited by a reviewer",
+-  summary_rejected: "Summary rejected",
+-  text_updated: "Regulatory text updated",
+-  added: "Added",
+-};
+-
+-export function changeTypeLabel(changeType: string): string {
+-  return CHANGE_TYPE_LABELS[changeType] ?? changeType;
+-}
++export type { ChangelogCountRow, ChangelogLine } from "@/lib/changelog-group";
++export { describeLine, foldChangelog } from "@/lib/changelog-group";
+ 
+ /**
+  * Today's date in America/Denver as "YYYY-MM-DD" — used to stamp
+@@ -32,17 +19,7 @@ export function todayDenver(): string {
+   }).format(new Date());
+ }
+ 
+-/** Grouping key for a timestamptz, by calendar date in America/Denver. */
+-export function denverDateKey(iso: string): string {
+-  return new Intl.DateTimeFormat("en-CA", {
+-    timeZone: "America/Denver",
+-    year: "numeric",
+-    month: "2-digit",
+-    day: "2-digit",
+-  }).format(new Date(iso));
+-}
+-
+-/** Display label for a denverDateKey group header, e.g. "September 12, 2026". */
++/** Display label for a "YYYY-MM-DD" day key, e.g. "September 12, 2026". */
+ export function denverDateLabel(dateKey: string): string {
+   // Parse as a plain date (noon UTC avoids any DST-adjacent day-shift) rather
+   // than re-deriving from a timestamp, so the label always matches the key
+@@ -56,87 +33,22 @@ export function denverDateLabel(dateKey: string): string {
+   }).format(new Date(Date.UTC(y, m - 1, d, 12)));
+ }
+ 
+-/** Display time for one change row, e.g. "2:14 PM". */
+-export function denverTimeLabel(iso: string): string {
+-  return new Intl.DateTimeFormat("en-US", {
+-    timeZone: "America/Denver",
+-    hour: "numeric",
+-    minute: "2-digit",
+-  }).format(new Date(iso));
+-}
+-
+ /** The "{reg}" segment of an id shaped like "sec-{reg}-...", or null. */
+ export function regKeyOf(id: string): string | null {
+   return id.match(/^sec-([^-]+)-/)?.[1] ?? null;
+ }
+ 
+-export type ProvisionChangeRow = {
+-  id: number;
+-  change_type: string;
+-  note: string | null;
+-  created_at: string;
+-  provisions: { id: string; citation: string; title: string } | null;
+-};
+-
+ /**
+- * Most recent provision_changes rows, joined to their provision's
+- * citation/title. Reads through the cookie-scoped client, so RLS decides
+- * what comes back: an anonymous visitor gets zero rows (provision_changes
+- * has no `anon` select policy — see supabase/migrations/004_review.sql),
+- * any signed-in user gets everything.
+- *
+- * `text_updated` rows (the importer's, one per provision) are left out
+- * here and read separately by fetchTextUpdates: at ~5,000 of them the 50
+- * most recent changes would otherwise all be importer rows and the human
+- * review entries would never make the page.
++ * The customer-facing changelog: counts by Denver day, regulation and change
++ * type from changelog_public() (see
++ * supabase/migrations/20261003160524_changelog_public_rpc.sql). The function
++ * is security definer and granted to `anon`, so a logged-out visitor sees
++ * the same page a subscriber does; it returns no notes and no ids, so the
++ * pipeline's and the reviewers' working log stays in the database.
+  */
+-export async function fetchRecentChanges(limit = 50): Promise<ProvisionChangeRow[]> {
++export async function fetchChangelog(): Promise<ChangelogCountRow[]> {
+   const supabase = await createClient();
+-  const { data, error } = await supabase
+-    .from("provision_changes")
+-    .select("id, change_type, note, created_at, provisions(id, citation, title)")
+-    .neq("change_type", "text_updated")
+-    .order("created_at", { ascending: false })
+-    .limit(limit);
+-
++  const { data, error } = await supabase.rpc("changelog_public");
+   if (error) throw new Error(error.message);
+-  return (data ?? []) as unknown as ProvisionChangeRow[];
+-}
+-
+-const TEXT_UPDATE_PAGE = 1000;
+-/** 10,000 rows; the corpus had 4,926 on 2026-09-26. Older rows past the cap are simply not shown. */
+-const TEXT_UPDATE_MAX_PAGES = 10;
+-
+-/**
+- * Every `text_updated` row (the importer's output), two columns only, for
+- * /changelog to fold into one line per regulation per day (groupTextUpdates).
+- * Paginates past PostgREST's default 1000-row cap the same way
+- * fetchRegulationProvisions does: page 0 alone with the exact count, the
+- * remaining pages at once. Same RLS as fetchRecentChanges: anonymous
+- * visitors get nothing.
+- */
+-export async function fetchTextUpdates(): Promise<TextUpdateRow[]> {
+-  const supabase = await createClient();
+-  const page = (i: number) =>
+-    supabase
+-      .from("provision_changes")
+-      .select("provision_id, created_at", i === 0 ? { count: "exact" } : undefined)
+-      .eq("change_type", "text_updated")
+-      .order("created_at", { ascending: false })
+-      .order("id", { ascending: false })
+-      .range(i * TEXT_UPDATE_PAGE, (i + 1) * TEXT_UPDATE_PAGE - 1);
+-
+-  const first = await page(0);
+-  if (first.error) throw new Error(first.error.message);
+-  const rows: TextUpdateRow[] = (first.data ?? []) as TextUpdateRow[];
+-  const total = first.count ?? rows.length;
+-  const pages = Math.min(Math.ceil(total / TEXT_UPDATE_PAGE), TEXT_UPDATE_MAX_PAGES);
+-  if (pages > 1) {
+-    const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, i) => page(i + 1)));
+-    for (const r of rest) {
+-      if (r.error) throw new Error(r.error.message);
+-      rows.push(...((r.data ?? []) as TextUpdateRow[]));
+-    }
+-  }
+-  return rows;
++  return (data ?? []) as ChangelogCountRow[];
+ }
+diff --git a/src/lib/question-maps.ts b/src/lib/question-maps.ts
+index 1817a00..fad7f43 100644
+--- a/src/lib/question-maps.ts
++++ b/src/lib/question-maps.ts
+@@ -198,7 +198,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
+       /\b(?:storage (?:tanks?|vessels?)|tank batter(?:y|ies)|(?:condensate|produced[- ]water|crude[- ]oil|oil|hydrocarbon liquid) tanks?|thief hatch(?:es)?|gp\s?0?1|gp\s?0?5|gp\s?0?8|gp\s?0?7)\b/i,
+     ],
+     factors:
+-      "What applies depends on the tank's uncontrolled and controlled VOC emissions, what it stores (condensate, crude oil, intermediate hydrocarbon liquids or produced water), its throughput, when it was built or modified, whether it sits at a well production facility or a midstream or E&P site, whether that site is in the 8-hour Ozone Control Area or Northern Weld County, and — federally — whether the tank battery was constructed, modified or reconstructed after December 6, 2022 (OOOOb) or before (OOOOc).",
++      "What applies depends on the tank's uncontrolled and controlled VOC emissions, what it stores (condensate, crude oil, intermediate hydrocarbon liquids or produced water), its throughput, when it was built or modified, whether it sits at a well production facility or a midstream or E&P site, whether that site is in the 8-hour Ozone Control Area or Northern Weld County, and — federally — which NSPS subpart reaches the tank battery: OOOOb if it was constructed, modified or reconstructed after December 6, 2022; OOOOa if that happened between September 18, 2015 and December 6, 2022 (the original Subpart OOOO covers August 23, 2011 to September 18, 2015 and is not in this corpus); and OOOOc for existing tank batteries, on the schedule in Colorado's state plan once that plan takes effect. A tank battery modified after a subpart's date moves into that subpart, and each subpart's own storage vessel threshold (potential VOC or methane emissions) decides whether the battery is covered at all.",
+     provisions: [
+       // Colorado permitting and APEN
+       { id: "sec-3-A-II-A", group: "Colorado permitting and APEN", why: "APENs are required for new, modified and existing sources unless exempt under II.D" },
+@@ -240,7 +240,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
+       /\b(?:pneumatic (?:controllers?|devices?|pumps?)|process controllers?|(?:high|low|no|zero)[- ]bleed|natural gas[- ](?:driven|actuated) controllers?|intermittent (?:vent )?controllers?)\b/i,
+     ],
+     factors:
+-      "What applies depends on whether the controller or pump is driven by natural gas, whether it is continuous-bleed (high or low) or intermittent, when the facility was built or modified (after December 6, 2022 → OOOOb; earlier → OOOOc and Colorado's 111(d) plan), whether the site has access to electrical power, whether it is a natural gas processing plant, and whether it sits in the 8-hour Ozone Control Area or Northern Weld County.",
++      "What applies depends on whether the controller or pump is driven by natural gas, whether it is continuous-bleed (high or low) or intermittent, when the facility was built or modified (after December 6, 2022 → OOOOb; September 18, 2015 to December 6, 2022 → OOOOa; existing facilities → OOOOc, on the schedule in Colorado's 111(d) state plan once it takes effect), whether the site has access to electrical power, whether it is a natural gas processing plant, and whether it sits in the 8-hour Ozone Control Area or Northern Weld County.",
+     provisions: [
+       // Colorado standards
+       { id: "sec-7-B-III", group: "Colorado standards", why: "Reg 7 Part B III — natural gas-actuated pneumatic controllers and pumps (the section)" },
+diff --git a/src/lib/regulation-names.ts b/src/lib/regulation-names.ts
+index d4fe09e..fd0b49d 100644
+--- a/src/lib/regulation-names.ts
++++ b/src/lib/regulation-names.ts
+@@ -87,3 +87,40 @@ export function regKeyOf(id: string): string | null {
+ export function rootIdOf(regKey: string): string {
+   return `sec-${regKey}-top-REG-${regKey}`;
+ }
++
++/** Federal reg keys: 40 CFR 60 Subparts OOOO, OOOOa/b/c, JJJJ, IIII, 40 CFR 63 Subpart ZZZZ and the 49 CFR PHMSA parts (p190..p199). */
++const FEDERAL_KEY = /^(oooo[abc]?|jjjj|iiii|zzzz|p\d{3})$/;
++
++/**
++ * Human label for the reg badge on results and related panels. The
++ * DOCUMENT decides: a row inside Regulation 26 is Colorado even when its
++ * own jurisdiction_level is 'federal', which is the case for the 40 CFR 60
++ * Subpart JJJJ text Reg 26 Part C incorporates by reference (sec-26-C-FEDJJJJ
++ * and its children; see _load_reg26_fedjjjj_supplement in
++ * pipeline/import_ccr.py). A reviewer saw one of those rows labeled
++ * "Federal" beside "Regulation 26" and read it as a provenance error, which
++ * it is: Regulation 26 is a Colorado regulation whatever it incorporates.
++ * The row-level jurisdiction only decides when the row has no regulation.
++ */
++export function regBadge(regKey: string | null, jurisdiction: string): string {
++  if (regKey) {
++    if (FEDERAL_KEY.test(regKey)) return "Federal";
++    if (regKey === "ecmc") return "ECMC";
++    return "Colorado";
++  }
++  return jurisdiction === "federal" ? "Federal" : "Colorado";
++}
++
++/**
++ * True for a row of federal text carried inside a Colorado document (the
++ * Reg 26 Subpart JJJJ block): the badge says Colorado, and the card can add
++ * that the text is incorporated from a federal rule.
++ */
++export function isIncorporatedFederal(regKey: string | null, jurisdiction: string): boolean {
++  return !!regKey && !FEDERAL_KEY.test(regKey) && jurisdiction === "federal";
++}
++
++/** "state" | "federal" from the reg key alone (for rows that don't carry jurisdiction_level). */
++export function jurisdictionOfKey(regKey: string | null): "state" | "federal" {
++  return regKey && FEDERAL_KEY.test(regKey) ? "federal" : "state";
++}
+diff --git a/src/lib/semantic.ts b/src/lib/semantic.ts
+index 57cee4e..878bf3e 100644
+--- a/src/lib/semantic.ts
++++ b/src/lib/semantic.ts
+@@ -83,20 +83,7 @@ export class SemanticError extends Error {
+   }
+ }
+ 
+-/** Human label for the reg badge on results and related panels. */
+-export function regBadge(regKey: string | null, jurisdiction: string): string {
+-  if (jurisdiction === "federal") return "Federal";
+-  if (regKey === "ecmc") return "ECMC";
+-  return "Colorado";
+-}
+-
+-/** Federal reg keys: 40 CFR 60 Subparts OOOO, OOOOa/b/c, JJJJ, IIII, 40 CFR 63 Subpart ZZZZ and the 49 CFR PHMSA parts (p190..p199). */
+-const FEDERAL_KEY = /^(oooo[abc]?|jjjj|iiii|zzzz|p\d{3})$/;
+-
+-/** "state" | "federal" from the reg key alone (for rows that don't carry jurisdiction_level). */
+-export function jurisdictionOfKey(regKey: string | null): "state" | "federal" {
+-  return regKey && FEDERAL_KEY.test(regKey) ? "federal" : "state";
+-}
++export { isIncorporatedFederal, jurisdictionOfKey, regBadge } from "@/lib/regulation-names";
+ 
+ /**
+  * Display name for a hit's reg key ("Regulation 7", "40 CFR Part 60 Subpart
+diff --git a/supabase/migrations/20261003160524_changelog_public_rpc.sql b/supabase/migrations/20261003160524_changelog_public_rpc.sql
+new file mode 100644
+index 0000000..0e5237b
+--- /dev/null
++++ b/supabase/migrations/20261003160524_changelog_public_rpc.sql
+@@ -0,0 +1,54 @@
++-- Customer-facing changelog.
++--
++-- /changelog used to render provision_changes row by row for any signed-in
++-- user, note column included. The notes are the pipeline's and the
++-- reviewers' working log ("Phase 0: regenerated from provision + 4
++-- descendants (model ...)", "owner instruction 2026-09-16", ...), and the
++-- raw change_type values leaked where no label existed. A reviewer read it
++-- as an unfinished engineering log on a paid product.
++--
++-- changelog_public() returns only counts: one row per Denver calendar day,
++-- regulation and change type, with no notes, no provision ids and no row
++-- ids. Statement-of-basis and ordinary provisions count alike. The page
++-- folds the change types into one line per regulation per day.
++--
++-- security definer, because provision_changes has no `anon` select policy
++-- (20260913000100) and must keep none: the function is the only thing an
++-- anonymous visitor can read from the table, and it cannot return a note.
++-- Rejected summaries are left out: a withheld summary is not a change a
++-- reader can see.
++
++create or replace function public.changelog_public()
++returns table (
++  day date,
++  reg_key text,
++  change_type text,
++  provision_count bigint,
++  latest timestamptz
++)
++language sql
++stable
++security definer
++set search_path = public
++as $$
++  select
++    (c.created_at at time zone 'America/Denver')::date as day,
++    coalesce(p.reg_key, substring(c.provision_id from '^sec-([^-]+)-')) as reg_key,
++    c.change_type,
++    count(distinct coalesce(c.provision_id, c.id::text)) as provision_count,
++    max(c.created_at) as latest
++  from provision_changes c
++  left join provisions p on p.id = c.provision_id
++  where c.change_type in (
++    'text_updated', 'summary_approved', 'summary_edited',
++    'summary_regenerated', 'added'
++  )
++  group by 1, 2, 3
++  order by max(c.created_at) desc;
++$$;
++
++revoke all on function public.changelog_public() from public;
++grant execute on function public.changelog_public() to anon, authenticated;
++
++comment on function public.changelog_public() is
++  'Counts of provision_changes by Denver day, regulation and change type, for /changelog. Returns no notes or ids; the only read of provision_changes an anonymous visitor has.';
+-- 
+2.43.0
+
+
+From 25fa09632274b99d76debcb294a9c11af582febf Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 3 Oct 2026 10:27:27 -0600
+Subject: [PATCH 2/2] CEO plan: Oct 3 status, the path-to-9 doc, and the
+ Code-does-git operating rule
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01MnuGsk5pewwiJKykX4kVgF
+---
+ docs/CEO_PHASE_PLAN.md | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/docs/CEO_PHASE_PLAN.md b/docs/CEO_PHASE_PLAN.md
+index c0f8a2a..ea502b9 100644
+--- a/docs/CEO_PHASE_PLAN.md
++++ b/docs/CEO_PHASE_PLAN.md
+@@ -2,6 +2,12 @@
+ 
+ Operating model the owner (Brody) set: Claude acts as CEO — plans in phases, delegates all build work to agents, reviews their output and sends it back for revision, and asks permission before anything that costs money. Brody is non-technical with git; keep instructions to him concrete and click-by-click.
+ 
++## Status as of Oct 3 2026 (Cowork CEO session)
++
++Three outside reviews run Sep 25 – Oct 3. The third scored 8.4/10 overall (Ask 8, keyword 9, trust 8, reader 8.5, navigation 7.5) and said "ready to charge." The working plan to take every area to 9 is the Cowork doc "EssentialRegs: Path to 9/10" (https://claude.ai/code/artifact/c0b17668-e935-465e-be84-9e28aa651a1e): day-one trust fixes, then Sprint 2 (citation parser and exact deep links, citation preview, back-to-origin trail, jump-field Enter and URL hash, exact official PDFs), then Sprint 3 (GP12 equations, extraction fixes with a [sic] convention, shorter parent summaries, Ask tab click), then the same reviewer again. Its regression-protocol table is the acceptance suite.
++
++Day-one fixes are on branch `claude/third-review-trust-fixes` (also as a patch Brody holds): customer-facing /changelog via `changelog_public()` (migration 20261003160524, already applied), trial terms in /terms, jurisdiction badge from the document (Reg 26's incorporated JJJJ rows no longer read "Federal"), /pricing for subscribers, OOOO-family wording in the tanks and controller maps. Two owner decisions open: (1) 6,300 of the 6,410 "approved" summaries were approved by the AI second pass, and the reader's "Reviewed" badge reads as human review — relabel or do the human pass on the GPs and Reg 3 Part A first; (2) the 20 Subpart JJJJ rows inside Reg 26 Part C are not in the Reg 26 PDF and duplicate the corpus's own JJJJ document — drop them and link, or keep them badged.
++
+ ## Status as of Sep 13 2026
+ 
+ **Phase 1 — LIVE, verified on production (www.essentialregs.com):** Stripe annual subscription (checkout/portal/webhook routes; RLS = active/trialing subscriber OR `profiles.access_granted`; pricing card with $299/yr placeholder in `src/lib/pricing.ts`; `/regulations` upsell when no access); plain-English summary panel in the reader (`summaryPanelHtml()`, renders nothing while `ai_summary` is empty, hides `rejected`); site-wide search (`search_vector` + `search_provisions()` RPC, `/search`, header box); legal + marketing pages (`/terms`, `/privacy`, `/disclaimer`, `/about`, `/contact`, sitemap, robots, OG metadata — legal text is a draft awaiting attorney review); summary pipeline (`pipeline/summarize.py` + `.github/workflows/summarize.yml`, GitHub Actions + Anthropic Batches API, resumable).
+@@ -39,6 +45,8 @@ Done when: a handful of unaffiliated paying subscribers exist.
+ 
+ ## Operating rules (hard-won)
+ 
++- Brody's standing instruction (Oct 3 2026): when Claude Code can do something, Claude Code does it — git branches, pushes, pull requests, CI, and any build step that needs the repo's own credentials. The Cowork CEO session plans, delegates builds to agents (Sonnet by default; Opus only for design-heavy or correctness-critical pieces; Haiku for lookups and checks), reviews diffs, runs lint/typecheck/tests, and hands finished branches to Code as patches with a one-paragraph brief. It does not ask Brody to run git commands. It has Supabase and Vercel connectors and uses them directly under the Sep 13 rule below.
++
+ - Delegate builds to agents (Sonnet is proven on this codebase); the CEO session reviews diffs, runs `npm run build` + `npm run lint`, then commits and pushes to `main`. Always `git log <branch> -3` before merging an agent branch — one worktree once branched from a stale base.
+ - `AGENTS.md` matters: this is Next.js 16.3.4 — read `node_modules/next/dist/docs/` before writing code. ESLint has `react-hooks/set-state-in-effect` on. Never add jsdom-based deps (they crashed Vercel's runtime before).
+ - The site can't be reached from some sandboxes; verify production with a fetch tool using a unique query string per request (caches are aggressive). `/regulations/{reg}` returns 404 for anonymous visitors by design.
+-- 
+2.43.0
+
