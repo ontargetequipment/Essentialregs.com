@@ -8148,7 +8148,8 @@ class Reg20MetaTests(unittest.TestCase):
     def test_other_ccr_bucket(self):
         self.assertEqual(ic.BUCKET_OTHER_CCR, "other_ccr")
         self.assertIn(ic.BUCKET_OTHER_CCR, ic.ALL_BUCKETS)
-        self.assertEqual(ic.ALL_BUCKETS[-1], ic.BUCKET_OTHER_CCR)  # appended, earlier order unchanged
+        # appended, earlier order unchanged (Sprint 2 then appended BUCKET_CROSS_REG after it)
+        self.assertEqual(ic.ALL_BUCKETS[-2:], [ic.BUCKET_OTHER_CCR, ic.BUCKET_CROSS_REG])
         self.assertEqual(ic.ALL_BUCKETS[:6], [ic.BUCKET_HISTORICAL, ic.BUCKET_OTHER_REG, ic.BUCKET_CFR,
                                               ic.BUCKET_UNPARSEABLE, ic.BUCKET_FORM, ic.BUCKET_CRS])
         self.assertEqual(ic.CALIFORNIA_CCR_REGS, frozenset({"20"}))
@@ -11115,3 +11116,483 @@ class Reg31FullParseTests(unittest.TestCase):
         big = sorted((len(r["full_text"]), r["id"]) for r in self.rows)[-3:]
         self.assertEqual(big[-1][1], "sec-31-K-I")
         self.assertLess(big[-2][0], 15000)
+
+
+# ---------------------------------------------------------------------------
+# Sprint 2: cross-regulation deep links (corpus id index)
+#
+# A citation of ANOTHER regulation's provision ("Regulation Number 7, Part B,
+# Section I.B.33") links to `/regulations/7#sec-7-B-I-B-33` when a corpus id
+# index is supplied, and stays exactly as it always was when none is.
+# ---------------------------------------------------------------------------
+
+import tempfile  # noqa: E402
+from unittest import mock  # noqa: E402
+
+XREG_FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "corpus_ids_sample.json")
+
+
+def _xl(key, text, target=None):
+    href = f"/regulations/{key}" + (f"#{target}" if target else "")
+    return f'<a class="xref-external-reg" href="{href}">{text}</a>'
+
+
+class XregBase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.idx = ic.load_corpus_ids(XREG_FIXTURE)
+        cls.corpus = set(ic.CORPUS_REGS)
+
+    def setUp(self):
+        ic.set_corpus_ids(None)
+
+    tearDown = setUp
+
+    def link(self, text, reg="gp12", known=None, own_part="", own_id="sec-x", corpus_ids="fixture"):
+        known = {f"sec-{reg}-top-REG-{reg}"} if known is None else known
+        ids = self.idx if corpus_ids == "fixture" else corpus_ids
+        return ic.link_citations(text, reg, known, self.corpus, own_part, own_id, corpus_ids=ids)
+
+
+class ResolveCrossRegTargetTests(XregBase):
+    def r(self, reg, part, cite):
+        return ic.resolve_cross_reg_target(reg, part, cite, self.idx)
+
+    def test_exact_hit(self):
+        res = self.r("7", "B", "I.B.33")
+        self.assertEqual((res.target, res.kind), ("sec-7-B-I-B-33", "exact"))
+        # trailing sentence period and a dotless last segment resolve alike
+        self.assertEqual(self.r("7", "B", "I.B.33.").target, "sec-7-B-I-B-33")
+
+    def test_parenthesised_tokens_keep_their_parentheses(self):
+        self.assertEqual(self.r("7", "B", "III.C.4.d.(i)").target, "sec-7-B-III-C-4-d-(i)")
+        self.assertEqual(self.r("7", "B", "III.C.4.d.(ii)(A)").target, "sec-7-B-III-C-4-d-(ii)-(A)")
+        # Reg 2 prints a paren-digit fifth level: its own token cycle is used
+        self.assertEqual(self.r("2", "B", "IV.A.3.c.(1)").target, "sec-2-B-IV-A-3-c-(1)")
+        self.assertEqual(self.r("gp12", None, "I.A.8.a.(i)").target, "sec-gp12-I-A-8-a-(i)")
+
+    def test_trims_trailing_tokens_to_nearest_existing_ancestor(self):
+        res = self.r("7", "B", "III.C.4.d.(ii)(A)(1)")
+        self.assertEqual((res.target, res.kind), ("sec-7-B-III-C-4-d-(ii)-(A)", "trimmed"))
+        res = self.r("7", "B", "I.B.33.c.(iv)")
+        self.assertEqual((res.target, res.kind), ("sec-7-B-I-B-33", "trimmed"))
+        res = self.r("7", "B", "II.B.9.a")
+        self.assertEqual((res.target, res.kind), ("sec-7-B-II-B", "trimmed"))
+
+    def test_falls_back_to_part_root(self):
+        res = self.r("7", "B", "XXV.A.1.")
+        self.assertEqual((res.target, res.kind), ("sec-7-P-B", "part_root"))
+        # Part C of Reg 7 is lettered, not roman: a roman cite there can only reach the part root
+        res = self.r("7", "C", "II.A.")
+        self.assertEqual((res.target, res.kind), ("sec-7-P-C", "part_root"))
+
+    def test_falls_back_to_regulation_root(self):
+        res = self.r("7", "Q", "I.A.")
+        self.assertEqual((res.target, res.kind, res.detail), ("sec-7-top-REG-7", "reg_root", "no_such_part"))
+        res = self.r("1", "B", "II.A.")  # Reg 1 has no parts at all
+        self.assertEqual((res.target, res.kind, res.detail), ("sec-1-top-REG-1", "reg_root", "reg_has_no_parts"))
+
+    def test_unresolved_when_regulation_or_root_missing(self):
+        res = self.r("99", "B", "I.A.")
+        self.assertEqual((res.target, res.kind, res.detail), (None, "unresolved", "reg_not_in_index"))
+        res = ic.resolve_cross_reg_target("7", "Q", "I.A.", {"7": ["sec-7-B-I"]})
+        self.assertEqual((res.target, res.kind), (None, "unresolved"))
+
+    def test_partless_regulations_have_no_part_segment(self):
+        self.assertEqual(self.r("1", None, "II.A.2.").target, "sec-1-II-A-2")
+        self.assertEqual(self.r("gp02", None, "II.B.3").target, "sec-gp02-II-B-3")
+        res = self.r("gp02", None, "II.B.3.z")
+        self.assertEqual((res.target, res.kind), ("sec-gp02-II-B-3", "trimmed"))
+
+    def test_no_part_named_never_guesses_between_parts(self):
+        # II.A.46 exists only in Part B of Reg 7 -> unambiguous
+        self.assertEqual(self.r("7", None, "II.A.46.").target, "sec-7-B-II-A-46")
+        # II.A exists in both Part A and Part B -> regulation root, flagged ambiguous
+        res = self.r("7", None, "II.A.")
+        self.assertEqual((res.target, res.kind, res.detail), ("sec-7-top-REG-7", "reg_root", "ambiguous_part"))
+        # exists in neither
+        res = self.r("7", None, "XX.A.")
+        self.assertEqual((res.kind, res.detail), ("reg_root", "part_not_stated"))
+
+    def test_accepts_plain_lists_and_unpacks_as_a_tuple(self):
+        target, kind, detail = ic.resolve_cross_reg_target(
+            "7", "B", "I.B.33", {"7": ["sec-7-B-I-B-33", "sec-7-P-B", "sec-7-B-I"]})
+        self.assertEqual((target, kind, detail), ("sec-7-B-I-B-33", "exact", ""))
+
+
+class CrossRegDeepLinkTests(XregBase):
+    def test_exact_hit_and_list_of_sections(self):
+        out, buckets = self.link("as defined in Regulation Number 7, Part B, Section I.B.33 and Section II.A.46 (Adopted).")
+        self.assertEqual(
+            out,
+            "as defined in " + _xl("7", "Regulation Number 7") + ", Part B, "
+            + _xl("7", "Section I.B.33", "sec-7-B-I-B-33") + " and "
+            + _xl("7", "Section II.A.46", "sec-7-B-II-A-46") + " (Adopted).",
+        )
+        self.assertEqual(dict(buckets[ic.BUCKET_CROSS_REG]), {})
+
+    def test_comma_separated_list_first_link_carries_the_keyword(self):
+        out, _ = self.link("Regulation Number 7, Part B, Sections I.B.33, II.A.46 and II.B. apply")
+        self.assertEqual(
+            out,
+            _xl("7", "Regulation Number 7") + ", Part B, " + _xl("7", "Sections I.B.33", "sec-7-B-I-B-33") + ", "
+            + _xl("7", "II.A.46", "sec-7-B-II-A-46") + " and " + _xl("7", "II.B.", "sec-7-B-II-B") + " apply",
+        )
+
+    def test_regulation_name_keeps_its_top_of_regulation_link(self):
+        out, _ = self.link("Regulation Number 3, Part B. Section III.E.)")
+        self.assertIn(_xl("3", "Regulation Number 3"), out)
+        self.assertIn(_xl("3", "Section III.E.", "sec-3-B-III-E"), out)
+        out, _ = self.link("Regulation No. 3, Part B, Section III.E.")
+        self.assertIn(_xl("3", "Regulation No. 3"), out)
+
+    def test_visible_text_is_never_changed(self):
+        text = "see Regulation Number 7, Part B, Sections I.B.33,  II.A.46 and XXV.A. and GP02 Condition II.B.3 for details."
+        out, _ = self.link(text)
+        self.assertEqual(re.sub(r"<[^>]+>", "", out), text)
+
+    def test_parenthesised_token_deep_link(self):
+        out, _ = self.link("Regulation Number 7, Part B, Section III.C.4.d.(i) and Regulation Number 2, Part B, Section IV.A.3.c.(1)")
+        self.assertIn(_xl("7", "Section III.C.4.d.(i)", "sec-7-B-III-C-4-d-(i)"), out)
+        self.assertIn(_xl("2", "Section IV.A.3.c.(1)", "sec-2-B-IV-A-3-c-(1)"), out)
+
+    def test_trimmed_link_and_bucket(self):
+        out, buckets = self.link("Regulation Number 7, Part B, Section III.C.4.d.(ii)(A)(1).", own_id="sec-gp12-I-A")
+        self.assertIn(_xl("7", "Section III.C.4.d.(ii)(A)(1).", "sec-7-B-III-C-4-d-(ii)-(A)"), out)
+        self.assertEqual(
+            dict(buckets[ic.BUCKET_CROSS_REG]),
+            {"sec-gp12-I-A\tRegulation Number 7, Part B, III.C.4.d.(ii)(A)(1).\ttrimmed\tsec-7-B-III-C-4-d-(ii)-(A)": 1},
+        )
+
+    def test_part_root_fallback_links_the_part_and_is_bucketed(self):
+        out, buckets = self.link("Regulation Number 7, Part B, Section XXV.A. applies", own_id="sec-gp12-V")
+        self.assertIn(_xl("7", "Section XXV.A.", "sec-7-P-B"), out)
+        self.assertEqual(
+            dict(buckets[ic.BUCKET_CROSS_REG]),
+            {"sec-gp12-V\tRegulation Number 7, Part B, XXV.A.\tpart_root\tsec-7-P-B": 1},
+        )
+
+    def test_regulation_root_fallback_adds_no_section_link_but_is_bucketed(self):
+        out, buckets = self.link("Regulation Number 7, Part Q, Section I.A. applies", own_id="sec-gp12-V")
+        self.assertEqual(out, _xl("7", "Regulation Number 7") + ", Part Q, Section I.A. applies")
+        self.assertEqual(
+            dict(buckets[ic.BUCKET_CROSS_REG]),
+            {"sec-gp12-V\tRegulation Number 7, Part Q, I.A.\treg_root:no_such_part\tsec-7-top-REG-7": 1},
+        )
+
+    def test_part_cited_alone_links_the_part_root(self):
+        out, buckets = self.link("defined in Regulation Number 2, Part B.")
+        self.assertEqual(out, "defined in " + _xl("2", "Regulation Number 2") + ", " + _xl("2", "Part B", "sec-2-P-B") + ".")
+        self.assertEqual(dict(buckets[ic.BUCKET_CROSS_REG]), {})
+        # a part that does not exist: no link, bucketed
+        out, buckets = self.link("defined in Regulation Number 2, Part Z.")
+        self.assertNotIn("sec-2-P-Z", out)
+        self.assertEqual(len(buckets[ic.BUCKET_CROSS_REG]), 1)
+
+    def test_part_clause_without_section_keyword_and_repeated_part_clauses(self):
+        out, _ = self.link("Regulation Number 3, Part B, III.E.)")
+        self.assertIn(_xl("3", "III.E.", "sec-3-B-III-E"), out)
+        out, _ = self.link("Regulation Number 3, Part A, Section I.B.30 and Part B, Section III.E.")
+        self.assertIn(_xl("3", "Section I.B.30", "sec-3-A-I-B-30"), out)
+        self.assertIn(_xl("3", "Section III.E.", "sec-3-B-III-E"), out)
+
+    def test_no_part_named(self):
+        out, buckets = self.link("Regulation Number 7, Section II.A.46.")
+        self.assertIn(_xl("7", "Section II.A.46.", "sec-7-B-II-A-46"), out)
+        out, buckets = self.link("Regulation Number 7, Section II.A.", own_id="sec-gp12-V")
+        self.assertNotIn("#sec-7", out)  # ambiguous between Part A and Part B: not guessed
+        self.assertEqual(len(buckets[ic.BUCKET_CROSS_REG]), 1)
+        out, _ = self.link("Regulation Number 1, Section II.A.2.")
+        self.assertIn(_xl("1", "Section II.A.2.", "sec-1-II-A-2"), out)
+
+    def test_bare_regulation_form_does_not_bind_part_or_sections_locally(self):
+        """"Regulation 7 Part B, Sections I.B.33" (no "Number", no comma): the
+        old order of steps let Part B bind to THIS document's own Part B."""
+        known = {"sec-3-top-REG-3", "sec-3-P-B", "sec-3-B-I-B-33"}
+        out, _ = self.link("under Regulation 7 Part B, Sections I.B.33", reg="3", known=known, own_part="A")
+        self.assertEqual(out, "under " + _xl("7", "Regulation 7") + " Part B, " + _xl("7", "Sections I.B.33", "sec-7-B-I-B-33"))
+        self.assertNotIn("data-target", out)
+        old, _ = self.link("under Regulation 7 Part B, Sections I.B.33", reg="3", known=known, own_part="A", corpus_ids={})
+        self.assertIn('<span class="xref" data-target="sec-3-P-B">Part B</span>', old)  # the behaviour being fixed
+
+    def test_unknown_or_non_corpus_regulation_is_untouched(self):
+        out, buckets = self.link("Regulation Number 99, Part B, Section I.A. and Section II.A.")
+        self.assertNotIn("<a ", out)
+        self.assertNotIn("data-target", out)
+        self.assertEqual(dict(buckets[ic.BUCKET_CROSS_REG]), {})
+
+
+class TrailingSectionNeverBindsLocallyTests(XregBase):
+    """Hard rule: a trailing "and Section II.C." after a cross-regulation cite
+    belongs to the cited regulation, never to the current document."""
+
+    TEXT = "Regulation Number 7, Part B, Section II.B and Section II.C."
+    KNOWN = {"sec-gp01-top-REG-gp01", "sec-gp01-II-B", "sec-gp01-II-C"}
+
+    def test_trailing_section_resolves_in_the_cited_regulation(self):
+        out, buckets = self.link(self.TEXT, reg="gp01", known=self.KNOWN, own_id="sec-gp01-II-D-1")
+        self.assertNotIn("data-target", out)
+        self.assertNotIn("sec-gp01-II-C", out)
+        self.assertEqual(
+            out,
+            _xl("7", "Regulation Number 7") + ", Part B, " + _xl("7", "Section II.B", "sec-7-B-II-B") + " and "
+            # this sample index has no Part B Section II.C, so it trims to II
+            + _xl("7", "Section II.C.", "sec-7-B-II"),
+        )
+        self.assertEqual(
+            dict(buckets[ic.BUCKET_CROSS_REG]),
+            {"sec-gp01-II-D-1\tRegulation Number 7, Part B, II.C.\ttrimmed\tsec-7-B-II": 1},
+        )
+
+    def test_old_behaviour_bound_it_to_this_documents_own_id(self):
+        """This is what the rule forbids: with no index the tail is still
+        bound locally (kept byte-for-byte, so the test pins the contrast)."""
+        old, _ = self.link(self.TEXT, reg="gp01", known=self.KNOWN, corpus_ids={})
+        self.assertIn('<span class="xref" data-target="sec-gp01-II-C">Section II.C.</span>', old)
+
+    def test_trailing_section_missing_from_cited_regulation_goes_to_the_bucket_not_the_document(self):
+        text = "Regulation Number 7, Part B, Section II.B and Section XL.Z."
+        out, buckets = self.link(text, reg="gp01", known=self.KNOWN | {"sec-gp01-XL-Z"}, own_id="sec-gp01-VI-B")
+        self.assertNotIn("data-target", out)
+        self.assertIn(_xl("7", "Section XL.Z.", "sec-7-P-B"), out)  # part-root fallback
+        self.assertEqual(
+            list(buckets[ic.BUCKET_CROSS_REG]),
+            ["sec-gp01-VI-B\tRegulation Number 7, Part B, XL.Z.\tpart_root\tsec-7-P-B"],
+        )
+
+    def test_bare_range_end_letter_is_not_read_as_a_roman_numeral(self):
+        """"Section I.A. through C." -- the C is a range-end letter (roman 100),
+        not a section: it stays plain and does not reach the bucket."""
+        text = "Regulation Number 7, Part B, Section I.A. through C."
+        out, buckets = self.link(text, reg="gp01", known=self.KNOWN, own_id="sec-gp01-VI-B")
+        self.assertNotIn("data-target", out)
+        self.assertTrue(out.endswith(" through C."), out)
+        self.assertEqual(out.count("<a "), 2)  # regulation name + Section I.A.
+        for key in buckets[ic.BUCKET_CROSS_REG]:
+            self.assertNotIn("\tC", key)
+
+    def test_every_connector_form(self):
+        for text in (
+            "Regulation Number 7, Part B, Section II.B, Section II.C.",
+            "Regulation Number 7, Part B, Section II.B, and Section II.C.",
+            "Regulation Number 7, Part B, Section II.B or Section II.C.",
+            "Regulation Number 7, Part B, Section II.B and/or Section II.C.",
+            "Regulation Number 7, Part B, Section II.B; Section II.C.",
+        ):
+            out, _ = self.link(text, reg="gp01", known=self.KNOWN)
+            self.assertNotIn("data-target", out, text)
+
+    def test_bare_regulation_form_trailing_section(self):
+        out, _ = self.link("Regulation 7, Part B, Section II.B and Section II.C.", reg="gp01", known=self.KNOWN)
+        self.assertNotIn("data-target", out)
+
+    def test_a_clause_that_names_this_document_stays_local(self):
+        out, _ = self.link("Regulation Number 7, Part B, Section II.B and Section II.C of this permit",
+                           reg="gp01", known=self.KNOWN)
+        self.assertIn('<span class="xref" data-target="sec-gp01-II-C">Section II.C</span> of this permit', out)
+
+    def test_unlisted_regulation_tail_is_claimed_too(self):
+        out, _ = self.link("Regulation Number 99, Part B, Section I.A. and Section II.C.", reg="gp01", known=self.KNOWN)
+        self.assertNotIn("data-target", out)
+
+
+class GeneralPermitConditionDeepLinkTests(XregBase):
+    """Phrasings searched in pipeline/sources/*.txt: no general permit or
+    regulation prints "GPnn Condition X" for ANOTHER permit today (a GP only
+    names itself, which links to its own root). The resolver is nonetheless
+    in place for the shapes below."""
+
+    def test_condition_of_another_permit(self):
+        out, buckets = self.link("see GP02 Condition II.B.3 here")
+        self.assertEqual(out, "see " + _xl("gp02", "GP02") + " " + _xl("gp02", "Condition II.B.3", "sec-gp02-II-B-3") + " here")
+        self.assertEqual(dict(buckets[ic.BUCKET_CROSS_REG]), {})
+
+    def test_general_permit_prefix_and_condition_list(self):
+        out, _ = self.link("per General Permit GP02, Conditions II.B.3 and II.B.4.")
+        self.assertEqual(
+            out,
+            "per General Permit " + _xl("gp02", "GP02") + ", " + _xl("gp02", "Conditions II.B.3", "sec-gp02-II-B-3")
+            + " and " + _xl("gp02", "II.B.4.", "sec-gp02-II-B-4"),
+        )
+
+    def test_section_keyword_and_missing_condition_trims(self):
+        out, buckets = self.link("GP02, Section II.B.3.zz applies", own_id="sec-gp12-III")
+        self.assertIn(_xl("gp02", "Section II.B.3.zz", "sec-gp02-II-B-3"), out)
+        self.assertEqual(list(buckets[ic.BUCKET_CROSS_REG])[0].split("\t")[2], "trimmed")
+
+    def test_condition_of_another_permit_never_binds_to_this_one(self):
+        known = {"sec-gp12-top-REG-gp12", "sec-gp12-II-B-3"}
+        out, _ = self.link("see GP02 Condition II.B.3 here", known=known)
+        self.assertNotIn("data-target", out)
+
+    def test_self_mention_still_links_to_own_condition(self):
+        known = {"sec-gp02-top-REG-gp02", "sec-gp02-II-B-3"}
+        out, _ = self.link("see GP02 Condition II.B.3 here", reg="gp02", known=known)
+        self.assertEqual(
+            out,
+            'see <span class="xref" data-target="sec-gp02-top-REG-gp02">GP02</span> '
+            '<span class="xref" data-target="sec-gp02-II-B-3">Condition II.B.3</span> here',
+        )
+
+
+class CommonProvisionsDeepLinkTests(XregBase):
+    TEXT = "Common Provisions Regulation, Section I.G."
+
+    def test_hash_added_only_with_an_index(self):
+        known = {"sec-gp12-top-REG-gp12"}
+        with_idx, _ = self.link(self.TEXT, known=known)
+        self.assertIn('href="/regulations/cp#sec-cp-I-G">Section I.G.</a>', with_idx)
+        without, _ = self.link(self.TEXT, known=known, corpus_ids={})
+        self.assertIn('href="/regulations/cp">Section I.G.</a>', without)
+        self.assertNotIn("#sec-cp", without)
+
+
+class NoIndexIsByteIdenticalTests(XregBase):
+    """With no index (absent, None or empty) every output is exactly what the
+    importer produced before this feature -- these literals were produced by
+    the pre-change code."""
+
+    OLD = [
+        ("gp12", "as defined in Regulation Number 7, Part B, Section I.B.33 and Section II.A.46 (Adopted).", {"sec-gp12-top-REG-gp12"}, "",
+         'as defined in <a class="xref-external-reg" href="/regulations/7">Regulation Number 7</a>, Part B, Section I.B.33 and Section II.A.46 (Adopted).'),
+        ("gp01", "Regulation Number 7, Part B, Section II.B and Section II.C.", {"sec-gp01-top-REG-gp01", "sec-gp01-II-C", "sec-gp01-II-B"}, "",
+         '<a class="xref-external-reg" href="/regulations/7">Regulation Number 7</a>, Part B, Section II.B and <span class="xref" data-target="sec-gp01-II-C">Section II.C.</span>'),
+        ("3", "under Regulation 7 Part B, Sections I.B.33", {"sec-3-top-REG-3", "sec-3-P-B", "sec-3-B-I-B-33"}, "A",
+         'under <a class="xref-external-reg" href="/regulations/7">Regulation 7</a> <span class="xref" data-target="sec-3-P-B">Part B</span>, Sections I.B.33'),
+        ("gp12", "see GP02 Condition II.B.3 here", {"sec-gp12-top-REG-gp12"}, "",
+         'see <a class="xref-external-reg" href="/regulations/gp02">GP02</a> Condition II.B.3 here'),
+    ]
+
+    def test_absent_none_and_empty_all_reproduce_the_old_output(self):
+        for reg, text, known, part, expected in self.OLD:
+            for kw in ({}, {"corpus_ids": None}, {"corpus_ids": {}}):
+                out, buckets = ic.link_citations(text, reg, known, self.corpus, part, "sec-x", **kw)
+                self.assertEqual(out, expected, (text, kw))
+                self.assertEqual(dict(buckets[ic.BUCKET_CROSS_REG]), {})
+
+    def test_process_wide_index_is_off_by_default_and_switchable(self):
+        reg, text, known, part, expected = self.OLD[0]
+        self.assertEqual(ic.link_citations(text, reg, known, self.corpus, part)[0], expected)
+        ic.set_corpus_ids(self.idx)
+        self.assertNotEqual(ic.link_citations(text, reg, known, self.corpus, part)[0], expected)
+        ic.set_corpus_ids({})
+        self.assertEqual(ic.link_citations(text, reg, known, self.corpus, part)[0], expected)
+
+    def test_real_parse_without_an_index_has_no_deep_links(self):
+        src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources")
+        rows, unresolved, *_ = ic.parse_reg("gp12", os.path.join(src, "GP12.txt"), os.path.join(src, "GP12.pdf"))
+        blob = "".join(r["full_text"] for r in rows)
+        self.assertNotRegex(blob, r'href="/regulations/[^"#]*#')
+        self.assertEqual(dict(unresolved[ic.BUCKET_CROSS_REG]), {})
+        self.assertIn(_xl("7", "Regulation Number 7") + ", Part B, Section I.B.33 and Section II.A.46", blob)
+
+
+class RealCorpusDeepLinkTests(XregBase):
+    """parse_reg picks the process-wide index up (no signature change)."""
+
+    def test_gp12_first_condition_deep_links_into_reg_7(self):
+        src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources")
+        ic.set_corpus_ids(ic.load_corpus_ids(XREG_FIXTURE))
+        rows, unresolved, *_ = ic.parse_reg("gp12", os.path.join(src, "GP12.txt"), os.path.join(src, "GP12.pdf"))
+        by_id = {r["id"]: r for r in rows}
+        text = by_id["sec-gp12-I-A"]["full_text"]
+        self.assertIn(_xl("7", "Section I.B.33", "sec-7-B-I-B-33"), text)
+        self.assertIn(_xl("7", "Section II.A.46", "sec-7-B-II-A-46"), text)
+        # ids and visible text are untouched by linking
+        ic.set_corpus_ids(None)
+        plain, *_ = ic.parse_reg("gp12", os.path.join(src, "GP12.txt"), os.path.join(src, "GP12.pdf"))
+        self.assertEqual([r["id"] for r in plain], [r["id"] for r in rows])
+        strip = lambda s: re.sub(r"<[^>]+>", "", s)  # noqa: E731
+        self.assertEqual([strip(r["full_text"]) for r in plain], [strip(r["full_text"]) for r in rows])
+
+
+class UnresolvedCrossRegReportTests(XregBase):
+    def test_bucket_is_part_of_all_buckets(self):
+        self.assertIn(ic.BUCKET_CROSS_REG, ic.ALL_BUCKETS)
+
+    def test_diff_report_lists_every_record_with_source_and_citation(self):
+        record = "sec-gp12-V\tRegulation Number 7, Part B, XXV.A.\tpart_root\tsec-7-P-B"
+        gone = "sec-gp12-VI\tRegulation Number 7, Part Q, I.A.\treg_root:no_such_part\t"
+        lines = ic._xref_report_section(
+            "gp12", [], [], {}, {}, set(),
+            {ic.BUCKET_CROSS_REG: [[record, 2], [gone, 1]]},
+        )
+        report = "\n".join(lines)
+        self.assertIn("Cross-regulation citations that did NOT deep-link", report)
+        self.assertIn("| `sec-gp12-V` | Regulation Number 7, Part B, XXV.A. | part_root | `sec-7-P-B` | 2 |", report)
+        self.assertIn("| `sec-gp12-VI` | Regulation Number 7, Part Q, I.A. | reg_root:no_such_part | (no link) | 1 |", report)
+
+    def test_diff_report_with_empty_bucket_says_none(self):
+        lines = ic._xref_report_section("gp12", [], [], {}, {}, set(), {ic.BUCKET_CROSS_REG: []})
+        report = "\n".join(lines)
+        i = report.index("Cross-regulation citations that did NOT deep-link")
+        self.assertIn("_none_", report[i:])
+
+
+class CorpusIdIndexTests(XregBase):
+    def test_group_and_write_roundtrip_is_sorted_bytewise(self):
+        ids = ["sec-7-B-II", "sec-7-B-I", "sec-gp02-II-B", "sec-7-top-REG-7", "sec-7-B-I", "sec-7-B-I-(a)", "sec-7-B-I-B"]
+        by = ic.group_ids_by_reg(ids)
+        self.assertEqual(list(by), ["7", "gp02"])
+        self.assertEqual(by["7"], sorted(set(i for i in ids if i.startswith("sec-7-")), key=lambda s: s.encode()))
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "nested", "corpus_ids.json")
+            ic.write_corpus_ids(path, by)
+            self.assertEqual({k: sorted(v) for k, v in ic.load_corpus_ids(path).items()}, {k: sorted(v) for k, v in by.items()})
+            with open(path, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh), by)
+
+    def test_reg_key_of_id(self):
+        self.assertEqual(ic.reg_key_of_id("sec-7-B-I-B-33"), "7")
+        self.assertEqual(ic.reg_key_of_id("sec-gp12-I-A-8-d-(i)"), "gp12")
+        self.assertEqual(ic.reg_key_of_id("sec-ecmc-100-DEF-ACT"), "ecmc")
+
+    def test_fetch_all_provision_ids_pages_past_the_row_cap(self):
+        rows = [_row(f"sec-7-A-{i:03d}") for i in range(7)]
+        client = _StubExportClient(rows)
+        self.assertEqual(ic.fetch_all_provision_ids(client, page_size=3), [r["id"] for r in rows])
+        self.assertEqual(client._table.range_calls, [(0, 2), (3, 5), (6, 8)])
+        self.assertEqual(client._table.selected_cols, "id")
+        self.assertEqual(client._table.like_calls, [])
+
+    def test_dump_ids_requires_the_service_role_env(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(SystemExit) as cm:
+                ic.cmd_dump_ids(SimpleNamespace(out="unused.json"))
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_dump_ids_writes_the_index(self):
+        rows = [_row(i) for i in ("sec-7-B-I", "sec-7-top-REG-7", "sec-gp02-II-B", "sec-1-top-REG-1")]
+        client = _StubExportClient(sorted(rows, key=lambda r: r["id"]))
+        fake_supabase = types.SimpleNamespace(create_client=lambda url, key: client)
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.dict(sys.modules, {"supabase": fake_supabase}), \
+                mock.patch.dict(os.environ, {"SUPABASE_URL": "https://x", "SUPABASE_SERVICE_ROLE_KEY": "k"}):
+            out = os.path.join(d, "corpus_ids.json")
+            ic.cmd_dump_ids(SimpleNamespace(out=out))
+            with open(out, encoding="utf-8") as fh:
+                data = json.load(fh)
+        self.assertEqual(data, {"1": ["sec-1-top-REG-1"], "7": ["sec-7-B-I", "sec-7-top-REG-7"], "gp02": ["sec-gp02-II-B"]})
+
+    def test_cmd_parse_installs_the_index_from_the_flag(self):
+        seen = {}
+
+        def fake_parse(reg, txt, pdf):
+            seen["index"] = dict(ic._ACTIVE_CORPUS_IDS)
+            raise RuntimeError("stop after the index is installed")
+
+        with mock.patch.object(ic, "parse_reg", fake_parse):
+            with self.assertRaises(RuntimeError):
+                ic.cmd_parse(SimpleNamespace(reg="gp12", pdf="x.pdf", txt="x.txt", out="unused.json", corpus_ids=XREG_FIXTURE))
+        self.assertIn("sec-7-B-I-B-33", seen["index"]["7"])
+
+    def test_committed_index_is_well_formed_and_contains_the_sample_fixture(self):
+        path = ic.CORPUS_IDS_DEFAULT_PATH
+        if not os.path.exists(path):
+            self.skipTest("pipeline/out/corpus_ids.json not present in this checkout")
+        full = ic.load_corpus_ids(path)
+        for key, ids in full.items():
+            self.assertIn(f"sec-{key}-top-REG-{key}", ids, key)
+            self.assertTrue(all(ic.reg_key_of_id(i) == key for i in ids), key)
+        for key, ids in self.idx.items():
+            self.assertLessEqual(set(ids), set(full[key]), key)

@@ -270,6 +270,56 @@ skips any row that already has *some* `ai_summary`, which would defeat the
 point of re-running an id whose text just changed (see `--help` on both
 scripts for the full flag list).
 
+### Cross-regulation deep links (the corpus id index)
+
+A citation of another regulation's provision ("Regulation Number 7, Part B,
+Section I.B.33 and Section II.A.46") used to link only the regulation name, to
+the top of that regulation. With the corpus id index each cited section links
+to the exact provision: `/regulations/7#sec-7-B-I-B-33` (the reader resolves
+the hash on load; the app strips `data-provision-id`, so the hash is what
+carries the target). The regulation name itself keeps its top-of-regulation
+link, the part ("Part B,") stays plain text unless it is cited alone (then it
+links to the part root), and the first section of a list carries the
+"Section(s)" keyword in its link text, later ones are bare.
+
+- **The index** is `pipeline/out/corpus_ids.json`: every provision id in the
+  database, `{"7": ["sec-7-B-I-B-33", ...], "gp12": [...], ...}`, ids sorted
+  bytewise. `python pipeline/import_ccr.py dump-ids` rewrites it from the
+  database (read-only; needs `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`,
+  pages past PostgREST's 1000-row cap). The **Import regulation** workflow
+  runs `dump-ids` before `parse`, so CI imports always resolve against the
+  live corpus. The committed copy is only a convenience for local runs; it
+  can be verified against the database with
+  `select reg_key, count(*), md5(string_agg(id, ',' order by id collate "C")) from provisions group by reg_key`.
+- **`parse` uses it by default** when the file exists. `--corpus-ids PATH`
+  names another file; `--no-corpus-ids` turns deep links off, and the output
+  is then byte-for-byte what it was before the feature existed (so is a
+  missing/empty index).
+- **Resolution** (`resolve_cross_reg_target`): the candidate id is built from
+  the cited regulation, part and section with the CITED regulation's own token
+  cycle and id scheme (the general permits and Reg 1 have no part segment;
+  parenthesised tokens keep their parentheses). If it does not exist, trailing
+  tokens are dropped until an ancestor does (`trimmed`), then the part root
+  (`part_root`), then the regulation root (`reg_root`, which gets no link of
+  its own: the regulation name already links there). A citation with no part
+  named is only resolved when it exists in exactly one part; an ambiguous one
+  is not guessed. General-permit conditions ("GP02 Condition II.B.3") resolve
+  the same way (no current source text prints one for another permit).
+- **Hard rule:** a trailing "and Section II.C." after a cross-regulation cite
+  belongs to the cited regulation and is resolved there. It never binds to the
+  citing document's own ids (it used to, whenever the same label existed
+  locally), and the bare "Regulation 7 Part B, Sections ..." form no longer
+  binds its "Part B" locally either. A continuation followed by "of this
+  permit/regulation" is still treated as local.
+- **Review:** every cross-regulation cite that did not reach the exact
+  provision (`trimmed`, `part_root`, `reg_root`, unresolved) is listed in the
+  `unresolved_cross_reg` section of the `diff` report with its source
+  provision id and the citation as printed.
+- **Preview a re-import's link changes** without touching the database:
+  `python pipeline/link_change_report.py --old-dir <dir of parses made by the
+  old code> --out pipeline/out/sprint2_link_changes.md` (the importer has no
+  link-only mode; this compares old and new parses of the same sources).
+
 ### The `--execute` path
 
 `import_ccr.py apply` also accepts `--execute --yes`, which performs the
