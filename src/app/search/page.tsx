@@ -366,11 +366,13 @@ export default async function SearchPage(props: PageProps<"/search">) {
   // review-status lookup below) and laid out under the map's groups.
   // Retrieval above is untouched: the RPC call and the hits are what they
   // were. A canonical row retrieval also found keeps its hit (score, path);
-  // the others get their breadcrumb from the provision_path RPC, the same
-  // function the hybrid RPC calls for its own rows. The visitor's filters
-  // apply to the canonical rows too, so a "Federal" view never shows a
-  // Colorado row. A failed read leaves mapRows empty and the page renders
-  // the flat list. reviewed_by is never selected.
+  // the others get their breadcrumb from context_path, the computed column
+  // on provisions that calls provision_path (the same function the hybrid
+  // RPC calls for its own rows, with the same entitlement check), so the
+  // whole map is one read rather than one RPC round trip per row. The
+  // visitor's filters apply to the canonical rows too, so a "Federal" view
+  // never shows a Colorado row. A failed read leaves mapRows empty and the
+  // page renders the flat list. reviewed_by is never selected.
   const mapRows = new Map<string, AskRow>();
   if (askMap && !flat && !askError) {
     type MapRow = ReviewRow & {
@@ -378,27 +380,23 @@ export default async function SearchPage(props: PageProps<"/search">) {
       title: string;
       reg_key: string | null;
       jurisdiction_level: SemanticHit["jurisdiction_level"];
+      context_path: string | null;
     };
     const hitById = new Map(askHits.map((h) => [h.id, h]));
     const { data: rows, error: rowsErr } = await supabase
       .from("provisions")
-      .select("id, citation, title, reg_key, jurisdiction_level, ai_summary, summary_status, reviewed_at")
+      .select("id, citation, title, reg_key, jurisdiction_level, ai_summary, summary_status, reviewed_at, context_path")
       .in("id", askMap.provisions.map((p) => p.id));
     if (rowsErr) console.error("ask: question-map lookup failed", rowsErr.message);
     const kept = ((rows ?? []) as MapRow[]).filter(
       (r) => (!jurisdiction || r.jurisdiction_level === jurisdiction) && (!regFilter || r.id.startsWith(`sec-${regFilter}-`))
     );
-    const paths = await Promise.all(
-      kept.map((r) => (hitById.has(r.id) ? null : supabase.rpc("provision_path", { p_id: r.id })))
-    );
-    kept.forEach((r, i) => {
+    for (const r of kept) {
       const hit = hitById.get(r.id);
       if (hit) {
         mapRows.set(r.id, { ...hit, retrieved: true });
-        return;
+        continue;
       }
-      const res = paths[i];
-      if (res?.error) console.error("ask: question-map path failed", res.error.message);
       mapRows.set(r.id, {
         id: r.id,
         citation: r.citation,
@@ -407,10 +405,10 @@ export default async function SearchPage(props: PageProps<"/search">) {
         jurisdiction_level: r.jurisdiction_level,
         summary: r.summary_status === "rejected" ? null : r.ai_summary,
         score: null,
-        path: res && !res.error && typeof res.data === "string" ? res.data : null,
+        path: r.context_path ?? null,
         retrieved: false,
       });
-    });
+    }
   }
   // The rows the Ask page shows: the hits, plus the canonical rows retrieval
   // did not return. The review and heading lookups below cover all of them.

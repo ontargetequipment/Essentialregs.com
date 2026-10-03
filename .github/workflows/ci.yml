@@ -10,7 +10,11 @@ name: CI
 #   smoke -- Playwright against a deployed copy (e2e/). Fires when Vercel
 #            reports a deployment succeeded (deployment_status), or by hand
 #            with a base_url. Read-only: never signs up, never pays.
-#   qa    -- scripts/corpus_qa.sql against the database. Manual only.
+#   qa    -- scripts/corpus_qa.sql against the database. Every pull request
+#            (not a required check: it reads production, writes only session
+#            temp tables, and takes under a minute), or by hand with the qa
+#            input. Needs the SUPABASE_DB_URL secret; without it (a fork's
+#            pull request, say) the job prints "QA skipped" and passes.
 
 on:
   pull_request:
@@ -152,7 +156,7 @@ jobs:
 
   qa:
     name: qa
-    if: github.event_name == 'workflow_dispatch' && inputs.qa
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.qa)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
