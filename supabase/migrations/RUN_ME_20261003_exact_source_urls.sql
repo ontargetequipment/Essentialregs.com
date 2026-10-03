@@ -12,6 +12,13 @@
 -- version of the rule, so it does not go stale at the next rulemaking). Every URL was fetched
 -- on 2026-10-03 and the page heading matched the CCR number and title recorded here.
 --
+-- AFTER (section 2): each general permit links to the CDPHE document the general-air-permits
+-- page itself links for that permit (an OnBase DocPop viewer URL; the docid is the one
+-- recorded in pipeline/sources/manifest.json for the imported issuance). CAVEAT: the DocPop
+-- viewer is JavaScript-rendered, so the document behind each docid could not be read by the
+-- fetch tool; the URLs were taken verbatim from the hrefs on the official page, not confirmed
+-- by opening the PDF. Drop section 2 if that is not acceptable.
+--
 -- SCOPE (read from production 2026-10-03): the app resolves the link as
 -- provisions.source_url ?? root.source_url, and production carries the generic URL on EVERY
 -- provision of these regulations, not just the root (only Reg 3, Reg 7, Reg 26 and OOOOb have
@@ -102,6 +109,37 @@ from (values
 where p.reg_key = m.reg_key
   and p.source_url = m.old_url;
 
+-- 2. General permits GP01-GP12: the document CDPHE's general-air-permits page links
+--    (GP09 and GP10 are the last-issued documents; GP12 replaced them for new facilities).
+update provisions p
+set source_url = m.new_url
+from (values
+  ('gp01', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306933'),  -- GP01
+  ('gp02', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306935'),  -- GP02
+  ('gp03', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=6159373'),  -- GP03
+  ('gp05', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306936'),  -- GP05
+  ('gp06', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306939'),  -- GP06
+  ('gp07', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306940'),  -- GP07
+  ('gp08', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306945'),  -- GP08
+  ('gp09', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=6754291'),  -- GP09
+  ('gp10', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306946'),  -- GP10
+  ('gp11', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/CDPHERMPOP/DocPop/DocPop.aspx?docid=11306947'),  -- GP11
+  ('gp12', 'https://cdphe.colorado.gov/apcd/general-air-permits',
+   'https://oitco.hylandcloud.com/cdphermpop/docpop/docpop.aspx?docid=63372084')  -- GP12
+) as m(reg_key, old_url, new_url)
+where p.reg_key = m.reg_key
+  and p.source_url = m.old_url;
+
 -- ---------------------------------------------------------------------------
 -- Read-back (run after applying; expected: no row left on a generic URL, and the
 -- pre-apply counts below move to the new URLs):
@@ -115,10 +153,11 @@ where p.reg_key = m.reg_key
 --   -- must return 0 rows:
 --   select reg_key, count(*) from provisions
 --   where source_url in ('https://cdphe.colorado.gov/aqcc-regulations',
---                        'https://ecmc.colorado.gov/regulatory/rules')
+--                        'https://ecmc.colorado.gov/regulatory/rules',
+--                        'https://cdphe.colorado.gov/apcd/general-air-permits')
 --   group by 1;
 --
---   -- every root row now on its exact URL (expect 32 SoS roots):
+--   -- every root row now on its exact URL (expect 32 SoS roots + 11 DocPop roots):
 --   select id, source_url from provisions where parent_id is null
 --   and (source_url like 'https://www.sos.state.co.us/CCR/%'
 --        or source_url like 'https://oitco.hylandcloud.com/%') order by id;

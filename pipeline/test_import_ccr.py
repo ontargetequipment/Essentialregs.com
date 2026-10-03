@@ -11658,6 +11658,23 @@ class ExactSosSourceUrlTests(unittest.TestCase):
         urls = [ic.REG_META[k]["source_url"] for k in self.sos_keys]
         self.assertEqual(len(urls), len(set(urls)))
 
+    def test_general_permits_link_to_the_document_cdphe_links(self):
+        # Each GP root links to the DocPop document that CDPHE's general-air-permits
+        # page links for that permit; the docid is the one pipeline/sources/manifest.json
+        # records for the imported issuance (freshness.py flags the day they diverge).
+        permits = self.manifest["cdphe_gp"]["permits"]
+        self.assertEqual(sorted(permits), sorted(ic.GP_KEYS))
+        for k in ic.GP_KEYS:
+            url = ic.REG_META[k]["source_url"]
+            self.assertNotEqual(url, "https://cdphe.colorado.gov/apcd/general-air-permits", k)
+            self.assertEqual(url.split("docid=")[1], permits[k]["docid"], k)
+            self.assertTrue(url.startswith("https://oitco.hylandcloud.com/"), k)
+            self.assertEqual(url.lower().split("/docpop/")[0].rsplit("/", 1)[1], "cdphermpop", k)
+        self.assertEqual(
+            ic.REG_META["gp12"]["source_url"],
+            "https://oitco.hylandcloud.com/cdphermpop/docpop/docpop.aspx?docid=63372084",
+        )
+
     def test_pinned_examples(self):
         self.assertEqual(ic.REG_META["3"]["source_url"], _sos_ruleinfo("2337"))    # 5 CCR 1001-5
         self.assertEqual(ic.REG_META["7"]["source_url"], _sos_ruleinfo("2341"))    # 5 CCR 1001-9
