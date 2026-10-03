@@ -516,7 +516,12 @@ export function groupForHit(hit: GroupableHit): MapGroup | "Other" {
 }
 
 export type GroupedHits<T extends GroupableHit> = {
-  /** Non-empty groups in MAP_GROUP_ORDER: the canonical rows (ids), then at most MAX_HITS_PER_GROUP hits, in retrieval order. */
+  /**
+   * Non-empty groups: first the ones with at least one canonical row, then
+   * the ones with retrieval hits only, each run in MAP_GROUP_ORDER. Within a
+   * group the canonical rows lead, then at most MAX_HITS_PER_GROUP hits, in
+   * retrieval order.
+   */
   groups: { group: MapGroup; canonical: MapProvision[]; hits: T[] }[];
   /** Hits groupForHit() put in no group, at most MAX_OTHER_HITS, in retrieval order. */
   other: T[];
@@ -529,6 +534,11 @@ export type GroupedHits<T extends GroupableHit> = {
  * the rest under "Other matches" (at most MAX_OTHER_HITS). `canonicalIds`
  * limits the canonical rows to the ones the caller could fetch (RLS, the
  * visitor's filters); when omitted every row of the map is listed.
+ *
+ * Groups that carry a canonical row come before groups that only collected
+ * retrieval hits, each run in MAP_GROUP_ORDER (3 Oct 2026): a stray
+ * Regulation 3 hit on the enforcement map used to open "Colorado permitting
+ * and APEN" above the groups that answer the question.
  */
 export function groupHits<T extends GroupableHit>(map: QuestionMap, hits: T[], canonicalIds?: Set<string>): GroupedHits<T> {
   const canonical = canonicalIds ? map.provisions.filter((p) => canonicalIds.has(p.id)) : map.provisions;
@@ -546,14 +556,15 @@ export function groupHits<T extends GroupableHit>(map: QuestionMap, hits: T[], c
     if (list.length < MAX_HITS_PER_GROUP) list.push(hit);
     byGroup.set(g, list);
   }
-  const groups: GroupedHits<T>["groups"] = [];
+  const withCanonical: GroupedHits<T>["groups"] = [];
+  const hitsOnly: GroupedHits<T>["groups"] = [];
   for (const group of MAP_GROUP_ORDER) {
     const rows = canonical.filter((p) => p.group === group);
     const extra = byGroup.get(group) ?? [];
     if (rows.length === 0 && extra.length === 0) continue;
-    groups.push({ group, canonical: rows, hits: extra });
+    (rows.length > 0 ? withCanonical : hitsOnly).push({ group, canonical: rows, hits: extra });
   }
-  return { groups, other };
+  return { groups: [...withCanonical, ...hitsOnly], other };
 }
 
 /** The `map` field of /api/search/semantic: the matched map and its groups as id lists. */
