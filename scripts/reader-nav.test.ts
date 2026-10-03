@@ -312,7 +312,7 @@ test("cross-regulation helpers (pure)", () => {
   assert.equal(citationLabelFromId("sec-3-A-APPENDIX-B"), "Appendix B");
   assert.equal(citationLabelFromId("sec-gp12-ATTACHMENT-2"), "Attachment 2");
   assert.equal(citationLabelFromId("sec-7-top-REG-7"), null, "a root has no citation label");
-  assert.equal(originTrailLabel("sec-gp12-I-A"), "APCD General Permit GP12 · I.A");
+  assert.equal(originTrailLabel("sec-gp12-I-A"), "GP12 · I.A");
   assert.equal(originTrailLabel("sec-7-B-I-B-33"), "Regulation 7 · Part B · I.B.33");
   assert.equal(originTrailLabel("sec-7-top-REG-7"), "Regulation 7");
 
@@ -692,7 +692,7 @@ test("?from= another regulation: return link, stripped from the URL", async (t) 
     const bar = $("#return-trail");
     assert.equal(bar.hidden, false);
     const back = $("#return-trail-ext") as HTMLAnchorElement;
-    assert.equal(back.textContent, "← Back to APCD General Permit GP12 · I.A");
+    assert.equal(back.textContent, "← Back to GP12 · I.A");
     assert.equal(back.getAttribute("href"), "/regulations/gp12#sec-gp12-I-A");
     assert.equal(back.hidden, false);
     assert.equal(($("#return-trail-back") as HTMLElement).hidden, true, "the in-document button yields to the link");

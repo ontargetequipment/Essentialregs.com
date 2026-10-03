@@ -211,10 +211,12 @@ export function citationLabelFromId(id: string): string | null {
 /**
  * The return bar's text for an origin in another regulation: the
  * regulation's display name (never the key), then the short citation when
- * the id yields one -- "APCD General Permit GP12 · I.A".
+ * the id yields one -- "Regulation 7 · Part B · I.B.33". A general permit
+ * goes by its number alone ("GP12 · I.A"), the way permit holders say it;
+ * the bar has no room for "APCD General Permit GP12".
  */
 export function originTrailLabel(originId: string): string {
   const key = regKeyOf(originId);
-  const name = key ? regulationDisplayName(key) : "";
+  const name = !key ? "" : /^gp\d+$/i.test(key) ? key.toUpperCase() : regulationDisplayName(key);
   return [name, citationLabelFromId(originId)].filter(Boolean).join(" · ");
 }

@@ -129,7 +129,10 @@ export function sanitizeHtml(html: string): string {
 // The importer links a citation of another regulation in the corpus as
 // `<a class="xref-external-reg" href="/regulations/<reg>">` (see
 // pipeline/import_ccr.py), i.e. straight at the gated reader.
-const EXTERNAL_REG_HREF = /^\/regulations\/([^/?#]+)$/;
+// Since Sprint 2 the href may carry the cited provision as a hash
+// ("/regulations/7#sec-7-B-I-B-33"); the hash is kept for a subscriber and
+// dropped for the teaser, which has no such row to land on.
+const EXTERNAL_REG_HREF = /^\/regulations\/([^/?#]+)(#[^\s"'<>]*)?$/;
 
 /**
  * sanitizeHtml for a ProvisionCard (/sample, /regs/[id]). Those pages are
@@ -147,10 +150,10 @@ export function sanitizeCardHtml(html: string, hasAccess: boolean): string {
       ...base.transformTags,
       a: (tagName, attribs) => {
         const out: sanitizeHtmlLib.Attributes = { ...attribs, rel: "noopener noreferrer" };
-        const reg = /(^|\s)xref-external-reg(\s|$)/.test(attribs.class ?? "")
-          ? EXTERNAL_REG_HREF.exec(attribs.href ?? "")?.[1]
-          : undefined;
-        if (reg) out.href = regulationCardHref(reg, hasAccess);
+        const m = /(^|\s)xref-external-reg(\s|$)/.test(attribs.class ?? "")
+          ? EXTERNAL_REG_HREF.exec(attribs.href ?? "")
+          : null;
+        if (m) out.href = regulationCardHref(m[1], hasAccess) + (hasAccess ? (m[2] ?? "") : "");
         return { tagName, attribs: out };
       },
     },
