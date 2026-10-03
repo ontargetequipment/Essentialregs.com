@@ -117,6 +117,12 @@ WHOLE_ANSWER_RE = re.compile(r'[.!?)"\]]\*?$')
 # This is the summary text only: the <p>/<span> markup the reader relies on
 # lives in full_text and is never touched here.
 WRAPPER_TAG_RE = re.compile(r"</?\s*(?:answer|summary)\s*>", re.IGNORECASE)
+# anthropic 1.x removed temperature from messages.create() (it is a TypeError
+# there), so the two synchronous calls below send it through extra_body;
+# the Batches API params dict is forwarded as-is. claude-sonnet-4-5 still
+# honours it. Every sync retry in CI had thrown since the 1.5.0 pin
+# (21 Sep 2026) and been swallowed as "retry failed" -- the 1 Oct pilot's
+# "82 of 82 retries still long" was this error, not the model.
 TEMPERATURE = 0
 DEFAULT_MODEL = "claude-sonnet-4-5"
 BATCH_MAX_REQUESTS = 1000   # Anthropic Message Batches API limit per batch
@@ -1622,7 +1628,7 @@ def retry_with_line(client_anthropic, model: str, result: "PromptResult",
     message = client_anthropic.messages.create(
         model=model,
         max_tokens=max_tokens,
-        temperature=TEMPERATURE,
+        extra_body={"temperature": TEMPERATURE},
         system=result.system,
         messages=[
             {"role": "user", "content": result.prompt},
@@ -2032,7 +2038,7 @@ def run_sync(client_anthropic, client_supabase, rows: list[dict], meta: dict, mo
             message = client_anthropic.messages.create(
                 model=model,
                 max_tokens=MAX_TOKENS,
-                temperature=TEMPERATURE,
+                extra_body={"temperature": TEMPERATURE},
                 system=result.system,
                 messages=[{"role": "user", "content": result.prompt}],
             )

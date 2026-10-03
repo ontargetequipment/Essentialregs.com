@@ -850,6 +850,8 @@ def test_call_sites_use_per_row_system(monkeypatch):
 
     class _Messages:
         def create(self, **kwargs):
+            if "temperature" in kwargs:
+                raise TypeError("Messages.create() got an unexpected keyword argument 'temperature'")
             captured.append(kwargs)
             return _Message()
 
@@ -1949,6 +1951,12 @@ def _fake_anthropic(answers: list[str], calls: list[dict], stop_reason: str = "e
 
     class _Messages:
         def create(self, **kwargs):
+            # anthropic 1.x: temperature/top_p/top_k are not parameters of
+            # messages.create() any more. Mirror the real SDK so a regression
+            # fails here instead of in a paid run.
+            for removed in ("temperature", "top_p", "top_k"):
+                if removed in kwargs:
+                    raise TypeError(f"Messages.create() got an unexpected keyword argument '{removed}'")
             calls.append(kwargs)
             return _Message(answers.pop(0))
 
@@ -2406,3 +2414,18 @@ def test_main_routes_ids_runs_through_the_regenerated_write(monkeypatch, tmp_pat
                         lambda *a, **k: seen.append(k["regenerated"]))
     assert summarize.main(argv) == 0
     assert seen == [want]
+
+
+def test_sync_calls_send_temperature_through_extra_body(monkeypatch, tmp_path):
+    """anthropic 1.x dropped the temperature keyword; the sync primary call
+    and the retry both carry it in extra_body, and the batch params keep it."""
+    monkeypatch.setattr(summarize, "write_summary", lambda *a, **k: None)
+    monkeypatch.setattr(summarize, "FAILED_LOG_PATH", tmp_path / "failed.jsonl")
+    calls: list[dict] = []
+    client = _fake_anthropic(["Primary answer cut in the middle of a", "Whole retry."], calls)
+    stats = summarize.RunStats()
+    summarize.run_sync(client, None, [_row("sec-6-B-1")], {}, "m", stats, dry_run=False)
+    assert len(calls) == 2 and stats.processed == 1 and stats.failed == 0
+    for call in calls:
+        assert "temperature" not in call
+        assert call["extra_body"] == {"temperature": summarize.TEMPERATURE}
