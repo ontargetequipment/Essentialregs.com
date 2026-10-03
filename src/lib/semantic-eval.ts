@@ -2,14 +2,15 @@
  * Acceptance questions for Ask search (Phase 3/5 of the semantic-search
  * plan). Since Ask Track B (1 Oct 2026) the set is also the pull-request
  * gate: the "Ask eval" workflow runs scripts/ask-eval.ts on every PR to
- * main and fails on any miss outside KNOWN_FAILURES; sixteen questions also
+ * main and fails on any miss outside KNOWN_FAILURES; eighteen questions also
  * pin question-map routing (`map`): the engines map's four from Track B,
  * since maps batch 2 (2 Oct 2026) storage-tanks, pneumatic-controllers,
- * dehydrators, apen and the bulk-plant question that must take no map, and
+ * dehydrators, apen and the bulk-plant question that must take no map,
  * since maps batch 3 (2 Oct 2026) combustion-devices, ldar, general-permits
- * (one new question, the 28th) and the GP01 question on storage-tanks.
- * Score since migration 20261002151233 (2 Oct 2026): 27/28, one known
- * failure (civil penalties, below).
+ * (one new question, the 28th) and the GP01 question on storage-tanks, and
+ * since maps batch 4 (2 Oct 2026) the enforcement map: the civil-penalties
+ * question and one new question, the 29th. Score since maps batch 4:
+ * 29/29, no known failure.
  *
  * Original description: Each is a question a Colorado oil & gas compliance person would
  * actually type, with the provision(s) that should appear in the top 5,
@@ -59,14 +60,13 @@ export type EvalQuestion = {
  * non-zero only for a failure outside this list, so the gate holds the line
  * at the current score without pretending these pass. Each entry says why.
  *
- * - Civil penalties: since migration 20261002151233 the three best Colorado
- *   rows lead (ECMC 525.c, 525.b.(7), then CP III.B.2 or Reg 3 D X.A.4.c,
- *   within 0.0004 cosine of each other). The true answer, CP III.A, is #13
- *   at cosine 0.417: its text never says "assess", and the keyword leg finds
- *   nothing. A vocabulary gap, not a ranking one. Next step: an enforcement
- *   question map, after which this question's check moves to that map.
+ * Empty since maps batch 4 (2 Oct 2026). The civil-penalties question was
+ * the one entry: its vocabulary gap (CP III.A never says "assess") is closed
+ * by the enforcement map, which puts CP III.A first on the page, and its
+ * retrieval check is widened to either Colorado penalty section (CP III or
+ * ECMC Rule 525). The gate is 29/29.
  */
-export const KNOWN_FAILURES: string[] = ["How does the Division assess civil penalties for a violation?"];
+export const KNOWN_FAILURES: string[] = [];
 
 /**
  * One extra condition on a question's hits. `topN` defaults to the
@@ -252,8 +252,9 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   },
   {
     q: "How does the Division assess civil penalties for a violation?",
-    expect: ["sec-cp-III"],
-    note: "Common Provisions III civil penalties",
+    expect: ["sec-cp-III", "sec-ecmc-525"],
+    map: "enforcement",
+    note: "a Colorado penalty-assessment section in the top 5 — Common Provisions III or ECMC Rule 525; the map puts CP III.A first on the page regardless of rank. Production 2 Oct: 525.c #1, 525.b.(7) #2, CP III.B.2 #3",
   },
   {
     q: "Am I subject to the federal OOOOb rules if I modified a well after December 2022?",
@@ -294,6 +295,12 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     expect: ["sec-gp12-", "sec-gp11-", "sec-gp09-", "sec-gp10-"],
     map: "general-permits",
     note: "GP12 (and GP11 / the closed GP09-GP10) for a well production facility; routes to the general-permits map",
+  },
+  {
+    q: "What is the maximum civil penalty per day for violating an AQCC regulation?",
+    expect: ["sec-cp-III"],
+    map: "enforcement",
+    note: "Common Provisions III.A/III.B.3 — the per-day maximum; routes to the enforcement map (production 2 Oct: CP III.A #1 at cosine 0.58)",
   },
   // ---- Ask Track A regression checks (reviewer questions, 30 Sep 2026) ----
   {

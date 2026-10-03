@@ -30,15 +30,23 @@ export type MapGroup =
   | "Colorado standards"
   | "Federal NSPS"
   | "Federal NESHAP"
+  | "ECMC rules"
+  | "Federal PHMSA"
   | "Definitions";
 
-/** The six groups in display order. Air-centric on purpose for the first maps. */
+/**
+ * The eight groups in display order. The first six were air-centric on
+ * purpose for the first maps; "ECMC rules" and "Federal PHMSA" (maps batch
+ * 4, 2 Oct 2026) sit after the federal air groups and before Definitions.
+ */
 export const MAP_GROUP_ORDER: MapGroup[] = [
   "Colorado permitting and APEN",
   "General Permit options",
   "Colorado standards",
   "Federal NSPS",
   "Federal NESHAP",
+  "ECMC rules",
+  "Federal PHMSA",
   "Definitions",
 ];
 
@@ -51,13 +59,19 @@ export const FEDERAL_NSPS_REG_KEYS: readonly string[] = ["ooooa", "oooob", "oooo
 /** 40 CFR Part 63 subparts in the corpus: NESHAP rows go under "Federal NESHAP". */
 export const FEDERAL_NESHAP_REG_KEYS: readonly string[] = ["zzzz"];
 
+/** The ECMC 100-1200 Series rules (one reg_key): ECMC rows go under "ECMC rules". */
+export const ECMC_REG_KEYS: readonly string[] = ["ecmc"];
+
+/** 49 CFR Parts 190-199 in the corpus (reg_key p19x): PHMSA rows go under "Federal PHMSA". */
+export const PHMSA_REG_KEYS: readonly string[] = ["p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"];
+
 /**
  * AQCC regulation keys: the numbered regulations 1-31 plus the Common
  * Provisions ("cp") and the Air Quality Standards ("aqs"). A state row with
  * one of these keys goes under "Colorado standards" (Regulation 3, the
  * permitting regulation, is routed before this list is consulted). Keyed by
- * name so a later map for ECMC or PHMSA topics can add a group by adding a
- * list here, without touching groupForHit().
+ * name, like ECMC_REG_KEYS and PHMSA_REG_KEYS above, so a group is a list
+ * here plus one line in groupForHit().
  */
 export const AQCC_REGULATION_KEYS: readonly string[] = [
   ...Array.from({ length: 31 }, (_, i) => String(i + 1)),
@@ -115,6 +129,22 @@ export type QuestionMap = {
  * title search finds, so the combustion-devices map's Definitions group
  * uses the "Air pollution control equipment" and "Approved instrument
  * monitoring method" definitions instead.
+ *
+ * Batch 4 (2 Oct 2026) added enforcement, the first map that reaches past
+ * the air rules, with the "ECMC rules" and "Federal PHMSA" groups; every id
+ * was verified against the production database on 2 Oct 2026. It sits after
+ * the equipment maps and before general-permits and apen so that "what is
+ * the penalty for not filing an APEN" lands here, not on the generic APEN
+ * map, while "LDAR enforcement" stays on ldar. The triggers are the
+ * enforcement vocabulary (penalty, NOAV, OFV, AOC, compliance advisory,
+ * cease and desist, consent order); a bare "violation" does not route, so
+ * the odor-dilution eval question keeps taking no map. One more corpus gap,
+ * left open the same way: the corpus has no row for the APCD
+ * compliance-advisory process or for the Air Act's penalty procedure (CRS
+ * §§ 25-7-115 and 25-7-122 are statute, not AQCC rules), so the map's
+ * Colorado group leans on Common Provisions III and Procedural Rules
+ * VI.D.1. Left open for the corpus roadmap, not papered over with a
+ * look-alike row.
  */
 export const QUESTION_MAPS: QuestionMap[] = [
   {
@@ -331,6 +361,46 @@ export const QUESTION_MAPS: QuestionMap[] = [
     ],
   },
   {
+    key: "enforcement",
+    name: "Enforcement and penalties: APCD, ECMC and PHMSA",
+    // After the equipment maps (an "LDAR enforcement" question stays on
+    // ldar) and before general-permits and apen ("the penalty for not filing
+    // an APEN" is an enforcement question). No bare "violation": an odor
+    // violation measured in dilutions is a Regulation 2 question, not this.
+    triggers: [
+      /\b(?:civil penalt(?:y|ies)|penalt(?:y|ies)|noavs?|notices? of (?:alleged|probable) violation|enforcement(?: actions?| matters?| proceedings?)?|compliance advisor(?:y|ies)|orders? finding violation|ofvs?|cease[- ]and[- ]desist|consent orders?|administrative orders? on consent|aocs?)\b/i,
+    ],
+    factors:
+      "What applies depends on whose rule was broken: an AQCC regulation, the SIP or an APCD permit (Common Provisions III — a civil penalty per day of violation up to the CPI-adjusted maximum, with the Division carrying the burden of proof in the hearing); an ECMC rule, order or permit (Rule 523 enforcement process, then Rule 525's penalty schedule by rule class and degree of harm, adjusted for aggravating and mitigating factors, days of violation and voluntary disclosure); or a PHMSA pipeline-safety regulation (49 CFR Part 190 Subpart B — notice of probable violation, response options, assessment considerations and the § 190.223 maximums).",
+    provisions: [
+      // General Permit options
+      { id: "sec-gp12-XI-C-8", group: "General Permit options", why: "GP12 General Terms — violating a permit condition, the Act or an AQCC regulation can bring administrative, civil or criminal enforcement" },
+      { id: "sec-gp01-VIII-C-8", group: "General Permit options", why: "GP01 General Terms — the same enforcement clause every general permit carries" },
+      // Colorado standards (AQCC Common Provisions and Procedural Rules)
+      { id: "sec-cp-III", group: "Colorado standards", why: "Common Provisions III — (State Only) Civil Penalties" },
+      { id: "sec-cp-III-A", group: "Colorado standards", why: "Common Provisions III.A — who is liable and the civil penalty per day of violation (CRS § 25-7-122)" },
+      { id: "sec-cp-III-B-1", group: "Colorado standards", why: "Common Provisions III.B.1 — the maximum is adjusted annually by the CPI" },
+      { id: "sec-cp-III-B-3", group: "Colorado standards", why: "Common Provisions III.B.3 — the current maximum per day of violation" },
+      { id: "sec-proc-A-VI-D-1", group: "Colorado standards", why: "AQCC Procedural Rules VI.D.1 — the Division has the burden of proof in enforcement adjudications" },
+      // ECMC rules
+      { id: "sec-ecmc-523-a", group: "ECMC rules", why: "Rule 523.a — the Director's Notice of Alleged Violation (NOAV)" },
+      { id: "sec-ecmc-523-c", group: "ECMC rules", why: "Rule 523.c — when the Director seeks penalties: the enforcement action" },
+      { id: "sec-ecmc-525-a", group: "ECMC rules", why: "Rule 525.a — the Commission's authority to impose penalties and other remedies" },
+      { id: "sec-ecmc-525-b", group: "ECMC rules", why: "Rule 525.b — days of violation and continuing violations" },
+      { id: "sec-ecmc-525-c", group: "ECMC rules", why: "Rule 525.c — the Penalty Schedule: rule class × degree of harm, aggravating and mitigating factors" },
+      { id: "sec-ecmc-525-e", group: "ECMC rules", why: "Rule 525.e — voluntary disclosure" },
+      { id: "sec-ecmc-525-g", group: "ECMC rules", why: "Rule 525.g — paying the penalty (30 days, certified funds)" },
+      // Federal PHMSA
+      { id: "sec-p190-190.207", group: "Federal PHMSA", why: "49 CFR § 190.207 — notice of probable violation" },
+      { id: "sec-p190-190.208", group: "Federal PHMSA", why: "49 CFR § 190.208 — the operator's response options" },
+      { id: "sec-p190-190.221", group: "Federal PHMSA", why: "49 CFR § 190.221 — civil penalties generally" },
+      { id: "sec-p190-190.223", group: "Federal PHMSA", why: "49 CFR § 190.223 — maximum penalties" },
+      { id: "sec-p190-190.225", group: "Federal PHMSA", why: "49 CFR § 190.225 — assessment considerations" },
+      { id: "sec-p196-196.205", group: "Federal PHMSA", why: "49 CFR § 196.205 — administrative civil penalties for excavation-damage violations" },
+      { id: "sec-p196-196.207", group: "Federal PHMSA", why: "49 CFR § 196.207 — the maximum administrative civil penalties under Part 196" },
+    ],
+  },
+  {
     key: "general-permits",
     name: "APCD general permits: which one fits",
     // After the equipment maps on purpose: a GP02 question keeps routing to
@@ -424,9 +494,11 @@ const DEFINITIONS_TITLE = /what definitions apply/i;
  *   3. Regulation 3 → Colorado permitting and APEN;
  *   4. a FEDERAL_NESHAP_REG_KEYS row → Federal NESHAP;
  *   5. a FEDERAL_NSPS_REG_KEYS row → Federal NSPS;
- *   6. a state row keyed by an AQCC regulation (AQCC_REGULATION_KEYS) →
+ *   6. an ECMC_REG_KEYS row → ECMC rules;
+ *   7. a PHMSA_REG_KEYS row (49 CFR Parts 190-199) → Federal PHMSA;
+ *   8. a state row keyed by an AQCC regulation (AQCC_REGULATION_KEYS) →
  *      Colorado standards;
- *   7. everything else (ECMC, PHMSA p19x, proc, sip, county) → "Other".
+ *   9. everything else (proc, sip, county) → "Other".
  */
 export function groupForHit(hit: GroupableHit): MapGroup | "Other" {
   if (DEFINITIONS_PATH.test(hit.path ?? "") || DEFINITIONS_PATH.test(hit.title) || DEFINITIONS_TITLE.test(hit.title)) {
@@ -437,6 +509,8 @@ export function groupForHit(hit: GroupableHit): MapGroup | "Other" {
   if (key === "3") return "Colorado permitting and APEN";
   if (FEDERAL_NESHAP_REG_KEYS.includes(key)) return "Federal NESHAP";
   if (FEDERAL_NSPS_REG_KEYS.includes(key)) return "Federal NSPS";
+  if (ECMC_REG_KEYS.includes(key)) return "ECMC rules";
+  if (PHMSA_REG_KEYS.includes(key)) return "Federal PHMSA";
   if (hit.jurisdiction_level === "state" && AQCC_REGULATION_KEYS.includes(key)) return "Colorado standards";
   return "Other";
 }

@@ -128,16 +128,16 @@ test("noBasis and minFederal checks", () => {
   assert.match(twoFederal.failures.join("\\n"), /2 federal rows in the top 10; need 3/);
 });
 
-test("the list carries the original 24 questions unchanged, the maps batch 3 general-permits question, then the three reviewer questions", () => {
-  assert.equal(EVAL_QUESTIONS.length, 28);
-  const plain = EVAL_QUESTIONS.slice(0, 25);
+test("the list carries the original 24 questions unchanged, the maps batch 3 and 4 questions, then the three reviewer questions", () => {
+  assert.equal(EVAL_QUESTIONS.length, 29);
+  const plain = EVAL_QUESTIONS.slice(0, 26);
   for (const e of plain) {
     assert.equal(e.topN, undefined, e.q);
     assert.equal(e.forbid, undefined, e.q);
     assert.equal(e.checks, undefined, e.q);
   }
   assert.deepEqual(
-    EVAL_QUESTIONS.slice(25).map((e) => e.q),
+    EVAL_QUESTIONS.slice(26).map((e) => e.q),
     [
       "When is a GP01 required?",
       "What regulations apply to a natural gas-fired engine?",
@@ -147,7 +147,7 @@ test("the list carries the original 24 questions unchanged, the maps batch 3 gen
   // the measured 30 Sep production top 10 for each passes its own question
   // (since maps batch 3 the GP01 question also pins the storage-tanks map, so
   // the routed key is passed the way scripts/ask-eval.ts passes it)
-  const gp01: EvalQuestion = EVAL_QUESTIONS[25];
+  const gp01: EvalQuestion = EVAL_QUESTIONS[26];
   assert.equal(
     evaluateQuestion(gp01, [hit("sec-gp01-I"), hit("sec-gp01-I-E"), hit("sec-gp01-I-A-1"), hit("sec-gp01-IX"), hit("sec-gp01-top-REG-gp01")], matchQuestionMap(gp01.q)?.key ?? null).pass,
     true
