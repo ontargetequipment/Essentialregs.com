@@ -87,3 +87,40 @@ export function regKeyOf(id: string): string | null {
 export function rootIdOf(regKey: string): string {
   return `sec-${regKey}-top-REG-${regKey}`;
 }
+
+/** Federal reg keys: 40 CFR 60 Subparts OOOO, OOOOa/b/c, JJJJ, IIII, 40 CFR 63 Subpart ZZZZ and the 49 CFR PHMSA parts (p190..p199). */
+const FEDERAL_KEY = /^(oooo[abc]?|jjjj|iiii|zzzz|p\d{3})$/;
+
+/**
+ * Human label for the reg badge on results and related panels. The
+ * DOCUMENT decides: a row inside Regulation 26 is Colorado even when its
+ * own jurisdiction_level is 'federal', which is the case for the 40 CFR 60
+ * Subpart JJJJ text Reg 26 Part C incorporates by reference (sec-26-C-FEDJJJJ
+ * and its children; see _load_reg26_fedjjjj_supplement in
+ * pipeline/import_ccr.py). A reviewer saw one of those rows labeled
+ * "Federal" beside "Regulation 26" and read it as a provenance error, which
+ * it is: Regulation 26 is a Colorado regulation whatever it incorporates.
+ * The row-level jurisdiction only decides when the row has no regulation.
+ */
+export function regBadge(regKey: string | null, jurisdiction: string): string {
+  if (regKey) {
+    if (FEDERAL_KEY.test(regKey)) return "Federal";
+    if (regKey === "ecmc") return "ECMC";
+    return "Colorado";
+  }
+  return jurisdiction === "federal" ? "Federal" : "Colorado";
+}
+
+/**
+ * True for a row of federal text carried inside a Colorado document (the
+ * Reg 26 Subpart JJJJ block): the badge says Colorado, and the card can add
+ * that the text is incorporated from a federal rule.
+ */
+export function isIncorporatedFederal(regKey: string | null, jurisdiction: string): boolean {
+  return !!regKey && !FEDERAL_KEY.test(regKey) && jurisdiction === "federal";
+}
+
+/** "state" | "federal" from the reg key alone (for rows that don't carry jurisdiction_level). */
+export function jurisdictionOfKey(regKey: string | null): "state" | "federal" {
+  return regKey && FEDERAL_KEY.test(regKey) ? "federal" : "state";
+}

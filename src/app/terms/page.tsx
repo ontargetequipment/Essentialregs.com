@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalList, LegalPage, LegalSection } from "@/components/LegalPage";
+import { TRIAL_DAYS } from "@/lib/pricing";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -15,6 +16,7 @@ export default function TermsPage() {
   return (
     <LegalPage
       title="Terms of Service"
+      lastUpdated="October 3, 2026"
       intro={
         <p>
           These Terms of Service (the &ldquo;Terms&rdquo;) govern your access
@@ -104,6 +106,28 @@ export default function TermsPage() {
           <strong>Failed payments.</strong> If a renewal payment fails, we may
           retry it and may suspend or terminate your access until payment is
           received.
+        </p>
+        <p>
+          <strong>Free trial.</strong> If you have never held an EssentialRegs
+          subscription, your first subscription on either plan begins with a
+          free trial of {TRIAL_DAYS} days. A valid payment method is required
+          to start the trial, but nothing is charged when it starts. When the
+          trial ends, the payment method on file is charged the full price of
+          the plan you chose and the paid term begins. To avoid the charge,
+          cancel before the trial ends from your account page or by emailing{" "}
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="underline underline-offset-2">
+            {SUPPORT_EMAIL}
+          </a>
+          . If you cancel during the trial, you are not charged and you keep
+          access to subscriber content until the trial ends. We send a
+          reminder email before the trial ends. The trial is
+          offered once per customer: an account that has previously held a
+          subscription, whether or not it was canceled during its trial, is
+          charged at checkout with no trial. If the charge at the end of the
+          trial fails, we may retry it and may suspend your access until
+          payment is received. We may change or withdraw the trial offer for
+          new customers at any time; a change does not affect a trial already
+          in progress.
         </p>
       </LegalSection>
 
