@@ -130,15 +130,19 @@ test.describe("signed in", () => {
     expect(await page.locator("#doc").innerText()).not.toMatch(/reviewed by/i);
   });
 
-  test("/search shows a subscriber the one Ask (beta) line, linking to ?mode=ask with the query", async ({ page }) => {
-    // The smoke account is a subscriber. The line sits under the keyword
-    // form in place of the old Keyword / Ask tabs (owner decision, 30 Sep
-    // 2026) and carries the current query into Ask.
+  test("/search shows a subscriber the Keyword / Ask tabs; the Ask tab carries the query", async ({ page }) => {
+    // Ask is a first-class mode again (3 Oct 2026): the tablist from before
+    // the keyword-first layout of 30 Sep, for every visitor.
     const res = await page.goto("/search?q=emissions");
     expect(res?.status()).toBe(200);
-    await expect(page.getByRole("tablist")).toHaveCount(0);
-    await expect(page.getByText("Ask (beta)", { exact: true })).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "Try it →" })).toHaveAttribute("href", "/search?mode=ask&q=emissions");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Search");
+    const tabs = page.getByRole("tablist").getByRole("tab");
+    await expect(tabs).toHaveCount(2);
+    await expect(tabs.nth(0)).toHaveText("Keyword");
+    await expect(tabs.nth(0)).toHaveAttribute("aria-selected", "true");
+    await expect(tabs.nth(1)).toHaveText("Ask");
+    await expect(tabs.nth(1)).toHaveAttribute("href", "/search?mode=ask&q=emissions");
+    expect(await page.locator("body").innerText()).not.toMatch(/\bbeta\b/i);
   });
 
   test("an Ask card carries the review-status badge beside its summary", async ({ page }) => {
@@ -146,7 +150,9 @@ test.describe("signed in", () => {
     // the first hit for this question has carried a summary since Phase 0.
     const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent("When is a GP01 required?"));
     expect(res?.status()).toBe(200);
-    await expect(page.getByText("Ask is a beta feature for subscribers")).toHaveCount(0);
+    await expect(page.getByText("Ask is part of the subscription")).toHaveCount(0);
+    await expect(page.getByRole("tablist").getByRole("tab", { name: "Ask" })).toHaveAttribute("aria-selected", "true");
+    expect(await page.locator("body").innerText()).not.toMatch(/\bbeta\b/i);
     const cards = page.locator("ol > li > a");
     expect(await cards.count()).toBeGreaterThan(0);
     const first = cards.first();
@@ -169,7 +175,7 @@ test.describe("signed in", () => {
     const q = "What regulations apply to a natural gas-fired engine?";
     const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
     expect(res?.status()).toBe(200);
-    await expect(page.getByText("Ask is a beta feature for subscribers")).toHaveCount(0);
+    await expect(page.getByText("Ask is part of the subscription")).toHaveCount(0);
     await expect(page.getByText("Mapped question: Natural gas-fired and diesel engines")).toHaveCount(1);
     await expect(page.getByText(/What applies depends on the fuel/)).toHaveCount(1);
     const groups = ["Colorado permitting and APEN", "General Permit options", "Colorado standards", "Federal NSPS", "Federal NESHAP", "Definitions"];
@@ -194,6 +200,24 @@ test.describe("signed in", () => {
     await expect(page.getByText(/^\d+ provisions? most about/)).toHaveCount(1);
     await expect(page.getByText("Why it's here:", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Show grouped" })).toHaveCount(1);
+  });
+
+  test("the civil-penalties question renders grouped with no weak-match notice and a canonical group first", async ({ page }) => {
+    // 3 Oct 2026: a question that routed to a map is answered by the map's
+    // rows, so the amber "Nothing in the regulations closely matches this"
+    // notice stays off the grouped view, and a stray Regulation 3 hit no
+    // longer opens "Colorado permitting and APEN" above the enforcement
+    // map's own groups (groupHits puts hits-only groups after the ones with
+    // a canonical row).
+    const q = "How does the Division assess civil penalties for a violation?";
+    const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
+    expect(res?.status()).toBe(200);
+    await expect(page.getByText("Mapped question: ", { exact: false })).toHaveCount(1);
+    await expect(page.getByText("Nothing in the regulations closely matches this", { exact: false })).toHaveCount(0);
+    const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
+    expect(headings.length).toBeGreaterThan(0);
+    expect(["General Permit options", "Colorado standards"]).toContain(headings[0]);
+    expect(headings[0]).not.toBe("Colorado permitting and APEN");
   });
 
   test("a storage-vessel question renders grouped under the storage-tanks map (maps batch 2)", async ({ page }) => {

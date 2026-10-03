@@ -429,6 +429,44 @@ test("groupHits: canonical rows lead, hits follow in retrieval order, caps hold,
   assert.deepEqual(e.other, []);
 });
 
+test("groupHits: groups with a canonical row come before hits-only groups, each run in MAP_GROUP_ORDER", () => {
+  // The civil-penalties page (3 Oct 2026): one Regulation 3 retrieval hit
+  // used to open "Colorado permitting and APEN" above the enforcement map's
+  // own groups. Hits-only groups now follow every group that carries a
+  // canonical row, and both runs keep MAP_GROUP_ORDER.
+  const enforcement = QUESTION_MAPS.find((m) => m.key === "enforcement")!;
+  const hits: GroupableHit[] = [
+    hit("sec-3-B-II-A", "3", "state"), // Colorado permitting and APEN: no canonical row on this map
+    hit("sec-7-B-I-D-3", "7", "state"), // Colorado standards: canonical rows exist
+    hit("sec-ecmc-525-b-(7)", "ecmc", "state"),
+    hit("sec-jjjj-60.4230", "jjjj", "federal"), // Federal NSPS: hits only
+    hit("sec-proc-I", "proc", "state"), // Other
+  ];
+  const g = groupHits(enforcement, hits);
+  assert.deepEqual(
+    g.groups.map((x) => x.group),
+    ["General Permit options", "Colorado standards", "ECMC rules", "Federal PHMSA", "Colorado permitting and APEN", "Federal NSPS"]
+  );
+  assert.ok(g.groups[0].canonical.length > 0);
+  assert.deepEqual(g.groups[1].hits.map((h) => h.id), ["sec-7-B-I-D-3"]);
+  assert.deepEqual(g.groups[2].hits.map((h) => h.id), ["sec-ecmc-525-b-(7)"]);
+  assert.deepEqual(g.groups[4], { group: "Colorado permitting and APEN", canonical: [], hits: [hits[0]] });
+  assert.deepEqual(g.groups[5], { group: "Federal NSPS", canonical: [], hits: [hits[3]] });
+  assert.deepEqual(g.other.map((h) => h.id), ["sec-proc-I"]);
+  // The API's summary follows the same order, "Other" last.
+  assert.deepEqual(
+    summariseGroups(enforcement, g).groups.map((x) => x.group),
+    [...g.groups.map((x) => x.group), "Other"]
+  );
+
+  // RLS / filters can empty a group of its canonical rows: it then sorts as hits-only.
+  const fetched = new Set(["sec-cp-III", "sec-cp-III-A"]);
+  const limited = groupHits(enforcement, [hit("sec-gp01-I-A-2", "gp01", "state"), hit("sec-3-B-II-A", "3", "state")], fetched);
+  assert.deepEqual(limited.groups.map((x) => x.group), ["Colorado standards", "Colorado permitting and APEN", "General Permit options"]);
+  assert.deepEqual(limited.groups[2], { group: "General Permit options", canonical: [], hits: [limited.groups[2].hits[0]] });
+  assert.equal(limited.groups[2].hits[0].id, "sec-gp01-I-A-2");
+});
+
 // ---- the eval's map check --------------------------------------------------
 
 const evalHit = (id: string) => ({ id });

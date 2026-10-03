@@ -314,30 +314,35 @@ test.describe("anonymous", () => {
     for (const text of await badges.allTextContents()) expect(text).toMatch(BADGE_TEXT);
   });
 
-  test("/search is keyword-first: no tabs, and no Ask line for a visitor who is not a subscriber", async ({ page }) => {
-    // Owner decision, 30 Sep 2026: keyword search is the product; Ask is a
-    // labelled beta reached from one line that only subscribers see.
-    const res = await page.goto("/search");
+  test("/search shows the Keyword / Ask tabs to a visitor who is not logged in; the Ask tab carries the query", async ({ page }) => {
+    // Ask is a first-class mode for every visitor (3 Oct 2026, reversing the
+    // keyword-first layout of 30 Sep): the tablist sits under the heading.
+    const res = await page.goto("/search?q=emissions");
     expect(res?.status()).toBe(200);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Search");
-    await expect(page.getByRole("tablist")).toHaveCount(0);
-    await expect(page.getByText("Ask (beta)")).toHaveCount(0);
+    const tabs = page.getByRole("tablist").getByRole("tab");
+    await expect(tabs).toHaveCount(2);
+    await expect(tabs.nth(0)).toHaveText("Keyword");
+    await expect(tabs.nth(0)).toHaveAttribute("aria-selected", "true");
+    await expect(tabs.nth(1)).toHaveText("Ask");
+    await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "false");
+    await expect(tabs.nth(1)).toHaveAttribute("href", "/search?mode=ask&q=emissions");
+    expect(await page.locator("body").innerText()).not.toMatch(/\bbeta\b/i);
   });
 
-  test("/search?mode=ask is labelled Beta and links back to keyword search", async ({ page }) => {
+  test("/search?mode=ask tells a visitor who is not a subscriber that Ask is part of the subscription", async ({ page }) => {
     const res = await page.goto("/search?mode=ask");
     expect(res?.status()).toBe(200);
-    await expect(page.getByRole("tablist")).toHaveCount(0);
-    const h1 = page.getByRole("heading", { level: 1 });
-    await expect(h1).toContainText("Ask");
-    await expect(h1.getByText("Beta", { exact: true })).toBeVisible();
-    await expect(page.getByText("Ask is in beta.", { exact: false })).toBeVisible();
-    await expect(page.getByRole("link", { name: "← Keyword search" })).toHaveAttribute("href", "/search");
-    // Not a subscriber: the notice, with its own way back to keyword search.
-    const notice = page.getByText("Ask is a beta feature for subscribers.", { exact: false });
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Search");
+    const tabs = page.getByRole("tablist").getByRole("tab");
+    await expect(tabs).toHaveCount(2);
+    await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
+    await expect(tabs.nth(0)).toHaveAttribute("href", "/search");
+    const notice = page.getByText("Ask is part of the subscription.", { exact: false });
     await expect(notice).toBeVisible();
+    await expect(notice).toContainText("Keyword search of the free sample is still available on the Keyword tab.");
     await expect(notice.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
-    await expect(notice.getByRole("link", { name: "here" })).toHaveAttribute("href", "/search");
+    expect(await page.locator("body").innerText()).not.toMatch(/\bbeta\b/i);
   });
 
   test("a parenthesised /regs/<id> returns 200", async ({ page }) => {
