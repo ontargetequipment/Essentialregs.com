@@ -83,7 +83,7 @@ export class SemanticError extends Error {
   }
 }
 
-export { isIncorporatedFederal, jurisdictionOfKey, regBadge } from "@/lib/regulation-names";
+export { jurisdictionOfKey, regBadge } from "@/lib/regulation-names";
 
 /**
  * Display name for a hit's reg key ("Regulation 7", "40 CFR Part 60 Subpart

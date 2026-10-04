@@ -5208,7 +5208,39 @@ CFR_RE_DOTTED = re.compile(
 # or comma-broken ("40 C.F.R., Part 745, Subpart Q", "40 C.F.R. 745.227(e)",
 # "40 C.F.R. section 745.223", "40 CFR Section 261.3") and stay plain text
 # with either variant.
-CFR_DOTTED_REGS: frozenset[str] = frozenset({"8", "12", "19"})
+# Reg 26 (4 Oct 2026): its Part B exemptions cite the federal engine rules
+# dotted -- "40 C.F.R. Part 60, Subpart JJJJ (July 1, 2023) or 40 C.F.R.
+# Part 60, Subpart IIII (July 1, 2023)" in I.D.5.d.(i)(C)(1) and
+# I.D.6.c.(i)(C)(1) -- and those must link to the corpus's own Subpart JJJJ /
+# IIII documents now that Reg 26 no longer carries a copy of JJJJ (see the
+# note above parse_reg). Same additive rule as 8/12/19: every other
+# regulation keeps the undotted CFR_RE.
+CFR_DOTTED_REGS: frozenset[str] = frozenset({"8", "12", "19", "26"})
+# "40 C.F.R. Part 60, JJJJ, IIII, or a permit requirement" (Reg 26 Part B
+# I.D.5.e.(i)(D) and I.D.6.d.(i)(D)): the subpart codes listed straight
+# after the part, with no "Subpart" word. Each listed code links on its own
+# to its corpus document; a code not in the corpus is left as text. Only
+# the codes CFR_SUBPART_TO_REGKEY knows are matched, so "40 C.F.R. Part 60,
+# 2019" or a stray capitalised word after a part number can never match.
+# Gated to CFR_PART_SUBPART_LIST_REGS: measured across every source text on
+# 4 Oct 2026 the form occurs only in Reg 26 (2 sentences), so the gate
+# changes nothing elsewhere, but a new regulation should opt in knowingly.
+CFR_PART_SUBPART_LIST_RE = re.compile(
+    r"\b40\s+C\.?\s?F\.?\s?R\.?\s+Part\s+(60|63),\s+"
+    r"((?:OOOO[abc]?|JJJJ|IIII|ZZZZ)(?:,\s+(?:OOOO[abc]?|JJJJ|IIII|ZZZZ))*)\b"
+)
+_CFR_SUBPART_CODE_RE = re.compile(r"OOOO[abc]?|JJJJ|IIII|ZZZZ")
+CFR_PART_SUBPART_LIST_REGS: frozenset[str] = frozenset({"26"})
+# "NSPS JJJJ" / "NESHAP ZZZZ" with no "Subpart" word, the way Reg 26's Part
+# C statements of basis name the federal engine rules ("the 2.0 g/hp-hr NOx
+# emission limit in EPA's NSPS JJJJ", "NSPS IIII, NSPS JJJJ, ... and NESHAP
+# ZZZZ may also apply"). Only the corpus subpart codes are matched (so
+# "NSPS KKKK" and "NESHAP HH" stay plain text and are not even bucketed),
+# and only for PROGRAM_BARE_SUBPART_REGS: the same form occurs 162 times in
+# Reg 7 and 53 times in Reg 6 (4 Oct 2026 count over the source texts), and
+# turning those into links is a separate, baselined decision.
+PROGRAM_BARE_SUBPART_RE = re.compile(r"\b(NSPS|NESHAP|MACT)\s+(OOOO[abc]?|JJJJ|IIII|ZZZZ)\b")
+PROGRAM_BARE_SUBPART_REGS: frozenset[str] = frozenset({"26"})
 # "Section I.E.3.a.(i) or (ii)" / "... and (iii)" — a bare trailing paren that
 # names a sibling of the citation just linked (optional nicety; see spec item 2).
 _SIBLING_FRAG_RE = re.compile(r"\A\s*(?:or|and)\s+(\([ivxlcdmA-Z0-9]{1,4}\))")
@@ -6294,6 +6326,26 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
     use_ids = bool(ids_index)
     defs_index = _ACTIVE_CORPUS_DEFINITIONS if corpus_definitions is None else (corpus_definitions or {})
 
+    # 0.9) "40 C.F.R. Part 60, JJJJ, IIII" -- subpart codes listed after the
+    # part with no "Subpart" word (Reg 26 Part B; CFR_PART_SUBPART_LIST_RE).
+    # Runs BEFORE step 1, whose subpart group is optional: it would otherwise
+    # claim the bare "40 C.F.R. Part 60" and bucket it as a part not in the
+    # corpus. The whole phrase is claimed here; each listed code becomes its
+    # own link to its corpus document, a code not in the corpus stays as
+    # printed. No-op for every regulation outside CFR_PART_SUBPART_LIST_REGS.
+    if reg in CFR_PART_SUBPART_LIST_REGS:
+        for m in CFR_PART_SUBPART_LIST_RE.finditer(html_text):
+            if is_claimed(m.start(), m.end()):
+                continue
+            claim(m.start(), m.end())
+            for cm in _CFR_SUBPART_CODE_RE.finditer(html_text, m.start(2), m.end(2)):
+                regkey = CFR_SUBPART_TO_REGKEY.get(cm.group(0).upper())
+                if regkey and regkey in corpus_regs:
+                    pieces.append((cm.start(), cm.end(),
+                                   f'<a class="xref-external-reg" href="/regulations/{regkey}">{cm.group(0)}</a>'))
+                else:
+                    buckets[BUCKET_CFR][f"40 CFR Part {m.group(1)}, {cm.group(0)}"] += 1
+
     # 1) "40 CFR Part NN, Subpart XXXX" — only OOOOb is in the corpus today.
     cfr_re = CFR_RE_DOTTED if reg in CFR_DOTTED_REGS else CFR_RE
     for m in cfr_re.finditer(html_text):
@@ -6352,6 +6404,19 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         else:
             claim(m.start(), m.end())
             buckets[BUCKET_CFR][m.group(0)] += 1
+
+    # 1.25) "NSPS JJJJ" / "NESHAP ZZZZ" with no "Subpart" word
+    # (PROGRAM_BARE_SUBPART_RE), for PROGRAM_BARE_SUBPART_REGS only. After
+    # 1.2 so "NSPS Subpart IIII" is already claimed; only corpus codes are
+    # matched at all, so nothing new reaches the cfr bucket.
+    if reg in PROGRAM_BARE_SUBPART_REGS:
+        for m in PROGRAM_BARE_SUBPART_RE.finditer(html_text):
+            if is_claimed(m.start(), m.end()):
+                continue
+            regkey = CFR_SUBPART_TO_REGKEY.get(m.group(2).upper())
+            if regkey and regkey in corpus_regs:
+                claim(m.start(), m.end())
+                pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
 
     # 1.3) California Code of Regulations, Title 13 citations (Reg 20's
     # incorporated-by-reference vehicle standards — see BUCKET_OTHER_CCR /
@@ -11384,36 +11449,23 @@ def find_body_start_no_parts(lines: list[str], reg: str | None = None) -> int:
 
 
 # --------------------------------------------------------------------------
-# Reg 26 Part C supplement: 40 CFR Part 60 Subpart JJJJ (incorporated by
-# reference). Confirmed by reading pipeline/sources/REG_26.pdf page-by-page
-# (pdftotext dump + pdfplumber) that Subpart JJJJ is only ever MENTIONED in
-# REG_26.pdf ("40 C.F.R. Part 60, Subpart JJJJ (July 1, 2023)", etc. — see
-# I.D.5.d.(i)(C)(1), I.D.6.c.(i)(C)(1), III.A.1., III.B.1., and the Part C
-# rulemaking-history narrative) — its ~20 rows of actual regulatory text
-# (root + §§ 60.4230-60.4248) are NEVER printed in REG_26.pdf itself, so
-# there is no PDF text for this importer to parse them out of. The existing
-# DB nonetheless carries this content under Part C (sec-26-C-FEDJJJJ and its
-# 19 children) — it must have been added via a separate eCFR import that
-# pre-dates this CCR PDF parser and whose source file isn't in
-# pipeline/sources/. Rather than fabricate or drop that content, this loads
-# it verbatim from a one-time snapshot of those DB rows
-# (pipeline/sources/reg26_fedjjjj_supplement.json, captured from
-# pipeline/out/reg26_db.json) and re-attaches it under the freshly-parsed
-# Part C root (`sec-26-P-C` — this parser's own id, NOT the old DB's
-# `sec-26-C-PART-C`), sort_order-ed immediately after the last real SOB
-# entry — so the parser stops silently dropping it (see the diff report's
-# "Ids only in DB" list) without inventing new text.
-def _load_reg26_fedjjjj_supplement(after_sort_order: int) -> list[dict]:
-    path = Path(__file__).resolve().parent / "sources" / "reg26_fedjjjj_supplement.json"
-    if not path.exists():
-        return []
-    rows = json.loads(path.read_text(encoding="utf-8"))
-    out = []
-    for i, row in enumerate(rows):
-        r = dict(row)
-        r["sort_order"] = after_sort_order + (i + 1) * 10
-        out.append(r)
-    return out
+# Reg 26 and 40 CFR Part 60 Subpart JJJJ. REG_26.pdf only ever MENTIONS
+# Subpart JJJJ ("40 C.F.R. Part 60, Subpart JJJJ (July 1, 2023)", etc. in
+# Part B I.D.5.d.(i)(C)(1), I.D.5.e.(i)(D), I.D.6.c.(i)(C)(1),
+# I.D.6.d.(i)(D), III.A.1., III.B.1., and "NSPS JJJJ" in the Part C
+# rulemaking-history narrative); the subpart's own text (root + §§
+# 60.4230-60.4248) is never printed in it. Until 4 Oct 2026 this parser
+# nonetheless appended a 20-row copy of that text under Part C
+# (sec-26-C-FEDJJJJ and 19 children, loaded from a one-time snapshot in
+# sources/reg26_fedjjjj_supplement.json) because the database already
+# carried it from an early eCFR import. Owner decision (Brody, 4 Oct 2026):
+# the copy duplicates the corpus's own JJJJ document (reg key `jjjj`) and is
+# not in the Regulation 26 PDF, so it is gone -- the snapshot file is
+# deleted, the production rows are archived and removed by
+# supabase/migrations/20261004200000_remove_reg26_fedjjjj_copy.sql, and the
+# citing sentences link to /regulations/jjjj instead (CFR_DOTTED_REGS,
+# CFR_PART_SUBPART_LIST_REGS and PROGRAM_BARE_SUBPART_REGS all include
+# "26"). Nothing here appends rows the PDF does not print.
 
 
 def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
@@ -11483,10 +11535,6 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
             continue
         seen[pid] = row
         result.append(row)
-
-    if reg == "26":
-        max_sort = max((r["sort_order"] for r in result), default=0)
-        result.extend(_load_reg26_fedjjjj_supplement(max_sort))
 
     anomalies = KNOWN_LABEL_ANOMALIES.get(reg, [])
     return result, unresolved, table_hits, len(tables_by_caption), duplicate_ids, label_fixes_applied, anomalies, marker_audit

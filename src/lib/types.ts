@@ -29,7 +29,7 @@ export type Provision = {
    * When ai_summary was last approved, edited or rejected (timestamptz, ISO
    * string from PostgREST); null for a summary nobody has reviewed. Absent
    * wherever a caller hasn't selected it. Shown as the date on the
-   * "Reviewed" badge (summaryStatusBadge). reviewed_by is deliberately NOT
+   * "AI reviewed" badge (summaryStatusBadge). reviewed_by is deliberately NOT
    * on this type: it holds an email on some rows and is never rendered
    * outside /admin.
    */

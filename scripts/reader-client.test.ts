@@ -195,9 +195,9 @@ test("synthetic regulation: browser-built furniture equals server-built", () => 
   assert.equal(r.rows, synthetic.length);
   // root, PART A, sec-t-A-I (own URL), APPENDIX A; sec-t-A-II's summary is rejected.
   assert.equal(r.links, 4);
-  // The same four panels carry a badge: PART A "Reviewed · Sept 17, 2026", the rest pending.
+  // The same four panels carry a badge: PART A "AI reviewed · Sept 17, 2026", the rest pending.
   assert.equal(r.badges, 4);
-  assert.match(html, /<p class="summary-badge is-reviewed">Reviewed · Sept 17, 2026<\/p>/);
+  assert.match(html, /<p class="summary-badge is-reviewed">AI reviewed · Sept 17, 2026<\/p>/);
   assert.match(html, /<p class="summary-badge is-pending">AI-generated · not yet reviewed<\/p>/);
 });
 

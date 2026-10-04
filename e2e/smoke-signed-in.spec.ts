@@ -121,8 +121,10 @@ test.describe("signed in", () => {
     const badges = page.locator("#doc details.summary-panel > .summary-body > .summary-badge");
     expect(await badges.count()).toBeGreaterThan(0);
     const texts = await badges.allTextContents();
-    for (const text of texts) expect(text).toMatch(/^(Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/);
-    expect(texts.some((t) => t.startsWith("Reviewed") || t.startsWith("AI-generated"))).toBe(true);
+    for (const text of texts) expect(text).toMatch(/^(AI reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/);
+    // Never a bare "Reviewed" (owner decision, 4 Oct 2026): no summary claims human review.
+    for (const text of texts) expect(text).not.toMatch(/^Reviewed\b/);
+    expect(texts.some((t) => t.startsWith("AI reviewed") || t.startsWith("AI-generated"))).toBe(true);
     // The tooltip is added after hydration (reader-client.ts, fillSummaryBadges).
     await expect(badges.first()).toHaveAttribute("title", /Disclaimer page|Read the official text/);
     // No panel without a badge, and no reviewer named anywhere in the body.
@@ -163,7 +165,7 @@ test.describe("signed in", () => {
     );
     const badge = first.locator(".summary-badge");
     await expect(badge).toHaveCount(1);
-    await expect(badge).toHaveText(/^(Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/);
+    await expect(badge).toHaveText(/^(AI reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/);
     await expect(badge).toHaveAttribute("title", /Disclaimer page|Read the official text/);
   });
 

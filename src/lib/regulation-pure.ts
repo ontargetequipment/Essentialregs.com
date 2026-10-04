@@ -794,19 +794,24 @@ export function isHeadingOnlyText(fullText: string, title: string | null, citati
 
 /**
  * The text badge every rendered summary carries, from the row's
- * summary_status and reviewed_at (owner decision, Brody, 29 Sep 2026).
- * Text with a date, not styling, so a reader can tell a checked summary
- * from one nobody has looked at yet:
+ * summary_status and reviewed_at (owner decisions, Brody, 29 Sep and 4 Oct
+ * 2026). Text with a date, not styling, so a reader can tell a checked
+ * summary from one nobody has looked at yet:
  *
- *   approved / edited  -> "Reviewed · Sept 17, 2026" (reviewed_at as
- *                         MMM d, yyyy; "Reviewed" alone if the date is null)
+ *   approved / edited  -> "AI reviewed · Sept 17, 2026" (reviewed_at as
+ *                         MMM d, yyyy; "AI reviewed" alone if the date is
+ *                         null)
  *   pending (or unset) -> "AI-generated · not yet reviewed"
  *   rejected           -> null (the summary itself is withheld everywhere)
  *
- * It says nothing about who reviewed: reviewed_by holds an email on some
- * rows and never reaches a public surface. `title` is the tooltip; what
- * "Reviewed" means is defined on the Disclaimer page
- * (/disclaimer#what-reviewed-means). Pure, no React: the reader panel
+ * "AI reviewed", never a bare "Reviewed": no summary on the site claims
+ * human review (4 Oct 2026). The check behind the label is the automated
+ * second pass that compares the summary with the official text; every
+ * approved row has been through it (scripts/corpus_qa.sql check 21,
+ * approved_without_ai_review, fails CI when one has not). It says nothing
+ * about who reviewed: reviewed_by never reaches a public surface. `title`
+ * is the tooltip; what "AI reviewed" means is defined on the Disclaimer
+ * page (/disclaimer#what-reviewed-means). Pure, no React: the reader panel
  * (summaryPanelHtml) and every card (SummaryBadge.tsx) render the same
  * object.
  */
@@ -819,7 +824,7 @@ export function summaryStatusBadge(
     const date = formatReviewedDate(p.reviewed_at);
     return {
       kind: "reviewed",
-      label: date ? `Reviewed · ${date}` : "Reviewed",
+      label: date ? `AI reviewed · ${date}` : "AI reviewed",
       title: SUMMARY_BADGE_TITLES.reviewed,
     };
   }
@@ -828,7 +833,7 @@ export function summaryStatusBadge(
 
 /**
  * AP-style month abbreviations ("Sept", not "Sep"), the owner's wording for
- * the badge: "Reviewed · Sept 17, 2026".
+ * the badge: "AI reviewed · Sept 17, 2026".
  */
 const MONTH_ABBREVIATIONS = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
 
@@ -863,14 +868,16 @@ export function summaryPanelHtml(
   if (!paragraphs.length) return "";
   const body = paragraphs.map((t) => `<p>${escapeHtml(t)}</p>`).join("");
   // The review-status badge is the first thing in the panel body: text
-  // with a date ("Reviewed · Sept 17, 2026" / "AI-generated · not yet
+  // with a date ("AI reviewed · Sept 17, 2026" / "AI-generated · not yet
   // reviewed"), never a reviewer. History: the "AI-generated" line was
   // removed on 14 Sep 2026 [Brody] because it had become misleading once
   // review passes included an AI second pass alongside human review. On
   // 29 Sep 2026 [Brody] it came back as this two-state badge, because after
   // Phase 0 the reader could not tell a pending summary from a reviewed
-  // one; what "Reviewed" means now lives on the Disclaimer page
-  // (/disclaimer#what-reviewed-means), which the tooltip points at. Only
+  // one. On 4 Oct 2026 [Brody] "Reviewed" became "AI reviewed": no summary
+  // claims a person checked it. What the label means lives on the
+  // Disclaimer page (/disclaimer#what-reviewed-means), which the tooltip
+  // points at. Only
   // the label and a state class are in the string -- the browser adds the
   // tooltip from SUMMARY_BADGE_TITLES (reader-client.ts, fillSummaryBadges),
   // for the same reason the source link below is filled in the browser.

@@ -3,7 +3,7 @@
  * regulation and change type -- see
  * supabase/migrations/20261003160524_changelog_public_rpc.sql) into one line
  * per regulation per day: "Regulation 7 — 1,496 provisions updated · 212
- * summaries reviewed". Pure, dependency-free; the rows carry counts only,
+ * summaries AI reviewed". Pure, dependency-free; the rows carry counts only,
  * never a note or an id, so nothing here can leak the pipeline's working log.
  */
 
@@ -25,9 +25,14 @@ export type ChangelogLine = {
   textUpdated: number;
   /** Provisions added to the corpus. */
   added: number;
-  /** Summaries a reviewer approved as-is or corrected. */
+  /**
+   * Provisions removed from the corpus (change_type 'removed', 4 Oct 2026):
+   * logged against the surviving parent, one row per removed provision.
+   */
+  removed: number;
+  /** Summaries the AI second pass approved as-is or corrected. */
   reviewed: number;
-  /** Of those, the ones the reviewer corrected before approving. */
+  /** Of those, the ones corrected before approving. */
   corrected: number;
   /** Summaries rewritten by the pipeline (back in the review queue). */
   regenerated: number;
@@ -50,6 +55,7 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
         regKey: row.reg_key,
         textUpdated: 0,
         added: 0,
+        removed: 0,
         reviewed: 0,
         corrected: 0,
         regenerated: 0,
@@ -64,6 +70,9 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
         break;
       case "added":
         line.added += n;
+        break;
+      case "removed":
+        line.removed += n;
         break;
       case "summary_approved":
         line.reviewed += n;
@@ -82,7 +91,7 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
     if (row.latest > line.latest) line.latest = row.latest;
   }
   return Array.from(lines.values())
-    .filter((l) => l.textUpdated + l.added + l.reviewed + l.regenerated > 0)
+    .filter((l) => l.textUpdated + l.added + l.removed + l.reviewed + l.regenerated > 0)
     .sort((a, b) => (a.latest < b.latest ? 1 : a.latest > b.latest ? -1 : 0));
 }
 
@@ -95,16 +104,20 @@ function plural(n: number, one: string, many: string): string {
 /**
  * The customer-facing phrases for one line, in the order a reader cares
  * about them: what changed in the official text first, then what happened
- * to the summaries. Empty when the line has nothing to say.
+ * to the summaries. Empty when the line has nothing to say. Summaries are
+ * "AI reviewed", never a bare "reviewed" (owner decision, 4 Oct 2026): the
+ * review is the automated second pass, and the changelog must say the same
+ * thing as the badge.
  */
 export function describeLine(line: ChangelogLine): string[] {
   const parts: string[] = [];
   if (line.textUpdated > 0) parts.push(`${plural(line.textUpdated, "provision", "provisions")} updated`);
   if (line.added > 0) parts.push(`${plural(line.added, "provision", "provisions")} added`);
+  if (line.removed > 0) parts.push(`${plural(line.removed, "provision", "provisions")} removed`);
   if (line.reviewed > 0) {
-    const reviewed = `${plural(line.reviewed, "summary", "summaries")} reviewed`;
+    const reviewed = `${plural(line.reviewed, "summary", "summaries")} AI reviewed`;
     parts.push(line.corrected > 0 ? `${reviewed} (${COUNT.format(line.corrected)} corrected)` : reviewed);
   }
-  if (line.regenerated > 0) parts.push(`${plural(line.regenerated, "summary", "summaries")} rewritten, awaiting review`);
+  if (line.regenerated > 0) parts.push(`${plural(line.regenerated, "summary", "summaries")} rewritten, awaiting AI review`);
   return parts;
 }

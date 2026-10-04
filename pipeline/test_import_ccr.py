@@ -4644,7 +4644,9 @@ class Reg12MetaTests(unittest.TestCase):
     def test_dotted_cfr_gate_includes_12_only_additively(self):
         self.assertIn("12", ic.CFR_DOTTED_REGS)
         self.assertIn("8", ic.CFR_DOTTED_REGS)
-        self.assertNotIn("26", ic.CFR_DOTTED_REGS)
+        # Reg 26 joined on 4 Oct 2026 (Reg26SubpartJjjjLinkTests); Reg 7 has not.
+        self.assertIn("26", ic.CFR_DOTTED_REGS)
+        self.assertNotIn("7", ic.CFR_DOTTED_REGS)
 
 
 class Reg12BareLowerRomanCycleTests(unittest.TestCase):
@@ -7466,9 +7468,10 @@ class Reg19MetaTests(unittest.TestCase):
         out19, unresolved19 = ic.link_citations(text, "19", {"sec-19-top-REG-19"}, set(ic.CORPUS_REGS))
         self.assertEqual(out19, text)  # Part 745 is not in the corpus: plain text, but bucketed
         self.assertEqual(dict(unresolved19["cfr"]), {"40 C.F.R. Part 745, Subpart Q": 1})
-        out26, unresolved26 = ic.link_citations(text, "26", {"sec-26-top-REG-26"}, set(ic.CORPUS_REGS))
-        self.assertEqual(out26, text)
-        self.assertEqual(dict(unresolved26["cfr"]), {})
+        # Reg 7 keeps the undotted tokenizer (Reg 26 joined CFR_DOTTED_REGS on 4 Oct 2026).
+        out7, unresolved7 = ic.link_citations(text, "7", {"sec-7-top-REG-7"}, set(ic.CORPUS_REGS))
+        self.assertEqual(out7, text)
+        self.assertEqual(dict(unresolved7["cfr"]), {})
 
 
 class Reg19LabelFixTests(unittest.TestCase):
@@ -12016,3 +12019,90 @@ class DefinitionCitationTests(XregBase):
                 text = fh.read()
             self.assertTrue(text.endswith("}\n"))
             self.assertLess(text.index("sec-7-B-I-B-32"), text.index("sec-7-B-I-B-34"), "ids sorted inside a regulation")
+
+
+
+class Reg26SubpartJjjjLinkTests(unittest.TestCase):
+    """Owner decision (Brody, 4 Oct 2026): Regulation 26 no longer carries a
+    copy of 40 CFR 60 Subpart JJJJ under Part C; the sentences that cite the
+    subpart link to the corpus's own JJJJ document instead. Three forms the
+    Reg 26 print uses, each gated to Reg 26 so no other regulation's output
+    moves: the dotted "40 C.F.R. Part 60, Subpart JJJJ" (CFR_DOTTED_REGS),
+    the code list "40 C.F.R. Part 60, JJJJ, IIII" (CFR_PART_SUBPART_LIST_REGS)
+    and the bare "NSPS JJJJ" of the statements of basis
+    (PROGRAM_BARE_SUBPART_REGS)."""
+
+    CORPUS = set(ic.CORPUS_REGS)
+
+    def link(self, text, reg="26", part="B"):
+        return ic.link_citations(text, reg, {f"sec-{reg}-top-REG-{reg}"}, self.CORPUS, part)
+
+    def test_the_supplement_loader_is_gone(self):
+        # The 20-row copy came from a snapshot file appended by parse_reg;
+        # neither exists any more, and nothing in the module names it.
+        self.assertFalse(hasattr(ic, "_load_reg26_fedjjjj_supplement"))
+        self.assertFalse((ic.Path(ic.__file__).resolve().parent / "sources" / "reg26_fedjjjj_supplement.json").exists())
+
+    def test_dotted_part_b_exemption_links_jjjj_and_iiii(self):
+        # Part B I.D.6.c.(i)(C)(1), as printed.
+        text = ("Engines subject to the performance testing requirements of 40 C.F.R. Part 60, "
+                "Subpart JJJJ (July 1, 2023) or 40 C.F.R. Part 60, Subpart IIII (July 1, 2023).")
+        html, buckets = self.link(text)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/jjjj">40 C.F.R. Part 60, Subpart JJJJ</a> (July 1, 2023)', html)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/iiii">40 C.F.R. Part 60, Subpart IIII</a> (July 1, 2023)', html)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {})
+        # The dates and the rest of the sentence are untouched.
+        self.assertEqual(ic.re.sub(r"<[^>]+>", "", html), text)
+
+    def test_subpart_code_list_links_each_code_on_its_own(self):
+        # Part B I.D.6.d.(i)(D): the codes follow the part with no "Subpart".
+        text = ("A performance test conducted pursuant to 40 C.F.R. Part 60, JJJJ, IIII, or a permit "
+                "requirement may take the place of the next required annual portable analyzer test.")
+        html, buckets = self.link(text)
+        self.assertIn('40 C.F.R. Part 60, <a class="xref-external-reg" href="/regulations/jjjj">JJJJ</a>, '
+                      '<a class="xref-external-reg" href="/regulations/iiii">IIII</a>, or a permit', html)
+        # Not bucketed as a bare "40 C.F.R. Part 60" the way step 1 would have.
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {})
+        self.assertEqual(ic.re.sub(r"<[^>]+>", "", html), text)
+        # A single code, and a Part 63 code, work the same way.
+        html, _ = self.link("pursuant to Section I.D.5.d., 40 C.F.R. Part 60, JJJJ, or a permit requirement")
+        self.assertIn('Part 60, <a class="xref-external-reg" href="/regulations/jjjj">JJJJ</a>, or a permit', html)
+        html, _ = self.link("see 40 C.F.R. Part 63, ZZZZ.")
+        self.assertIn('Part 63, <a class="xref-external-reg" href="/regulations/zzzz">ZZZZ</a>.', html)
+
+    def test_subpart_code_list_never_matches_a_date_or_a_word(self):
+        for text in ("40 C.F.R. Part 60, 2019 edition", "40 C.F.R. Part 60, Appendix A", "40 C.F.R. Part 60, JJJ"):
+            self.assertIsNone(ic.CFR_PART_SUBPART_LIST_RE.search(text), text)
+
+    def test_bare_program_abbreviation_links_only_corpus_subparts(self):
+        # Part C IV, as printed: codes in the corpus link, KKKK/GG/HH stay text
+        # and are not bucketed either (they were never matched).
+        text = ("New Source Performance Standards (NSPS) GG, NSPS KKKK, NSPS IIII, NSPS JJJJ, National "
+                "Emissions Standards for Hazardous Air Pollutants (NESHAP) HH, and NESHAP ZZZZ may also apply.")
+        html, buckets = self.link(text, part="C")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/iiii">NSPS IIII</a>', html)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/jjjj">NSPS JJJJ</a>', html)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/zzzz">NESHAP ZZZZ</a>', html)
+        self.assertIn("NSPS KKKK, ", html)
+        self.assertNotIn('href="/regulations/kkkk"', html)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {})
+        # Part C II.7's possessive form.
+        html, _ = self.link("the 2.0 g/hp-hr NOx emission limit in EPA\u2019s NSPS JJJJ for landfill engines", part="C")
+        self.assertIn('EPA\u2019s <a class="xref-external-reg" href="/regulations/jjjj">NSPS JJJJ</a> for', html)
+
+    def test_a_fully_cited_subpart_is_not_double_wrapped(self):
+        html, _ = self.link("Engines must meet NSPS Subpart IIII and NSPS IIII alike.")
+        self.assertEqual(html.count('href="/regulations/iiii"'), 2)
+        self.assertNotIn("<a", ic.re.sub(r"<a [^>]+>[^<]*</a>", "", html))
+
+    def test_every_new_rule_is_gated_to_reg_26(self):
+        self.assertEqual(ic.CFR_PART_SUBPART_LIST_REGS, frozenset({"26"}))
+        self.assertEqual(ic.PROGRAM_BARE_SUBPART_REGS, frozenset({"26"}))
+        self.assertIn("26", ic.CFR_DOTTED_REGS)
+        # The same three sentences in Reg 7 (which prints "NSPS OOOOa" 73
+        # times) come back exactly as they went in.
+        for text in ("Subject to 40 C.F.R. Part 60, Subpart JJJJ (July 1, 2023).",
+                     "pursuant to 40 C.F.R. Part 60, JJJJ, IIII, or a permit",
+                     "the limit in EPA's NSPS JJJJ and NESHAP ZZZZ"):
+            html, _ = self.link(text, reg="7")
+            self.assertEqual(html, text)

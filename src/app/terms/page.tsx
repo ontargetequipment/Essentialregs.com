@@ -245,8 +245,9 @@ export default function TermsPage() {
         </p>
         <p>
           Regulations change. Summaries are generated with the assistance of
-          artificial-intelligence tools and reviewed on a rolling basis; they
-          may contain errors or omissions. In every case the official text
+          artificial-intelligence tools and checked by a separate automated
+          review, not by a person; they may contain errors or omissions. In
+          every case the official text
           published by the issuing agency controls. Our full{" "}
           <Link href="/disclaimer" className="underline underline-offset-2">
             Disclaimer

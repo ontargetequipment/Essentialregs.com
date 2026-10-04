@@ -1,7 +1,9 @@
 /**
- * The review-status badge every summary carries (owner decision, Brody,
- * 29 Sep 2026): the pure helper's four rows, the reader panel's markup,
- * and the tooltip the browser adds to it.
+ * The review-status badge every summary carries (owner decisions, Brody,
+ * 29 Sep 2026 and 4 Oct 2026): the pure helper's four rows, the reader
+ * panel's markup, and the tooltip the browser adds to it. Since 4 Oct 2026
+ * the checked state reads "AI reviewed", never a bare "Reviewed": no
+ * summary on the site claims human review.
  *
  *   npm test
  */
@@ -18,29 +20,53 @@ import { fillSummaryBadges, readReaderModel } from "../src/lib/reader-client";
 import { renderDocHtml } from "../src/lib/reader-render";
 import type { Provision } from "../src/lib/types";
 
-const REVIEWED_TITLE = "Checked against the official text; see the Disclaimer page for what review means.";
+const REVIEWED_TITLE =
+  "Checked against the official text by an automated second review. The official text controls; see the Disclaimer page.";
 const PENDING_TITLE = "Generated from the official text and not yet checked. Read the official text.";
 
-test("approved or edited: 'Reviewed · <date>' with reviewed_at as MMM d, yyyy", () => {
+test("approved or edited: 'AI reviewed · <date>' with reviewed_at as MMM d, yyyy", () => {
   assert.deepEqual(summaryStatusBadge({ summary_status: "approved", reviewed_at: "2026-09-17T18:04:10.123+00:00" }), {
     kind: "reviewed",
-    label: "Reviewed · Sept 17, 2026",
+    label: "AI reviewed · Sept 17, 2026",
     title: REVIEWED_TITLE,
   });
   assert.deepEqual(summaryStatusBadge({ summary_status: "edited", reviewed_at: "2026-09-13T05:33:22.912Z" }), {
     kind: "reviewed",
-    label: "Reviewed · Sept 13, 2026",
+    label: "AI reviewed · Sept 13, 2026",
     title: REVIEWED_TITLE,
   });
 });
 
-test("approved with a null reviewed_at: 'Reviewed' alone, never an empty date", () => {
+test("approved with a null reviewed_at: 'AI reviewed' alone, never an empty date", () => {
   assert.deepEqual(summaryStatusBadge({ summary_status: "approved", reviewed_at: null }), {
     kind: "reviewed",
-    label: "Reviewed",
+    label: "AI reviewed",
     title: REVIEWED_TITLE,
   });
-  assert.equal(summaryStatusBadge({ summary_status: "edited", reviewed_at: "not a date" })!.label, "Reviewed");
+  assert.equal(summaryStatusBadge({ summary_status: "edited", reviewed_at: "not a date" })!.label, "AI reviewed");
+});
+
+test("no badge, in any state, opens with the bare word 'Reviewed' (owner decision, 4 Oct 2026)", () => {
+  // Every status x date combination the helper can see. A label that starts
+  // "Reviewed" would read as human review, which the site no longer claims.
+  const dates = [null, undefined, "", "not a date", "2026-09-17T18:04:10Z", "2026-10-04T15:19:48.366041+00:00"];
+  const statuses = ["approved", "edited", "pending", "rejected", null, undefined, "something-else"];
+  let seen = 0;
+  for (const summary_status of statuses) {
+    for (const reviewed_at of dates) {
+      const badge = summaryStatusBadge({ summary_status, reviewed_at } as Parameters<typeof summaryStatusBadge>[0]);
+      if (!badge) continue;
+      seen++;
+      assert.doesNotMatch(badge.label, /^Reviewed\b/, `label for ${summary_status}/${reviewed_at}`);
+      assert.doesNotMatch(badge.title, /^Reviewed\b/);
+      assert.ok(badge.label.startsWith("AI reviewed") || badge.label.startsWith("AI-generated"), badge.label);
+      // The tooltip never claims a person looked, and never names a reviewer.
+      assert.doesNotMatch(badge.title, /human|person|founder|reviewed by/i);
+    }
+  }
+  assert.ok(seen > 0);
+  // The two tooltips, as shipped to the browser table too.
+  for (const title of Object.values(SUMMARY_BADGE_TITLES)) assert.doesNotMatch(title, /^Reviewed\b/);
 });
 
 test("pending (or no status at all): 'AI-generated · not yet reviewed'", () => {
@@ -82,7 +108,7 @@ test("summaryPanelHtml: the badge is the first element in .summary-body, text an
   assert.equal(
     reviewed,
     `<details class="summary-panel"><summary>Plain-English summary</summary>` +
-      `<div class="summary-body"><p class="summary-badge is-reviewed">Reviewed · Sept 17, 2026</p>` +
+      `<div class="summary-body"><p class="summary-badge is-reviewed">AI reviewed · Sept 17, 2026</p>` +
       `<p>A plain-English summary.</p><p>Second paragraph.</p></div>` +
       `<div class="summary-status"></div></details>`
   );
@@ -132,12 +158,12 @@ test("fillSummaryBadges: the browser sets each badge's tooltip from its state cl
   const model = readReaderModel(doc);
   const badges = () => Array.from(doc.querySelectorAll(".summary-badge")).map((b) => [b.textContent, b.getAttribute("title")]);
   assert.deepEqual(badges(), [
-    ["Reviewed · Sept 17, 2026", null],
+    ["AI reviewed · Sept 17, 2026", null],
     ["AI-generated · not yet reviewed", null],
   ]);
   fillSummaryBadges(model);
   assert.deepEqual(badges(), [
-    ["Reviewed · Sept 17, 2026", REVIEWED_TITLE],
+    ["AI reviewed · Sept 17, 2026", REVIEWED_TITLE],
     ["AI-generated · not yet reviewed", PENDING_TITLE],
   ]);
   // Every panel body opens with its badge; the rejected and empty rows have no panel at all.

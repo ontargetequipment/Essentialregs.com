@@ -223,9 +223,9 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   },
   {
     q: "What are the emission standards for a new natural gas fired compressor engine?",
-    expect: ["sec-26-A", "sec-26-B-I", "sec-26-B-II", "sec-26-C-FEDJJJJ"],
+    expect: ["sec-26-A", "sec-26-B-I", "sec-26-B-II", "sec-jjjj"],
     map: "engines",
-    note: "Reg 26 engines (Part A/B) and incorporated Subpart JJJJ; routes to the engines question map",
+    note: "Reg 26 engines (Part A/B) or the Subpart JJJJ document it cites (its copy under Reg 26 Part C was removed 4 Oct 2026); routes to the engines question map",
   },
   {
     q: "What controls are required for a glycol dehydrator?",

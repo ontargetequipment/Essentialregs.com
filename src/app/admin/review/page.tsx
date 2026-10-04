@@ -172,6 +172,11 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
         the reader. Approve it as-is, edit it and approve, or reject it
         (rejected summaries are withheld from every reader until re-approved).
       </p>
+      <p className="mt-2 text-sm text-amber-800">
+        The site labels every approved summary &ldquo;AI reviewed&rdquo;, never as checked by a
+        person: an approval here must be followed by the AI second pass before the next
+        release, or corpus QA (approved_without_ai_review) fails CI.
+      </p>
 
       <div className="mt-6 flex flex-wrap gap-2">
         {STATUSES.map((s) => (

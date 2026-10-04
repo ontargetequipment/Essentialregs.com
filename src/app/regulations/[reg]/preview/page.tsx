@@ -64,9 +64,9 @@ export default async function RegulationPreviewPage(
         </a>
       )}
       <p className="mt-3 text-sm text-ink-soft">
-        A preview of {root.citation} — its structure, and a few
-        already-reviewed, plain-English summaries. The full cross-referenced
-        text is available to subscribers.
+        A preview of {root.citation} — its structure, and a few AI-reviewed
+        plain-English summaries. The full cross-referenced text is available
+        to subscribers.
       </p>
 
       {headings.length > 0 && (
@@ -136,7 +136,7 @@ export default async function RegulationPreviewPage(
         </h2>
         <p className="mt-2 text-sm text-ink-soft">
           Subscribers get the full text, linked cross-references, and
-          plain-English summaries as they&apos;re reviewed —{" "}
+          plain-English summaries as they pass AI review —{" "}
           {PRICE_SUMMARY}.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">

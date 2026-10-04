@@ -16,9 +16,10 @@ const SUPPORT_EMAIL = "support@essentialregs.com";
 /**
  * The disclaimer's own "Last updated" line (the other legal pages keep
  * LegalPage's shared date). Same revision as DISCLAIMER_VERSION in
- * src/lib/disclaimer.ts: 1 Oct 2026, when section 9 defined "Reviewed".
+ * src/lib/disclaimer.ts: 4 Oct 2026, when section 9 became "What 'AI
+ * reviewed' means" (1 Oct 2026 had defined "Reviewed").
  */
-export const DISCLAIMER_LAST_UPDATED = "October 1, 2026";
+export const DISCLAIMER_LAST_UPDATED = "October 4, 2026";
 
 /** The anchor of section 9, which the summary badges' tooltips refer to as "the Disclaimer page". */
 export const REVIEWED_SECTION_ID = "what-reviewed-means";
@@ -101,8 +102,9 @@ export function DisclaimerSections() {
       <LegalSection number={5} title="AI-generated summaries may contain errors">
         <p>
           The plain-English summaries on EssentialRegs are generated with the
-          assistance of artificial-intelligence tools and are reviewed on a
-          rolling basis. They are intended as an orientation aid, not a
+          assistance of artificial-intelligence tools and checked by a
+          separate automated review, not by a person. They are intended as an
+          orientation aid, not a
           restatement of the rule. AI-generated text can misstate thresholds,
           dates, exceptions, and defined terms; omit conditions; or describe
           a requirement as applying more broadly or narrowly than it actually
@@ -154,21 +156,23 @@ export function DisclaimerSections() {
         </p>
       </LegalSection>
 
-      {/* Owner decision, 29 Sep 2026: every summary carries a review-status
-          badge ("Reviewed · <date>" or "AI-generated · not yet reviewed"),
+      {/* Owner decisions, 29 Sep and 4 Oct 2026: every summary carries a
+          review-status badge ("AI reviewed · <date>" or "AI-generated · not
+          yet reviewed"), no summary is presented as reviewed by a person,
           and this section is the definition the badge's tooltip points at. */}
-      <LegalSection number={9} title={"What \u201cReviewed\u201d means"} id={REVIEWED_SECTION_ID}>
+      <LegalSection number={9} title={"What \u201cAI reviewed\u201d means"} id={REVIEWED_SECTION_ID}>
         <p>
           Every plain-English summary on EssentialRegs carries a label. A
-          summary marked &ldquo;Reviewed&rdquo; with a date has been checked
-          against the official regulation text after it was written. That
-          check is an automated second pass that compares the summary with
-          the provision it describes; some provisions have also been read by
-          a person. A summary marked &ldquo;AI-generated &middot; not yet
-          reviewed&rdquo; was written from the official text but has not yet
-          been checked, and should be read with that in mind. In every case
-          the official text controls, a label is not a guarantee of
-          accuracy, and the summary is not legal advice.
+          summary marked &ldquo;AI reviewed&rdquo; with a date was written by
+          an artificial-intelligence model from the official regulation text
+          and was then checked against that text by a separate automated
+          review, which corrected the errors it found. No summary on this
+          site is presented as having been reviewed by a person. A summary
+          marked &ldquo;AI-generated &middot; not yet reviewed&rdquo; was
+          written from the official text but has not had that second check,
+          and should be read with that in mind. In every case the official
+          text controls, a label is not a guarantee of accuracy, and the
+          summary is not legal advice.
         </p>
       </LegalSection>
     </>
