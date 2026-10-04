@@ -112,6 +112,11 @@ def main() -> None:
     args = ap.parse_args()
 
     ic.set_corpus_ids(ic.load_corpus_ids(args.corpus_ids))
+    # The definitions index beside it, when present: the same term check the
+    # importer applies (verify_definition_target), so the report shows the
+    # renumbered/mismatch outcomes a real parse would produce.
+    defs_path = Path(args.corpus_ids).with_name("corpus_definitions.json")
+    ic.set_corpus_definitions(ic.load_corpus_definitions(defs_path) if defs_path.exists() else None)
     old_dir = Path(args.old_dir)
 
     per_reg: dict[str, dict] = {}

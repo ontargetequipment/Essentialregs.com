@@ -154,11 +154,79 @@ export function hashTargetOf(href: string | null | undefined): string | null {
   return validProvisionId(raw);
 }
 
-/** "/regulations/<reg>#<id>", with `?from=<origin>` between them when the origin is known. */
-export function regulationHref(targetId: string, fromId?: string | null): string {
+/**
+ * "/regulations/<reg>#<id>", with `?from=<origin>` between them when the
+ * origin is known and `cited=<printed section>` when the link is a
+ * renumbered definition citation (see citedParamOf).
+ */
+export function regulationHref(targetId: string, fromId?: string | null, cited?: string | null): string {
   const key = regKeyOf(targetId) ?? "";
-  const from = fromId ? `?from=${encodeURIComponent(fromId)}` : "";
-  return `/regulations/${key}${from}#${targetId}`;
+  const params: string[] = [];
+  if (fromId) params.push(`from=${encodeURIComponent(fromId)}`);
+  if (cited) params.push(`cited=${encodeURIComponent(cited)}`);
+  const qs = params.length ? `?${params.join("&")}` : "";
+  return `/regulations/${key}${qs}#${targetId}`;
+}
+
+/**
+ * A printed section citation as the importer carries it in a renumbered
+ * link's `?cited=`: "I.B.33", "II.A.46", "I.D.3.b.(x)". Bounded, letters,
+ * digits, dots and parentheses only; a trailing dot is dropped. Anything
+ * else is null -- the value is printed into the page.
+ */
+const CITED_SECTION = /^[IVXLCDM]{1,7}(?:\.[A-Za-z0-9]{1,4})*(?:\.?\([A-Za-z0-9]{1,4}\))*\.?$/;
+export function validCitedSection(raw: string | null | undefined): string | null {
+  if (!raw || raw.length > 40) return null;
+  const s = raw.trim();
+  return CITED_SECTION.test(s) ? s.replace(/\.$/, "") : null;
+}
+
+/** The `?cited=` of a link's href ("/regulations/7?cited=I.B.33#sec-7-B-I-B-34" -> "I.B.33"), validated, else null. */
+export function citedParamOf(href: string | null | undefined): string | null {
+  if (!href) return null;
+  const q = href.indexOf("?");
+  if (q < 0) return null;
+  const h = href.indexOf("#", q);
+  const query = href.slice(q + 1, h < 0 ? undefined : h);
+  try {
+    return validCitedSection(new URLSearchParams(query).get("cited"));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The popup's one-line note under the title for a renumbered definition
+ * citation: "GP12 cites this as Section I.B.33; in the current Regulation 7
+ * it is I.B.34." `currentCitation` is the target row's citation as stored
+ * ("I.B.34."); when it is unknown the note says only that the numbering
+ * differs.
+ */
+export function renumberedNote(originName: string, cited: string, currentCitation: string | null | undefined, targetName: string): string {
+  const current = (currentCitation ?? "").trim().replace(/\.$/, "");
+  const head = `${originName} cites this as Section ${cited};`;
+  return current ? `${head} in the current ${targetName} it is ${current}.` : `${head} the current ${targetName} numbers it differently.`;
+}
+
+/**
+ * The query string with the named reader parameters removed ("?x=1&from=..."
+ * -> "?x=1"; "" when nothing is left). Other parameters keep their order.
+ */
+export function stripReaderParams(search: string, names: readonly string[]): string {
+  const params = new URLSearchParams(search);
+  for (const n of names) params.delete(n);
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+/**
+ * How a document is named in a line of text: a general permit by its number
+ * ("GP12"), the way permit holders say it; anything else by its display
+ * name ("Regulation 7").
+ */
+export function documentShortName(key: string | null | undefined): string {
+  if (!key) return "";
+  return /^gp\d+$/i.test(key) ? key.toUpperCase() : regulationDisplayName(key);
 }
 
 /**
@@ -216,7 +284,5 @@ export function citationLabelFromId(id: string): string | null {
  * the bar has no room for "APCD General Permit GP12".
  */
 export function originTrailLabel(originId: string): string {
-  const key = regKeyOf(originId);
-  const name = !key ? "" : /^gp\d+$/i.test(key) ? key.toUpperCase() : regulationDisplayName(key);
-  return [name, citationLabelFromId(originId)].filter(Boolean).join(" · ");
+  return [documentShortName(regKeyOf(originId)), citationLabelFromId(originId)].filter(Boolean).join(" · ");
 }

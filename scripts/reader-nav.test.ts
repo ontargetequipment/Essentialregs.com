@@ -21,7 +21,10 @@
  *     /api/provision route ("Open in Regulation 7" carries ?from=) and falls
  *     back to plain navigation whenever it cannot (or must not) preview;
  *   - a reader opened with ?from=<provision of another regulation> shows a
- *     link back to it and strips `from` from the URL.
+ *     link back to it and strips `from` from the URL;
+ *   - a renumbered definition citation (?cited=<printed section> in the
+ *     link) previews with a one-line note saying which section the origin
+ *     cites and what it is now; `cited` is stripped on arrival like `from`.
  *
  *   npm test
  */
@@ -34,14 +37,19 @@ import {
   ancestorLabels,
   capLabels,
   citationLabelFromId,
+  citedParamOf,
+  documentShortName,
   foreignOriginOf,
   hashTargetOf,
   originTrailLabel,
   popupEyebrow,
   regulationHref,
+  renumberedNote,
   ReturnTrail,
   rowLabel,
+  stripReaderParams,
   titleCaseHeading,
+  validCitedSection,
   validProvisionId,
 } from "../src/lib/reader-nav";
 import { renderReaderBody } from "../src/lib/reader-render";
@@ -68,7 +76,8 @@ const rows: Provision[] = [
     "II.B.5.",
     "sec-3-A-II-B",
     '<p>See <a class="xref-external-reg" href="/regulations/7#sec-7-B-I-B-33">Section I.B.33</a> of Regulation 7 and ' +
-      '<a class="xref-external-reg" href="/regulations/gp12">General Permit 12</a>.</p>'
+      '<a class="xref-external-reg" href="/regulations/gp12">General Permit 12</a>. Well production facilities as defined in ' +
+      '<a class="xref-external-reg" href="/regulations/7?cited=I.B.33#sec-7-B-I-B-34">Section I.B.33</a> are covered.</p>'
   ),
   row("sec-3-A-II-B-4-a", "II.B.4.a.", "sec-3-A-II-B-4", "<p>A change in ownership.</p>"),
   row("sec-3-A-II-B-4-a-(i)", "II.B.4.a.(i)", "sec-3-A-II-B-4-a", "<p>Within thirty days.</p>"),
@@ -330,6 +339,33 @@ test("cross-regulation helpers (pure)", () => {
   assert.equal(regulationHref("sec-7-B-I-B-33", "sec-3-A-II-B-5"), "/regulations/7?from=sec-3-A-II-B-5#sec-7-B-I-B-33");
   assert.equal(regulationHref("sec-7-B-I-B-33"), "/regulations/7#sec-7-B-I-B-33");
 
+  // Renumbered definition citations: the printed section rides in ?cited=.
+  assert.equal(regulationHref("sec-7-B-I-B-34", "sec-3-A-II-B-5", "I.B.33"), "/regulations/7?from=sec-3-A-II-B-5&cited=I.B.33#sec-7-B-I-B-34");
+  assert.equal(regulationHref("sec-7-B-I-B-34", null, "I.B.33"), "/regulations/7?cited=I.B.33#sec-7-B-I-B-34");
+  assert.equal(citedParamOf("/regulations/7?cited=I.B.33#sec-7-B-I-B-34"), "I.B.33");
+  assert.equal(citedParamOf("/regulations/7?from=sec-gp12-I-A&cited=II.A.46.#sec-7-B-II-A-48"), "II.A.46", "trailing dot dropped");
+  assert.equal(citedParamOf("/regulations/7?cited=I.D.3.b.%28x%29#sec-7-B-I-D-3-b-(x)"), "I.D.3.b.(x)");
+  assert.equal(citedParamOf("/regulations/7#sec-7-B-I-B-34"), null);
+  assert.equal(citedParamOf("/regulations/7?cited=#sec-7-B-I-B-34"), null);
+  for (const bad of ["<b>I.B.33</b>", "javascript:alert(1)", "I.B.33; drop", "x".repeat(50), "section 33"]) {
+    assert.equal(validCitedSection(bad), null, bad);
+  }
+  assert.equal(validCitedSection("I.B.33."), "I.B.33");
+  assert.equal(documentShortName("gp12"), "GP12");
+  assert.equal(documentShortName("7"), "Regulation 7");
+  assert.equal(documentShortName(null), "");
+  assert.equal(
+    renumberedNote("GP12", "I.B.33", "I.B.34.", "Regulation 7"),
+    "GP12 cites this as Section I.B.33; in the current Regulation 7 it is I.B.34."
+  );
+  assert.equal(
+    renumberedNote("GP12", "I.B.33", null, "Regulation 7"),
+    "GP12 cites this as Section I.B.33; the current Regulation 7 numbers it differently."
+  );
+  assert.equal(stripReaderParams("?x=1&from=sec-gp12-I-A&cited=I.B.33", ["from", "cited"]), "?x=1");
+  assert.equal(stripReaderParams("?from=sec-gp12-I-A", ["from", "cited"]), "");
+  assert.equal(stripReaderParams("?cited=I.B.33&from=sec-gp12-I-A", ["cited"]), "?from=sec-gp12-I-A");
+
   // ?from=: another regulation's id only.
   assert.equal(foreignOriginOf("?from=sec-gp12-I-A", "3"), "sec-gp12-I-A");
   assert.equal(foreignOriginOf("?x=1&from=sec-gp12-I-A", "3"), "sec-gp12-I-A");
@@ -586,6 +622,35 @@ test("cross-regulation preview through /api/provision", async (t) => {
     }
   });
 
+  await t.test("a renumbered definition citation: the note names both sections, the footer link carries cited", async () => {
+    await click($("#popup-close"));
+    const renumbered = $('#doc > [id="sec-3-A-II-B-5"] a.xref-external-reg[href="/regulations/7?cited=I.B.33#sec-7-B-I-B-34"]');
+    assert.ok(renumbered, "the sanitiser keeps the ?cited= href");
+    const f = stubFetch(async () => okJson({ ...PREVIEW, id: "sec-7-B-I-B-34", citation: "I.B.34." }));
+    try {
+      await click(renumbered);
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-B-I-B-34"]);
+      assert.equal(isShown(), true);
+      assert.equal($("#popup-title").textContent, "I.B.34.");
+      const note = $("#popup-note") as HTMLElement;
+      assert.equal(note.hidden, false);
+      assert.equal(note.textContent, "Regulation 3 cites this as Section I.B.33; in the current Regulation 7 it is I.B.34.");
+      assert.equal($("#popup-goto").getAttribute("href"), "/regulations/7?from=sec-3-A-II-B-5&cited=I.B.33#sec-7-B-I-B-34");
+    } finally {
+      f.restore();
+    }
+    // A plain cross-regulation preview afterwards has no note.
+    await click($("#popup-close"));
+    const f2 = stubFetch(async () => okJson(PREVIEW));
+    try {
+      await click(link());
+      assert.equal(($("#popup-note") as HTMLElement).hidden, true);
+      assert.equal($("#popup-note").textContent, "");
+    } finally {
+      f2.restore();
+    }
+  });
+
   await t.test("a same-regulation reference afterwards restores the normal footer", async () => {
     // Close the remote popup, open a local one.
     await click($("#popup-close"));
@@ -593,6 +658,7 @@ test("cross-regulation preview through /api/provision", async (t) => {
     await click($('#doc > [id="sec-3-A-II-B-3"] .xref[data-target="sec-3-A-II-B-4"]'));
     assert.equal($("#popup-goto").textContent, "Go to full section →");
     assert.equal($("#popup-goto").getAttribute("href"), "#sec-3-A-II-B-4");
+    assert.equal(($("#popup-note") as HTMLElement).hidden, true, "a local popup never carries the note");
     await click($("#popup-close"));
   });
 
@@ -714,6 +780,26 @@ test("?from= another regulation: return link, stripped from the URL", async (t) 
     assert.equal(bar.hidden, true);
     assert.equal((window.history.state as { readerReturnFrom?: string }).readerReturnFrom, undefined);
     await unmount();
+  });
+
+  await t.test("?cited= is stripped with `from`, and on its own; `from` keeps working beside it", async () => {
+    let r = await bootReader(makeDom("#sec-3-A-II-B-3", `?from=${FROM}&cited=I.B.33`));
+    await r.mount();
+    await r.sleep(80);
+    assert.equal(r.window.location.search, "");
+    assert.equal(r.window.location.hash, "#sec-3-A-II-B-3");
+    assert.equal(r.$("#return-trail").hidden, false);
+    assert.equal(r.$("#return-trail-ext").getAttribute("href"), "/regulations/gp12#sec-gp12-I-A");
+    assert.equal((r.window.history.state as { readerReturnFrom?: string }).readerReturnFrom, FROM);
+    await r.unmount();
+
+    r = await bootReader(makeDom("#sec-3-A-II-B-3", "?cited=I.B.33&x=1"));
+    await r.mount();
+    await r.sleep(80);
+    assert.equal(r.window.location.search, "?x=1", "only `cited` goes; no origin, so no bar");
+    assert.equal(r.$("#return-trail").hidden, true);
+    assert.equal((r.window.history.state as { readerReturnFrom?: string } | null)?.readerReturnFrom, undefined);
+    await r.unmount();
   });
 
   await t.test("survives the effect running again (strict mode / reload): the URL is clean but the entry remembers", async () => {

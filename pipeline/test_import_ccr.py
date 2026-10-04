@@ -3704,6 +3704,7 @@ class GeneralPermitNoOpProofTests(unittest.TestCase):
         self._check("cp", "regcp_prebatch_gp.json", "REG_CP.txt", "REG_CP.pdf")
 
 
+
 if __name__ == "__main__":
     unittest.main()
 
@@ -8163,8 +8164,10 @@ class Reg20MetaTests(unittest.TestCase):
     def test_other_ccr_bucket(self):
         self.assertEqual(ic.BUCKET_OTHER_CCR, "other_ccr")
         self.assertIn(ic.BUCKET_OTHER_CCR, ic.ALL_BUCKETS)
-        # appended, earlier order unchanged (Sprint 2 then appended BUCKET_CROSS_REG after it)
-        self.assertEqual(ic.ALL_BUCKETS[-2:], [ic.BUCKET_OTHER_CCR, ic.BUCKET_CROSS_REG])
+        # appended, earlier order unchanged (Sprint 2 then appended BUCKET_CROSS_REG after it,
+        # and the definition-citation check its two buckets after that)
+        self.assertEqual(ic.ALL_BUCKETS[-4:], [ic.BUCKET_OTHER_CCR, ic.BUCKET_CROSS_REG,
+                                               ic.BUCKET_XREG_RENUMBERED, ic.BUCKET_XREG_DEF_MISMATCH])
         self.assertEqual(ic.ALL_BUCKETS[:6], [ic.BUCKET_HISTORICAL, ic.BUCKET_OTHER_REG, ic.BUCKET_CFR,
                                               ic.BUCKET_UNPARSEABLE, ic.BUCKET_FORM, ic.BUCKET_CRS])
         self.assertEqual(ic.CALIFORNIA_CCR_REGS, frozenset({"20"}))
@@ -11680,3 +11683,207 @@ class ExactSosSourceUrlTests(unittest.TestCase):
         self.assertEqual(ic.REG_META["7"]["source_url"], _sos_ruleinfo("2341"))    # 5 CCR 1001-9
         self.assertEqual(ic.REG_META["26"]["source_url"], _sos_ruleinfo("3411"))   # 5 CCR 1001-30
         self.assertEqual(ic.REG_META["ecmc"]["source_url"], _sos_ruleinfo("2124", "13", "79"))  # 2 CCR 404-1
+
+# ---------------------------------------------------------------------------
+# Definition citations: the term check (stale-citation guard). A permit written
+# against an older Regulation 7 cites its definitions by section number;
+# Regulation 7 has since been renumbered. With a definitions index the deep
+# link is verified against the phrase the sentence says is defined.
+# ---------------------------------------------------------------------------
+
+DEFS_FIXTURE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", "corpus_definitions_sample.json")
+
+
+class DefinitionCitationTests(XregBase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.defs = ic.load_corpus_definitions(DEFS_FIXTURE)
+        extra = set(cls.defs["7"]) | {"sec-7-B-II-B", "sec-7-B-II-B-2", "sec-7-B-II-B-2-b", "sec-7-B-II-B-2-d",
+                                      "sec-7-B-I-K", "sec-7-A-II-A-1", "sec-7-B-I-C", "sec-7-B-I-E", "sec-7-B-I-E-2"}
+        cls.ids = {**cls.idx, "7": frozenset(set(cls.idx["7"]) | extra)}
+
+    def setUp(self):
+        ic.set_corpus_ids(None)
+        ic.set_corpus_definitions(None)
+
+    tearDown = setUp
+
+    def dlink(self, text, reg="gp12", defs="fixture", own_id=None):
+        d = self.defs if defs == "fixture" else defs
+        return ic.link_citations(text, reg, {f"sec-{reg}-top-REG-{reg}"}, self.corpus, "", own_id or f"sec-{reg}-x",
+                                 corpus_ids=self.ids, corpus_definitions=d)
+
+    GP12_IA = ("This general permit may be used only for oil and gas well production facilities as defined in "
+               "Regulation Number 7, Part B, Section I.B.33 and Section II.A.46 (Adopted: 04/18/2025, Effective: 06/14/2025).")
+    GP01_IVB = ("Combustion devices operated to control emissions authorized by this permit must be enclosed; have no "
+                "visible emissions during normal operations, as defined under Regulation Number 7, Part B, Section II.A.45; "
+                "and be designed so that an observer can determine whether the combustion device is operating properly.")
+    GP09_IVG1 = ("The owner or operator of natural gas-driven diaphragm pneumatic pumps, as defined in Regulation Number 7, "
+                 "Part B, Section I.B.20., located at a well production facility must comply with applicable requirements of "
+                 "Regulation Number 7, Part B, Section I.K.")
+
+    def test_definition_term_of(self):
+        self.assertEqual(ic.definition_term_of('<p>“Well Production Facility” means all equipment'), "Well Production Facility")
+        self.assertEqual(ic.definition_term_of('<p>(State Only) “Surveillance System” means monitoring'), "Surveillance System")
+        self.assertEqual(ic.definition_term_of('<p>"Storage Tank" means any fixed roof'), "Storage Tank")
+        self.assertEqual(ic.definition_term_of('<p>“Drilling” or “drilled” means the process'), "Drilling")
+        self.assertEqual(ic.definition_term_of('<p>“Midstream fuel combustion equipment” (MFCE) means engines'),
+                         "Midstream fuel combustion equipment")
+        for not_a_definition in ('<p>“Repair delayed” and the reason for the delay.</p>', "<p>The owner must report.</p>",
+                                 '<p>Combustion devices “means” nothing here.</p>', "", None):
+            self.assertIsNone(ic.definition_term_of(not_a_definition), not_a_definition)
+
+    def test_term_matches_phrase_tolerances(self):
+        self.assertTrue(ic.term_matches_phrase("Well Production Facility", "oil and gas well production facilities"))
+        self.assertTrue(ic.term_matches_phrase("Storage tank", "the storage tanks"))
+        self.assertTrue(ic.term_matches_phrase("Natural Gas-Driven Diaphragm Pump", "natural gas driven diaphragm pumps"))
+        self.assertTrue(ic.term_matches_phrase("Normal Operation", "during normal operations"))
+        self.assertFalse(ic.term_matches_phrase("Natural Gas-Driven Diaphragm Pump", "natural gas-driven diaphragm pneumatic pumps"),
+                         "an extra word inside the term is not the term")
+        self.assertFalse(ic.term_matches_phrase("Centralized Well Production Facility", "oil and gas well production facilities"))
+        self.assertFalse(ic.term_matches_phrase("", "anything"))
+
+    def test_cited_definition_phrase(self):
+        text = "Storage tanks, as defined in Regulation Number 7, Part B, Section I.B.30., must be controlled."
+        self.assertEqual(ic.cited_definition_phrase(text, text.index("Regulation")), "Storage tanks")
+        text = "no visible emissions during normal operations, as defined under Regulation Number 7"
+        self.assertEqual(ic.cited_definition_phrase(text, text.index("Regulation")), "no visible emissions during normal operations")
+        text = "must be enclosed; have no visible emissions during normal operations, as defined under Regulation Number 7"
+        self.assertEqual(ic.cited_definition_phrase(text, text.index("Regulation")),
+                         "have no visible emissions during normal operations", "the phrase stops at the clause boundary")
+        text = "consistent with the definition of well production facility in Regulation Number 7, Part B, Section I.B.34."
+        self.assertEqual(ic.cited_definition_phrase(text, text.index("Regulation")), "well production facility")
+        text = "a storage tank, as that term is defined in Regulation Number 7"
+        self.assertEqual(ic.cited_definition_phrase(text, text.index("Regulation")), "a storage tank")
+        text = "(Reference: Regulation Number 7, Part B, Section II.A.45.)"
+        self.assertIsNone(ic.cited_definition_phrase(text, text.index("Regulation")), "no defining phrase")
+        self.assertIsNone(ic.cited_definition_phrase(text, None))
+
+    def test_term_matches_link_unchanged(self):
+        out, buckets = self.dlink("Storage vessels, as defined in Regulation Number 7, Part B, Section II.A.45, must be controlled.")
+        self.assertIn(_xl("7", "Section II.A.45", "sec-7-B-II-A-45"), out)
+        self.assertFalse(buckets[ic.BUCKET_XREG_RENUMBERED])
+        self.assertFalse(buckets[ic.BUCKET_XREG_DEF_MISMATCH])
+        # singular phrase, singular term; plural phrase, singular term
+        out, _ = self.dlink("A well production facility, as defined in Regulation Number 7, Part B, Section II.A.48, is covered.")
+        self.assertIn(_xl("7", "Section II.A.48", "sec-7-B-II-A-48"), out)
+        out, _ = self.dlink("The storage tanks, as defined in Regulation Number 7, Part B, Section I.B.30., apply.")
+        self.assertIn(_xl("7", "Section I.B.30.", "sec-7-B-I-B-30"), out)
+
+    def test_renumbered_to_the_unique_matching_sibling(self):
+        out, buckets = self.dlink(self.GP12_IA, own_id="sec-gp12-I-A")
+        # The printed text is untouched; the href carries the cited section and lands on the sibling.
+        self.assertIn('<a class="xref-external-reg" href="/regulations/7?cited=I.B.33#sec-7-B-I-B-34">Section I.B.33</a>', out)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/7?cited=II.A.46#sec-7-B-II-A-48">Section II.A.46</a>', out)
+        self.assertNotIn("#sec-7-B-I-B-33", out)
+        self.assertNotIn("#sec-7-B-II-A-46", out)
+        self.assertEqual(dict(buckets[ic.BUCKET_XREG_RENUMBERED]), {
+            "sec-gp12-I-A\tRegulation Number 7, Part B, I.B.33\tsec-7-B-I-B-34\tWell Production Facility": 1,
+            "sec-gp12-I-A\tRegulation Number 7, Part B, II.A.46\tsec-7-B-II-A-48\tWell Production Facility": 1,
+        })
+        self.assertFalse(buckets[ic.BUCKET_XREG_DEF_MISMATCH])
+        self.assertFalse(buckets[ic.BUCKET_CROSS_REG])
+
+    def test_no_matching_sibling_leaves_plain_text(self):
+        out, buckets = self.dlink(self.GP09_IVG1, reg="gp09", own_id="sec-gp09-IV-G-1")
+        # I.B.20 ("Modified or Modification") is not what the sentence defines, and no
+        # sibling defines "natural gas-driven diaphragm pneumatic pumps" (the term is
+        # "Natural Gas-Driven Diaphragm Pump"): no deep link, the regulation name still links.
+        self.assertIn(", Part B, Section I.B.20., located", out)
+        self.assertNotIn("#sec-7-B-I-B-20", out)
+        self.assertNotIn("#sec-7-B-I-B-22", out)
+        self.assertIn(_xl("7", "Regulation Number 7"), out)
+        self.assertIn(_xl("7", "Section I.K.", "sec-7-B-I-K"), out, "the other cite in the paragraph is unaffected")
+        self.assertEqual(dict(buckets[ic.BUCKET_XREG_DEF_MISMATCH]), {
+            "sec-gp09-IV-G-1\tRegulation Number 7, Part B, I.B.20.\t"
+            "The owner or operator of natural gas-driven diaphragm pneumatic pumps\tModified or Modification": 1,
+        })
+        self.assertFalse(buckets[ic.BUCKET_XREG_RENUMBERED])
+
+    def test_several_matching_siblings_leave_plain_text(self):
+        out, buckets = self.dlink(self.GP01_IVB, reg="gp01", own_id="sec-gp01-IV-B")
+        self.assertIn(", Part B, Section II.A.45; and", out)
+        self.assertNotIn("#sec-7-B-II-A-4", out)
+        self.assertNotIn("#sec-7-B-II-A-27", out)
+        key, = buckets[ic.BUCKET_XREG_DEF_MISMATCH]
+        src, cited, phrase, detail = key.split("\t")
+        self.assertEqual((src, cited, phrase), ("sec-gp01-IV-B", "Regulation Number 7, Part B, II.A.45",
+                                                "have no visible emissions during normal operations"))
+        self.assertTrue(detail.startswith("Storage Vessel — several siblings match: "), detail)
+        self.assertIn("sec-7-B-II-A-27 (Normal Operation)", detail)
+        self.assertIn("sec-7-B-II-A-47 (Visible Emissions)", detail)
+
+    def test_no_defining_phrase_requires_the_term_in_the_paragraph(self):
+        # A "(Reference: ...)" cite: the term is checked against the whole paragraph, no sibling guess.
+        out, buckets = self.dlink("EPA Method 22 must be used. (Reference: Regulation Number 7, Part B, Sections II.A.45. and II.B.2.b.)",
+                                  reg="gp09", own_id="sec-gp09-II-B")
+        self.assertNotIn("#sec-7-B-II-A-45", out)
+        self.assertNotIn("#sec-7-B-II-A-47", out)
+        self.assertIn(_xl("7", "II.B.2.b.", "sec-7-B-II-B-2-b"), out)
+        self.assertEqual(dict(buckets[ic.BUCKET_XREG_DEF_MISMATCH]), {
+            "sec-gp09-II-B\tRegulation Number 7, Part B, II.A.45.\t(no defining phrase)\tStorage Vessel": 1})
+        # ... but a paragraph that does use the term keeps its link.
+        out, buckets = self.dlink("Each storage vessel must be controlled. (Reference: Regulation Number 7, Part B, Section II.A.45.)",
+                                  reg="gp09")
+        self.assertIn(_xl("7", "Section II.A.45.", "sec-7-B-II-A-45"), out)
+        self.assertFalse(buckets[ic.BUCKET_XREG_DEF_MISMATCH])
+
+    def test_state_only_definitions(self):
+        # The (State Only) marker is not part of the term: I.B.32 defines "Surveillance System".
+        self.assertEqual(self.defs["7"]["sec-7-B-I-B-32"], "Surveillance System")
+        out, buckets = self.dlink("Surveillance systems, as defined in Regulation Number 7, Part B, Section I.B.32., apply.", reg="gp09")
+        self.assertIn(_xl("7", "Section I.B.32.", "sec-7-B-I-B-32"), out)
+        self.assertFalse(buckets[ic.BUCKET_XREG_DEF_MISMATCH])
+        # ... and a stale cite of the neighbour renumbers to it.
+        out, buckets = self.dlink("Surveillance systems, as defined in Regulation Number 7, Part B, Section I.B.31., apply.", reg="gp09")
+        self.assertIn('href="/regulations/7?cited=I.B.31#sec-7-B-I-B-32">Section I.B.31.</a>', out)
+        self.assertEqual(len(buckets[ic.BUCKET_XREG_RENUMBERED]), 1)
+
+    def test_non_definition_targets_and_missing_index_are_untouched(self):
+        # A target that is not a definition row is never checked.
+        out, buckets = self.dlink("as required by Regulation Number 7, Part B, Section II.B.2.d.", reg="gp01")
+        self.assertIn(_xl("7", "Section II.B.2.d.", "sec-7-B-II-B-2-d"), out)
+        self.assertFalse(buckets[ic.BUCKET_XREG_DEF_MISMATCH])
+        # With no definitions index the output is the Sprint 2 output, byte for byte.
+        with_defs, _ = self.dlink(self.GP12_IA)
+        without, b2 = self.dlink(self.GP12_IA, defs={})
+        self.assertIn(_xl("7", "Section I.B.33", "sec-7-B-I-B-33"), without)
+        self.assertIn(_xl("7", "Section II.A.46", "sec-7-B-II-A-46"), without)
+        self.assertNotEqual(with_defs, without)
+        self.assertFalse(b2[ic.BUCKET_XREG_RENUMBERED])
+        # The process-wide index is what link_citations falls back to.
+        ic.set_corpus_ids(self.ids)
+        ic.set_corpus_definitions(self.defs)
+        out, _ = ic.link_citations(self.GP12_IA, "gp12", {"sec-gp12-top-REG-gp12"}, self.corpus, "", "sec-gp12-I-A")
+        self.assertIn("?cited=I.B.33#sec-7-B-I-B-34", out)
+
+    def test_the_three_production_cases(self):
+        # GP12 I.A: both links move to the sibling that defines "well production facility".
+        out, _ = self.dlink(self.GP12_IA, own_id="sec-gp12-I-A")
+        self.assertIn("?cited=I.B.33#sec-7-B-I-B-34", out)
+        self.assertIn("?cited=II.A.46#sec-7-B-II-A-48", out)
+        # GP01/05/07/08/09/10: "no visible emissions during normal operations" matches two siblings -> plain text.
+        out, b = self.dlink(self.GP01_IVB, reg="gp05", own_id="sec-gp05-IV-A")
+        self.assertNotIn("#sec-7-B-II-A-45", out)
+        self.assertEqual(len(b[ic.BUCKET_XREG_DEF_MISMATCH]), 1)
+        # GP09/GP10 IV.G.1: "natural gas-driven diaphragm pneumatic pumps" matches no sibling -> plain text.
+        out, b = self.dlink(self.GP09_IVG1, reg="gp10", own_id="sec-gp10-IV-G-1")
+        self.assertNotIn("#sec-7-B-I-B-20", out)
+        self.assertEqual(len(b[ic.BUCKET_XREG_DEF_MISMATCH]), 1)
+
+    def test_definitions_index_round_trip_and_grouping(self):
+        rows = [("sec-7-B-I-B-34", '<p>“Well Production Facility” means all equipment'),
+                ("sec-7-B-I-B-32", '<p>(State Only) “Surveillance System” means monitoring'),
+                ("sec-7-B-I-A", "<p>Applicability.</p>"),
+                ("sec-gp12-I-A", "<p>This general permit may be used only for</p>")]
+        defs = ic.group_definitions_by_reg(rows)
+        self.assertEqual(defs, {"7": {"sec-7-B-I-B-32": "Surveillance System", "sec-7-B-I-B-34": "Well Production Facility"}})
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "nested", "corpus_definitions.json")
+            ic.write_corpus_definitions(path, defs)
+            self.assertEqual(ic.load_corpus_definitions(path), defs)
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            self.assertTrue(text.endswith("}\n"))
+            self.assertLess(text.index("sec-7-B-I-B-32"), text.index("sec-7-B-I-B-34"), "ids sorted inside a regulation")

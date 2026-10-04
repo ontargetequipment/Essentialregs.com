@@ -43,6 +43,7 @@ import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 try:
     from zoneinfo import ZoneInfo
@@ -4886,8 +4887,22 @@ BUCKET_OTHER_CCR = "other_ccr"
 # so the diff report can say WHERE each fallback happened. Only ever filled
 # when a corpus id index is active (see `set_corpus_ids`); empty otherwise.
 BUCKET_CROSS_REG = "unresolved_cross_reg"
+# A cross-regulation citation of a DEFINITION whose printed section number no
+# longer names the term the citing sentence says is defined (the cited
+# regulation was renumbered after the citing document was written), resolved
+# to the one sibling definition that does define that term. Linked there,
+# with the printed section carried in the href (`?cited=I.B.33`) so the
+# reader can say so. Keys: "<source id>\t<citation as printed>\t<linked
+# id>\t<defined term>". See `verify_definition_target`.
+BUCKET_XREG_RENUMBERED = "renumbered_cross_reg"
+# The same check when NO sibling (or several) defines the cited phrase: the
+# section stays plain text, because an exact-looking link that opens the
+# wrong definition is worse than no link. Keys: "<source id>\t<citation as
+# printed>\t<cited phrase>\t<the target's term, and the siblings that
+# matched when several did>".
+BUCKET_XREG_DEF_MISMATCH = "definition_mismatch_no_link"
 ALL_BUCKETS = [BUCKET_HISTORICAL, BUCKET_OTHER_REG, BUCKET_CFR, BUCKET_UNPARSEABLE, BUCKET_FORM, BUCKET_CRS,
-               BUCKET_OTHER_CCR, BUCKET_CROSS_REG]
+               BUCKET_OTHER_CCR, BUCKET_CROSS_REG, BUCKET_XREG_RENUMBERED, BUCKET_XREG_DEF_MISMATCH]
 
 # Regulations that cite the California Code of Regulations, Title 13 (see
 # BUCKET_OTHER_CCR). CAL_CCR_RE accepts the citation shapes REG_20.txt
@@ -5654,6 +5669,190 @@ def write_corpus_ids(path, ids_by_reg: dict) -> None:
     p.write_text(json.dumps(ordered, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
 
+# --------------------------------------------------------------------------
+# Definition citations: the term check (stale-citation guard).
+#
+# A general permit written against an older Regulation 7 cites its
+# definitions by section number ("well production facilities as defined in
+# Regulation Number 7, Part B, Section I.B.33"). Regulation 7 has since been
+# renumbered, so I.B.33 now defines something else. The corpus id index
+# alone cannot see that: the id exists. The DEFINITIONS index (`{reg key:
+# {provision id: defined term}}`, `pipeline/out/corpus_definitions.json`,
+# written by `dump-ids` beside the id index) holds, for every row whose text
+# opens with a quoted term followed by "means" (an optional "(State Only)"
+# first), the term it defines. When a deep link's target is such a row,
+# `verify_definition_target` compares that term with the phrase the citing
+# sentence says is defined, and the link is kept, moved to the sibling that
+# does define the phrase (`renumbered`), or dropped (`mismatch`). Without an
+# index every target is accepted, exactly as before this guard existed.
+# --------------------------------------------------------------------------
+
+CORPUS_DEFINITIONS_DEFAULT_PATH = Path(__file__).resolve().parent / "out" / "corpus_definitions.json"
+_ACTIVE_CORPUS_DEFINITIONS: dict[str, dict[str, str]] = {}
+
+# The opening of a definition row, tags stripped: an optional "(State Only)",
+# a quoted term (curly or straight quotes), optionally "or “other term”" or a
+# parenthesised abbreviation, then "means". `“Repair delayed” and the reason`
+# does not match; `“Drilling” or “drilled” means` and `“Midstream fuel
+# combustion equipment” (MFCE) means` do (the first quoted term is the one).
+DEFINITION_TERM_RE = re.compile(
+    r'^\s*(?:\(State\s+Only\)\s*)?[“"]([^”"]{1,120})[”"]'
+    r'(?:\s*,?\s*(?:or\s+[“"][^”"]{1,120}[”"]|\([A-Za-z0-9&/-]{1,12}\)))*'
+    r'\s*,?\s+means\b',
+    re.I,
+)
+
+
+def definition_term_of(html_text: str | None) -> str | None:
+    """The term a provision defines ("Well Production Facility") when its text
+    opens as a definition (see DEFINITION_TERM_RE), else None."""
+    if not html_text:
+        return None
+    m = DEFINITION_TERM_RE.match(re.sub(r"<[^>]+>", "", html_text))
+    return m.group(1).strip() if m else None
+
+
+def set_corpus_definitions(defs) -> None:
+    """Install (or, with None/{}, clear) the process-wide definitions index."""
+    global _ACTIVE_CORPUS_DEFINITIONS
+    _ACTIVE_CORPUS_DEFINITIONS = {str(k): dict(v) for k, v in (defs or {}).items()}
+
+
+def load_corpus_definitions(path) -> dict[str, dict[str, str]]:
+    """Read a corpus_definitions.json ({"7": {"sec-7-B-I-B-34": "Well Production Facility", ...}, ...})."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    return {str(k): dict(v) for k, v in data.items()}
+
+
+def group_definitions_by_reg(rows) -> dict[str, dict[str, str]]:
+    """{reg key: {id: term}} from (id, full_text) pairs; rows that are not
+    definitions are dropped. Ids bytewise-sorted inside each regulation."""
+    out: dict[str, dict[str, str]] = defaultdict(dict)
+    for pid, text in rows:
+        term = definition_term_of(text)
+        if term:
+            out[reg_key_of_id(pid)][pid] = term
+    return {k: dict(sorted(v.items(), key=lambda kv: kv[0].encode("utf-8"))) for k, v in sorted(out.items())}
+
+
+def write_corpus_definitions(path, defs_by_reg: dict) -> None:
+    """Deterministic writer (keys sorted, one entry per line), like write_corpus_ids."""
+    ordered = {k: dict(sorted(defs_by_reg[k].items(), key=lambda kv: kv[0].encode("utf-8"))) for k in sorted(defs_by_reg)}
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(ordered, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+
+# The phrase a sentence says is defined, read backwards from the regulation
+# mention: "<phrase> as defined in|under|at|by <mention>" (a comma before "as"
+# allowed, "as that term is defined in" too) or "the definition of <phrase>
+# in|under|at <mention>". The phrase runs back to the previous clause
+# boundary (. ; : or a parenthesis), so for "...must be enclosed; have no
+# visible emissions during normal operations, as defined under" it is
+# "have no visible emissions during normal operations".
+_DEF_PHRASE_AS_DEFINED_RE = re.compile(
+    r"(?P<phrase>[^.;:()]{1,240}?)\s*,?\s+(?:as\s+(?:(?:that|the)\s+terms?\s+(?:is|are)\s+)?)?defined\s+(?:in|under|at|by)\s*$",
+    re.I,
+)
+_DEF_PHRASE_DEFINITION_OF_RE = re.compile(
+    r"\bthe\s+definitions?\s+of\s+(?P<phrase>[^.;:()]{1,240}?)\s+(?:in|under|at|(?:found|set\s+forth|contained)\s+in)\s*$",
+    re.I,
+)
+_DEF_WORD_RE = re.compile(r"[a-z0-9]+")
+
+
+def cited_definition_phrase(text: str, mention_start: int | None) -> str | None:
+    """The defined-term phrase that precedes a regulation mention starting at
+    `mention_start` in `text`, or None when the sentence has no such shape."""
+    if mention_start is None:
+        return None
+    before = text[:mention_start]
+    for rx in (_DEF_PHRASE_DEFINITION_OF_RE, _DEF_PHRASE_AS_DEFINED_RE):
+        m = rx.search(before)
+        if m:
+            return m.group("phrase").strip()
+    return None
+
+
+def _singular(word: str) -> str:
+    if len(word) > 4 and word.endswith("ies"):
+        return word[:-3] + "y"
+    if len(word) > 4 and word.endswith(("ses", "xes", "ches", "shes")):
+        return word[:-2]
+    if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+def _term_words(text: str) -> list[str]:
+    """Lower-cased, hyphens and dashes split, punctuation dropped, each word
+    singularised: "Natural Gas-Driven Diaphragm Pumps" -> ["natural", "gas", "driven", "diaphragm", "pump"]."""
+    return [_singular(w) for w in _DEF_WORD_RE.findall(text.lower().replace("-", " ").replace("–", " "))]
+
+
+def term_matches_phrase(term: str, phrase: str) -> bool:
+    """True when the defined term occurs in the phrase as a contiguous run of
+    words: case-insensitive, singular/plural and hyphen/space tolerant."""
+    t, p = _term_words(term), _term_words(phrase)
+    if not t or len(t) > len(p):
+        return False
+    return any(p[i:i + len(t)] == t for i in range(len(p) - len(t) + 1))
+
+
+class DefinitionVerdict(tuple):
+    """(status, target, term, phrase, candidates) from `verify_definition_target`:
+    status "ok" (not a definition, or its term matches), "renumbered" (moved
+    to the one sibling whose term matches; `target`/`term` are that sibling's),
+    or "mismatch" (no link: `candidates` lists the sibling ids that matched,
+    none or several)."""
+
+    __slots__ = ()
+
+    def __new__(cls, status, target=None, term=None, phrase=None, candidates=()):
+        return tuple.__new__(cls, (status, target, term, phrase, tuple(candidates)))
+
+    status = property(lambda self: self[0])
+    target = property(lambda self: self[1])
+    term = property(lambda self: self[2])
+    phrase = property(lambda self: self[3])
+    candidates = property(lambda self: self[4])
+
+
+def verify_definition_target(text: str, mention_start: int | None, reg: str, target: str,
+                             defs_index: dict | None) -> DefinitionVerdict:
+    """Check a resolved deep-link target that is a definition row against
+    the citing sentence (see the section comment above).
+
+    - Not a definition (or no index for `reg`): "ok".
+    - The sentence names the defined phrase ("X as defined in ...", "the
+      definition of X in ..."): "ok" when the target's term occurs in the
+      phrase; otherwise the target's siblings (the same definitions list:
+      ids sharing its parent) are searched for terms that occur in the
+      phrase -- exactly one gives "renumbered", none or several "mismatch".
+    - No such phrase: "ok" when the term occurs anywhere in the paragraph,
+      else "mismatch" (no sibling guess without a phrase to check it against)."""
+    terms = (defs_index or {}).get(reg) or {}
+    term = terms.get(target)
+    if not term:
+        return DefinitionVerdict("ok", target)
+    phrase = cited_definition_phrase(text, mention_start)
+    if phrase is None:
+        if term_matches_phrase(term, text):
+            return DefinitionVerdict("ok", target, term)
+        return DefinitionVerdict("mismatch", target, term, None, ())
+    if term_matches_phrase(term, phrase):
+        return DefinitionVerdict("ok", target, term, phrase)
+    parent = target.rsplit("-", 1)[0]
+    hits = sorted(
+        (sid for sid, sterm in terms.items()
+         if sid != target and sid.rsplit("-", 1)[0] == parent and term_matches_phrase(sterm, phrase)),
+        key=lambda s: s.encode("utf-8"),
+    )
+    if len(hits) == 1:
+        return DefinitionVerdict("renumbered", hits[0], terms[hits[0]], phrase, hits)
+    return DefinitionVerdict("mismatch", target, term, phrase, hits)
+
+
 class CrossRegTarget(tuple):
     """Result of `resolve_cross_reg_target`: (target, kind, detail).
 
@@ -5829,7 +6028,8 @@ def _scan_xreg_clauses(text: str, pos: int, gp_mode: bool = False, lead_re=None)
 
 
 def _emit_xreg_clauses(html_text: str, num: str, clauses: list[dict], corpus_ids, pieces: list,
-                       buckets: dict, own_id: str | None, display: str) -> None:
+                       buckets: dict, own_id: str | None, display: str,
+                       defs_index: dict | None = None, mention_start: int | None = None) -> None:
     """Turn parsed clauses into deep links to regulation `num` (see
     `resolve_cross_reg_target`). `display` is the printed regulation mention
     ("Regulation Number 7"), used only to describe a fallback in the
@@ -5838,7 +6038,13 @@ def _emit_xreg_clauses(html_text: str, num: str, clauses: list[dict], corpus_ids
     case "Part B" links to the part root. A cite that only reaches the
     regulation root gets NO link (the regulation name already links there)
     and is recorded in the bucket; a part-root or trimmed link is recorded
-    too, because it is not the exact provision the text names."""
+    too, because it is not the exact provision the text names. With a
+    definitions index (`defs_index`, see `verify_definition_target`) a target
+    that is a definition row is checked against the phrase the sentence
+    says is defined (`mention_start`: where the regulation mention begins):
+    a renumbered citation links to the sibling that defines it, with the
+    printed section in the href (`?cited=I.B.33`); an unverifiable one
+    stays plain text."""
     href_base = f"/regulations/{num}"
 
     def record(cited: str, res: CrossRegTarget) -> None:
@@ -5878,11 +6084,37 @@ def _emit_xreg_clauses(html_text: str, num: str, clauses: list[dict], corpus_ids
                 # that high, so leave it plain and unbucketed
                 continue
             res = resolve_cross_reg_target(num, cl["part"], cite, corpus_ids)
-            record(f"{display}{part_txt}, {cite}", res)
-            if res.kind in XREG_LINKABLE_KINDS:
+            cited_full = f"{display}{part_txt}, {cite}"
+            verdict = None
+            if res.kind in XREG_LINKABLE_KINDS and defs_index:
+                verdict = verify_definition_target(html_text, mention_start, num, res.target, defs_index)
+            href_target, query = res.target, ""
+            if verdict is None or verdict.status == "ok":
+                record(cited_full, res)
+                linkable = res.kind in XREG_LINKABLE_KINDS
+            elif verdict.status == "renumbered":
+                # the printed section number is kept as text; the href says
+                # which section was cited so the reader can explain the move
+                href_target = verdict.target
+                query = "?cited=" + quote(cite.rstrip("."), safe="")
+                linkable = True
+                if XREG_EVENTS is not None:
+                    XREG_EVENTS.append((own_id or "", cited_full, "renumbered", verdict.target))
+                buckets[BUCKET_XREG_RENUMBERED]["\t".join((own_id or "?", cited_full, verdict.target, verdict.term))] += 1
+            else:
+                linkable = False
+                if XREG_EVENTS is not None:
+                    XREG_EVENTS.append((own_id or "", cited_full, "definition_mismatch", res.target))
+                detail = verdict.term or ""
+                if verdict.candidates:
+                    detail += " — several siblings match: " + ", ".join(
+                        f"{sid} ({defs_index[num][sid]})" for sid in verdict.candidates)
+                buckets[BUCKET_XREG_DEF_MISMATCH]["\t".join(
+                    (own_id or "?", cited_full, verdict.phrase if verdict.phrase is not None else "(no defining phrase)", detail))] += 1
+            if linkable:
                 start = cl["kw_start"] if keyword_pending else abs_start
                 pieces.append((start, abs_end,
-                               f'<a class="xref-external-reg" href="{href_base}#{res.target}">{html_text[start:abs_end]}</a>'))
+                               f'<a class="xref-external-reg" href="{href_base}{query}#{href_target}">{html_text[start:abs_end]}</a>'))
                 keyword_pending = False
             elif idx == 0:
                 # first cite unresolved: the keyword stays plain and no later
@@ -5892,7 +6124,8 @@ def _emit_xreg_clauses(html_text: str, num: str, clauses: list[dict], corpus_ids
 
 def _link_xreg_tail(html_text: str, pos: int, num: str, corpus_ids, pieces: list, buckets: dict, own_id: str | None,
                     display: str, is_claimed, claim, *, gp_mode: bool = False, free_until: int = 0,
-                    in_corpus: bool = True) -> None:
+                    in_corpus: bool = True, defs_index: dict | None = None,
+                    mention_start: int | None = None) -> None:
     """Link (or, for a regulation outside the corpus, merely claim) the
     Part/Section clauses that follow a cross-regulation mention ending at
     `pos`, so that none of them -- in particular a trailing "and Section
@@ -5909,7 +6142,8 @@ def _link_xreg_tail(html_text: str, pos: int, num: str, corpus_ids, pieces: list
         return
     claim(pos, kept[-1]["end"])
     if in_corpus:
-        _emit_xreg_clauses(html_text, num, kept, corpus_ids, pieces, buckets, own_id, display)
+        _emit_xreg_clauses(html_text, num, kept, corpus_ids, pieces, buckets, own_id, display,
+                           defs_index=defs_index, mention_start=mention_start)
     else:
         for cl in kept:
             if cl["start"] >= free_until:
@@ -5918,7 +6152,8 @@ def _link_xreg_tail(html_text: str, pos: int, num: str, corpus_ids, pieces: list
 
 def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: set[str],
                     own_part: str | None = None, own_id: str | None = None,
-                    corpus_ids: dict | None = None) -> tuple[str, dict[str, Counter]]:
+                    corpus_ids: dict | None = None,
+                    corpus_definitions: dict | None = None) -> tuple[str, dict[str, Counter]]:
     """Find cross-references in `html_text` (plain text at this point — call
     BEFORE other HTML is added, i.e. on the assembled paragraph text, and
     call it exactly once per paragraph) and wrap them in the app's xref
@@ -5942,7 +6177,12 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
       regulation's ids -- see `resolve_cross_reg_target` -- and the tail is
       claimed so it can never bind to this document's own ids.
     - `corpus_ids` ({reg key: ids}) defaults to the process-wide index
-      installed by `set_corpus_ids`.
+      installed by `set_corpus_ids`; `corpus_definitions` ({reg key: {id:
+      defined term}}) to the one installed by `set_corpus_definitions`. With
+      a definitions index a deep link whose target is a definition row is
+      verified against the phrase the sentence says is defined
+      (`verify_definition_target`): kept, moved to the sibling that defines
+      it (`?cited=<printed section>` in the href), or left as plain text.
     - Anything else that looks like a regulation/CFR/section reference but
       can't be resolved is left as plain text and counted into `buckets`
       (see BUCKET_* above) rather than a single flat counter, so the report
@@ -5967,6 +6207,7 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
     # output is unchanged from before the feature existed.
     ids_index = _ACTIVE_CORPUS_IDS if corpus_ids is None else _normalise_corpus_ids(corpus_ids)
     use_ids = bool(ids_index)
+    defs_index = _ACTIVE_CORPUS_DEFINITIONS if corpus_definitions is None else (corpus_definitions or {})
 
     # 1) "40 CFR Part NN, Subpart XXXX" — only OOOOb is in the corpus today.
     cfr_re = CFR_RE_DOTTED if reg in CFR_DOTTED_REGS else CFR_RE
@@ -6113,7 +6354,8 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
                 # "GP02 Condition II.B.3" / "GP01, Sections I.A. and I.B." --
                 # the conditions belong to THAT permit, never to this document.
                 _link_xreg_tail(html_text, m.end(), gp_key, ids_index, pieces, buckets, own_id, m.group(0),
-                                is_claimed, claim, gp_mode=True, free_until=m.end())
+                                is_claimed, claim, gp_mode=True, free_until=m.end(),
+                                defs_index=defs_index, mention_start=m.start())
         else:
             buckets[BUCKET_OTHER_REG][m.group(0)] += 1
 
@@ -6213,7 +6455,8 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
                 pieces.append((num_span[0], num_span[1], f'<a class="xref-external-reg" href="/regulations/{num}">{num_text}</a>'))
                 if use_ids:
                     _link_xreg_tail(html_text, num_span[1], num, ids_index, pieces, buckets, own_id, num_text,
-                                    is_claimed, claim, free_until=m.end())
+                                    is_claimed, claim, free_until=m.end(),
+                                    defs_index=defs_index, mention_start=num_span[0])
             else:
                 buckets[BUCKET_OTHER_REG][m.group(0)] += 1
                 if use_ids:
@@ -6258,7 +6501,8 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
             claim(m.start(), m.end())
             pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{num}">{m.group(0)}</a>'))
             _link_xreg_tail(html_text, m.end(), num, ids_index, pieces, buckets, own_id, m.group(0),
-                            is_claimed, claim, free_until=m.end())
+                            is_claimed, claim, free_until=m.end(),
+                            defs_index=defs_index, mention_start=m.start())
 
     # 3) "Part X[, Section(s) list]" not already claimed above.
     for m in PART_RE.finditer(html_text):
@@ -11175,6 +11419,15 @@ def cmd_parse(args):
         set_corpus_ids(index)
         print(f"Cross-regulation deep links ON: corpus id index {corpus_ids_path} "
               f"({len(index)} regulations, {sum(len(v) for v in index.values())} ids).")
+        defs_path = getattr(args, "corpus_definitions", None)
+        if defs_path:
+            defs = load_corpus_definitions(defs_path)
+            set_corpus_definitions(defs)
+            print(f"Definition-citation check ON: definitions index {defs_path} "
+                  f"({sum(len(v) for v in defs.values())} defined terms).")
+        else:
+            set_corpus_definitions(None)
+            print("Definition-citation check OFF (no definitions index): every definition target is accepted as cited.")
     if args.reg.lower() in ECFR_REGS:
         # eCFR subparts (ooooa/oooob/ooooc, jjjj, iiii, zzzz) use a
         # different source layout (eCFR "enhanced display" PDF prints, not
@@ -11360,24 +11613,39 @@ def _xref_report_section(reg: str, parsed: list[dict], db: list[dict], parsed_by
         BUCKET_CRS: "C.R.S. statute citation (ECMC) — recognized, deliberately left as plain text",
         BUCKET_OTHER_CCR: "California Code of Regulations, Title 13 (Reg 20) — recognized, deliberately left as plain text",
         BUCKET_CROSS_REG: "Cross-regulation citations that did NOT deep-link to the exact cited provision (linked to the nearest ancestor or the part root, or left unlinked when only the regulation root was left) — fix the citation or the target regulation, or accept the fallback",
+        BUCKET_XREG_RENUMBERED: "Renumbered definition citations: the printed section no longer defines the term the sentence names; linked to the one sibling that does (the href carries `?cited=<printed section>` so the reader says so)",
+        BUCKET_XREG_DEF_MISMATCH: "Definition citations left as plain text: the printed section defines another term and no single sibling defines the cited phrase (none, or several) — an exact-looking link to the wrong definition is worse than no link",
+    }
+    record_columns = {
+        BUCKET_CROSS_REG: ("| source provision | citation as printed | resolution | resolved to | count |", "resolution"),
+        BUCKET_XREG_RENUMBERED: ("| source provision | citation as printed | linked to | defined term | count |", "renumbered"),
+        BUCKET_XREG_DEF_MISMATCH: ("| source provision | citation as printed | cited phrase | the target's term (and the siblings that matched) | count |", "mismatch"),
     }
     if not unresolved_buckets:
         lines.append("_none recorded (run `parse` first to generate the sidecar file)_\n")
     for bucket in ALL_BUCKETS:
         items = unresolved_buckets.get(bucket, [])
         total_mentions = sum(c for _, c in items)
-        if bucket == BUCKET_CROSS_REG:
+        if bucket in record_columns:
             # Every record, not the top 15: each is a specific place in the text
             # a reviewer may want to check. Keys are tab-joined records (see
-            # BUCKET_CROSS_REG), sorted by source provision for reading.
+            # BUCKET_CROSS_REG and the two definition buckets), sorted by
+            # source provision for reading.
+            header, shape = record_columns[bucket]
             lines.append(f"**{bucket_titles[bucket]}** — {len(items)} distinct, {total_mentions} mentions\n")
             if items:
-                lines.append("| source provision | citation as printed | resolution | resolved to | count |")
+                lines.append(header)
                 lines.append("|---|---|---|---|---|")
+                esc = lambda t: t.replace("|", chr(92) + "|")  # noqa: E731
                 for text, cnt in sorted(items, key=lambda kv: kv[0]):
-                    src, cited, kind, target = (str(text).split("\t") + ["", "", "", ""])[:4]
-                    lines.append(f"| `{src}` | {cited.replace('|', chr(92) + '|')} | {kind} | "
-                                 f"{('`' + target + '`') if target else '(no link)'} | {cnt} |")
+                    src, cited, c3, c4 = (str(text).split("\t") + ["", "", "", ""])[:4]
+                    if shape == "resolution":
+                        lines.append(f"| `{src}` | {esc(cited)} | {c3} | "
+                                     f"{('`' + c4 + '`') if c4 else '(no link)'} | {cnt} |")
+                    elif shape == "renumbered":
+                        lines.append(f"| `{src}` | {esc(cited)} | `{c3}` | {esc(c4)} | {cnt} |")
+                    else:
+                        lines.append(f"| `{src}` | {esc(cited)} | {esc(c3)} | {esc(c4)} | {cnt} |")
             else:
                 lines.append("_none_")
             lines.append("")
@@ -11914,6 +12182,44 @@ def cmd_dump_ids(args) -> None:
     by_reg = group_ids_by_reg(ids)
     write_corpus_ids(args.out, by_reg)
     print(f"Dumped {len(ids)} provision ids across {len(by_reg)} regulations -> {args.out}")
+    defs_out = getattr(args, "definitions_out", None)
+    if defs_out:
+        rows = fetch_definition_candidates(client)
+        defs = group_definitions_by_reg(rows)
+        write_corpus_definitions(defs_out, defs)
+        print(f"Dumped {sum(len(v) for v in defs.values())} defined terms "
+              f"({len(rows)} candidate rows) across {len(defs)} regulations -> {defs_out}")
+
+
+# How a definition row's `full_text` begins in the database: a <p> (or none),
+# then an optional "(State Only)" or a curly/straight opening quote. Only
+# these rows are fetched (id + full_text) for the definitions index; the
+# exact test is DEFINITION_TERM_RE afterwards, on the tag-stripped text.
+DEFINITION_PREFIX_PATTERNS = ('<p>“%', '“%', '<p>"%', '"%', '<p>(State Only)%', '(State Only)%')
+
+
+def fetch_definition_candidates(client, page_size: int = EXPORT_PAGE_SIZE) -> list[tuple[str, str]]:
+    """(id, full_text) of every row whose text begins like a definition (see
+    DEFINITION_PREFIX_PATTERNS), paged like fetch_all_provision_ids. Read-only."""
+    rows: dict[str, str] = {}
+    for pattern in DEFINITION_PREFIX_PATTERNS:
+        start = 0
+        while True:
+            resp = (
+                client.table("provisions")
+                .select("id, full_text")
+                .like("full_text", pattern)
+                .order("id")
+                .range(start, start + page_size - 1)
+                .execute()
+            )
+            page = resp.data or []
+            for r in page:
+                rows[r["id"]] = r.get("full_text") or ""
+            if len(page) < page_size:
+                break
+            start += page_size
+    return sorted(rows.items(), key=lambda kv: kv[0].encode("utf-8"))
 
 
 # --------------------------------------------------------------------------
@@ -12721,6 +13027,10 @@ def main():
     p_parse.add_argument("--no-corpus-ids", action="store_true",
                          help="Ignore any corpus id index: cross-regulation citations link only the regulation name, "
                               "exactly as before deep links existed.")
+    p_parse.add_argument("--corpus-definitions", default=None,
+                         help="Definitions index (JSON {reg key: {provision id: defined term}}, written by `dump-ids`) "
+                              "used to verify a deep link into a definition against the term the citing sentence names. "
+                              "Default: pipeline/out/corpus_definitions.json when it exists (and a corpus id index is in use).")
     p_parse.set_defaults(func=cmd_parse)
 
     p_export = sub.add_parser(
@@ -12740,6 +13050,9 @@ def main():
              "against). Requires SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY; makes no writes.",
     )
     p_dump.add_argument("--out", default=str(CORPUS_IDS_DEFAULT_PATH))
+    p_dump.add_argument("--definitions-out", default=str(CORPUS_DEFINITIONS_DEFAULT_PATH),
+                        help="Where to write the definitions index ({reg key: {id: defined term}}) read beside the id "
+                             "index; '' to skip it.")
     p_dump.set_defaults(func=cmd_dump_ids)
 
     p_diff = sub.add_parser("diff", help="Diff parsed output against an exported DB snapshot.")
@@ -12779,6 +13092,13 @@ def main():
                 raise SystemExit(f"--corpus-ids file not found: {args.corpus_ids}")
         elif CORPUS_IDS_DEFAULT_PATH.exists():
             args.corpus_ids = str(CORPUS_IDS_DEFAULT_PATH)
+        if not args.corpus_ids:
+            args.corpus_definitions = None
+        elif args.corpus_definitions is not None:
+            if not Path(args.corpus_definitions).exists():
+                raise SystemExit(f"--corpus-definitions file not found: {args.corpus_definitions}")
+        elif CORPUS_DEFINITIONS_DEFAULT_PATH.exists():
+            args.corpus_definitions = str(CORPUS_DEFINITIONS_DEFAULT_PATH)
     args.func(args)
 
 
