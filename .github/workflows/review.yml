@@ -1,0 +1,104 @@
+name: Review pending summaries
+
+# Automated AI second-pass review (pipeline/review.py). Selects rows whose
+# summary is still 'pending', checks each against the official text (assembled
+# exactly as the summarizer assembles it), and with `execute` writes the
+# verdict: pass -> approved, corrected -> approved with the corrected text and
+# the prior text kept in summary_original, fail -> left pending and listed in
+# the report. Without `execute` it is a dry run: no paid call, no write, a cost
+# quote per model option. See pipeline/README.md, "Automated AI review pass".
+
+on:
+  workflow_dispatch:
+    inputs:
+      reg:
+        description: "Regulation to review (e.g. 7, 3, 26, gp12, oooob). Leave blank for every pending row."
+        required: false
+        default: ""
+      ids:
+        description: "Comma-separated exact provision ids (only pending ones are reviewed). Leave blank for reg/limit selection."
+        required: false
+        default: ""
+      limit:
+        description: "Stop after this many rows (for pilots). Leave blank for no limit."
+        required: false
+        default: ""
+      model:
+        description: "Reviewer model id (separate call from the summarizer; see pipeline/README.md for the options and their batch prices)."
+        required: false
+        default: "claude-sonnet-5-5"
+      effort:
+        description: "Thinking effort for 5.x models (ignored for temperature models such as claude-sonnet-4-5)."
+        type: choice
+        options: [low, medium, high]
+        default: low
+      max_cost:
+        description: "Spend cap in USD: refuse to submit above this estimate; cancel the remaining batches once actual spend passes it. Leave blank for no cap."
+        required: false
+        default: ""
+      execute:
+        description: "Execute: make the paid calls and write the verdicts. Leave unchecked for a dry run (no paid calls, no writes, cost quote only)."
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360 # batches can queue for a while; same ceiling as the summarizer
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest==9.1.1
+
+      - name: Unit tests
+        run: python -m pytest test_review.py -q
+
+      - name: Run review
+        env:
+          # The API key is passed to dry runs too: review.py only uses it there
+          # for messages.count_tokens, a free endpoint, so the quote is exact.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          ARGS=()
+          if [ -n "${{ inputs.reg }}" ]; then ARGS+=(--reg "${{ inputs.reg }}"); fi
+          if [ -n "${{ inputs.ids }}" ]; then ARGS+=(--ids "${{ inputs.ids }}"); fi
+          if [ -n "${{ inputs.limit }}" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
+          if [ -n "${{ inputs.max_cost }}" ]; then ARGS+=(--max-cost "${{ inputs.max_cost }}"); fi
+          if [ "${{ inputs.execute }}" = "true" ]; then ARGS+=(--execute); else ARGS+=(--dry-run); fi
+          ARGS+=(--model "${{ inputs.model }}" --effort "${{ inputs.effort }}")
+          echo "Running: python review.py ${ARGS[*]}"
+          python review.py "${ARGS[@]}"
+
+      - name: Report to the job summary
+        if: always()
+        run: |
+          if [ -f out/review_report.md ]; then
+            head -c 60000 out/review_report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No report written (an earlier step failed)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-report
+          path: |
+            pipeline/out/review_report.md
+            pipeline/out/review_report.json
+            pipeline/review_failed.jsonl
+          retention-days: 90
+          if-no-files-found: warn
