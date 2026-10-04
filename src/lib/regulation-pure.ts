@@ -952,17 +952,24 @@ export function summaryChildrenHtml(children: SummaryChild[]): string {
 }
 
 /**
- * Abbreviations and citation-shaped tokens a period does not end a sentence
- * after: "No.", "Sec.", "U.S.", "e.g.", a single capital ("B."), a dotted
- * label ("II.A.7.", "60.5395b.", "III.J.2.") and a lone number ("3.").
+ * Abbreviations a period does not end a sentence after, when a capital
+ * follows: "No.", "Sec.", "U.S.", "e.g.", a lowercase list letter ("a.")
+ * and a one- or two-digit list number ("3."). A citation label ("II.A.7.",
+ * "I.B.", "60.5395b.") and a year ("2021.") are NOT in the list: the
+ * summaries are prose, and in 20 sampled GP parent summaries every label
+ * followed by a space and a capitalised word ended its sentence ("...as
+ * permitted under provision I.B. If the source...", "...Conditions III.A
+ * and III.B. Specific monthly..."), while a label inside a sentence is
+ * followed by a lowercase word, which the split never fires on anyway.
  */
-const NOT_SENTENCE_END = /(?:^|[\s(])(?:No|Nos|Sec|Secs|Fig|Figs|vs|etc|approx|Dept|Inc|Co|Corp|Mr|Mrs|Ms|Dr|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|Rev|Reg|Regs|Pt|Para|Paras|Art|Ch|St|U\.S|e\.g|i\.e|cf|al|[A-Z]|[a-z]|\d+|[A-Za-z0-9()]*\.[A-Za-z0-9().]*)\.$/;
+const NOT_SENTENCE_END =
+  /(?:^|[\s(])(?:No|Nos|Sec|Secs|Fig|Figs|vs|etc|approx|Dept|Inc|Co|Corp|Mr|Mrs|Ms|Dr|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|Rev|Reg|Regs|Pt|Para|Paras|Art|Ch|St|U\.S|e\.g|i\.e|cf|al|[a-z]|\d{1,2})\.$/;
 
 /**
  * Splits summary prose into sentences: at ". ", "! " or "? " (an optional
  * closing quote or bracket allowed) followed by a capital, a digit or an
- * opening quote or bracket, except after an abbreviation or a citation
- * label (NOT_SENTENCE_END). Pure; the reader and its tests share it.
+ * opening quote or bracket, except after an abbreviation or a list marker
+ * (NOT_SENTENCE_END). Pure; the reader and its tests share it.
  */
 export function splitSentences(text: string): string[] {
   const out: string[] = [];

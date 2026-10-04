@@ -13,15 +13,30 @@ import { renderReaderBody } from "../src/lib/reader-render";
 import { splitSentences, summaryOverview, summaryPanelHtml } from "../src/lib/regulation-pure";
 import type { Provision } from "../src/lib/types";
 
-test("splitSentences: ends at . ! ? before a capital, not after abbreviations or citation labels", () => {
+test("splitSentences: ends at . ! ? before a capital, not after abbreviations or list markers", () => {
   assert.deepEqual(splitSentences("The permit requires records. They are kept five years."), [
     "The permit requires records.",
     "They are kept five years.",
   ]);
   assert.deepEqual(
     splitSentences("See Regulation No. 7, Part B, Section II.A.7. The limit is 2.0 g/hp-hr (e.g. rich burn). Done!"),
-    ["See Regulation No. 7, Part B, Section II.A.7. The limit is 2.0 g/hp-hr (e.g. rich burn).", "Done!"]
+    ["See Regulation No. 7, Part B, Section II.A.7.", "The limit is 2.0 g/hp-hr (e.g. rich burn).", "Done!"]
   );
+  // A citation label or a year closing a sentence (the common case in the
+  // summaries) is a sentence end; a label inside a sentence is followed by
+  // a lowercase word and never splits.
+  assert.deepEqual(splitSentences("Facilities are permitted under provision I.B. If the source is also subject to II.A.6., comply."), [
+    "Facilities are permitted under provision I.B.",
+    "If the source is also subject to II.A.6., comply.",
+  ]);
+  assert.deepEqual(splitSentences("Comply by May 1, 2021. Facilities built later comply at startup. Section II.A.7. applies too."), [
+    "Comply by May 1, 2021.",
+    "Facilities built later comply at startup.",
+    "Section II.A.7. applies too.",
+  ]);
+  assert.deepEqual(splitSentences("The source must: 1. Keep records; 2. Report yearly; a. On time."), [
+    "The source must: 1. Keep records; 2. Report yearly; a. On time.",
+  ]);
   assert.deepEqual(splitSentences("Is it required? Yes. 40 CFR 60.5395b applies."), ["Is it required?", "Yes.", "40 CFR 60.5395b applies."]);
   assert.deepEqual(splitSentences("Comply with Condition II.A.6 or II.A.7, whichever is stricter."), [
     "Comply with Condition II.A.6 or II.A.7, whichever is stricter.",
