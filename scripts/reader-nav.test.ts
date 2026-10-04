@@ -24,7 +24,13 @@
  *     link back to it and strips `from` from the URL;
  *   - a renumbered definition citation (?cited=<printed section> in the
  *     link) previews with a one-line note saying which section the origin
- *     cites and what it is now; `cited` is stripped on arrival like `from`.
+ *     cites and what it is now; `cited` is stripped on arrival like `from`;
+ *   - a preview opened from a document older than the cited regulation's
+ *     current text shows the version line ("GP12 cites Regulation 7 as
+ *     effective 06/14/2025; shown is the current text, effective
+ *     07/15/2026. Numbering may differ."), from the manifest's dates; none
+ *     for documents of the same age (Regulation 3 citing Regulation 7),
+ *     and beside the renumbered line when both apply.
  *
  *   npm test
  */
@@ -40,19 +46,24 @@ import {
   citedParamOf,
   documentShortName,
   foreignOriginOf,
+  formatUsDate,
   hashTargetOf,
   originTrailLabel,
   popupEyebrow,
+  printedEffectiveDate,
   regulationHref,
   renumberedNote,
   ReturnTrail,
   rowLabel,
+  sourceDateOf,
   stripReaderParams,
   titleCaseHeading,
   validCitedSection,
   validProvisionId,
+  versionNote,
 } from "../src/lib/reader-nav";
 import { renderReaderBody } from "../src/lib/reader-render";
+import { SOURCE_DATES } from "../src/lib/source-dates.generated";
 import type { Provision } from "../src/lib/types";
 
 const ROOT = "sec-3-top-REG-3";
@@ -106,24 +117,59 @@ function row(id: string, citation: string, parent_id: string | null, full_text: 
 
 const reader = renderReaderBody(rows)!;
 
+// A general permit written against an older Regulation 7 (GP12, issued
+// 05/28/2026 per the manifest; Regulation 7 is effective 07/15/2026): the
+// version-note cases. I.A carries renumbered links and the printed effective
+// date, I.C a plain link with the printed date, I.B a plain link without one.
+const GP_ROOT = "sec-gp12-top-REG-gp12";
+const gpRows: Provision[] = [
+  row(GP_ROOT, "APCD General Permit GP12", null, "<p>General Permit GP12 Oil and Gas Well Production Facilities</p>"),
+  row("sec-gp12-I", "I.", GP_ROOT, "<p>General Permit Applicability</p>"),
+  row(
+    "sec-gp12-I-A",
+    "I.A",
+    "sec-gp12-I",
+    '<p>This general permit may be used only for oil and gas well production facilities as defined in ' +
+      '<a class="xref-external-reg" href="/regulations/7">Regulation Number 7</a>, Part B, ' +
+      '<a class="xref-external-reg" href="/regulations/7?cited=I.B.33#sec-7-B-I-B-34">Section I.B.33</a> and ' +
+      '<a class="xref-external-reg" href="/regulations/7?cited=II.A.46#sec-7-B-II-A-48">Section II.A.46</a> ' +
+      "(Adopted: 04/18/2025, Effective: 06/14/2025). Equipment covered by this general permit is limited to the following sources:</p>"
+  ),
+  row(
+    "sec-gp12-I-B",
+    "I.B",
+    "sec-gp12-I",
+    '<p>Combustion devices must comply with <a class="xref-external-reg" href="/regulations/7#sec-7-B-II-B-2-d">Section II.B.2.d.</a> ' +
+      "of Regulation Number 7.</p>"
+  ),
+  row(
+    "sec-gp12-I-C",
+    "I.C",
+    "sec-gp12-I",
+    '<p>8-hour Ozone Control Area is as defined in <a class="xref-external-reg" href="/regulations/7">Regulation Number 7</a>, Part A, ' +
+      '<a class="xref-external-reg" href="/regulations/7#sec-7-A-II-A-1">Section II.A.1.</a> (Adopted 12/14/2023, Effective 02/14/2024).</p>'
+  ),
+];
+const gpReader = renderReaderBody(gpRows)!;
+
 /** The [reg]/page.tsx shell around RegulationReader, with the deep link `hash`. */
-function makeDom(hash = "", search = "", virtualConsole?: VirtualConsole) {
+function makeDom(hash = "", search = "", virtualConsole?: VirtualConsole, body = reader, regPath = "3") {
   const dom = new JSDOM(
     `<!doctype html><html><body><div class="reg-reader">
       <div id="reader-root"></div>
       <nav id="sidebar">
         <div id="jump-wrap"><input id="jumpbox" type="text"><div id="jump-results"></div></div>
-        <div class="nav-reg">${reader.navHtml}</div>
+        <div class="nav-reg">${body.navHtml}</div>
       </nav>
       <div id="main-scroll">
         <div id="return-trail" hidden>
           <button id="return-trail-back" type="button">← Back to <span id="return-trail-label"></span></button>
           <button id="return-trail-dismiss" type="button" aria-label="Dismiss">✕</button>
         </div>
-        <div id="doc">${reader.docHtml}</div>
+        <div id="doc">${body.docHtml}</div>
       </div>
     </div></body></html>`,
-    { url: `http://localhost/regulations/3${search}${hash}`, pretendToBeVisual: true, virtualConsole }
+    { url: `http://localhost/regulations/${regPath}${search}${hash}`, pretendToBeVisual: true, virtualConsole }
   );
   return dom;
 }
@@ -362,6 +408,59 @@ test("cross-regulation helpers (pure)", () => {
     renumberedNote("GP12", "I.B.33", null, "Regulation 7"),
     "GP12 cites this as Section I.B.33; the current Regulation 7 numbers it differently."
   );
+  // The version line: dates from the manifest (injected here), wording by case.
+  const dates = {
+    "7": { kind: "effective" as const, date: "2026-07-15" },
+    "3": { kind: "effective" as const, date: "2026-07-15" },
+    "26": { kind: "effective" as const, date: "2026-01-14" },
+    gp01: { kind: "issued" as const, date: "2025-07-23" },
+    gp12: { kind: "issued" as const, date: "2026-05-28" },
+    oooob: { kind: "as_of" as const, date: "2026-09-10" },
+  };
+  assert.equal(formatUsDate("2026-07-15"), "07/15/2026");
+  assert.equal(formatUsDate("junk"), "junk");
+  assert.equal(
+    versionNote("gp12", "7", "06/14/2025", false, dates),
+    "GP12 cites Regulation 7 as effective 06/14/2025; shown is the current text, effective 07/15/2026. Numbering may differ."
+  );
+  assert.equal(
+    versionNote("gp01", "7", null, false, dates),
+    "GP01 was issued 07/23/2025; shown is the current Regulation 7, effective 07/15/2026. Numbering may differ."
+  );
+  assert.equal(
+    versionNote("26", "7", null, false, dates),
+    "Regulation 26 took effect 01/14/2026; shown is the current Regulation 7, effective 07/15/2026. Numbering may differ."
+  );
+  assert.equal(versionNote("3", "7", null, false, dates), null, "same date: no line");
+  assert.equal(versionNote("3", "7", "02/14/2024", false, dates), null, "same date: a printed date changes nothing");
+  assert.equal(versionNote("7", "26", null, false, dates), null, "the citing document is newer: no line");
+  assert.equal(versionNote("oooob", "7", null, false, dates), null, "newer, whatever its kind");
+  assert.equal(versionNote("gp12", "7", null, false, { ...dates, gp12: undefined as never }), null, "unknown origin date");
+  assert.equal(versionNote("gp12", "zz", null, false, dates), null, "unknown target date");
+  assert.equal(versionNote(null, "7", null, false, dates), null);
+  // Beside the renumbered line, which already names both documents and says the numbering moved.
+  assert.equal(
+    versionNote("gp12", "7", "06/14/2025", true, dates),
+    "GP12 cites the version effective 06/14/2025; shown is the current text, effective 07/15/2026."
+  );
+  assert.equal(versionNote("gp01", "7", null, true, dates), "GP01 was issued 07/23/2025; shown is the current text, effective 07/15/2026.");
+  // The real table is the generated one.
+  assert.deepEqual(sourceDateOf("GP12"), SOURCE_DATES.gp12);
+  assert.equal(sourceDateOf("nope"), null);
+  assert.equal(sourceDateOf(null), null);
+
+  // The effective date a citing provision prints after the link, when it prints one for THIS regulation.
+  assert.equal(printedEffectiveDate(" (Adopted: 04/18/2025, Effective: 06/14/2025). Equipment covered"), "06/14/2025");
+  assert.equal(printedEffectiveDate(" and Section II.A.46 (Adopted: 04/18/2025, Effective: 06/14/2025). Equipment"), "06/14/2025");
+  assert.equal(printedEffectiveDate(". (Adopted 12/14/2023, Effective 02/14/2024)."), "02/14/2024");
+  assert.equal(printedEffectiveDate(" (Adopted 1/4/2023, Effective 2/5/2024)"), "02/05/2024", "zero-padded");
+  assert.equal(printedEffectiveDate("; and be designed so that an observer can determine"), null);
+  assert.equal(printedEffectiveDate(" and Regulation Number 3, Part A (Adopted 12/14/2023, Effective 02/14/2024)."), null, "another regulation's date");
+  assert.equal(printedEffectiveDate(" and 40 CFR Part 60 (Adopted 12/14/2023, Effective 02/14/2024)."), null);
+  assert.equal(printedEffectiveDate(`${"x".repeat(240)} (Adopted 12/14/2023, Effective 02/14/2024).`), null, "too far from the link");
+  assert.equal(printedEffectiveDate(""), null);
+  assert.equal(printedEffectiveDate(null), null);
+
   assert.equal(stripReaderParams("?x=1&from=sec-gp12-I-A&cited=I.B.33", ["from", "cited"]), "?x=1");
   assert.equal(stripReaderParams("?from=sec-gp12-I-A", ["from", "cited"]), "");
   assert.equal(stripReaderParams("?cited=I.B.33&from=sec-gp12-I-A", ["cited"]), "?from=sec-gp12-I-A");
@@ -610,6 +709,12 @@ test("cross-regulation preview through /api/provision", async (t) => {
       assert.equal($("#popup-eyebrow").textContent, "Regulation 7");
       assert.equal($("#popup-title").textContent, "I.B.33.");
       assert.match($("#popup-body").textContent ?? "", /Opacity shall not exceed twenty percent/);
+      // Regulation 3 and Regulation 7 carry the same effective date in the
+      // manifest (both 07/15/2026 as of this writing): no version line.
+      const sameAge = SOURCE_DATES["3"].date >= SOURCE_DATES["7"].date;
+      assert.ok(sameAge, "the manifest now dates Regulation 3 before Regulation 7; revisit this case");
+      assert.equal(($("#popup-version-note") as HTMLElement).hidden, true);
+      assert.equal($("#popup-version-note").textContent, "");
       const open = $("#popup-goto");
       assert.equal(open.getAttribute("href"), "/regulations/7?from=sec-3-A-II-B-5#sec-7-B-I-B-33");
       assert.equal(open.textContent, "Open in Regulation 7 →");
@@ -635,6 +740,7 @@ test("cross-regulation preview through /api/provision", async (t) => {
       const note = $("#popup-note") as HTMLElement;
       assert.equal(note.hidden, false);
       assert.equal(note.textContent, "Regulation 3 cites this as Section I.B.33; in the current Regulation 7 it is I.B.34.");
+      assert.equal(($("#popup-version-note") as HTMLElement).hidden, true, "same-age documents: the renumbered line alone");
       assert.equal($("#popup-goto").getAttribute("href"), "/regulations/7?from=sec-3-A-II-B-5&cited=I.B.33#sec-7-B-I-B-34");
     } finally {
       f.restore();
@@ -745,6 +851,87 @@ test("cross-regulation preview through /api/provision", async (t) => {
 
   void document;
   await unmount();
+});
+
+test("version line: a permit older than the regulation it cites", async (t) => {
+  const vc = new VirtualConsole();
+  const r = await bootReader(makeDom("#sec-gp12-I-A", "", vc, gpReader, "gp12"));
+  const { $, mount, unmount, click, sleep } = r;
+  await mount();
+  await sleep(80);
+  const current = formatUsDate(SOURCE_DATES["7"].date);
+  const issued = formatUsDate(SOURCE_DATES.gp12.date);
+  assert.ok(SOURCE_DATES.gp12.date < SOURCE_DATES["7"].date, "the manifest now dates GP12 after Regulation 7; revisit these cases");
+  const versionNoteEl = () => $("#popup-version-note") as HTMLElement;
+  const isShown = () => $("#backdrop").classList.contains("show");
+
+  await t.test("a plain link with the printed effective date: the version line names the printed and the current date", async () => {
+    const f = stubFetch(async () => okJson({ ...PREVIEW, id: "sec-7-A-II-A-1", citation: "II.A.1." }));
+    try {
+      await click($('#doc > [id="sec-gp12-I-C"] a.xref-external-reg[href="/regulations/7#sec-7-A-II-A-1"]'));
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-A-II-A-1"]);
+      assert.equal(isShown(), true);
+      assert.equal(($("#popup-note") as HTMLElement).hidden, true, "not renumbered");
+      assert.equal(versionNoteEl().hidden, false);
+      assert.equal(
+        versionNoteEl().textContent,
+        `GP12 cites Regulation 7 as effective 02/14/2024; shown is the current text, effective ${current}. Numbering may differ.`
+      );
+    } finally {
+      f.restore();
+    }
+  });
+
+  await t.test("a plain link without one: the permit's issuance date", async () => {
+    await click($("#popup-close"));
+    const f = stubFetch(async () => okJson({ ...PREVIEW, id: "sec-7-B-II-B-2-d", citation: "II.B.2.d." }));
+    try {
+      await click($('#doc > [id="sec-gp12-I-B"] a.xref-external-reg[href="/regulations/7#sec-7-B-II-B-2-d"]'));
+      assert.equal(isShown(), true);
+      assert.equal(versionNoteEl().hidden, false);
+      assert.equal(
+        versionNoteEl().textContent,
+        `GP12 was issued ${issued}; shown is the current Regulation 7, effective ${current}. Numbering may differ.`
+      );
+    } finally {
+      f.restore();
+    }
+  });
+
+  await t.test("a renumbered link: both lines, the second naming neither document again", async () => {
+    await click($("#popup-close"));
+    const f = stubFetch(async () => okJson({ ...PREVIEW, id: "sec-7-B-I-B-34", citation: "I.B.34." }));
+    try {
+      // The printed date follows the SECOND link of the list; it is this regulation's all the same.
+      await click($('#doc > [id="sec-gp12-I-A"] a.xref-external-reg[href="/regulations/7?cited=I.B.33#sec-7-B-I-B-34"]'));
+      assert.equal($("#popup-title").textContent, "I.B.34.");
+      const note = $("#popup-note") as HTMLElement;
+      assert.equal(note.hidden, false);
+      assert.equal(note.textContent, "GP12 cites this as Section I.B.33; in the current Regulation 7 it is I.B.34.");
+      assert.equal(versionNoteEl().hidden, false);
+      assert.equal(versionNoteEl().textContent, `GP12 cites the version effective 06/14/2025; shown is the current text, effective ${current}.`);
+      assert.equal($("#popup-goto").getAttribute("href"), "/regulations/7?from=sec-gp12-I-A&cited=I.B.33#sec-7-B-I-B-34");
+    } finally {
+      f.restore();
+    }
+    // The second renumbered link, right before the parenthetical, reads the same date.
+    await click($("#popup-close"));
+    const f2 = stubFetch(async () => okJson({ ...PREVIEW, id: "sec-7-B-II-A-48", citation: "II.A.48." }));
+    try {
+      await click($('#doc > [id="sec-gp12-I-A"] a.xref-external-reg[href="/regulations/7?cited=II.A.46#sec-7-B-II-A-48"]'));
+      assert.equal($("#popup-note").textContent, "GP12 cites this as Section II.A.46; in the current Regulation 7 it is II.A.48.");
+      assert.equal(versionNoteEl().textContent, `GP12 cites the version effective 06/14/2025; shown is the current text, effective ${current}.`);
+    } finally {
+      f2.restore();
+    }
+  });
+
+  await t.test("closing clears both lines", async () => {
+    await click($("#popup-close"));
+    assert.equal(($("#popup-note") as HTMLElement).hidden, true);
+    assert.equal(versionNoteEl().hidden, true);
+    await unmount();
+  });
 });
 
 test("?from= another regulation: return link, stripped from the URL", async (t) => {

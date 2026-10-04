@@ -15,6 +15,7 @@ import {
   hashTargetOf,
   originTrailLabel,
   popupEyebrow,
+  printedEffectiveDate,
   regulationHref,
   renumberedNote,
   ReturnTrail,
@@ -22,6 +23,7 @@ import {
   rowLabel,
   stripReaderParams,
   validProvisionId,
+  versionNote,
 } from "@/lib/reader-nav";
 import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
 import type { SearchRow } from "@/lib/snippet";
@@ -93,6 +95,7 @@ export function RegulationReader() {
     const popupEyebrowEl = document.getElementById("popup-eyebrow");
     const popupTitle = document.getElementById("popup-title");
     const popupNote = document.getElementById("popup-note");
+    const popupVersionNote = document.getElementById("popup-version-note");
     const popupBody = document.getElementById("popup-body");
     const popupTextLabel = document.getElementById("popup-text-label");
     const popupGoto = document.getElementById("popup-goto") as HTMLAnchorElement | null;
@@ -189,10 +192,31 @@ export function RegulationReader() {
     // fallBackToNavigation); onDocClick lets exactly that click through.
     let replayed: Element | null = null;
 
-    function setPopupNote(text: string | null) {
-      if (!popupNote) return;
-      popupNote.textContent = text ?? "";
-      popupNote.hidden = !text;
+    // The two optional lines under a cross-regulation preview's title: the
+    // renumbered-definition line and the version line (reader-nav.ts:
+    // renumberedNote, versionNote). Each hidden when empty.
+    function setPopupNote(text: string | null, version: string | null = null) {
+      if (popupNote) {
+        popupNote.textContent = text ?? "";
+        popupNote.hidden = !text;
+      }
+      if (popupVersionNote) {
+        popupVersionNote.textContent = version ?? "";
+        popupVersionNote.hidden = !version;
+      }
+    }
+    // The text that follows a link inside its row (or the popup body, for a
+    // link inside a preview): where a citing provision prints the effective
+    // date of the regulation it cites ("... Section II.A.46 (Adopted:
+    // 04/18/2025, Effective: 06/14/2025)"). Read only; printedEffectiveDate
+    // decides whether it holds one.
+    function textAfterLink(link: Element): string {
+      const scope = link.closest("#doc > [id], #popup-body") ?? link.parentElement;
+      if (!scope) return "";
+      const range = document.createRange();
+      range.selectNodeContents(scope);
+      range.setStartAfter(link);
+      return range.toString();
     }
     function showPopup(slug: string, origin: string | null) {
       setPopupNote(null);
@@ -222,6 +246,7 @@ export function RegulationReader() {
       previewSeq++; // a preview still in flight must not open a popup nobody asked for now
       previewAbort?.abort();
       backdrop?.classList.remove("show");
+      setPopupNote(null);
     }
 
     // A reference into another regulation. The link is an ordinary <a href=
@@ -243,7 +268,8 @@ export function RegulationReader() {
       fallBack: () => void,
       targetId: string,
       origin: string | null,
-      cited: string | null = null
+      cited: string | null = null,
+      printedEffective: string | null = null
     ) {
       const seq = ++previewSeq;
       previewAbort?.abort();
@@ -269,9 +295,13 @@ export function RegulationReader() {
       popupRemote = true;
       popupTitle.textContent = data.citation || targetId;
       if (popupEyebrowEl) popupEyebrowEl.textContent = name;
-      // A renumbered definition citation (the importer put the printed
-      // section in the href's ?cited=): say so, in one line, under the title.
-      setPopupNote(cited ? renumberedNote(documentShortName(pageKey), cited, data.citation, name) : null);
+      // Under the title: a renumbered definition citation (the importer put
+      // the printed section in the href's ?cited=) gets one line saying so;
+      // a citing document older than the cited regulation's current text
+      // gets the version line (the dates come from the manifest through
+      // source-dates.generated.ts, never from this file).
+      const renumbered = cited ? renumberedNote(documentShortName(pageKey), cited, data.citation, name) : null;
+      setPopupNote(renumbered, versionNote(pageKey, key, printedEffective, renumbered !== null));
       const wrap = document.createElement("div");
       wrap.className = "item";
       wrap.innerHTML = data.html; // sanitised server-side (provision-preview.ts)
@@ -416,7 +446,8 @@ export function RegulationReader() {
           () => fallBackToNavigation(external),
           targetId,
           originOf(external),
-          citedParamOf(external.getAttribute("href"))
+          citedParamOf(external.getAttribute("href")),
+          printedEffectiveDate(textAfterLink(external))
         );
         return;
       }
@@ -767,6 +798,7 @@ export function RegulationReader() {
               <div id="popup-eyebrow" />
               <p id="popup-title" />
               <p id="popup-note" hidden />
+              <p id="popup-version-note" hidden />
             </div>
             <button id="popup-close" aria-label="Close" type="button">
               &times;

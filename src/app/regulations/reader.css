@@ -546,10 +546,13 @@
   font-size: 17px;
   margin: 2px 0 0;
 }
-/* One line under the title of a cross-regulation preview whose link is a
-   renumbered definition citation: "GP12 cites this as Section I.B.33; in the
-   current Regulation 7 it is I.B.34." Hidden otherwise. */
-.reg-reader #popup-note {
+/* The lines under the title of a cross-regulation preview, each hidden when
+   it does not apply: a renumbered definition citation ("GP12 cites this as
+   Section I.B.33; in the current Regulation 7 it is I.B.34.") and the
+   version line ("GP01 was issued 07/23/2025; shown is the current
+   Regulation 7, effective 07/15/2026. Numbering may differ."). */
+.reg-reader #popup-note,
+.reg-reader #popup-version-note {
   font-size: 12.5px;
   line-height: 1.4;
   color: var(--tag);
