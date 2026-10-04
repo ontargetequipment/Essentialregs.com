@@ -93,14 +93,18 @@ const FEDERAL_KEY = /^(oooo[abc]?|jjjj|iiii|zzzz|p\d{3})$/;
 
 /**
  * Human label for the reg badge on results and related panels. The
- * DOCUMENT decides: a row inside Regulation 26 is Colorado even when its
- * own jurisdiction_level is 'federal', which is the case for the 40 CFR 60
- * Subpart JJJJ text Reg 26 Part C incorporates by reference (sec-26-C-FEDJJJJ
- * and its children; see _load_reg26_fedjjjj_supplement in
- * pipeline/import_ccr.py). A reviewer saw one of those rows labeled
- * "Federal" beside "Regulation 26" and read it as a provenance error, which
- * it is: Regulation 26 is a Colorado regulation whatever it incorporates.
- * The row-level jurisdiction only decides when the row has no regulation.
+ * DOCUMENT decides: a row inside a Colorado regulation is Colorado whatever
+ * its own jurisdiction_level says, and a row of a federal document is
+ * Federal. History: until 4 Oct 2026 Regulation 26 carried a copy of 40 CFR
+ * 60 Subpart JJJJ under Part C (sec-26-C-FEDJJJJ and 19 children, stored
+ * with jurisdiction_level 'federal'); a reviewer saw one of those rows
+ * labeled "Federal" beside "Regulation 26" and read it as a provenance
+ * error. The copy is gone (owner decision, 4 Oct 2026: Regulation 26 links
+ * to the corpus's own JJJJ document instead), and no row in production has
+ * a federal jurisdiction_level inside a Colorado document any more, but the
+ * rule stays document-first so a future import cannot reintroduce the
+ * mislabel. The row-level jurisdiction only decides when the row has no
+ * regulation.
  */
 export function regBadge(regKey: string | null, jurisdiction: string): string {
   if (regKey) {
@@ -109,15 +113,6 @@ export function regBadge(regKey: string | null, jurisdiction: string): string {
     return "Colorado";
   }
   return jurisdiction === "federal" ? "Federal" : "Colorado";
-}
-
-/**
- * True for a row of federal text carried inside a Colorado document (the
- * Reg 26 Subpart JJJJ block): the badge says Colorado, and the card can add
- * that the text is incorporated from a federal rule.
- */
-export function isIncorporatedFederal(regKey: string | null, jurisdiction: string): boolean {
-  return !!regKey && !FEDERAL_KEY.test(regKey) && jurisdiction === "federal";
 }
 
 /** "state" | "federal" from the reg key alone (for rows that don't carry jurisdiction_level). */

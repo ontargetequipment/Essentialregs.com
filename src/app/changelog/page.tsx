@@ -17,7 +17,7 @@ type Group = { key: string; label: string; lines: ChangelogLine[] };
 /**
  * What changed in the corpus, for customers: one line per regulation per
  * day, counts only ("Regulation 7 — 1,496 provisions updated · 212
- * summaries reviewed"). The same page logged in or out. The per-row
+ * summaries AI reviewed"). The same page logged in or out. The per-row
  * moderation log, with its notes, is internal and stays in the database
  * (changelog_public() cannot return it).
  */
@@ -42,9 +42,9 @@ export default async function ChangelogPage() {
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
           What&apos;s changed in the regulation corpus: official text updated
-          from the agency source, and plain-English summaries reviewed,
-          corrected, or rewritten. Each regulation&apos;s page shows the date
-          its text was last verified.
+          from the agency source, provisions added or removed, and
+          plain-English summaries AI reviewed, corrected, or rewritten. Each
+          regulation&apos;s page shows the date its text was last verified.
         </p>
 
         {groups.length === 0 && (

@@ -20,7 +20,7 @@ insert into question_map_ids (map_key, id) values
   ('engines', 'sec-26-B-I-D'),
   ('engines', 'sec-26-B-I'),
   ('engines', 'sec-26-B-II'),
-  ('engines', 'sec-26-C-FEDJJJJ'),
+  ('engines', 'sec-jjjj-top-REG-jjjj'),
   ('engines', 'sec-jjjj-60.4230'),
   ('engines', 'sec-jjjj-60.4233'),
   ('engines', 'sec-iiii-60.4200'),

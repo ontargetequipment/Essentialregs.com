@@ -340,7 +340,10 @@ test("groupForHit routes one row per group, a Definitions row, the ECMC and PHMS
   // Everything else: proc, sip and county rows stay "Other".
   assert.equal(groupForHit(hit("sec-proc-I", "proc", "state")), "Other");
   assert.equal(groupForHit(hit("sec-sip-I", "sip", "state")), "Other");
-  assert.equal(groupForHit(hit("sec-26-C-FEDJJJJ", "26", "federal")), "Other"); // a federal-level row keyed to a state regulation: not a state row
+  // A federal-level row keyed to a state regulation is not a state row. None
+  // exists since the Reg 26 Subpart JJJJ copy was removed (4 Oct 2026); the
+  // rule stays so a re-import cannot file one under "Colorado standards".
+  assert.equal(groupForHit(hit("sec-26-X-hypothetical", "26", "federal")), "Other");
   assert.equal(groupForHit(hit("x", null, "county")), "Other");
 });
 
@@ -375,7 +378,7 @@ test("groupHits: canonical rows lead, hits follow in retrieval order, caps hold,
     hit("sec-sip-I", "sip", "state"),
     hit("sec-sip-II", "sip", "state"),
     hit("sec-sip-III", "sip", "state"),
-    hit("sec-26-C-FEDJJJJ-60.4230", "26", "federal"), // a federal-level row keyed to a state regulation: still Other
+    hit("sec-26-X-hypothetical", "26", "federal"), // a federal-level row keyed to a state regulation: still Other
     hit("x", null, "county"), // 6th other: over MAX_OTHER_HITS
   ];
   // Only the rows the caller could fetch are listed (RLS / filters).
@@ -397,7 +400,7 @@ test("groupHits: canonical rows lead, hits follow in retrieval order, caps hold,
   assert.deepEqual(g.groups[3].hits.map((h) => h.id), ["sec-ecmc-604", "sec-ecmc-912", "sec-ecmc-423"]);
   assert.deepEqual(g.groups[4].canonical, []);
   assert.deepEqual(g.groups[4].hits.map((h) => h.id), ["sec-p192-192.3"]);
-  assert.deepEqual(g.other.map((h) => h.id), ["sec-proc-I", "sec-sip-I", "sec-sip-II", "sec-sip-III", "sec-26-C-FEDJJJJ-60.4230"]);
+  assert.deepEqual(g.other.map((h) => h.id), ["sec-proc-I", "sec-sip-I", "sec-sip-II", "sec-sip-III", "sec-26-X-hypothetical"]);
   assert.equal(g.other.length, MAX_OTHER_HITS);
 
   const summary = summariseGroups(engines, g);

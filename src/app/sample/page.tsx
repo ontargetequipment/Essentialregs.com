@@ -56,8 +56,8 @@ export default async function SamplePage() {
           Sample: real entries from the corpus
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
-          A few sections exactly as subscribers see them: the official text, a
-          reviewed plain-English summary, and the cross-references resolved. The
+          A few sections exactly as subscribers see them: the official text, an
+          AI-reviewed plain-English summary, and the cross-references resolved. The
           full corpus covers the Colorado AQCC regulations, the ECMC rules, the
           APCD general permits, and the federal rules they cite, in the same
           format.
@@ -73,7 +73,7 @@ export default async function SamplePage() {
           {provisions.map((provision) => (
             <div key={provision.id} className="flex flex-col gap-3">
               <ProvisionCard provision={provision} />
-              {/* Public teaser: citation/title/reviewed summary only, links to /preview. */}
+              {/* Public teaser: citation/title/AI-reviewed summary only, links to /preview. */}
               <RelatedProvisions provisionId={provision.id} teaser />
             </div>
           ))}

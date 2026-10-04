@@ -34,7 +34,7 @@ export type RelatedItem = {
   /** First paragraph of the summary, or null when there is none / it was rejected. */
   summary: string | null;
   /**
-   * The review-status badge for `summary` (summaryStatusBadge: "Reviewed ·
+   * The review-status badge for `summary` (summaryStatusBadge: "AI reviewed ·
    * Sept 17, 2026" / "AI-generated · not yet reviewed"), computed here so the
    * reader's client-side panel (RelatedProvisionsLoader.tsx, which must not
    * import regulation-pure) and RelatedProvisions.tsx print the same text.

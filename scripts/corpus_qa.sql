@@ -39,8 +39,11 @@
 -- names (src/lib/question-maps.ts) exists: the ids arrive through the
 -- generated scripts/question-map-ids.sql, which must be loaded first (CI
 -- passes it as the first -f; in the SQL editor paste it ahead of this file
--- in the same run). Run the whole file, top to bottom, in one go: Steps 0,
--- 0b and 0c must run before the main query.
+-- in the same run). Check 21 (4 Oct 2026) guards the "AI reviewed" label:
+-- an approved or edited summary whose reviewed_by was not stamped by the AI
+-- second pass is a human-only approval the site would mislabel, so it fails
+-- the qa job until the pass runs on it. Run the whole file, top to bottom,
+-- in one go: Steps 0, 0b and 0c must run before the main query.
 -- ============================================================================
 
 -- ============================================================================
@@ -494,9 +497,16 @@ checks as (
 
   union all
   select 19, 'GUARD', 'summary_status_badge_inputs', count(*), 0,
-         'Trust badge (1 Oct 2026). Every summary in the reader and on the Ask, keyword and related cards carries "Reviewed · <reviewed_at>" for summary_status approved/edited, or "AI-generated · not yet reviewed" for pending (summaryStatusBadge in src/lib/regulation-pure.ts). A reviewed row with a null reviewed_at renders "Reviewed" with no date, which a reader cannot date-check. Counts rows with summary_status in (approved, edited) and reviewed_at null. Expect 0; report the count if not, do not fix the data from a web PR (the review actions and the pipeline set reviewed_at).'
+         'Trust badge (1 Oct 2026; "AI reviewed" since 4 Oct 2026). Every summary in the reader and on the Ask, keyword and related cards carries "AI reviewed · <reviewed_at>" for summary_status approved/edited, or "AI-generated · not yet reviewed" for pending (summaryStatusBadge in src/lib/regulation-pure.ts). A reviewed row with a null reviewed_at renders "AI reviewed" with no date, which a reader cannot date-check. Counts rows with summary_status in (approved, edited) and reviewed_at null. Expect 0; report the count if not, do not fix the data from a web PR (the review actions and the pipeline set reviewed_at).'
   from provisions
   where summary_status in ('approved', 'edited') and reviewed_at is null
+
+  union all
+  select 21, 'GUARD', 'approved_without_ai_review', count(*), 0,
+         'AI reviewed label (owner decision, 4 Oct 2026). The badge reads "AI reviewed" for every approved or edited summary and depends on summary_status alone, so it is only true when the AI second pass has actually run on the row. The pass stamps reviewed_by as ''Claude (...)''; the admin queue (src/app/admin/review/actions.ts) stamps the admin''s email instead. Counts rows with summary_status in (approved, edited) whose reviewed_by is null or does not start with ''Claude ('': each one is a human-only approval the site would mislabel. Expect 0. When above 0, send the listed rows through the AI second pass (which re-stamps reviewed_by) rather than editing reviewed_by by hand.'
+         || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not like 'Claude (%') order by id limit 30) r), '')
+  from provisions
+  where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not like 'Claude (%')
 
   union all
   select 20, 'GUARD', 'question_map_ids_exist', count(*), 0,

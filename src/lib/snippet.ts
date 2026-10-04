@@ -131,9 +131,10 @@ export function summarySourceLinkHtml(url: string): string {
 
 /**
  * The two review states a summary badge can show (owner decision, 29 Sep
- * 2026): "reviewed" for summary_status approved or edited, "pending" for a
- * summary not yet checked. A rejected summary is withheld everywhere, so it
- * has no badge. summaryStatusBadge (regulation-pure.ts) maps a row to one.
+ * 2026): "reviewed" for summary_status approved or edited (rendered "AI
+ * reviewed" since 4 Oct 2026), "pending" for a summary not yet checked. A
+ * rejected summary is withheld everywhere, so it has no badge.
+ * summaryStatusBadge (regulation-pure.ts) maps a row to one.
  */
 export type SummaryBadgeKind = "reviewed" | "pending";
 
@@ -144,11 +145,13 @@ export type SummaryBadgeKind = "reviewed" | "pending";
  * and the browser sets the title from this table (reader-client.ts,
  * fillSummaryBadges) -- the same ~95 bytes under every one of a
  * regulation's thousands of panels would otherwise be shipped twice, the
- * way the source link once was. "Reviewed" is defined on the Disclaimer
- * page, section "What 'Reviewed' means" (/disclaimer#what-reviewed-means).
+ * way the source link once was. "AI reviewed" is defined on the Disclaimer
+ * page, section "What 'AI reviewed' means" (/disclaimer#what-reviewed-means);
+ * the wording is the owner's (4 Oct 2026).
  */
 export const SUMMARY_BADGE_TITLES: Record<SummaryBadgeKind, string> = {
-  reviewed: "Checked against the official text; see the Disclaimer page for what review means.",
+  reviewed:
+    "Checked against the official text by an automated second review. The official text controls; see the Disclaimer page.",
   pending: "Generated from the official text and not yet checked. Read the official text.",
 };
 

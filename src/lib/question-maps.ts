@@ -171,8 +171,10 @@ export const QUESTION_MAPS: QuestionMap[] = [
       { id: "sec-26-B-I-D", group: "Colorado standards", why: "Reg 26 Part B I.D — natural gas-fired RICE: new, modified and relocated (I.D.3), existing (I.D.4), additional requirements (I.D.5, I.D.6)" },
       { id: "sec-26-B-I", group: "Colorado standards", why: "Reg 26 Part B I — control technology requirements for new and existing engines (I.A, I.B) and their exemptions (I.C)" },
       { id: "sec-26-B-II", group: "Colorado standards", why: "Reg 26 Part B II — stationary and portable combustion equipment in the 8-hour Ozone Control Area or Northern Weld County" },
-      { id: "sec-26-C-FEDJJJJ", group: "Colorado standards", why: "Subpart JJJJ as incorporated into Regulation 26, Part C" },
-      // Federal NSPS
+      // Federal NSPS. Regulation 26 cites Subpart JJJJ (Part B I.D.5.d, I.D.6.c,
+      // III.A.1, III.B.1) and links to this document; the copy of JJJJ it used
+      // to carry under Part C (sec-26-C-FEDJJJJ) was removed on 4 Oct 2026.
+      { id: "sec-jjjj-top-REG-jjjj", group: "Federal NSPS", why: "40 CFR Part 60 Subpart JJJJ — the federal standard for spark-ignition engines that Regulation 26 incorporates by reference" },
       { id: "sec-jjjj-60.4230", group: "Federal NSPS", why: "Subpart JJJJ applicability — spark-ignition (natural gas) engines, by manufacture date and horsepower" },
       { id: "sec-jjjj-60.4233", group: "Federal NSPS", why: "Subpart JJJJ emission standards for owners and operators" },
       { id: "sec-iiii-60.4200", group: "Federal NSPS", why: "Subpart IIII applicability — compression-ignition (diesel) engines" },

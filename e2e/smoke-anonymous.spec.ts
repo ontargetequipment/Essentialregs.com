@@ -26,8 +26,12 @@ async function expectPlanCtas(scope: import("@playwright/test").Locator | import
   }
 }
 
-/** What a review-status badge says (summaryStatusBadge): a dated "Reviewed", or the pending line. */
-const BADGE_TEXT = /^(Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/;
+/**
+ * What a review-status badge says (summaryStatusBadge): a dated "AI
+ * reviewed", or the pending line. Never a bare "Reviewed" (owner decision,
+ * 4 Oct 2026): no summary on the site claims human review.
+ */
+const BADGE_TEXT = /^(AI reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/;
 
 /** Each /sample card's heading, in SAMPLE_ORDER: regulation label · citation [— title]. */
 const SAMPLE_HEADINGS = [
@@ -355,7 +359,7 @@ test.describe("anonymous", () => {
     // The summary toggle carries the review-status badge after its label
     // (SummaryBadge.tsx); this row has been approved since 15 Sep 2026.
     await expect(page.locator("article details > summary")).toHaveText([
-      /^Plain-English summary\s*Reviewed · [A-Z][a-z]+ \d{1,2}, \d{4}$/,
+      /^Plain-English summary\s*AI reviewed · [A-Z][a-z]+ \d{1,2}, \d{4}$/,
       "Original regulatory text",
     ]);
     await expect(page.locator("article .summary-badge")).toHaveAttribute("title", /Disclaimer page/);

@@ -15,7 +15,7 @@
  * the disclaimer page's "Last updated" line (DISCLAIMER_LAST_UPDATED in
  * src/components/DisclaimerText.tsx) is the same date.
  */
-export const DISCLAIMER_VERSION = "2026-10-01";
+export const DISCLAIMER_VERSION = "2026-10-04";
 
 /** The hidden fields the account form carries once the gate has been passed. */
 export const ACCEPT_FIELD = "accepted";
