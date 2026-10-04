@@ -2154,6 +2154,14 @@ TABLE_CAPTION_PINS: dict[str, list[tuple[str, int, int]]] = {
 # `spans` does). Applied after the walk, REPLACING whatever the walk
 # assembled for that caption. A reg with no entry here is untouched.
 TABLE_CAPTION_SPANS: dict[str, list[dict]] = {
+    # GP12 Condition VIII.I prints "Table 7 - EPA Ozone Classification
+    # Thresholds" as the last line of page 60 and the table itself on pages
+    # 61-62 (the header block reprinted on 62). The caption walk only looks
+    # for tables on the caption's own page, so the table was missing from
+    # the corpus (found by pipeline/source_text_check.py, Sprint 3).
+    "gp12": [
+        dict(caption="Table 7 - EPA Ozone Classification Thresholds", spans=[(61, 0), (62, 0)]),
+    ],
     "21": [
         dict(caption="Table 1 – VOC content limits for consumer products",
              spans=[(p, 0) for p in range(6, 16)]),
@@ -2355,6 +2363,20 @@ def _splice_appendix_tables(own_lines: list[str], reg: str, tables_by_caption: d
 # doc-table-caption text — descriptive, since the source prints none. A reg
 # with no entry here is untouched.
 UNCAPTIONED_TABLES: dict[str, list[dict]] = {
+    # GP02's Attachment A item 5.3 prints the Regulation 26 Part B engine
+    # standards as a bordered table with no caption line ("the table below
+    # (labeled as Table 1 in the Part B)", GP02.pdf page 42; GP12 prints the
+    # same table captioned "Table 8 - Table 1 from Regulation Number 26,
+    # Part B"). Without an entry the table was missing from the row
+    # altogether (found by pipeline/source_text_check.py, Sprint 3). The
+    # flattened dump has blank lines between its rows, so the replaced
+    # block runs from the header line through the "July 1, 2010" row
+    # (`end_prefix`); the "For specific rule requirements" prose after it
+    # stays in the row.
+    "gp02": [
+        dict(row_id="sec-gp02-ATTACHMENT-A-5-3", page=42, table_index=0, start_prefix="Max Engine",
+             end_prefix="July 1, 2010", caption="Table 1 in the Part B"),
+    ],
     "8": [
         dict(row_id="sec-8-B-II-B-2", page=33, table_index=0, start_prefix="Amount",
              caption="General Abatement Contractor certification fees"),
@@ -2628,6 +2650,207 @@ UNCAPTIONED_TABLES: dict[str, list[dict]] = {
 }
 _TABLE_SENTINEL = "\x00TABLE:"
 _FIGURE_SENTINEL = "\x00FIGURE:"
+_EQUATION_SENTINEL = "\x00EQUATION:"
+
+
+# ==========================================================================
+# EssentialRegs notes inside official text (Sprint 3, Oct 2026): curated
+# equation transcriptions, [sic] markers, and the text-artifact checks that
+# keep both honest. The official text is never altered:
+#   * an equation entry (pipeline/curated_equations.json) replaces ONLY the
+#     lines pdftotext rendered as math-italic glyph salad -- the GP PDFs set
+#     their equations in Cambria Math, and the text layer comes out as
+#     doubled U+1D400-U+1D7FF glyphs plus U+FFFD boxes ("𝐸𝐸𝐸𝐸𝐸𝐸..." for
+#     "Emission"); the transcription was checked letter-for-letter against
+#     the page image and the glyph counts;
+#   * a [sic] entry (pipeline/curated_sic.json) adds a marker AFTER the
+#     printed string; the string itself stays exactly as printed;
+#   * both are HTML the reader styles as EssentialRegs notes (span.er-sic,
+#     figure.equation), and the diff/apply steps treat the [sic] span as
+#     markup, not visible text (_visible_text / _norm_for_compare).
+# text_artifacts() is the parse-time twin of corpus_qa.sql checks 22-24: any
+# math glyph, split-letter run ("t h e f o l l o w i n g", a pdftotext
+# rendering of letter-spaced justified text) or stray Markdown left in a
+# row's text is listed in the diff report's anomalies and fails the GP
+# tests, so a re-import cannot garble these again.
+# ==========================================================================
+
+MATH_GLYPH_RE = re.compile(r"[\U0001D400-\U0001D7FF\u210E\uFFFD]")
+# Four or more single letters separated by single spaces, not touching a
+# longer word on either side ("o f p i lo t" in GP01 counts; "Part A B C"
+# would need four and is not printed anywhere in the corpus).
+SPLIT_LETTER_RE = re.compile(r"(?<![A-Za-z])(?:[A-Za-z] ){4,}[A-Za-z](?![A-Za-z])")
+# Markdown that a stored summary could leak into official text: paired
+# **bold** / __bold__ / `code` around letters, a heading marker at the start
+# of a paragraph, a [text](url) link. A footnote "**" after a number and the
+# eCFR's `quoted' words are official text and do not match.
+STRAY_MARKDOWN_RE = re.compile(
+    r"(?<![A-Za-z0-9_*])\*\*[A-Za-z][^*\n]{0,80}\*\*(?![A-Za-z0-9_*])"
+    r"|(?<![A-Za-z0-9_])__[A-Za-z][^_\n]{0,80}__(?![A-Za-z0-9_])"
+    r"|`[^`\n]{1,80}`|(?:^|<p>)\s*#{1,6}\s|\]\(https?://"
+)
+SIC_MARKER_HTML = '<span class="er-sic" title="Printed this way in the official document."> [sic]</span>'
+_SIC_SPAN_RE = re.compile(r'<span class="er-sic"[^>]*>.*?</span>', re.S)
+_EQUATION_BLOCK_RE = re.compile(r'<div class="equation-block">.*?</figure></div>', re.S)
+CURATED_DIR = Path(__file__).resolve().parent
+
+
+def _letters_digits(s: str) -> str:
+    """Only the letters and digits of `s`, in order: the invariant every
+    spacing fix, [sic] marker and equation transcription is checked
+    against (whitespace, markup and punctuation are free; letters are not)."""
+    return "".join(ch for ch in s if ch.isalnum())
+
+
+def load_curated_equations(path: str | Path | None = None) -> dict[str, dict]:
+    """{provision id: {"page", "source", "equations": [{"label", "html", "text"}]}}
+    from pipeline/curated_equations.json; {} when the file is absent."""
+    path = Path(path) if path else CURATED_DIR / "curated_equations.json"
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return dict(data.get("provisions", {}))
+
+
+def load_curated_sic(path: str | Path | None = None) -> dict[str, list[dict]]:
+    """{provision id: [{"printed", "reason", "expect"?}]} from
+    pipeline/curated_sic.json; {} when the file is absent."""
+    path = Path(path) if path else CURATED_DIR / "curated_sic.json"
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {pid: list(entries) for pid, entries in data.get("provisions", {}).items()}
+
+
+CURATED_EQUATIONS: dict[str, dict] = load_curated_equations()
+CURATED_SIC: dict[str, list[dict]] = load_curated_sic()
+# Per-parse log of what _swap_equation_lines did (reset by parse_reg).
+EQUATION_EVENTS: list[dict] = []
+
+
+def _swap_equation_lines(own_lines: list[str], row_id: str) -> list[str]:
+    """Replace the run of math-glyph lines in a row's own lines (from the
+    first to the last line carrying one) with one `_EQUATION_SENTINEL`
+    paragraph when CURATED_EQUATIONS has a transcription for the row. Blank
+    lines inside the run are dropped with it; a non-blank line inside the
+    run that carries no glyph is KEPT after the sentinel (never silently
+    lost) and reported. A row with glyph lines and no transcription is left
+    as is and reported as `uncurated` (an anomaly in the diff report)."""
+    idx = [i for i, ln in enumerate(own_lines) if MATH_GLYPH_RE.search(ln)]
+    if not idx:
+        return own_lines
+    if row_id not in CURATED_EQUATIONS:
+        EQUATION_EVENTS.append(dict(row_id=row_id, kind="uncurated", glyph_lines=len(idx),
+                                    sample=own_lines[idx[0]].strip()[:60]))
+        return own_lines
+    first, last = idx[0], idx[-1]
+    glyph = set(idx)
+    kept_inside = [own_lines[i] for i in range(first + 1, last + 1)
+                   if i not in glyph and own_lines[i].strip() != ""]
+    out = own_lines[:first] + ["", _EQUATION_SENTINEL + row_id, ""] + kept_inside + own_lines[last + 1:]
+    EQUATION_EVENTS.append(dict(row_id=row_id, kind="curated", glyph_lines=len(idx),
+                                kept_inside=[ln.strip() for ln in kept_inside]))
+    return out
+
+
+def render_equations_html(row_id: str) -> str:
+    """The curated block for `row_id`: one EssentialRegs note, then one
+    <figure class="equation"> per equation holding the display markup
+    (.eq-math) and the same formula as copyable plain text (pre.eq-text)."""
+    entry = CURATED_EQUATIONS[row_id]
+    eqs = entry["equations"]
+    many = len(eqs) > 1
+    note = (f"{'Equations' if many else 'Equation'} transcribed by EssentialRegs from page {entry.get('page')} "
+            f"of {entry.get('source', 'the official PDF')}: the PDF's equation text does not survive text "
+            f"extraction. The plain-text line under {'each one' if many else 'it'} is the same formula for copying.")
+    parts = [f'<div class="equation-block"><p class="er-note eq-note">{escape_html_text(note)}</p>']
+    for e in eqs:
+        label = e.get("label") or ""
+        label_html = f'<span class="eq-label">{escape_html_text(label)}</span> ' if label else ""
+        plain = escape_html_text((label + " " if label else "") + e["text"])
+        parts.append(f'<figure class="equation"><div class="eq-math">{label_html}{e["html"]}</div>'
+                     f'<pre class="eq-text">{plain}</pre></figure>')
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def equation_report_rows(reg: str) -> tuple[list[dict], list[dict]]:
+    """(fix rows, anomaly rows) for the diff report from EQUATION_EVENTS plus
+    every CURATED_EQUATIONS entry of `reg` that matched no row (hits 0)."""
+    fixes: list[dict] = []
+    anomalies: list[dict] = []
+    seen = set()
+    for ev in EQUATION_EVENTS:
+        if ev["kind"] == "curated":
+            seen.add(ev["row_id"])
+            n = len(CURATED_EQUATIONS[ev["row_id"]]["equations"])
+            note = (f"{ev['glyph_lines']} math-glyph line(s) replaced by {n} curated equation(s) "
+                    f"(pipeline/curated_equations.json)")
+            if ev["kept_inside"]:
+                note += f"; non-glyph lines kept after the block: {ev['kept_inside']}"
+            fixes.append(dict(old_label=f"{ev['glyph_lines']} garbled equation line(s)",
+                              new_label="curated transcription", line_hint=ev["row_id"], note=note,
+                              hits=1, expect_hits=1))
+        else:
+            anomalies.append(dict(label=ev["row_id"], line_hint="?",
+                                  note=(f"{ev['glyph_lines']} line(s) of math-italic glyphs with no curated "
+                                        f"transcription in pipeline/curated_equations.json (first: "
+                                        f"{ev['sample']!r}); the row renders garbled until one is added.")))
+    for pid in sorted(CURATED_EQUATIONS):
+        if pid.startswith(f"sec-{reg}-") and pid not in seen:
+            fixes.append(dict(old_label="(no garbled lines found)", new_label="curated transcription",
+                              line_hint=pid, note="curated equation entry matched no math-glyph line in this "
+                              "row -- the source text changed; re-check pipeline/curated_equations.json",
+                              hits=0, expect_hits=1))
+    return fixes, anomalies
+
+
+def apply_sic_markers(reg: str, rows: list[dict]) -> list[dict]:
+    """Adds SIC_MARKER_HTML after every curated `printed` string of `reg`'s
+    rows (CURATED_SIC), in place. Returns report rows in the label-fix shape;
+    `hits` must equal the entry's `expect` (default 1) or the report flags it."""
+    applied: list[dict] = []
+    by_id = {r["id"]: r for r in rows}
+    for pid in sorted(CURATED_SIC):
+        if not pid.startswith(f"sec-{reg}-"):
+            continue
+        for e in CURATED_SIC[pid]:
+            printed = escape_html_text(e["printed"])
+            row = by_id.get(pid)
+            hits = 0
+            if row is not None and printed:
+                hits = row["full_text"].count(printed)
+                if hits:
+                    row["full_text"] = row["full_text"].replace(printed, printed + SIC_MARKER_HTML)
+            applied.append(dict(old_label=e["printed"], new_label=e["printed"] + " [sic]", line_hint=pid,
+                                note="[sic] marker (pipeline/curated_sic.json): " + e["reason"],
+                                hits=hits, expect_hits=int(e.get("expect", 1))))
+    return applied
+
+
+def text_artifacts(rows: list[dict]) -> list[dict]:
+    """Rows whose text still carries a math glyph, a split-letter run or a
+    stray Markdown marker (anomaly-shaped dicts; [] when the corpus is
+    clean). EssentialRegs' own notes (the [sic] span, the equation block)
+    are excluded before the check, so a curated transcription of a glyph
+    run does not report itself."""
+    out: list[dict] = []
+    for r in rows:
+        html = _EQUATION_BLOCK_RE.sub("", _SIC_SPAN_RE.sub("", r.get("full_text") or ""))
+        text = re.sub(r"<[^>]+>", "", html)
+        m = MATH_GLYPH_RE.search(text)
+        if m:
+            out.append(dict(label=r["id"], line_hint="?", kind="math_glyph",
+                            note=f"math-italic / replacement glyph in the stored text near {text[max(0, m.start()-20):m.start()+20]!r}"))
+        m = SPLIT_LETTER_RE.search(text)
+        if m:
+            out.append(dict(label=r["id"], line_hint="?", kind="split_letters",
+                            note=f"split-letter run {m.group(0)!r} (pdftotext letter-spacing artifact; add a KNOWN_SPACING_FIXES entry)"))
+        m = STRAY_MARKDOWN_RE.search(html)
+        if m:
+            out.append(dict(label=r["id"], line_hint="?", kind="stray_markdown",
+                            note=f"Markdown marker in official text: {m.group(0)!r}"))
+    return out
 
 # Images printed inside an APPENDIX row, per regulation. Reg 25's Appendix A
 # ("Colorado Ozone Nonattainment or Attainment Maintenance Areas") ends with
@@ -3303,6 +3526,114 @@ def _rebuild_captioned_layout_tables(reg: str | None, lines: list[str],
     return rebuilt
 
 
+# pdfplumber clusters a cell's characters into lines with y_tolerance=3, so
+# a subscript or superscript set a few points off the baseline lands on a
+# line of its own: GP12's Attachment A table (and GP02's) print the header
+# "NO<sub>X</sub> (g/hp-hr)" and came through as "NO (g/hp-hr)\nX", which
+# render_table_html flattened to "NO (g/hp-hr) X". _page_tables re-reads any
+# cell whose text has a lone one-character line from its own bounding box
+# with a wider tolerance and marks the off-baseline run (smaller font, no
+# gap to the character before it) with _SUB_OPEN/_SUB_CLOSE (lower) or
+# _SUP_OPEN/_SUP_CLOSE (raised), which render_table_html turns into
+# <sub>/<sup>. Letters and digits are unchanged ("NOX (g/hp-hr)"). Gated to
+# the general permits: the only cells with that signature across the GP
+# PDFs are those two headers, and the other regulations' tables keep their
+# baselined output (Reg 23 handles its one such cell through `cell_fixes`).
+SUBSCRIPT_REJOIN_REGS: frozenset[str] = frozenset(
+    ("gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12"))
+# A lone one-character line ("NO (g/hp-hr)\nX"), or a digit glued to the end
+# of a word at a line end ("Date of\nRegistration1": a superscript footnote
+# marker) -- the two shapes a split or flattened sub/superscript takes.
+_LONE_CHAR_LINE_RE = re.compile(r"(?:^|\n)[A-Za-z0-9](?:\n|$)|[A-Za-z)]\d(?:\n|$)")
+_SUB_OPEN, _SUB_CLOSE, _SUP_OPEN, _SUP_CLOSE = "\x01", "\x02", "\x03", "\x04"
+# Per-parse log of the cells _page_tables repaired (reset by parse_reg).
+TABLE_CELL_REPAIRS: list[dict] = []
+# Per-parse log of the continuation pages the caption walk appended
+# (caption, page, rows) -- see extract_tables_from_pdf.
+TABLE_CONTINUATIONS: list[dict] = []
+
+
+def _cell_markup_preview(s: str) -> str:
+    """The sub/sup markers as HTML tags (for render_table_html's cells and
+    the report)."""
+    return (s.replace(_SUB_OPEN, "<sub>").replace(_SUB_CLOSE, "</sub>")
+             .replace(_SUP_OPEN, "<sup>").replace(_SUP_CLOSE, "</sup>"))
+
+
+def _cell_text_rejoining_scripts(crop) -> str | None:
+    """The text of one table cell (a pdfplumber crop) with its off-baseline
+    runs marked. Words are read with a 5pt line tolerance and split on font
+    size; a word in a smaller font that starts where the previous word ends
+    is a subscript (its bottom sits lower) or a superscript (its top sits
+    higher) of that word. None when the crop has no words."""
+    words = crop.extract_words(y_tolerance=5, extra_attrs=["size"])
+    if not words:
+        return None
+    sizes = Counter(round(w["size"], 1) for w in words)
+    main = max(sizes, key=lambda sz: (sizes[sz], sz))
+    lines: list[list[dict]] = []
+    for w in sorted(words, key=lambda w: (w["top"], w["x0"])):
+        for ln in lines:
+            if abs(ln[0]["top"] - w["top"]) <= 5:
+                ln.append(w)
+                break
+        else:
+            lines.append([w])
+    out: list[str] = []
+    for ln in lines:
+        ln.sort(key=lambda w: w["x0"])
+        s = ""
+        prev = None
+        for w in ln:
+            small = w["size"] < main * 0.85
+            attached = prev is not None and w["x0"] - prev["x1"] < 1.5
+            if small and attached:
+                # pdfplumber reports a subscript with the base's bottom and
+                # a lower top ("X" of NO<sub>X</sub>: top 255.4 vs 251.5,
+                # bottom 263.5 for both), a superscript with the base's top
+                # and a higher bottom: the smaller glyph sits in the lower
+                # or the upper half of the base's line box.
+                slack = (prev["bottom"] - prev["top"]) - (w["bottom"] - w["top"])
+                if w["top"] - prev["top"] > slack * 0.5:
+                    s += _SUB_OPEN + w["text"] + _SUB_CLOSE
+                else:
+                    s += _SUP_OPEN + w["text"] + _SUP_CLOSE
+            else:
+                s += ("" if not s else " ") + w["text"]
+            prev = w
+        out.append(s)
+    return "\n".join(out)
+
+
+def _page_tables(page, reg: str | None) -> list:
+    """`page.extract_tables()`, with the subscript repair above for
+    SUBSCRIPT_REJOIN_REGS; identical to it for every other reg and for every
+    cell without a lone one-character line."""
+    if reg not in SUBSCRIPT_REJOIN_REGS:
+        return page.extract_tables()
+    out = []
+    for t in page.find_tables():
+        rows = t.extract()
+        for ri, row in enumerate(t.rows):
+            if ri >= len(rows):
+                break
+            for ci, bbox in enumerate(row.cells):
+                if ci >= len(rows[ri]) or bbox is None:
+                    continue
+                txt = rows[ri][ci]
+                if not txt or not _LONE_CHAR_LINE_RE.search(txt):
+                    continue
+                fixed = _cell_text_rejoining_scripts(page.crop(bbox))
+                # Same letters and digits as a multiset: the repair moves the
+                # split character back to its base, so the ORDER changes by
+                # design ("NO (g/hp-hr) X" -> "NOX (g/hp-hr)"), nothing else may.
+                if fixed and fixed != txt and sorted(_letters_digits(fixed)) == sorted(_letters_digits(txt)):
+                    TABLE_CELL_REPAIRS.append(dict(page=page.page_number, before=txt, after=fixed))
+                    rows[ri][ci] = fixed
+        out.append(rows)
+    return out
+
+
 def extract_tables_from_pdf(pdf_path: str, reg: str | None = None) -> dict[str, dict]:
     """Returns {caption_text: {"n": table_num, "caption": caption, "rows": [[...]]}}.
 
@@ -3324,7 +3655,7 @@ def extract_tables_from_pdf(pdf_path: str, reg: str | None = None) -> dict[str, 
             spans = entry.get("spans") or [(entry["page"], entry["table_index"])]
             rows: list = []
             for page_no, table_index in spans:
-                page_tables = pdf.pages[page_no - 1].extract_tables()
+                page_tables = _page_tables(pdf.pages[page_no - 1], reg)
                 if table_index >= len(page_tables):
                     continue
                 page_rows = page_tables[table_index]
@@ -3375,19 +3706,65 @@ def extract_tables_from_pdf(pdf_path: str, reg: str | None = None) -> dict[str, 
                 rows = [r for r in rows if r]
             out[entry["caption"]] = {"caption": entry["caption"], "rows": rows}
         multi_caption = reg in MULTI_CAPTION_PAGE_REGS
+        # A captioned table that runs onto the next page(s) reprints its
+        # header block there but not its caption (every APCD general permit
+        # does this: GP01's Table 1 is pages 11-12, GP12's Table 2 pages
+        # 34-35, Table 5 pages 51-52, Table 7 pages 61-62). Until Sprint 3
+        # (Oct 2026) only the caption's own page was read and the rows on
+        # the continuation pages were lost silently (build_provisions cuts
+        # the row's text at the caption, so the flattened dump of those
+        # rows went with it). `continuing` carries the last captioned
+        # table's caption and header past its page: a following page with
+        # no caption of its own whose first table opens with that same
+        # header row is the same table, and its rows are appended (the
+        # reprinted header block dropped by _drop_repeated_leading_rows).
+        # Any other page ends the carry.
+        # `awaiting` is a caption printed as the last line of a page whose
+        # table starts on the next page (GP08's Table 1, GP09's Table 2,
+        # GP12's Table 7): a following page with no caption of its own and
+        # a table at its top is that caption's table.
+        continuing: tuple[str, list] | None = None
+        awaiting: str | None = None
         for page in pdf.pages:
             text = page.extract_text() or ""
             caption = None
+            page_captions: list[str] = []
             for line in text.split("\n"):
                 key = _table_caption_key(line, reg)
                 if key:
-                    caption = key
-                    break
+                    page_captions.append(key)
+                    if caption is None:
+                        caption = key
             if caption and multi_caption:
                 _extract_captioned_tables_by_first_cell(page, reg, out)
                 page.flush_cache()
+                continuing = None
+                awaiting = None
                 continue
+            if not caption and awaiting is not None and reg in GP_KEYS:
+                late_tables = _page_tables(page, reg) if page.find_tables() else []
+                if late_tables and late_tables[0] and awaiting not in out:
+                    rows = late_tables[0]
+                    out[awaiting] = {"caption": awaiting, "rows": rows}
+                    TABLE_CONTINUATIONS.append(dict(caption=awaiting, page=page.page_number, rows=len(rows),
+                                                    late_start=True))
+                    continuing = (awaiting, rows[0])
+                    awaiting = None
+                    page.flush_cache()
+                    continue
+                awaiting = None
             if not caption:
+                if continuing is not None:
+                    cont_caption, cont_header = continuing
+                    cont_tables = _page_tables(page, reg) if page.find_tables() else []
+                    if cont_tables and cont_tables[0] and cont_tables[0][0] == cont_header:
+                        existing_rows = out[cont_caption]["rows"]
+                        more = _drop_repeated_leading_rows(existing_rows, cont_tables[0])
+                        existing_rows.extend(more)
+                        TABLE_CONTINUATIONS.append(dict(caption=cont_caption, page=page.page_number, rows=len(more)))
+                        page.flush_cache()
+                        continue
+                    continuing = None
                 # A large PDF (600+ pages, e.g. ECMC) otherwise accumulates
                 # unbounded memory: pdfplumber caches each page's parsed
                 # objects (chars/rects/images) once touched by
@@ -3401,8 +3778,33 @@ def extract_tables_from_pdf(pdf_path: str, reg: str | None = None) -> dict[str, 
                 # matters, but exercised through the same code path).
                 page.flush_cache()
                 continue
-            tables = page.extract_tables()
+            continuing = None
+            awaiting = None
+            tables = _page_tables(page, reg)
             if not tables:
+                # The caption may be the last line of this page with its
+                # table on the next (see `awaiting`); only for the general
+                # permits, whose layouts are known to do this.
+                if reg in GP_KEYS and caption not in out:
+                    awaiting = caption
+                page.flush_cache()
+                continue
+            if reg in GP_KEYS and len(page_captions) > 1:
+                # Two captions on one page (GP09 page 16: Table 1 with its
+                # table, then Table 2's caption whose table is on page 17):
+                # the page's tables go to the captions in order, and a
+                # caption left without a table waits for the next page.
+                for k, cap in enumerate(page_captions):
+                    if k < len(tables):
+                        rows_k = tables[k]
+                        if rows_k and rows_k[0] and rows_k[0][0] and rows_k[0][0].strip() == cap:
+                            rows_k = rows_k[1:]
+                        if cap not in out:
+                            out[cap] = {"caption": cap, "rows": rows_k}
+                        continuing = (cap, rows_k[0]) if rows_k else None
+                    elif cap not in out:
+                        awaiting = cap
+                        continuing = None
                 page.flush_cache()
                 continue
             # Pick the table whose first cell matches the caption line, else the first table.
@@ -3428,32 +3830,34 @@ def extract_tables_from_pdf(pdf_path: str, reg: str | None = None) -> dict[str, 
                 existing_rows.extend(rows)
             else:
                 out[caption] = {"caption": caption, "rows": rows}
+            if rows and out[caption]["rows"]:
+                continuing = (caption, out[caption]["rows"][0])
             page.flush_cache()
         if reg == "9":
             _fix_reg9_appendix_tables(pdf, out)
         for caption, page_no, table_index in TABLE_CAPTION_PINS.get(reg or "", []):
             # See TABLE_CAPTION_PINS: several captioned tables on one page.
-            page_tables = pdf.pages[page_no - 1].extract_tables()
+            page_tables = _page_tables(pdf.pages[page_no - 1], reg)
             if table_index < len(page_tables):
                 out[caption] = {"caption": caption, "rows": page_tables[table_index]}
         for entry in TABLE_CAPTION_SPANS.get(reg or "", []):
             # See TABLE_CAPTION_SPANS: a multi-page captioned table whose
             # header block (or caption cell) is reprinted on every page.
-            rows = _spanned_caption_rows(pdf, entry["caption"], entry["spans"])
+            rows = _spanned_caption_rows(pdf, entry["caption"], entry["spans"], reg)
             if rows:
                 out[entry["caption"]] = {"caption": entry.get("display_caption") or entry["caption"],
                                          "rows": rows}
     return out
 
 
-def _spanned_caption_rows(pdf, caption: str, spans: list[tuple[int, int]]) -> list:
+def _spanned_caption_rows(pdf, caption: str, spans: list[tuple[int, int]], reg: str | None = None) -> list:
     """The concatenated rows of a TABLE_CAPTION_SPANS entry (see its comment):
     the printed caption row is dropped from every page (a first cell that
     starts with `caption`, newlines folded), and a continuation page's
     reprinted leading header rows are dropped via `_drop_repeated_leading_rows`."""
     rows: list = []
     for page_no, table_index in spans:
-        page_tables = pdf.pages[page_no - 1].extract_tables()
+        page_tables = _page_tables(pdf.pages[page_no - 1], reg)
         if table_index >= len(page_tables):
             continue
         page_rows = page_tables[table_index]
@@ -3589,6 +3993,133 @@ def _fix_reg9_appendix_tables(pdf, out: dict[str, dict]) -> None:
             out[caption] = {"caption": caption, "rows": tables[table_index]}
 
 
+# A footnote under a GP table prints as its digit alone on a line (at the
+# margin in GP01, indented in GP07) with the text on the next line, or as
+# "2 The Effective Date ..." on one line (GP08). Table cells never start a
+# line with a lone digit followed by a sentence.
+_FOOTNOTE_MARK_RE = re.compile(r"^\s*(\d)\s*$")
+_FOOTNOTE_INLINE_RE = re.compile(r"^\s*(\d)\s+([A-Z][a-z].{20,})$")
+
+
+def _split_table_tail(cut_lines: list[str], table: dict, seams: set[int]) -> tuple[list[str], list[str]]:
+    """(footnote paragraphs as HTML, trailing prose lines) from the lines a
+    caption cut removes. A line is table dump when every one of its words
+    is a word of the recovered table (cells, caption and its reprints
+    included); a footnote block is read by _table_footnote_paragraphs; the
+    first other line starts the trailing prose, which runs to the end."""
+    cell_words: set[str] = set()
+
+    def _add(text: str) -> None:
+        for w in text.split():
+            cell_words.add(_letters_digits(w))
+            # a glued footnote marker ("Registration1", "Registration<sup>1</sup>")
+            # prints spaced in the layout text ("Registration 1")
+            cell_words.update(re.findall(r"[A-Za-z]+|[0-9]+", _letters_digits(w)))
+
+    for row in table["rows"]:
+        for c in row:
+            _add(c or "")
+    _add(table["caption"])
+    cell_words.discard("")
+    footnotes = _table_footnote_paragraphs(cut_lines, seams)
+    fn_lines = _table_footnote_line_indexes(cut_lines, seams)
+    i = 0
+    while i < len(cut_lines):
+        if i in fn_lines or cut_lines[i].strip() == "":
+            i += 1
+            continue
+        words = [_letters_digits(w) for w in cut_lines[i].split()]
+        if all((not w) or w in cell_words for w in words):
+            i += 1
+            continue
+        break
+    trailing = cut_lines[i:]
+    # drop a footnote block that sits inside the trailing prose (already kept)
+    trailing = [ln for k, ln in enumerate(trailing, i) if k not in fn_lines]
+    return footnotes, ([""] + trailing if any(ln.strip() for ln in trailing) else [])
+
+
+def _footnote_at(cut_lines: list[str], i: int, seams: set[int]) -> tuple[str, list[str], int] | None:
+    """(mark, body lines, index after the block) when a footnote starts at
+    line `i` of the cut region, else None. The block ends at a blank line
+    or a page seam."""
+    m = _FOOTNOTE_MARK_RE.match(cut_lines[i])
+    if m and i + 1 < len(cut_lines) and cut_lines[i + 1].strip()[:1].isupper() and i + 1 not in seams:
+        mark, j, body = m.group(1), i + 1, []
+    else:
+        m2 = _FOOTNOTE_INLINE_RE.match(cut_lines[i])
+        if not m2:
+            return None
+        mark, j, body = m2.group(1), i + 1, [m2.group(2).strip()]
+    while j < len(cut_lines) and cut_lines[j].strip() != "" and j not in seams:
+        body.append(cut_lines[j].strip())
+        j += 1
+    return mark, body, j
+
+
+def _table_footnote_line_indexes(cut_lines: list[str], seams: set[int] | None = None) -> set[int]:
+    """The indexes of the lines _table_footnote_paragraphs consumes."""
+    seams = seams or set()
+    out: set[int] = set()
+    i = 0
+    while i < len(cut_lines):
+        fn = _footnote_at(cut_lines, i, seams)
+        if fn:
+            out.update(range(i, fn[2]))
+            i = fn[2]
+            continue
+        i += 1
+    return out
+
+
+def _table_footnote_paragraphs(cut_lines: list[str], seams: set[int] | None = None) -> list[str]:
+    """The footnotes printed under a general permit's table, as
+    `<p class="table-footnote">` HTML, from the lines the caption cut drops.
+    pdftotext prints each footnote as its superscript digit alone at the
+    left margin ("1") and the text on the following line(s) up to a blank
+    line (GP01.txt lines 393-395), or to a page seam (`seams`: offsets into
+    `cut_lines` where a new page starts -- the next page opens with the
+    table's reprinted header, not a blank line); a footnote reprinted under
+    the table's continuation page appears once. Table cells never sit at
+    the margin, so a lone digit cell ("6" of "Issuance 6") cannot match."""
+    seams = seams or set()
+    out: list[str] = []
+    seen: set[str] = set()
+    i = 0
+    while i < len(cut_lines):
+        fn = _footnote_at(cut_lines, i, seams)
+        if fn:
+            mark, body, j = fn
+            text = re.sub(r"\s+", " ", " ".join(body)).strip()
+            key = f"{mark} {text}"
+            if key not in seen:
+                seen.add(key)
+                out.append(f'<p class="table-footnote"><sup>{mark}</sup> {escape_html_text(text)}</p>')
+            i = j
+            continue
+        i += 1
+    return out
+
+
+def _caption_wrap_line(own_lines: list[str], li: int, table: dict) -> str | None:
+    """The wrapped tail of a caption: the line right after the caption line
+    when it is short (at most three words, no digits), is followed by a
+    blank line, and none of its words is a cell of the table's header row
+    (so a table's own first flattened line can never be taken for it)."""
+    if li + 2 >= len(own_lines):
+        return None
+    nxt = own_lines[li + 1].strip()
+    if not nxt or own_lines[li + 2].strip() != "":
+        return None
+    words = nxt.split()
+    if len(words) > 3 or any(ch.isdigit() for ch in nxt) or nxt[-1] in ".:;":
+        return None
+    header_cells = {(c or "").replace("\n", " ").strip().lower() for c in (table["rows"][0] if table["rows"] else [])}
+    if any(w.lower() in header_cells for w in words) or nxt.lower() in header_cells:
+        return None
+    return nxt
+
+
 def render_table_html(table: dict) -> str:
     caption = escape_html_text(table["caption"])
     rows = table["rows"]
@@ -3598,7 +4129,7 @@ def render_table_html(table: dict) -> str:
 
     def cell(c):
         c = (c or "").replace("\n", " ").strip()
-        return escape_html_text(c)
+        return _cell_markup_preview(escape_html_text(c))
 
     thead = "<tr>" + "".join(f"<th>{cell(c)}</th>" for c in header) + "</tr>"
     tbody = "".join(
@@ -3609,6 +4140,7 @@ def render_table_html(table: dict) -> str:
         f'<div class="doc-table-caption">{caption}</div>'
         f'<table class="doc-table"><thead>{thead}</thead><tbody>{tbody}</tbody></table>'
         "</div>"
+        + table.get("footnotes_html", "")
     )
 
 
@@ -5190,9 +5722,12 @@ PROGRAM_SUBPART_RE = re.compile(r"\b(NSPS|NESHAP|MACT)\s+Subpart\s+((?:[A-Z]{2,5
 # undotted CFR_RE alone missed 98% of them (they never even reached the
 # `cfr` bucket of the report). This variant accepts "CFR", "C.F.R." and
 # "C. F. R." and the plural "Subparts", and is used ONLY for the regs in
-# CFR_DOTTED_REGS: for every other regulation the original CFR_RE keeps
-# running unchanged (a dotted "40 C.F.R. Part 60, Subpart OOOOb" in Reg 7
-# or 26 would otherwise newly turn into a link, changing baselined output).
+# CFR_DOTTED_REGS (Regs 8, 12, 19, then 26 on 4 Oct 2026). Sprint 3 (Oct
+# 2026) made it the tokenizer for EVERY document: a dotted "40 C.F.R. Part
+# 60, Subpart OOOOa" in Reg 7 links to the corpus document like the undotted
+# form always did, and a dotted part not in the corpus reaches the `cfr`
+# bucket of the report instead of being invisible. A subpart not in the
+# corpus (CFR_SUBPART_TO_REGKEY) is never linked.
 CFR_RE_DOTTED = re.compile(
     r"\b40\s+C\.?\s?F\.?\s?R\.?\s+Part\s+(\d+)(?:,\s*Subparts?\s+([A-Za-z0-9]+))?"
 )
@@ -5213,34 +5748,37 @@ CFR_RE_DOTTED = re.compile(
 # Part 60, Subpart IIII (July 1, 2023)" in I.D.5.d.(i)(C)(1) and
 # I.D.6.c.(i)(C)(1) -- and those must link to the corpus's own Subpart JJJJ /
 # IIII documents now that Reg 26 no longer carries a copy of JJJJ (see the
-# note above parse_reg). Same additive rule as 8/12/19: every other
-# regulation keeps the undotted CFR_RE.
-CFR_DOTTED_REGS: frozenset[str] = frozenset({"8", "12", "19", "26"})
+# note above parse_reg). Since Sprint 3 the dotted tokenizer runs for every
+# document (there is no CFR_DOTTED_REGS gate any more).
 # "40 C.F.R. Part 60, JJJJ, IIII, or a permit requirement" (Reg 26 Part B
 # I.D.5.e.(i)(D) and I.D.6.d.(i)(D)): the subpart codes listed straight
 # after the part, with no "Subpart" word. Each listed code links on its own
 # to its corpus document; a code not in the corpus is left as text. Only
 # the codes CFR_SUBPART_TO_REGKEY knows are matched, so "40 C.F.R. Part 60,
 # 2019" or a stray capitalised word after a part number can never match.
-# Gated to CFR_PART_SUBPART_LIST_REGS: measured across every source text on
-# 4 Oct 2026 the form occurs only in Reg 26 (2 sentences), so the gate
-# changes nothing elsewhere, but a new regulation should opt in knowingly.
+# Was gated to Reg 26 (CFR_PART_SUBPART_LIST_REGS) until Sprint 3 (Oct
+# 2026), when all three engine-subpart rules were enabled for every document
+# after a dry run listing every new link (pipeline/out/sprint3_link_changes.md).
 CFR_PART_SUBPART_LIST_RE = re.compile(
     r"\b40\s+C\.?\s?F\.?\s?R\.?\s+Part\s+(60|63),\s+"
     r"((?:OOOO[abc]?|JJJJ|IIII|ZZZZ)(?:,\s+(?:OOOO[abc]?|JJJJ|IIII|ZZZZ))*)\b"
 )
 _CFR_SUBPART_CODE_RE = re.compile(r"OOOO[abc]?|JJJJ|IIII|ZZZZ")
-CFR_PART_SUBPART_LIST_REGS: frozenset[str] = frozenset({"26"})
+# The codes after the first in a plural "Subparts X, Y or Z" list (see
+# link_citations step 1): a separator (", ", " or ", " and ", ", or ") and a
+# subpart code (capitals with an optional lowercase suffix: "Da", "Kb",
+# "OOOOa"). "through" is deliberately not a separator ("Subparts A through
+# H" is a range, not a list).
+_CFR_SUBPART_LIST_TAIL_RE = re.compile(r"(?:\s*,\s*(?:or|and)\s+|\s*,\s*|\s+(?:or|and)\s+)([A-Z]{1,5}[a-c]?)\b(?![.-]\d)")
 # "NSPS JJJJ" / "NESHAP ZZZZ" with no "Subpart" word, the way Reg 26's Part
 # C statements of basis name the federal engine rules ("the 2.0 g/hp-hr NOx
 # emission limit in EPA's NSPS JJJJ", "NSPS IIII, NSPS JJJJ, ... and NESHAP
 # ZZZZ may also apply"). Only the corpus subpart codes are matched (so
-# "NSPS KKKK" and "NESHAP HH" stay plain text and are not even bucketed),
-# and only for PROGRAM_BARE_SUBPART_REGS: the same form occurs 162 times in
-# Reg 7 and 53 times in Reg 6 (4 Oct 2026 count over the source texts), and
-# turning those into links is a separate, baselined decision.
+# "NSPS KKKK" and "NESHAP HH" stay plain text and are not even bucketed).
+# Gated to Reg 26 (PROGRAM_BARE_SUBPART_REGS) until Sprint 3 (Oct 2026): the
+# same form occurs 162 times in Reg 7 and 53 times in Reg 6, and those are
+# links now too, each to its own corpus document.
 PROGRAM_BARE_SUBPART_RE = re.compile(r"\b(NSPS|NESHAP|MACT)\s+(OOOO[abc]?|JJJJ|IIII|ZZZZ)\b")
-PROGRAM_BARE_SUBPART_REGS: frozenset[str] = frozenset({"26"})
 # "Section I.E.3.a.(i) or (ii)" / "... and (iii)" — a bare trailing paren that
 # names a sibling of the citation just linked (optional nicety; see spec item 2).
 _SIBLING_FRAG_RE = re.compile(r"\A\s*(?:or|and)\s+(\([ivxlcdmA-Z0-9]{1,4}\))")
@@ -6332,44 +6870,65 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
     # claim the bare "40 C.F.R. Part 60" and bucket it as a part not in the
     # corpus. The whole phrase is claimed here; each listed code becomes its
     # own link to its corpus document, a code not in the corpus stays as
-    # printed. No-op for every regulation outside CFR_PART_SUBPART_LIST_REGS.
-    if reg in CFR_PART_SUBPART_LIST_REGS:
-        for m in CFR_PART_SUBPART_LIST_RE.finditer(html_text):
-            if is_claimed(m.start(), m.end()):
-                continue
-            claim(m.start(), m.end())
-            for cm in _CFR_SUBPART_CODE_RE.finditer(html_text, m.start(2), m.end(2)):
-                regkey = CFR_SUBPART_TO_REGKEY.get(cm.group(0).upper())
-                if regkey and regkey in corpus_regs:
-                    pieces.append((cm.start(), cm.end(),
-                                   f'<a class="xref-external-reg" href="/regulations/{regkey}">{cm.group(0)}</a>'))
-                else:
-                    buckets[BUCKET_CFR][f"40 CFR Part {m.group(1)}, {cm.group(0)}"] += 1
-
-    # 1) "40 CFR Part NN, Subpart XXXX" — only OOOOb is in the corpus today.
-    cfr_re = CFR_RE_DOTTED if reg in CFR_DOTTED_REGS else CFR_RE
-    for m in cfr_re.finditer(html_text):
+    # printed. Every document since Sprint 3 (was Reg 26 only).
+    for m in CFR_PART_SUBPART_LIST_RE.finditer(html_text):
         if is_claimed(m.start(), m.end()):
             continue
         claim(m.start(), m.end())
+        for cm in _CFR_SUBPART_CODE_RE.finditer(html_text, m.start(2), m.end(2)):
+            regkey = CFR_SUBPART_TO_REGKEY.get(cm.group(0).upper())
+            if regkey and regkey in corpus_regs:
+                pieces.append((cm.start(), cm.end(),
+                               f'<a class="xref-external-reg" href="/regulations/{regkey}">{cm.group(0)}</a>'))
+            else:
+                buckets[BUCKET_CFR][f"40 CFR Part {m.group(1)}, {cm.group(0)}"] += 1
+
+    # 1) "40 CFR Part NN, Subpart XXXX" — only OOOOb is in the corpus today.
+    cfr_re = CFR_RE_DOTTED  # every document since Sprint 3 (see CFR_RE_DOTTED)
+    for m in cfr_re.finditer(html_text):
+        if is_claimed(m.start(), m.end()):
+            continue
         subpart = m.group(2)
-        regkey = CFR_SUBPART_TO_REGKEY.get((subpart or "").upper())
         # A reg with flat incorporation-by-reference entries (Reg 6's Part
         # A, FLAT_ENTRY_PART_CONFIG) adopts "40 CFR Part 60, Subpart Xx"
         # itself: when that subpart is not a corpus regulation of its own
         # (OOOOa/b/c always win) but IS one of this reg's entry rows, the
         # citation links there as a same-reg xref. No-op for other regs.
         flat_cfg_cfr = FLAT_ENTRY_PART_CONFIG.get(reg)
-        flat_target = (
-            f"sec-{reg}-{flat_cfg_cfr['letter']}-SUBPART-{subpart}"
-            if flat_cfg_cfr and subpart and m.group(1) == "60" else None
-        )
+
+        def _flat_target(code: str | None) -> str | None:
+            return (f"sec-{reg}-{flat_cfg_cfr['letter']}-SUBPART-{code}"
+                    if flat_cfg_cfr and code and m.group(1) == "60" else None)
+
+        # The plural form ("40 CFR Part 60, Subparts IIII or JJJJ", Reg 6
+        # Part B I.B) names a list: since Sprint 3 the dotted tokenizer,
+        # which accepts "Subparts", runs for every document, so the codes
+        # after the first are read too and each that is a corpus document
+        # links to it. Every other code is left exactly as before (unclaimed,
+        # so Reg 6's flat-entry step still links its own "Da", "Db" rows).
+        # "Subparts A through H" is not a list and stops here.
+        extra: list[tuple[int, int, str]] = []
+        end = m.end()
+        if subpart and "Subparts" in m.group(0):
+            for em in _CFR_SUBPART_LIST_TAIL_RE.finditer(html_text, end):
+                if em.start() != end:
+                    break
+                extra.append((em.start(1), em.end(1), em.group(1)))
+                end = em.end()
+        claim(m.start(), m.end())
+        regkey = CFR_SUBPART_TO_REGKEY.get((subpart or "").upper())
+        flat_target = _flat_target(subpart)
         if regkey and regkey in corpus_regs:
             pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
         elif flat_target and flat_target in known_ids:
             pieces.append((m.start(), m.end(), f'<span class="xref" data-target="{flat_target}">{m.group(0)}</span>'))
         else:
             buckets[BUCKET_CFR][m.group(0)] += 1
+        for cs, ce, code in extra:
+            ckey = CFR_SUBPART_TO_REGKEY.get(code.upper())
+            if ckey and ckey in corpus_regs and not is_claimed(cs, ce):
+                claim(cs, ce)
+                pieces.append((cs, ce, f'<a class="xref-external-reg" href="/regulations/{ckey}">{code}</a>'))
 
     # 1.1) "49 CFR Part 192" / "49 CFR 192.605(b)" / ECMC's dotted "49
     # C.F.R. § 192.243" / "49 C.F.R. § 195 Subpart A" — a whole-CFR-part
@@ -6406,17 +6965,16 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
             buckets[BUCKET_CFR][m.group(0)] += 1
 
     # 1.25) "NSPS JJJJ" / "NESHAP ZZZZ" with no "Subpart" word
-    # (PROGRAM_BARE_SUBPART_RE), for PROGRAM_BARE_SUBPART_REGS only. After
-    # 1.2 so "NSPS Subpart IIII" is already claimed; only corpus codes are
-    # matched at all, so nothing new reaches the cfr bucket.
-    if reg in PROGRAM_BARE_SUBPART_REGS:
-        for m in PROGRAM_BARE_SUBPART_RE.finditer(html_text):
-            if is_claimed(m.start(), m.end()):
-                continue
-            regkey = CFR_SUBPART_TO_REGKEY.get(m.group(2).upper())
-            if regkey and regkey in corpus_regs:
-                claim(m.start(), m.end())
-                pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
+    # (PROGRAM_BARE_SUBPART_RE), every document since Sprint 3. After 1.2 so
+    # "NSPS Subpart IIII" is already claimed; only corpus codes are matched
+    # at all, so nothing new reaches the cfr bucket.
+    for m in PROGRAM_BARE_SUBPART_RE.finditer(html_text):
+        if is_claimed(m.start(), m.end()):
+            continue
+        regkey = CFR_SUBPART_TO_REGKEY.get(m.group(2).upper())
+        if regkey and regkey in corpus_regs:
+            claim(m.start(), m.end())
+            pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
 
     # 1.3) California Code of Regulations, Title 13 citations (Reg 20's
     # incorporated-by-reference vehicle standards — see BUCKET_OTHER_CCR /
@@ -8754,16 +9312,99 @@ KNOWN_TEXT_FIXES: dict[str, list[dict]] = {
 }
 
 
+# pdftotext renders letter-spaced (justified) runs of the APCD general
+# permits one glyph per word: "t h e f o l l o w i n g", "o w n e r o r
+# o p e r a t o r", "va lve s fo r p i p i n g" (GP01.txt lines 149-150,
+# 262-263, 282-283, 303, 447-448, 537, 709, 785-786, 839; GP05.txt 772;
+# GP07.txt 495-496; GP08.txt 477-478 -- every split-letter run in the
+# corpus, confirmed by SPLIT_LETTER_RE over all 57 source texts on 4 Oct
+# 2026). The page images print ordinary words. Each entry re-spaces one
+# printed run; apply_known_text_fixes refuses an entry whose letters and
+# digits differ from the printed run (`spacing_only`), so a fix can only
+# ever move whitespace. `expect_hits` is the number of source lines the run
+# occurs on. Order matters within a list: a longer run goes before any
+# shorter run it contains.
+KNOWN_SPACING_FIXES: dict[str, list[dict]] = {
+    "gp01": [
+        dict(old="t h e f o l l o w i n g", new="the following", line_hint=149, spacing_only=True,
+             note="Condition II.A.1: letter-spaced 'the following'."),
+        dict(old="u n d e r t h e G P 0 1 r e g i s t r a t i o n", new="under the GP01 registration",
+             line_hint=150, spacing_only=True, note="Condition II.A.1: letter-spaced 'under the GP01 registration'."),
+        dict(old="o w n e r o r o p e r a t o r", new="owner or operator", line_hint=262, spacing_only=True,
+             expect_hits=4, note="Conditions II.C.4, III.B, VIII.C.3 and IX.B: letter-spaced 'owner or operator' "
+             "(GP01.txt lines 262, 303, 709, 839)."),
+        dict(old="a n d R e p o r t i n g", new="and Reporting", line_hint=263, spacing_only=True,
+             note="Condition II.C.4: letter-spaced 'and Reporting'."),
+        dict(old="the o w n e r o r", new="the owner or", line_hint=282, spacing_only=True, expect_hits=2,
+             note="Conditions III.A and VIII.E.3: 'owner or' letter-spaced at a line end, 'operator' on the "
+             "next line (GP01.txt lines 282 and 785)."),
+        dict(old="o p e r a t o r ", new="operator ", line_hint=283, spacing_only=True, expect_hits=2,
+             note="Conditions III.A and VIII.E.3: the 'operator' that opens the next line (GP01.txt lines 283 "
+             "and 786)."),
+        dict(old="va lve s fo r p i p i n g o f p i lo t ga s o r wa st e ga s t o",
+             new="valves for piping of pilot gas or waste gas to", line_hint=447, spacing_only=True,
+             note="Condition VI.B: letter-spaced 'valves for piping of pilot gas or waste gas to'."),
+        dict(old="t h e c o n t r o l d e vi c e n o t b e i n g o p e n",
+             new="the control device not being open", line_hint=448, spacing_only=True,
+             note="Condition VI.B: letter-spaced 'the control device not being open'."),
+        dict(old="P a r t B ,", new="Part B,", line_hint=537, spacing_only=True,
+             note="Condition VI.C: letter-spaced 'Part B,' in the Regulation Number 7 citation."),
+    ],
+    "gp12": [
+        # Not a split-letter run: the PDF prints Condition VI.E.5.i as a bare
+        # label with no text, indented under the end of Table 2 (GP12.txt
+        # line 1178, column 16) instead of at its siblings' column 0, and
+        # the marker scan's column guard read it as a continuation of the
+        # table dump, so the (empty) item was missing from the corpus. Moving
+        # it to the siblings' column is whitespace only; the row renders as
+        # its bare citation, exactly what the PDF prints.
+        dict(old="                VI.E.5.i", new="VI.E.5.i", line_hint=1178, spacing_only=True,
+             note="Condition VI.E.5.i: a label printed with no text and indented under Table 2; moved to "
+                  "its siblings' column (VI.E.5.a-h print flush left) so it is a row (empty, as printed) "
+                  "instead of being dropped."),
+    ],
+    "gp05": [
+        # Not a split-letter run: the PDF prints "VIII.C.1.a.Annually by April
+        # 30th ..." with no space after the label, so the marker scan did not
+        # see the label and the item's text landed in VIII.C.1 (found by
+        # source_text_check.py, Sprint 3). Adding the space is whitespace only.
+        dict(old="VIII.C.1.a.Annually by April 30th", new="VIII.C.1.a. Annually by April 30th", line_hint=686,
+             spacing_only=True, note="Condition VIII.C.1.a: the label is printed fused to its first word."),
+        dict(old="o r i n a n e w c o m p a n y n a m e", new="or in a new company name", line_hint=772,
+             spacing_only=True, note="Condition VIII.D.2: letter-spaced 'or in a new company name'."),
+    ],
+    "gp07": [
+        dict(old="v a l ve s f o r p i p i n g o f p i lo t ga s o r wa st e ga s t o t h e c o n t r o l d e vi c e n o t",
+             new="valves for piping of pilot gas or waste gas to the control device not", line_hint=495,
+             spacing_only=True, note="Condition VI.B: letter-spaced 'valves for piping ... the control device not'."),
+        dict(old="b e i n g o p e n", new="being open", line_hint=496, spacing_only=True,
+             note="Condition VI.B: letter-spaced 'being open'."),
+    ],
+    "gp08": [
+        dict(old="v a l ve s f o r p i p i n g o f p i lo t ga s o r wa st e ga s t o t h e c o n t r o l d e vi c e n o t",
+             new="valves for piping of pilot gas or waste gas to the control device not", line_hint=477,
+             spacing_only=True, note="Condition VI.B: letter-spaced 'valves for piping ... the control device not'."),
+        dict(old="b e i n g o p e n", new="being open", line_hint=478, spacing_only=True,
+             note="Condition VI.B: letter-spaced 'being open'."),
+    ],
+}
+
+
 def apply_known_text_fixes(reg: str, lines: list[str]) -> tuple[list[str], list[dict]]:
-    """Applies KNOWN_TEXT_FIXES[reg] to the cleaned lines (before marker
-    scanning, like apply_known_label_fixes) and returns (new_lines, applied)
-    in the same report shape (old_label/new_label/line_hint/note/hits)."""
-    fixes = KNOWN_TEXT_FIXES.get(reg, [])
+    """Applies KNOWN_TEXT_FIXES[reg] and then KNOWN_SPACING_FIXES[reg] to the
+    cleaned lines (before marker scanning, like apply_known_label_fixes) and
+    returns (new_lines, applied) in the same report shape
+    (old_label/new_label/line_hint/note/hits/expect_hits). A `spacing_only`
+    entry whose letters and digits would change raises: it is not a spacing
+    fix."""
+    fixes = list(KNOWN_TEXT_FIXES.get(reg, [])) + list(KNOWN_SPACING_FIXES.get(reg, []))
     if not fixes:
         return lines, []
     out = list(lines)
     applied: list[dict] = []
     for fix in fixes:
+        if fix.get("spacing_only") and _letters_digits(fix["old"]) != _letters_digits(fix["new"]):
+            raise ValueError(f"KNOWN_SPACING_FIXES[{reg!r}] entry changes letters/digits: {fix['old']!r} -> {fix['new']!r}")
         hits = 0
         for i, ln in enumerate(out):
             if fix.get("whole_line"):
@@ -8782,6 +9423,7 @@ def apply_known_text_fixes(reg: str, lines: list[str]) -> tuple[list[str], list[
         applied.append(dict(
             old_label=fix["old"], new_label=fix["new"] or "(line removed)",
             line_hint=fix["line_hint"], note=fix["note"], hits=hits,
+            expect_hits=int(fix.get("expect_hits", 1)),
         ))
     return out, applied
 
@@ -10042,6 +10684,18 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
             )
             order.append(pid)
             part_root_id[f"ATTACHMENT-{letter}"] = pid
+            # The paragraphs printed between the attachment heading and its
+            # first numbered item belong to the heading row (GP02's
+            # Attachment A opens with its title line "Alternative Operating
+            # Scenarios" and three paragraphs of scope before "1."; they were
+            # dropped until Sprint 3 -- found by source_text_check.py). Same
+            # appendix shape as a part's intro text; nothing for an
+            # attachment that goes straight to "1." (GP12's).
+            own_lines = marker_own_lines(lines, markers, i)
+            first_blank = next((k for k, ln in enumerate(own_lines) if ln.strip() == ""), None)
+            intro_paras = split_into_paragraphs(own_lines[first_blank:]) if first_blank is not None else []
+            if intro_paras:
+                pending[pid] = ("appendix", intro_paras, title, "", f"ATTACHMENT-{letter}", pid)
             continue
 
         if mk["type"] == "appendix":
@@ -10270,12 +10924,44 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
                 caption_text = caption_key
                 table = tables_by_caption.get(caption_text)
                 if table:
+                    wrap = _caption_wrap_line(own_lines, li, table) if reg in GP_KEYS else None
+                    if wrap and not table.get("caption_wrapped"):
+                        # GP02 prints "Table 1: Emission Standards (g/hp-hr)
+                        # for Rich Burn and Lean Burn" / "Engines": the
+                        # caption's last word wraps onto its own line, which
+                        # the cut below would drop. Shown as part of the
+                        # caption; the lookup key stays the first line. General
+                        # permits only for now: Reg 26's Tables 3 and 4
+                        # ("... for refinery fuel-" / "fired process heaters")
+                        # wrap the same way and keep their baselined captions
+                        # until Reg 26 is next re-imported on purpose.
+                        table["caption"] = f"{table['caption']} {wrap}"
+                        table["caption_wrapped"] = True
+                        TABLE_CELL_REPAIRS.append(dict(page="caption", before=caption_text,
+                                                       after=table["caption"]))
                     table_html = render_table_html(table)
                     table_hits["used"] += 1
                     table_hits["captions_used"].append(caption_text)
                 break
         if cut_idx is not None:
-            own_lines = own_lines[:cut_idx]
+            if reg in GP_KEYS and table:
+                # A general permit's table is followed, in the same row, by
+                # its footnotes and often by more prose ("Time intervals for
+                # monitoring ... may be shorter if required under Regulation
+                # Number 7", GP01 IV.C.3), all of which the cut below used to
+                # drop (found by source_text_check.py, Sprint 3). The lines
+                # after the caption are split into the flattened table dump
+                # (every word a cell word: dropped, the table stands in),
+                # footnote blocks (kept under the table) and trailing prose
+                # (kept as paragraphs after the table, in place).
+                fn_start = mk["line"] + 1 + cut_idx + 1
+                fn_seams = {si - fn_start for si in (seam_starts or ()) if si >= fn_start}
+                footnotes, trailing = _split_table_tail(own_lines[cut_idx + 1:], table, fn_seams)
+                table["footnotes_html"] = "".join(footnotes)
+                table_html = ""
+                own_lines = own_lines[:cut_idx] + ["", _TABLE_SENTINEL + caption_text, ""] + trailing
+            else:
+                own_lines = own_lines[:cut_idx]
             extra_nonblank = [ln for ln in own_lines if ln.strip() != ""]
 
         # Uncaptioned bordered tables (see UNCAPTIONED_TABLES): swap the
@@ -10288,6 +10974,9 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
         # Borderless multi-line-cell tables rebuilt by column position (see
         # COLUMN_LAYOUT_TABLES) — likewise a no-op without an entry.
         own_lines = _swap_column_layout_tables(own_lines, item_id, reg, tables_by_caption, table_hits)
+        # Math-glyph equation lines (see CURATED_EQUATIONS) -- a no-op for
+        # every row without one.
+        own_lines = _swap_equation_lines(own_lines, item_id)
         extra_nonblank = [ln for ln in own_lines if ln.strip() != ""]
         if heading_own_para and inline_text and _inline_heading_stands_alone(inline_text, own_lines):
             # See REG_META["aqs"]["heading_line_own_paragraph"]: the label
@@ -10378,6 +11067,9 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
             for p in paras:
                 if p.startswith(_TABLE_SENTINEL):
                     rendered.append(render_table_html(tables_by_caption[p[len(_TABLE_SENTINEL):]]))
+                    continue
+                if p.startswith(_EQUATION_SENTINEL):
+                    rendered.append(render_equations_html(p[len(_EQUATION_SENTINEL):]))
                     continue
                 if ctx_re is not None:
                     cm = ctx_re.match(p)
@@ -11469,6 +12161,14 @@ def find_body_start_no_parts(lines: list[str], reg: str | None = None) -> int:
 
 
 def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
+    # The per-parse event logs are a stack: link_citations parses the Common
+    # Provisions from inside this parse (_cp_known_ids) and must not wipe
+    # the outer document's events, so each parse saves what it found on
+    # entry and puts it back on exit.
+    saved_events = (list(EQUATION_EVENTS), list(TABLE_CELL_REPAIRS), list(TABLE_CONTINUATIONS))
+    EQUATION_EVENTS.clear()
+    TABLE_CELL_REPAIRS.clear()
+    TABLE_CONTINUATIONS.clear()
     raw = Path(txt_path).read_text(encoding="utf-8")
     lines, seam_starts = clean_pages(raw, reg)
     lines, label_fixes_applied = apply_known_label_fixes(reg, lines)
@@ -11536,7 +12236,33 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
         seen[pid] = row
         result.append(row)
 
-    anomalies = KNOWN_LABEL_ANOMALIES.get(reg, [])
+    # EssentialRegs notes (Sprint 3): [sic] markers after the text is final,
+    # then the equation and table-cell repair rows for the report, then the
+    # artifact check over the finished rows.
+    label_fixes_applied = label_fixes_applied + apply_sic_markers(reg, result)
+    eq_fixes, eq_anomalies = equation_report_rows(reg)
+    label_fixes_applied = label_fixes_applied + eq_fixes + [
+        dict(old_label=rep_["before"].replace("\n", "\\n"),
+             new_label=_cell_markup_preview(rep_["after"]),
+             line_hint=f"PDF page {rep_['page']}",
+             note="table cell: a subscript/superscript pdfplumber had split onto its own line was "
+                  "rejoined to its base character (see _page_tables)",
+             hits=1, expect_hits=1)
+        for rep_ in TABLE_CELL_REPAIRS
+    ] + [
+        dict(old_label=f"{c['caption'][:60]} (page {c['page']})",
+             new_label=(f"table of {c['rows']} row(s) read from the page after its caption" if c.get("late_start")
+                        else f"+{c['rows']} continuation row(s)"),
+             line_hint=f"PDF page {c['page']}",
+             note=("captioned table printed on the page after its caption line; read from there (see "
+                   "extract_tables_from_pdf)" if c.get("late_start") else
+                   "captioned table continued on a page that reprints its header but not its caption; "
+                   "the rows were appended (see extract_tables_from_pdf)"),
+             hits=1, expect_hits=1)
+        for c in TABLE_CONTINUATIONS
+    ]
+    anomalies = list(KNOWN_LABEL_ANOMALIES.get(reg, [])) + eq_anomalies + text_artifacts(result)
+    EQUATION_EVENTS[:], TABLE_CELL_REPAIRS[:], TABLE_CONTINUATIONS[:] = saved_events
     return result, unresolved, table_hits, len(tables_by_caption), duplicate_ids, label_fixes_applied, anomalies, marker_audit
 
 
@@ -11584,7 +12310,8 @@ def cmd_parse(args):
     if label_fixes_applied:
         print("  known label fixes applied:")
         for f in label_fixes_applied:
-            status = "OK" if f["hits"] == 1 else f"WARNING: {f['hits']} hits (expected 1)"
+            want = f.get("expect_hits", 1)
+            status = "OK" if f["hits"] == want else f"WARNING: {f['hits']} hits (expected {want})"
             print(f"    {f['old_label']} -> {f['new_label']} (line ~{f['line_hint']}): {status}")
     if duplicate_ids:
         print(f"  WARNING: {len(duplicate_ids)} id(s) were produced by more than one marker "
@@ -11669,7 +12396,8 @@ def _norm_for_compare(s: str) -> str:
     unit" means...' vs parsed '"Affected unit" means...' (same text) — that
     would otherwise misclassify hundreds of purely-cosmetic rows as
     "different" instead of "identical"."""
-    s = re.sub(r"<[^>]+>", "", s or "")
+    s = _SIC_SPAN_RE.sub("", s or "")  # the [sic] marker is an EssentialRegs note, not text
+    s = re.sub(r"<[^>]+>", "", s)
     s = _FURNITURE_COMPARE_RE.sub(" ", s)
     s = s.translate(_QUOTE_COMPARE_TABLE)
     return re.sub(r"\s+", " ", s).strip()
@@ -12075,7 +12803,8 @@ def cmd_diff(args):
         lines.append("| line ~ | printed (wrong) | corrected to | hits | note |")
         lines.append("|---|---|---|---|---|")
         for f in label_fixes:
-            status = "OK (1)" if f["hits"] == 1 else f"**{f['hits']}** — needs review"
+            want = f.get("expect_hits", 1)
+            status = f"OK ({want})" if f["hits"] == want else f"**{f['hits']}** — needs review (expected {want})"
             note = f["note"].replace("|", "\\|")
             lines.append(f"| {f['line_hint']} | `{f['old_label']}` | `{f['new_label']}` | {status} | {note} |")
         lines.append("")
@@ -12392,8 +13121,11 @@ def _visible_text(text: str) -> str:
     space): an xref span/anchor inserted flush against punctuation
     ("Regulation</a>." vs "Regulation.") must read as the same visible text
     -- replacing the tag with a space turned every such new link into a false
-    "visible text changed" (Reg 6 IX.C on the batch-4 re-import)."""
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", text or "")).strip()
+    "visible text changed" (Reg 6 IX.C on the batch-4 re-import). The [sic]
+    marker span (SIC_MARKER_HTML) is removed with its text first: it is an
+    EssentialRegs note, so adding one is markup-only and keeps the row's
+    summary and review state."""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", _SIC_SPAN_RE.sub("", text or ""))).strip()
 
 
 def classify_apply(parsed: list[dict], db: list[dict]) -> dict:

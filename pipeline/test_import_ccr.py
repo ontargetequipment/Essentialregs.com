@@ -950,10 +950,14 @@ class DottedCfrCitationTests(unittest.TestCase):
         )
         self.assertIn('href="/regulations/oooob">40 CFR Part 60, Subpart OOOOb</a>', html)
 
-    def test_other_regs_keep_the_undotted_tokenizer(self):
-        self.assertNotIn("7", ic.CFR_DOTTED_REGS)
+    def test_other_regs_use_the_dotted_tokenizer_too(self):
+        # Sprint 3 (Oct 2026): the dotted tokenizer runs for every document,
+        # so Reg 7 buckets the dotted Part 61 cite and links OOOOb like Reg 8.
         html, buckets = ic.link_citations(self.TEXT, "7", {"sec-7-top-REG-7"}, set(ic.CORPUS_REGS), "A")
-        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {})
+        self.assertEqual(
+            dict(buckets[ic.BUCKET_CFR]),
+            {"40 C.F.R. Part 63, Subpart M": 1, "40 C. F. R. Part 63, Subparts F": 1},
+        )
         self.assertIn('href="/regulations/oooob">40 CFR Part 60, Subpart OOOOb</a>', html)
 
 
@@ -1621,9 +1625,11 @@ class Reg6FlatEntryPartTests(unittest.TestCase):
 
     def test_cfr_part_60_subpart_citation_links_to_own_entry(self):
         ib = self.by_id["sec-6-B-I-B"]["full_text"]
-        # Singular "Subpart" form only is claimed by CFR_RE; the plural list is
-        # linked by the flat-subpart step (IIII has no entry here -> plain).
-        self.assertIn("40 CFR Part 60, Subparts IIII or JJJJ", ib.replace('<span class="xref" data-target="sec-6-P-A">', "").replace("</span>", ""))
+        # Sprint 3: the plural list "Subparts IIII or JJJJ" links each code
+        # that is a corpus document to it (the corpus engine rules win over
+        # the flat entries, as the singular form always did).
+        self.assertIn('<a class="xref-external-reg" href="/regulations/iiii">40 CFR Part 60, Subparts IIII</a> or '
+                      '<a class="xref-external-reg" href="/regulations/jjjj">JJJJ</a>', ib)
         da = self.by_id["sec-6-A-SUBPART-Da"]["full_text"]
         self.assertIn('<span class="xref" data-target="sec-6-A-SUBPART-Da">40 CFR Part 60, Subpart Da</span>', da)
         self.assertEqual(self.unresolved[ic.BUCKET_CFR].get("40 CFR Part 60, Subpart Da", 0), 0)
@@ -3565,7 +3571,7 @@ class GeneralPermitFullParseTests(unittest.TestCase):
     }
     EXPECTED_ROW_COUNT = {
         "gp01": 103, "gp02": 210, "gp03": 59, "gp05": 111, "gp06": 174,
-        "gp07": 124, "gp08": 119, "gp09": 251, "gp10": 254, "gp11": 129, "gp12": 540,
+        "gp07": 124, "gp08": 119, "gp09": 251, "gp10": 254, "gp11": 129, "gp12": 541,
     }
 
     _CACHE: dict = {}
@@ -4641,12 +4647,13 @@ class Reg12MetaTests(unittest.TestCase):
                      "Amend the regulation"):
             self.assertIsNone(cfg["top_opener_re"].match(text), text)
 
-    def test_dotted_cfr_gate_includes_12_only_additively(self):
-        self.assertIn("12", ic.CFR_DOTTED_REGS)
-        self.assertIn("8", ic.CFR_DOTTED_REGS)
-        # Reg 26 joined on 4 Oct 2026 (Reg26SubpartJjjjLinkTests); Reg 7 has not.
-        self.assertIn("26", ic.CFR_DOTTED_REGS)
-        self.assertNotIn("7", ic.CFR_DOTTED_REGS)
+    def test_dotted_cfr_tokenizer_is_universal(self):
+        # Regs 8, 12, 19 and 26 opted in one by one; since Sprint 3 (Oct
+        # 2026) the dotted tokenizer is the only one, so the gate is gone.
+        self.assertFalse(hasattr(ic, "CFR_DOTTED_REGS"))
+        html, _ = ic.link_citations("<p>see 40 C.F.R. Part 85, Subpart V</p>", "12", {"sec-12-top-REG-12"},
+                                    set(ic.CORPUS_REGS))
+        self.assertNotIn("<a", html)
 
 
 class Reg12BareLowerRomanCycleTests(unittest.TestCase):
@@ -6026,7 +6033,9 @@ class Reg27FullParseTests(unittest.TestCase):
         self.assertIn('<a class="xref-external-reg" href="/regulations/25">Regulation Number 25</a>',
                       self.by_id["sec-27-E-III"]["full_text"])
         self.assertEqual(dict(self.unresolved["other_reg"]), {})
-        self.assertEqual(set(self.unresolved["cfr"]), {"40 CFR Part 98", "40 CFR Part 98, Subpart A"})
+        # Sprint 3: the dotted tokenizer runs everywhere, so the one dotted
+        # "40 C.F.R. Part 60" mention is bucketed too.
+        self.assertEqual(set(self.unresolved["cfr"]), {"40 CFR Part 98", "40 CFR Part 98, Subpart A", "40 C.F.R. Part 60"})
         for r in self.rows:
             for tgt in re.findall(r'data-target="([^"]+)"', r["full_text"]):
                 self.assertIn(tgt, self.by_id, (r["id"], tgt))
@@ -6559,7 +6568,8 @@ class RegAqsFullParseTests(unittest.TestCase):
         self.assertIn('<a class="xref-external-reg" href="/regulations/16">Regulation Number 16</a>',
                       self.by_id["sec-aqs-VIII-M"]["full_text"])
         self.assertEqual(sum(r["full_text"].count('href="/regulations/sip"') for r in self.rows), 7)
-        self.assertEqual(set(self.unresolved["cfr"]), {"40 CFR Part 93", "40 CFR Part 58"})
+        # Sprint 3: the dotted "40 C.F.R. Part 50" mentions are bucketed too.
+        self.assertEqual(set(self.unresolved["cfr"]), {"40 CFR Part 93", "40 CFR Part 58", "40 C.F.R. Part 50"})
         self.assertEqual(set(self.unresolved["unparseable"]), {"V.a.1.", "III.E."})
 
     def test_no_repeated_paragraph_prefix_and_no_giant_rows(self):
@@ -7305,7 +7315,8 @@ class Batch6SmallFullParseTests(unittest.TestCase):
                                               "Adopted: February 21, 2002", "April 17, 2003",
                                               "Adopted February 6, 2007", "Adopted October 18, 2012")):
             self.assertTrue(by_id[f"sec-18-II-{letter}"]["full_text"].startswith(f"<p>{opener}</p>"), letter)
-        self.assertEqual(dict(unresolved["cfr"]), {"40 CFR Part 72": 1})
+        # Sprint 3: the six dotted "40 C.F.R. Part 72" mentions are bucketed too.
+        self.assertEqual(dict(unresolved["cfr"]), {"40 CFR Part 72": 1, "40 C.F.R. Part 72": 6})
         self.assertEqual(fixes, [])
 
     def test_sip(self):
@@ -7454,7 +7465,6 @@ class Reg19MetaTests(unittest.TestCase):
         self.assertNotIn("19", ic.FLAT_ENTRY_PART_CONFIG)
 
     def test_reg_scoped_sets(self):
-        self.assertIn("19", ic.CFR_DOTTED_REGS)
         self.assertIn("19", ic.APPENDIX_HEADING_DEDUP_REGS)
         self.assertEqual({e["row_id"] for e in ic.LAYOUT_TEXT_TABLES["19"]},
                          {"sec-19-A-V-A-5-c", "sec-19-A-APPENDIX-A"})
@@ -7463,15 +7473,15 @@ class Reg19MetaTests(unittest.TestCase):
         self.assertNotIn("19", ic.KNOWN_TEXT_FIXES)
         self.assertNotIn("19", ic.KNOWN_CONTINUATION_LINES)
 
-    def test_dotted_cfr_part_745_is_bucketed_for_reg_19_only(self):
+    def test_dotted_cfr_part_745_is_bucketed_and_never_linked(self):
         text = "<p>authorized by EPA under 40 C.F.R. Part 745, Subpart Q the training program manager</p>"
         out19, unresolved19 = ic.link_citations(text, "19", {"sec-19-top-REG-19"}, set(ic.CORPUS_REGS))
         self.assertEqual(out19, text)  # Part 745 is not in the corpus: plain text, but bucketed
         self.assertEqual(dict(unresolved19["cfr"]), {"40 C.F.R. Part 745, Subpart Q": 1})
-        # Reg 7 keeps the undotted tokenizer (Reg 26 joined CFR_DOTTED_REGS on 4 Oct 2026).
+        # Since Sprint 3 every document reads the dotted form the same way.
         out7, unresolved7 = ic.link_citations(text, "7", {"sec-7-top-REG-7"}, set(ic.CORPUS_REGS))
         self.assertEqual(out7, text)
-        self.assertEqual(dict(unresolved7["cfr"]), {})
+        self.assertEqual(dict(unresolved7["cfr"]), {"40 C.F.R. Part 745, Subpart Q": 1})
 
 
 class Reg19LabelFixTests(unittest.TestCase):
@@ -8743,7 +8753,7 @@ class Reg21MetaTests(unittest.TestCase):
     def test_table_configs_are_reg_21_only(self):
         self.assertEqual(ic.ITEM_TABLE_SPLICE_MODE["21"], "merge_continuations")
         self.assertIn("21", ic.ITEM_TABLE_SPLICE_REGS)
-        self.assertEqual(set(ic.TABLE_CAPTION_SPANS), {"21"})
+        self.assertEqual(set(ic.TABLE_CAPTION_SPANS), {"21", "gp12"})  # gp12: Table 7 (Sprint 3)
         entries = ic.TABLE_CAPTION_SPANS["21"]
         self.assertEqual([e["caption"] for e in entries], [
             "Table 1 – VOC content limits for consumer products",
@@ -9057,7 +9067,9 @@ class Reg21FullParseTests(unittest.TestCase):
         self.assertEqual(dict(self.unresolved["other_reg"]), {})
         self.assertEqual(dict(self.unresolved["historical"]), {})
         self.assertEqual(dict(self.unresolved["unparseable"]), {})
-        self.assertEqual(dict(self.unresolved["cfr"]), {"40 CFR Part 59": 3, "40 CFR Part 60": 2})
+        # Sprint 3: the universal dotted tokenizer reads the plural "Subparts C
+        # and D" form, so the bucket label carries the first code.
+        self.assertEqual(dict(self.unresolved["cfr"]), {"40 CFR Part 59, Subparts C": 3, "40 CFR Part 60": 2})
         # Reg 21 cites no other NUMBERED corpus regulation; the only external
         # anchors are the two Batch 7 "proc" ones in its Part C statements of
         # basis (". . . and the Air Quality Control Commission's (Commission)
@@ -9364,7 +9376,8 @@ class ProcEndToEndTests(unittest.TestCase):
         # so the bucket is empty and the three links are asserted instead.
         self.assertEqual(dict(self.unresolved["other_reg"]), {})
         self.assertEqual(sum(r["full_text"].count('href="/regulations/10"') for r in self.rows), 3)
-        self.assertEqual(dict(self.unresolved["cfr"]), {})
+        # Sprint 3: the dotted "40 C.F.R. Part 52, Subpart G" mentions are bucketed.
+        self.assertEqual(dict(self.unresolved["cfr"]), {"40 C.F.R. Part 52, Subpart G": 2})
         # stale internal references to sections this edition no longer prints
         self.assertIn("V.F.13.", self.unresolved["unparseable"])
 
@@ -9883,7 +9896,6 @@ class Batch7SmallConfigTests(unittest.TestCase):
             self.assertNotIn(key, ic.SOB_SECTION_CONFIG)
             self.assertNotIn(key, ic.KNOWN_CONTINUATION_LINES)
             self.assertNotIn(key, ic.KNOWN_LABEL_ANOMALIES)
-            self.assertNotIn(key, ic.CFR_DOTTED_REGS)
             self.assertNotIn(key, ic.BARE_DIGIT_CHILD_SECTIONS)
             self.assertNotIn(key, ic.TERM_DEFINITIONS_SECTION)
 
@@ -10276,7 +10288,7 @@ class Reg23MetaTests(unittest.TestCase):
                     ic.SOB_CONTEXT_PART_RE, ic.TERM_DEFINITIONS_SECTION, ic.BARE_DIGIT_CHILD_SECTIONS):
             self.assertNotIn("23", cfg)
         for s in (ic.BARE_LADDER_REGS, ic.SIBLING_CHAIN_REGS, ic.LIST_OR_SIBLING_REGS,
-                  ic.PART_COMMA_CITATION_REGS, ic.CFR_DOTTED_REGS, ic.MULTI_CAPTION_PAGE_REGS,
+                  ic.PART_COMMA_CITATION_REGS, ic.MULTI_CAPTION_PAGE_REGS,
                   ic.APPENDIX_HEADING_DEDUP_REGS, ic.CALIFORNIA_CCR_REGS, ic.ECFR_REGS):
             self.assertNotIn("23", s)
         self.assertIs(ic.family_regex_for("23"), ic.FAMILY_REGEX)
@@ -11116,7 +11128,8 @@ class Reg31FullParseTests(unittest.TestCase):
         # resolves because the label fix restored the row it names.
         self.assertEqual(dict(self.unresolved["unparseable"]), {"II.B.2.a.": 1})
         self.assertEqual(dict(self.unresolved["cfr"]),
-                         {"40 CFR Part 60": 20, "40 CFR Part 60, Subpart Cf": 7,
+                         {"40 CFR Part 60": 19, "40 C.F.R. Part 60": 1, "40 CFR Part 60, Subpart Cf": 7,
+                          "40 CFR Part 60, Subparts Cf": 1,
                           "40 CFR Part 63, Subpart AAAA": 2, "40 CFR Part 98, Subpart HH": 1,
                           "40 CFR Part 98, Subpart A": 1})
 
@@ -12027,10 +12040,10 @@ class Reg26SubpartJjjjLinkTests(unittest.TestCase):
     copy of 40 CFR 60 Subpart JJJJ under Part C; the sentences that cite the
     subpart link to the corpus's own JJJJ document instead. Three forms the
     Reg 26 print uses, each gated to Reg 26 so no other regulation's output
-    moves: the dotted "40 C.F.R. Part 60, Subpart JJJJ" (CFR_DOTTED_REGS),
-    the code list "40 C.F.R. Part 60, JJJJ, IIII" (CFR_PART_SUBPART_LIST_REGS)
-    and the bare "NSPS JJJJ" of the statements of basis
-    (PROGRAM_BARE_SUBPART_REGS)."""
+    moves: the dotted "40 C.F.R. Part 60, Subpart JJJJ", the code list
+    "40 C.F.R. Part 60, JJJJ, IIII" and the bare "NSPS JJJJ" of the
+    statements of basis. Sprint 3 (Oct 2026) enabled all three for every
+    document; see test_the_three_rules_run_for_every_document."""
 
     CORPUS = set(ic.CORPUS_REGS)
 
@@ -12095,14 +12108,22 @@ class Reg26SubpartJjjjLinkTests(unittest.TestCase):
         self.assertEqual(html.count('href="/regulations/iiii"'), 2)
         self.assertNotIn("<a", ic.re.sub(r"<a [^>]+>[^<]*</a>", "", html))
 
-    def test_every_new_rule_is_gated_to_reg_26(self):
-        self.assertEqual(ic.CFR_PART_SUBPART_LIST_REGS, frozenset({"26"}))
-        self.assertEqual(ic.PROGRAM_BARE_SUBPART_REGS, frozenset({"26"}))
-        self.assertIn("26", ic.CFR_DOTTED_REGS)
-        # The same three sentences in Reg 7 (which prints "NSPS OOOOa" 73
-        # times) come back exactly as they went in.
-        for text in ("Subject to 40 C.F.R. Part 60, Subpart JJJJ (July 1, 2023).",
-                     "pursuant to 40 C.F.R. Part 60, JJJJ, IIII, or a permit",
-                     "the limit in EPA's NSPS JJJJ and NESHAP ZZZZ"):
-            html, _ = self.link(text, reg="7")
-            self.assertEqual(html, text)
+    def test_the_three_rules_run_for_every_document(self):
+        # Sprint 3 (Oct 2026): the gates (CFR_DOTTED_REGS,
+        # CFR_PART_SUBPART_LIST_REGS, PROGRAM_BARE_SUBPART_REGS) are gone; the
+        # same three sentences in Reg 7 link each corpus subpart once, and a
+        # subpart not in the corpus stays plain text.
+        for name in ("CFR_DOTTED_REGS", "CFR_PART_SUBPART_LIST_REGS", "PROGRAM_BARE_SUBPART_REGS"):
+            self.assertFalse(hasattr(ic, name), name)
+        html, _ = self.link("Subject to 40 C.F.R. Part 60, Subpart JJJJ (July 1, 2023).", reg="7")
+        self.assertIn('href="/regulations/jjjj">40 C.F.R. Part 60, Subpart JJJJ</a>', html)
+        html, _ = self.link("pursuant to 40 C.F.R. Part 60, JJJJ, IIII, or a permit", reg="7")
+        self.assertIn('href="/regulations/jjjj">JJJJ</a>', html)
+        self.assertIn('href="/regulations/iiii">IIII</a>', html)
+        self.assertEqual(html.count("<a "), 2)
+        html, _ = self.link("the limit in EPA's NSPS JJJJ and NESHAP ZZZZ and NSPS KKKK", reg="7")
+        self.assertIn('href="/regulations/jjjj">NSPS JJJJ</a>', html)
+        self.assertIn('href="/regulations/zzzz">NESHAP ZZZZ</a>', html)
+        self.assertNotIn("KKKK</a>", html)
+        html, _ = self.link("see 40 C.F.R. Part 60, Subpart KKKK", reg="7")
+        self.assertNotIn("<a", html)

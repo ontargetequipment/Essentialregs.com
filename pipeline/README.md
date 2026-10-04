@@ -358,6 +358,60 @@ links to the part root), and the first section of a list carries the
   old code> --out pipeline/out/sprint2_link_changes.md` (the importer has no
   link-only mode; this compares old and new parses of the same sources).
 
+### Official text, EssentialRegs notes and the text checks (Sprint 3, Oct 2026)
+
+The official text is never altered. Three curated files and two checks keep
+that true while fixing what text extraction gets wrong:
+
+- **`pipeline/curated_equations.json`** — hand transcriptions of the equations
+  the GP PDFs set in Cambria Math (pdftotext renders them as doubled
+  math-italic glyphs). Keyed by provision id; each entry names the PDF page
+  and holds, per equation, display markup (`html`, plain HTML: span/var/sub/
+  sup with stacked fractions) and the same formula as copyable plain text
+  (`text`). `parse` swaps a row's math-glyph lines for the block
+  (`_swap_equation_lines`); a row with glyph lines and no entry is listed as
+  an anomaly in the diff report, and an entry that matched no glyph line
+  reports 0 hits. Today: GP12 III.F.3 and IV.A.6.b (one equation each),
+  GP06 IV.C.1.b.(i) and (ii) (Eq. 1.a-1.e, 2.a-2.e). Every transcription was
+  checked against the page image and the glyph letter counts; typos printed
+  in the source (`FuelRrate`, `hhr`) are kept and carry a [sic] marker.
+- **`pipeline/curated_sic.json`** — typos printed in the official document.
+  The text stays exactly as printed; `parse` adds
+  `<span class="er-sic" title="Printed this way in the official document."> [sic]</span>`
+  after the printed string (`apply_sic_markers`; hits must equal `expect`,
+  default 1). The diff and apply steps treat the span as markup (`_visible_text`,
+  `_norm_for_compare`), so adding a marker never resets a summary. Only plain
+  typos belong here, never unusual wording.
+- **`KNOWN_SPACING_FIXES`** (in `import_ccr.py`) — pdftotext renders
+  letter-spaced justified text one glyph per word ("t h e f o l l o w i n g").
+  Each entry re-spaces one printed run; `apply_known_text_fixes` refuses an
+  entry whose letters and digits would change (`spacing_only`), so a fix can
+  only move whitespace. The same table carries two whitespace-only label
+  repairs (GP12 VI.E.5.i re-indented, GP05 VIII.C.1.a unfused).
+- **General-permit tables** — the caption walk now follows a table onto the
+  page(s) that reprint its header without its caption, reads a caption whose
+  table starts on the next page, assigns two captions on one page in order,
+  keeps the footnotes printed under a table (`p.table-footnote`) and the prose
+  that follows it in the same row, shows a caption's wrapped last line, and
+  re-reads a cell whose subscript or superscript pdfplumber split onto its own
+  line ("NO (g/hp-hr)\nX" -> `NO<sub>X</sub> (g/hp-hr)`). All of it is logged
+  in the diff report's corrections table. Scoped to the general permits
+  (`GP_KEYS` / `SUBSCRIPT_REJOIN_REGS`) so no other regulation's baselined
+  output moves; the table-continuation rule runs for every regulation (it
+  changed nothing outside the GPs on 4 Oct 2026).
+- **`python pipeline/source_text_check.py --all-gp --parsed-dir pipeline/out --out pipeline/out/sprint3_source_text_check.md`**
+  — the extraction diff check: each general permit's stored text against the
+  body of its pdftotext source, word by word, letters and digits only.
+  Spacing differences and table cell order are free; anything else is an
+  extraction difference, known (listed in `KNOWN_DIFFERENCES` with a reason)
+  or unknown (exit 1). `test_sprint3_text.py` runs it on every GP. Pass
+  `--db-json` to check the live rows (`import_ccr.py export`) instead of a
+  parse.
+- **`text_artifacts()`** / corpus QA checks 22-24 (`scripts/corpus_qa.sql`) —
+  math glyphs, split-letter runs and stray Markdown in official text must be
+  zero, at parse time (an anomaly in the diff report, a failing GP test) and
+  in the database (the qa job).
+
 ### The `--execute` path
 
 `import_ccr.py apply` also accepts `--execute --yes`, which performs the
