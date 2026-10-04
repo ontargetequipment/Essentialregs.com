@@ -1,4 +1,5 @@
 import "server-only";
+import { readerHrefFor } from "@/lib/provision-href";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccessStatus } from "@/lib/access";
@@ -95,9 +96,9 @@ export function regLabel(regKey: string | null): string {
   return regKey ? regulationDisplayName(regKey) : "";
 }
 
-/** Reader link for a hit; mirrors hrefFor() on the keyword search page. */
+/** Reader link for a hit (readerHrefFor in provision-href.ts, shared with the keyword search page). */
 export function hrefForHit(hit: Pick<SemanticHit, "id" | "reg_key">): string {
-  return hit.reg_key ? `/regulations/${hit.reg_key}#${hit.id}` : `/regs/${hit.id}`;
+  return readerHrefFor(hit);
 }
 
 /**

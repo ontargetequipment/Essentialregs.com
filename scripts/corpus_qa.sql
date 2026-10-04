@@ -512,15 +512,15 @@ checks as (
   where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not like 'Claude (%')
 
   union all
-  select 22, 'GUARD', 'math_glyphs_in_text', count(*), 4,
-         'Sprint 3 (Oct 2026), GP equations. BASELINE 4 = production before the Sprint 3 re-import (PR #50: GP12 III.F.3, IV.A.6.b, GP06 IV.C.1.b.(i), (ii)); the follow-up PR sets it to 0 once gp06 and gp12 are re-imported. The GP PDFs set their equations in Cambria Math and pdftotext renders them as doubled math-italic glyphs (U+1D400-U+1D7FF, italic h U+210E) and U+FFFD boxes; the importer now swaps those lines for the curated transcriptions in pipeline/curated_equations.json. Counts rows whose tag-stripped text still carries such a glyph. Expect 0 (was 4: GP12 III.F.3, IV.A.6.b, GP06 IV.C.1.b.(i), (ii)). When above 0, add the transcription to the curated file and re-import; never edit the row by hand.'
+  select 22, 'GUARD', 'math_glyphs_in_text', count(*), 0,
+         'Sprint 3 (Oct 2026), GP equations. Was 4 in production until the Sprint 3 re-import of gp06 and gp12 on 4 Oct 2026 (PR #50); 0 since. The GP PDFs set their equations in Cambria Math and pdftotext renders them as doubled math-italic glyphs (U+1D400-U+1D7FF, italic h U+210E) and U+FFFD boxes; the importer now swaps those lines for the curated transcriptions in pipeline/curated_equations.json. Counts rows whose tag-stripped text still carries such a glyph. Expect 0 (was 4: GP12 III.F.3, IV.A.6.b, GP06 IV.C.1.b.(i), (ii)). When above 0, add the transcription to the curated file and re-import; never edit the row by hand.'
          || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where regexp_replace(full_text, '<[^>]+>', '', 'g') ~ '[\U0001D400-\U0001D7FF\u210E\uFFFD]' order by id limit 30) r), '')
   from provisions
   where regexp_replace(full_text, '<[^>]+>', '', 'g') ~ '[\U0001D400-\U0001D7FF\u210E\uFFFD]'
 
   union all
-  select 23, 'GUARD', 'split_letter_runs', count(*), 10,
-         'Sprint 3 (Oct 2026), split-letter artifacts. BASELINE 10 = production before the Sprint 3 re-import (PR #50: 8 GP01 rows, GP05 VIII.D.2, OOOOa 60.5413a(b)(3)(i)); the follow-up PR sets it to 0 once gp01, gp05 and ooooa are re-imported. pdftotext renders letter-spaced justified text one glyph per word ("t h e f o l l o w i n g", "o w n e r o r o p e r a t o r"); the importer re-spaces every known run (KNOWN_SPACING_FIXES in pipeline/import_ccr.py, letters and digits unchanged) and import_ecfr.py marks the OOOOa equation subscripts. Counts rows whose tag-stripped text has four or more single letters in a row separated by single spaces. Expect 0 (was 10 GP rows plus OOOOa 60.5413a(b)(3)(i)). When above 0, add a spacing fix for the printed run and re-import.'
+  select 23, 'GUARD', 'split_letter_runs', count(*), 0,
+         'Sprint 3 (Oct 2026), split-letter artifacts. Was 10 in production (8 GP01 rows, GP05 VIII.D.2, OOOOa 60.5413a(b)(3)(i)) until the Sprint 3 re-import on 4 Oct 2026 (PR #50); 0 since. pdftotext renders letter-spaced justified text one glyph per word ("t h e f o l l o w i n g", "o w n e r o r o p e r a t o r"); the importer re-spaces every known run (KNOWN_SPACING_FIXES in pipeline/import_ccr.py, letters and digits unchanged) and import_ecfr.py marks the OOOOa equation subscripts. Counts rows whose tag-stripped text has four or more single letters in a row separated by single spaces. Expect 0 (was 10 GP rows plus OOOOa 60.5413a(b)(3)(i)). When above 0, add a spacing fix for the printed run and re-import.'
          || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where regexp_replace(full_text, '<[^>]+>', '', 'g') ~ '(?<![A-Za-z])(?:[A-Za-z] ){4,}[A-Za-z](?![A-Za-z])' order by id limit 30) r), '')
   from provisions
   where regexp_replace(full_text, '<[^>]+>', '', 'g') ~ '(?<![A-Za-z])(?:[A-Za-z] ){4,}[A-Za-z](?![A-Za-z])'

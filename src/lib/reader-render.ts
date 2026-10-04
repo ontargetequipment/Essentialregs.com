@@ -112,7 +112,7 @@ export function renderNavHtml(all: Provision[], tree?: Pick<Tree, "childrenOf" |
 }
 
 export function renderDocHtml(all: Provision[], tree?: Tree): string {
-  const { root, byId } = tree ?? buildTree(all);
+  const { root, byId, childrenOf } = tree ?? buildTree(all);
   if (!root) return "";
   const depthCache = new Map<string, number>();
 
@@ -128,7 +128,16 @@ export function renderDocHtml(all: Provision[], tree?: Tree): string {
   for (let i = 0; i < all.length; i++) {
     const p = all[i];
     const kind = treeRows[i].kind;
-    const summary = summaryPanelHtml(p, root.source_url);
+    // A parent's panel lists its direct children (citation + first words)
+    // under the two-sentence overview; see summaryPanelHtml.
+    const kids = childrenOf.get(p.id);
+    const summary = summaryPanelHtml(
+      p,
+      root.source_url,
+      kids && kids.length
+        ? kids.map((c) => ({ id: c.id, citation: c.citation, snippet: snippetAfterCitation(c.full_text, c.citation, 60) }))
+        : undefined
+    );
 
     // Invisible attributes the browser rebuilds the furniture from.
     let attrs = ` data-citation="${escapeHtml(p.citation)}"`;

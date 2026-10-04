@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { SearchTabs } from "@/components/SearchTabs";
+import { askHref, keywordHref, SEARCH_BOX_ID } from "@/lib/search-hrefs";
+import { readerHrefFor } from "@/lib/provision-href";
 import { SummaryBadge } from "@/components/SummaryBadge";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
@@ -39,7 +42,7 @@ type Mode = "keyword" | "ask";
 
 /** Where a keyword hit links: the reader (scroll + flash on the hash) when the id belongs to a regulation, else the standalone card. */
 function hrefFor(hit: SearchHit): string {
-  return hit.reg_key ? `/regulations/${hit.reg_key}#${hit.id}` : `/regs/${hit.id}`;
+  return readerHrefFor(hit);
 }
 
 /**
@@ -74,25 +77,7 @@ function first(v: string | string[] | undefined): string {
   return (Array.isArray(v) ? v[0] : v) ?? "";
 }
 
-/** Keyword-tab URL for a query, keeping the Statements-of-Basis toggle (?basis=1) only when it is on. */
-function keywordHref(q: string, includeBasis: boolean): string {
-  const params = new URLSearchParams();
-  if (q) params.set("q", q);
-  if (includeBasis) params.set("basis", "1");
-  const qs = params.toString();
-  return qs ? `/search?${qs}` : "/search";
-}
-
-/** Ask-tab URL keeping the jurisdiction / regulation chips, ?basis=1 only when it is on, and ?flat=1 only when the visitor asked for the flat list. */
-function askHref(q: string, includeBasis: boolean, jurisdiction: string | null = null, reg = "", flat = false): string {
-  const params = new URLSearchParams({ mode: "ask" });
-  if (q) params.set("q", q);
-  if (jurisdiction) params.set("j", jurisdiction);
-  if (reg) params.set("reg", reg);
-  if (includeBasis) params.set("basis", "1");
-  if (flat) params.set("flat", "1");
-  return `/search?${params.toString()}`;
-}
+// keywordHref / askHref live in src/lib/search-hrefs.ts (shared with the client tablist, SearchTabs).
 
 /** The review state of a summary, for the badge beside it (and, on the keyword page, the summary itself). */
 type ReviewRow = { id: string; ai_summary: string | null; summary_status: string | null; reviewed_at: string | null };
@@ -471,11 +456,6 @@ export default async function SearchPage(props: PageProps<"/search">) {
     }
   }
 
-  const tabClass = (active: boolean) =>
-    `rounded-md px-3 py-1.5 text-sm font-medium transition ${
-      active ? "bg-accent text-white" : "text-ink-soft hover:bg-accent-soft hover:text-ink"
-    }`;
-
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">Search</h1>
@@ -483,14 +463,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
       {/* The Keyword / Ask tabs, for every visitor (restored 3 Oct 2026; see
           the note above). The Ask tab of a visitor without a subscription
           leads to ?mode=ask, where the not-subscribed notice explains. */}
-      <div className="mt-4 inline-flex gap-1 rounded-lg border border-line bg-panel p-1" role="tablist">
-        <Link href={keywordHref(q, includeBasis)} className={tabClass(mode === "keyword")} role="tab" aria-selected={mode === "keyword"}>
-          Keyword
-        </Link>
-        <Link href={askHref(q, includeBasis)} className={tabClass(mode === "ask")} role="tab" aria-selected={mode === "ask"}>
-          Ask
-        </Link>
-      </div>
+      <SearchTabs mode={mode} q={q} includeBasis={includeBasis} />
 
       {mode === "keyword" ? (
         <p className="mt-3 text-sm text-ink-soft">
@@ -516,6 +489,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
         {includeBasis && <input type="hidden" name="basis" value="1" />}
         <div className="flex gap-2">
           <input
+            id={SEARCH_BOX_ID}
             type="search"
             name="q"
             defaultValue={q}

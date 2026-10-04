@@ -334,6 +334,37 @@ test.describe("anonymous", () => {
     expect(await page.locator("body").innerText()).not.toMatch(/\bbeta\b/i);
   });
 
+  test("clicking the Ask tab switches the page on click (not only on Enter), carries the typed query, and Keyword switches back", async ({ page }) => {
+    // Sprint 3: the tabs are links whose click navigates right away with
+    // whatever is in the search box at that moment (SearchTabs.tsx).
+    const res = await page.goto("/search?q=emissions");
+    expect(res?.status()).toBe(200);
+    const tabs = page.getByRole("tablist").getByRole("tab");
+    await expect(tabs.nth(0)).toHaveAttribute("aria-selected", "true");
+    // Type a different question, then click Ask: the Ask page opens with
+    // that question, no Enter pressed.
+    // #search-query is the page's own box; the header has a search box too.
+    await page.locator("#search-query").fill("do I need a permit for a flare");
+    await tabs.nth(1).click();
+    await page.waitForURL((url) => url.searchParams.get("mode") === "ask", { timeout: 15_000 });
+    expect(new URL(page.url()).searchParams.get("q")).toBe("do I need a permit for a flare");
+    const askTabs = page.getByRole("tablist").getByRole("tab");
+    await expect(askTabs.nth(1)).toHaveAttribute("aria-selected", "true");
+    await expect(askTabs.nth(0)).toHaveAttribute("aria-selected", "false");
+    await expect(page.locator("#search-query")).toHaveValue("do I need a permit for a flare");
+    // The Ask content is on the page: the submit button reads "Ask" and a
+    // visitor who is not logged in sees the subscription notice.
+    await expect(page.getByRole("button", { name: "Ask", exact: true })).toBeVisible();
+    await expect(page.getByText("Ask is part of the subscription.", { exact: false })).toBeVisible();
+    // Keyword switches back on click too, keeping the query.
+    await askTabs.nth(0).click();
+    await page.waitForURL((url) => url.searchParams.get("mode") === null && url.searchParams.get("q") === "do I need a permit for a flare", {
+      timeout: 15_000,
+    });
+    await expect(page.getByRole("tablist").getByRole("tab").nth(0)).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("button", { name: "Search", exact: true })).toBeVisible();
+  });
+
   test("/search?mode=ask tells a visitor who is not a subscriber that Ask is part of the subscription", async ({ page }) => {
     const res = await page.goto("/search?mode=ask");
     expect(res?.status()).toBe(200);
