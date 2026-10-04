@@ -82,13 +82,25 @@ jobs:
           echo "Running: python review.py ${ARGS[*]}"
           python review.py "${ARGS[@]}"
 
-      - name: Report to the job summary
+      - name: Report to the job summary and the job log
+        # The log copy is what a reviewer without artifact access reads (the
+        # artifact store is an Azure blob host some networks deny): every
+        # corrected row with before / after / reasons and every failed row
+        # with its reason, straight from the same report.
         if: always()
         run: |
           if [ -f out/review_report.md ]; then
             head -c 60000 out/review_report.md >> "$GITHUB_STEP_SUMMARY"
+            echo "::group::review_report.md"
+            cat out/review_report.md
+            echo "::endgroup::"
           else
             echo "No report written (an earlier step failed)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f review_failed.jsonl ]; then
+            echo "::group::review_failed.jsonl"
+            cat review_failed.jsonl
+            echo "::endgroup::"
           fi
 
       - name: Upload report
