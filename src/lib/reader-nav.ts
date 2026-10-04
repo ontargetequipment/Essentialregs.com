@@ -8,6 +8,7 @@
  */
 import type { ReaderModel, ReaderRow } from "@/lib/reader-client";
 import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
+import { SOURCE_DATES, type SourceDate } from "@/lib/source-dates.generated";
 import { PROVISION_ID } from "@/lib/types";
 
 /** Ancestor labels the popup eyebrow prints before eliding the middle. */
@@ -206,6 +207,92 @@ export function renumberedNote(originName: string, cited: string, currentCitatio
   const current = (currentCitation ?? "").trim().replace(/\.$/, "");
   const head = `${originName} cites this as Section ${cited};`;
   return current ? `${head} in the current ${targetName} it is ${current}.` : `${head} the current ${targetName} numbers it differently.`;
+}
+
+/**
+ * The version of a document we hold (pipeline/sources/manifest.json through
+ * the generated src/lib/source-dates.generated.ts): a rule's effective date,
+ * a permit's issuance date or an eCFR as-of date. null for an unknown key.
+ */
+export function sourceDateOf(key: string | null | undefined): SourceDate | null {
+  if (!key) return null;
+  return SOURCE_DATES[key.toLowerCase()] ?? null;
+}
+
+/** "2026-07-15" -> "07/15/2026", the way the AQCC prints effective dates. Anything else is returned as is. */
+export function formatUsDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : iso;
+}
+
+/**
+ * The effective date a citing provision prints for the regulation it cites,
+ * read from the text that FOLLOWS the clicked link in its paragraph:
+ * "Section I.B.33 and Section II.A.46 (Adopted: 04/18/2025, Effective:
+ * 06/14/2025)" gives "06/14/2025". Only a parenthetical in the next 200
+ * characters counts, and only when nothing between the link and it names
+ * another regulation or a CFR part (then it is that document's date, not
+ * this one's). Dates come back as MM/DD/YYYY, zero-padded; null otherwise.
+ */
+const PRINTED_EFFECTIVE =
+  /^([^]{0,200}?)\(\s*Adopted:?\s*\d{1,2}\/\d{1,2}\/\d{4}\s*[,;]?\s*Effective:?\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*\)/i;
+export function printedEffectiveDate(textAfterLink: string | null | undefined): string | null {
+  if (!textAfterLink) return null;
+  const m = PRINTED_EFFECTIVE.exec(textAfterLink);
+  if (!m) return null;
+  if (/\b(?:Regulation|C\.?F\.?R\.?|C\.R\.S\.|U\.S\.C\.)\b/i.test(m[1])) return null;
+  return `${m[2].padStart(2, "0")}/${m[3].padStart(2, "0")}/${m[4]}`;
+}
+
+/** "GP01 was issued 07/23/2025" / "Regulation 26 took effect 01/14/2026" / "40 CFR Part 60 Subpart OOOOb is current as of 09/10/2026". */
+function datedName(name: string, d: SourceDate): string {
+  const date = formatUsDate(d.date);
+  if (d.kind === "issued") return `${name} was issued ${date}`;
+  if (d.kind === "as_of") return `${name} is current as of ${date}`;
+  return `${name} took effect ${date}`;
+}
+
+/**
+ * The preview popup's version line for a link into another regulation, or
+ * null when none is due: the citing document (`originKey`, this page) must
+ * predate the cited regulation's current date (`targetKey`); a document of
+ * the same age or newer, or one whose date is unknown, gets no line. With
+ * the effective date the citing provision prints for the cited regulation
+ * (`printed`, see printedEffectiveDate):
+ *   "GP12 cites Regulation 7 as effective 06/14/2025; shown is the current
+ *    text, effective 07/15/2026. Numbering may differ."
+ * without one:
+ *   "GP01 was issued 07/23/2025; shown is the current Regulation 7,
+ *    effective 07/15/2026. Numbering may differ."
+ * When the popup also shows the renumbered line (renumberedNote), which
+ * already names both documents and says the numbering moved, the line
+ * names neither again and drops its last sentence:
+ *   "GP12 cites the version effective 06/14/2025; shown is the current
+ *    text, effective 07/15/2026."
+ */
+export function versionNote(
+  originKey: string | null | undefined,
+  targetKey: string | null | undefined,
+  printed: string | null,
+  withRenumbered = false,
+  dates: Readonly<Record<string, SourceDate>> = SOURCE_DATES
+): string | null {
+  if (!originKey || !targetKey) return null;
+  const origin = dates[originKey.toLowerCase()];
+  const target = dates[targetKey.toLowerCase()];
+  if (!origin || !target) return null;
+  if (origin.date >= target.date) return null;
+  const originName = documentShortName(originKey);
+  const targetName = regulationDisplayName(targetKey);
+  const current = `effective ${formatUsDate(target.date)}`;
+  if (withRenumbered) {
+    return printed
+      ? `${originName} cites the version effective ${printed}; shown is the current text, ${current}.`
+      : `${datedName(originName, origin)}; shown is the current text, ${current}.`;
+  }
+  return printed
+    ? `${originName} cites ${targetName} as effective ${printed}; shown is the current text, ${current}. Numbering may differ.`
+    : `${datedName(originName, origin)}; shown is the current ${targetName}, ${current}. Numbering may differ.`;
 }
 
 /**

@@ -12,6 +12,11 @@ Usage:
     python freshness.py --update-manifest KEY        # record current upstream values for KEY
     python freshness.py --update-manifest KEY --fixtures DIR   # same, from fixtures (for tests)
 
+--update-manifest also rewrites src/lib/source-dates.generated.ts (see
+source_dates.py) when it writes the default manifest, so the reader's
+version notes follow the manifest in the same commit; --source-dates PATH
+names another output, --source-dates "" skips it.
+
 Exit codes (for `check`):
     0  -- no changes detected (some sources may have errored -- see the report)
     1  -- at least one source changed (a real upstream update was found)
@@ -39,6 +44,9 @@ TIMEOUT_SECONDS = 10
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_MANIFEST = HERE / "sources" / "manifest.json"
+
+sys.path.insert(0, str(HERE))
+import source_dates  # noqa: E402
 
 SOS_URL_TMPL = (
     "https://www.sos.state.co.us/CCR/DisplayRule.do"
@@ -473,7 +481,21 @@ def cmd_update_manifest(args: argparse.Namespace) -> int:
 
     save_manifest(manifest, manifest_path)
     print(f"Wrote {manifest_path}")
+    dates_path = source_dates_output(args, manifest_path)
+    if dates_path is not None:
+        source_dates.write_source_dates(manifest, dates_path)
+        print(f"Wrote {dates_path} (the reader's version-note dates; see source_dates.py)")
     return 0
+
+
+def source_dates_output(args: argparse.Namespace, manifest_path: Path) -> Optional[Path]:
+    """Where --update-manifest writes the generated reader dates: --source-dates
+    PATH when given ("" disables), else the real src/lib file only when the
+    real manifest was updated (a test's temporary manifest writes nothing)."""
+    explicit = getattr(args, "source_dates", None)
+    if explicit is not None:
+        return Path(explicit) if explicit else None
+    return source_dates.DEFAULT_OUT if manifest_path.resolve() == DEFAULT_MANIFEST.resolve() else None
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -484,6 +506,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--fixtures", default=None, help="directory of saved HTML/JSON fixtures instead of the network")
     p.add_argument("--update-manifest", metavar="KEY", default=None,
                    help="record current upstream values for one manifest key instead of running a full check")
+    p.add_argument("--source-dates", metavar="PATH", default=None,
+                   help="with --update-manifest: where to write the generated reader dates (default: src/lib/source-dates.generated.ts "
+                        "when the default manifest is updated, nothing otherwise; \"\" never writes)")
     p.add_argument("--step-summary", default=None,
                    help="append the markdown report to this file (e.g. $GITHUB_STEP_SUMMARY)")
     return p

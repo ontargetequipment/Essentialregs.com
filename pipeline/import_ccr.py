@@ -4893,7 +4893,8 @@ BUCKET_CROSS_REG = "unresolved_cross_reg"
 # to the one sibling definition that does define that term. Linked there,
 # with the printed section carried in the href (`?cited=I.B.33`) so the
 # reader can say so. Keys: "<source id>\t<citation as printed>\t<linked
-# id>\t<defined term>". See `verify_definition_target`.
+# id>\t<defined term>\t<rule that chose it>" (see DefinitionVerdict.rule).
+# See `verify_definition_target`.
 BUCKET_XREG_RENUMBERED = "renumbered_cross_reg"
 # The same check when NO sibling (or several) defines the cited phrase: the
 # section stays plain text, because an exact-looking link that opens the
@@ -5799,23 +5800,82 @@ def term_matches_phrase(term: str, phrase: str) -> bool:
     return any(p[i:i + len(t)] == t for i in range(len(p) - len(t) + 1))
 
 
+def term_words_in_order(term: str, phrase: str) -> bool:
+    """The word-order-tolerant match: True when every significant word of
+    the defined term occurs in the phrase in the same order, other words
+    allowed between them (singular/plural, case and hyphens tolerated as in
+    `term_matches_phrase`): "Natural Gas-Driven Diaphragm Pump" is in
+    "natural gas-driven diaphragm pneumatic pumps". A contiguous match
+    counts too; an empty term never matches."""
+    t, p = _term_words(term), _term_words(phrase)
+    if not t:
+        return False
+    it = iter(p)
+    return all(any(w == pw for pw in it) for w in t)
+
+
+# How far a renumbering is allowed to have moved a definition for the
+# nearest-number tie-break: a renumbering moves a definition by a few
+# places, not across the list.
+NEAREST_DEFINITION_WINDOW = 5
+
+
+def _definition_number(pid: str) -> int | None:
+    """The ordinal of a definition row from its id ("sec-7-B-II-A-45" -> 45), None when the last segment is not a number."""
+    last = pid.rsplit("-", 1)[-1]
+    return int(last) if last.isdigit() else None
+
+
+def nearest_definition(candidates, target: str, window: int = NEAREST_DEFINITION_WINDOW) -> str | None:
+    """The nearest-number tie-break among several sibling definitions that
+    all match the citing phrase: the one whose number is closest to the
+    cited number (`target`, the row the printed section names today), and
+    only when it is within `window` positions of it AND strictly closer than
+    every other candidate. None (no link) otherwise, and whenever a number
+    cannot be read off an id."""
+    cited = _definition_number(target)
+    if cited is None:
+        return None
+    ranked = []
+    for cid in candidates:
+        n = _definition_number(cid)
+        if n is None:
+            return None
+        ranked.append((abs(n - cited), cid))
+    if not ranked:
+        return None
+    ranked.sort(key=lambda d: (d[0], d[1].encode("utf-8")))
+    best_dist, best = ranked[0]
+    if best_dist > window:
+        return None
+    if len(ranked) > 1 and ranked[1][0] == best_dist:
+        return None
+    return best
+
+
 class DefinitionVerdict(tuple):
-    """(status, target, term, phrase, candidates) from `verify_definition_target`:
-    status "ok" (not a definition, or its term matches), "renumbered" (moved
-    to the one sibling whose term matches; `target`/`term` are that sibling's),
-    or "mismatch" (no link: `candidates` lists the sibling ids that matched,
-    none or several)."""
+    """(status, target, term, phrase, candidates, rule) from
+    `verify_definition_target`: status "ok" (not a definition, or its term
+    matches), "renumbered" (moved to a sibling whose term matches;
+    `target`/`term` are that sibling's and `rule` says which rule chose it:
+    "term" the one sibling whose term occurs in the phrase, "nearest" the
+    nearest-numbered of several, "word_order" the one sibling whose term
+    words occur in order, "word_order_nearest" the nearest-numbered of
+    several such), or "mismatch" (no link: `candidates` lists the sibling
+    ids that matched, none or several, and `rule` says why none was
+    chosen: "none", "equally_near", "too_far")."""
 
     __slots__ = ()
 
-    def __new__(cls, status, target=None, term=None, phrase=None, candidates=()):
-        return tuple.__new__(cls, (status, target, term, phrase, tuple(candidates)))
+    def __new__(cls, status, target=None, term=None, phrase=None, candidates=(), rule=None):
+        return tuple.__new__(cls, (status, target, term, phrase, tuple(candidates), rule))
 
     status = property(lambda self: self[0])
     target = property(lambda self: self[1])
     term = property(lambda self: self[2])
     phrase = property(lambda self: self[3])
     candidates = property(lambda self: self[4])
+    rule = property(lambda self: self[5])
 
 
 def verify_definition_target(text: str, mention_start: int | None, reg: str, target: str,
@@ -5827,8 +5887,18 @@ def verify_definition_target(text: str, mention_start: int | None, reg: str, tar
     - The sentence names the defined phrase ("X as defined in ...", "the
       definition of X in ..."): "ok" when the target's term occurs in the
       phrase; otherwise the target's siblings (the same definitions list:
-      ids sharing its parent) are searched for terms that occur in the
-      phrase -- exactly one gives "renumbered", none or several "mismatch".
+      ids sharing its parent) are searched, in this order, and the search
+      must produce exactly one answer or there is no link:
+        1. the siblings whose term occurs in the phrase as a contiguous run
+           of words (`term_matches_phrase`): one -> "renumbered" (rule
+           "term"); several -> the nearest-number tie-break
+           (`nearest_definition`: closest to the cited number, within
+           NEAREST_DEFINITION_WINDOW and strictly closer than every other)
+           -> "renumbered" (rule "nearest") or "mismatch";
+        2. none: the siblings whose term words occur in the phrase in order
+           with other words between them (`term_words_in_order`): one ->
+           "renumbered" (rule "word_order"); several -> the same tie-break
+           (rule "word_order_nearest") or "mismatch"; none -> "mismatch".
     - No such phrase: "ok" when the term occurs anywhere in the paragraph,
       else "mismatch" (no sibling guess without a phrase to check it against)."""
     terms = (defs_index or {}).get(reg) or {}
@@ -5839,18 +5909,30 @@ def verify_definition_target(text: str, mention_start: int | None, reg: str, tar
     if phrase is None:
         if term_matches_phrase(term, text):
             return DefinitionVerdict("ok", target, term)
-        return DefinitionVerdict("mismatch", target, term, None, ())
+        return DefinitionVerdict("mismatch", target, term, None, (), "none")
     if term_matches_phrase(term, phrase):
         return DefinitionVerdict("ok", target, term, phrase)
     parent = target.rsplit("-", 1)[0]
-    hits = sorted(
-        (sid for sid, sterm in terms.items()
-         if sid != target and sid.rsplit("-", 1)[0] == parent and term_matches_phrase(sterm, phrase)),
-        key=lambda s: s.encode("utf-8"),
+    siblings = sorted(
+        ((sid, sterm) for sid, sterm in terms.items() if sid != target and sid.rsplit("-", 1)[0] == parent),
+        key=lambda kv: kv[0].encode("utf-8"),
     )
-    if len(hits) == 1:
-        return DefinitionVerdict("renumbered", hits[0], terms[hits[0]], phrase, hits)
-    return DefinitionVerdict("mismatch", target, term, phrase, hits)
+    for matcher, one_rule, near_rule in ((term_matches_phrase, "term", "nearest"),
+                                         (term_words_in_order, "word_order", "word_order_nearest")):
+        hits = [sid for sid, sterm in siblings if matcher(sterm, phrase)]
+        if not hits:
+            continue
+        if len(hits) == 1:
+            return DefinitionVerdict("renumbered", hits[0], terms[hits[0]], phrase, hits, one_rule)
+        chosen = nearest_definition(hits, target)
+        if chosen:
+            return DefinitionVerdict("renumbered", chosen, terms[chosen], phrase, hits, near_rule)
+        cited_n = _definition_number(target)
+        dists = [abs(_definition_number(h) - cited_n) for h in hits] if cited_n is not None and all(
+            _definition_number(h) is not None for h in hits) else []
+        why = "equally_near" if dists and min(dists) <= NEAREST_DEFINITION_WINDOW else "too_far"
+        return DefinitionVerdict("mismatch", target, term, phrase, hits, why)
+    return DefinitionVerdict("mismatch", target, term, phrase, (), "none")
 
 
 class CrossRegTarget(tuple):
@@ -6100,14 +6182,17 @@ def _emit_xreg_clauses(html_text: str, num: str, clauses: list[dict], corpus_ids
                 linkable = True
                 if XREG_EVENTS is not None:
                     XREG_EVENTS.append((own_id or "", cited_full, "renumbered", verdict.target))
-                buckets[BUCKET_XREG_RENUMBERED]["\t".join((own_id or "?", cited_full, verdict.target, verdict.term))] += 1
+                buckets[BUCKET_XREG_RENUMBERED]["\t".join(
+                    (own_id or "?", cited_full, verdict.target, verdict.term, verdict.rule or ""))] += 1
             else:
                 linkable = False
                 if XREG_EVENTS is not None:
                     XREG_EVENTS.append((own_id or "", cited_full, "definition_mismatch", res.target))
                 detail = verdict.term or ""
                 if verdict.candidates:
-                    detail += " — several siblings match: " + ", ".join(
+                    why = {"equally_near": "two are equally near the cited number",
+                           "too_far": f"none is within {NEAREST_DEFINITION_WINDOW} of the cited number"}.get(verdict.rule, "")
+                    detail += " — several siblings match" + (f" ({why})" if why else "") + ": " + ", ".join(
                         f"{sid} ({defs_index[num][sid]})" for sid in verdict.candidates)
                 buckets[BUCKET_XREG_DEF_MISMATCH]["\t".join(
                     (own_id or "?", cited_full, verdict.phrase if verdict.phrase is not None else "(no defining phrase)", detail))] += 1
@@ -11613,12 +11698,12 @@ def _xref_report_section(reg: str, parsed: list[dict], db: list[dict], parsed_by
         BUCKET_CRS: "C.R.S. statute citation (ECMC) — recognized, deliberately left as plain text",
         BUCKET_OTHER_CCR: "California Code of Regulations, Title 13 (Reg 20) — recognized, deliberately left as plain text",
         BUCKET_CROSS_REG: "Cross-regulation citations that did NOT deep-link to the exact cited provision (linked to the nearest ancestor or the part root, or left unlinked when only the regulation root was left) — fix the citation or the target regulation, or accept the fallback",
-        BUCKET_XREG_RENUMBERED: "Renumbered definition citations: the printed section no longer defines the term the sentence names; linked to the one sibling that does (the href carries `?cited=<printed section>` so the reader says so)",
-        BUCKET_XREG_DEF_MISMATCH: "Definition citations left as plain text: the printed section defines another term and no single sibling defines the cited phrase (none, or several) — an exact-looking link to the wrong definition is worse than no link",
+        BUCKET_XREG_RENUMBERED: "Renumbered definition citations: the printed section no longer defines the term the sentence names; linked to the sibling that does (the href carries `?cited=<printed section>` so the reader says so). Rule: `term` = the one sibling whose term occurs in the phrase; `nearest` = the nearest-numbered of several (within 5, strictly closer than the rest); `word_order` = the one sibling whose term words occur in order with words between; `word_order_nearest` = the nearest-numbered of several such",
+        BUCKET_XREG_DEF_MISMATCH: "Definition citations left as plain text: the printed section defines another term and no single sibling defines the cited phrase (none; or several with none nearest within 5 of the cited number) — an exact-looking link to the wrong definition is worse than no link",
     }
     record_columns = {
         BUCKET_CROSS_REG: ("| source provision | citation as printed | resolution | resolved to | count |", "resolution"),
-        BUCKET_XREG_RENUMBERED: ("| source provision | citation as printed | linked to | defined term | count |", "renumbered"),
+        BUCKET_XREG_RENUMBERED: ("| source provision | citation as printed | linked to | defined term | rule | count |", "renumbered"),
         BUCKET_XREG_DEF_MISMATCH: ("| source provision | citation as printed | cited phrase | the target's term (and the siblings that matched) | count |", "mismatch"),
     }
     if not unresolved_buckets:
@@ -11635,15 +11720,15 @@ def _xref_report_section(reg: str, parsed: list[dict], db: list[dict], parsed_by
             lines.append(f"**{bucket_titles[bucket]}** — {len(items)} distinct, {total_mentions} mentions\n")
             if items:
                 lines.append(header)
-                lines.append("|---|---|---|---|---|")
+                lines.append("|" + "---|" * (header.count("|") - 1))
                 esc = lambda t: t.replace("|", chr(92) + "|")  # noqa: E731
                 for text, cnt in sorted(items, key=lambda kv: kv[0]):
-                    src, cited, c3, c4 = (str(text).split("\t") + ["", "", "", ""])[:4]
+                    src, cited, c3, c4, c5 = (str(text).split("\t") + ["", "", "", "", ""])[:5]
                     if shape == "resolution":
                         lines.append(f"| `{src}` | {esc(cited)} | {c3} | "
                                      f"{('`' + c4 + '`') if c4 else '(no link)'} | {cnt} |")
                     elif shape == "renumbered":
-                        lines.append(f"| `{src}` | {esc(cited)} | `{c3}` | {esc(c4)} | {cnt} |")
+                        lines.append(f"| `{src}` | {esc(cited)} | `{c3}` | {esc(c4)} | `{c5}` | {cnt} |")
                     else:
                         lines.append(f"| `{src}` | {esc(cited)} | {esc(c3)} | {esc(c4)} | {cnt} |")
             else:

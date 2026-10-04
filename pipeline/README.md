@@ -300,14 +300,35 @@ links to the part root), and the first section of a list carries the
   Regulation Number 7, Part B, Section I.B.33"): the term must occur in that
   phrase (case, singular/plural and hyphens tolerated). When it does not --
   the cited regulation was renumbered after the citing document was written
-  -- the one sibling definition whose term does occur is linked instead, with
-  the printed section in the href (`/regulations/7?cited=I.B.33#sec-7-B-I-B-34`)
-  so the reader's preview can say "cites this as Section I.B.33; in the
-  current Regulation 7 it is I.B.34"; with no or several such siblings the
-  section stays plain text. Both outcomes are listed in the diff report
-  (`renumbered_cross_reg`, `definition_mismatch_no_link`). Without the file
-  every target is accepted as cited. `--corpus-definitions PATH` names
-  another file.
+  -- the target's siblings (the same definitions list) are searched, in this
+  order, and the search must give exactly one answer or the section stays
+  plain text:
+    1. the siblings whose term occurs in the phrase (rule `term`); when
+       several do, the **nearest-number tie-break** (rule `nearest`): the one
+       whose number is closest to the cited number, only if it is within 5
+       positions and strictly closer than every other match -- a renumbering
+       moves a definition a few places, not across the list ("no visible
+       emissions during normal operations, as defined under ... II.A.45"
+       links II.A.47 "Visible Emissions", not II.A.27 "Normal Operation");
+    2. when none does, the **word-order-tolerant match** (rule `word_order`):
+       every significant word of the term occurs in the phrase in the same
+       order with other words between them, singular/plural tolerated
+       ("natural gas-driven diaphragm pneumatic pumps" holds "Natural
+       Gas-Driven Diaphragm Pump"); several such -> the same tie-break
+       (`word_order_nearest`).
+    3. a cite with no defining phrase ("(Reference: Regulation Number 7,
+       Part B, Section II.A.45.)") never gets a sibling guess: the target's
+       term must occur somewhere in the paragraph or the section stays plain
+       text.
+  Every link the sibling search produces is a renumbered link: the printed
+  section stays in the text and rides in the href
+  (`/regulations/7?cited=I.B.33#sec-7-B-I-B-34`) so the reader's preview can
+  say "cites this as Section I.B.33; in the current Regulation 7 it is
+  I.B.34". Both outcomes are listed in the diff report, every record:
+  `renumbered_cross_reg` (with the rule that chose the link) and
+  `definition_mismatch_no_link` (with the siblings that matched and why none
+  was chosen). Read both after every import. Without the file every target
+  is accepted as cited. `--corpus-definitions PATH` names another file.
 - **`parse` uses it by default** when the file exists. `--corpus-ids PATH`
   names another file; `--no-corpus-ids` turns deep links off, and the output
   is then byte-for-byte what it was before the feature existed (so is a
@@ -441,6 +462,26 @@ Failures are written to `pipeline/embed_failed.jsonl` (uploaded as a workflow
 artifact) and retried automatically on the next run, because a failed row
 still has no matching hash on record.
 
+## The reader's version note (`source_dates.py`)
+
+When a document is older than the current text of a regulation it links
+into, the reader's cross-regulation preview says so under the title: "GP12
+cites Regulation 7 as effective 06/14/2025; shown is the current text,
+effective 07/15/2026. Numbering may differ." (the printed date comes from
+the "(Adopted ..., Effective ...)" parenthetical the citing provision itself
+prints; without one: "GP01 was issued 07/23/2025; shown is the current
+Regulation 7, effective 07/15/2026. Numbering may differ."). A document of
+the same age or newer gets no note (Regulation 3 and Regulation 7 are both
+effective 07/15/2026). The dates are never typed in `src/`: `python
+pipeline/source_dates.py` writes `src/lib/source-dates.generated.ts` from
+`pipeline/sources/manifest.json` (SOS rules: `effective_date`; eCFR:
+`as_of`; general permits: each permit's `date`), `freshness.py
+--update-manifest KEY` runs it after rewriting the manifest, and
+`scripts/source-dates.test.ts` (plus `pipeline/test_source_dates.py`) fails
+whenever the generated file and the manifest disagree. So the procedure
+after a re-import is unchanged -- update the manifest entry, commit -- and
+the reader's dates follow in the same commit.
+
 ## Source freshness watcher
 
 "Updates included" is a promise we monitor rather than a promise we just
@@ -496,8 +537,13 @@ at a time.
    ```
    for each changed key. This re-fetches the live source and writes its
    current version (ruleVersionId/effective date, eCFR as_of date, or CDPHE
-   docid) back into `manifest.json`.
-4. Commit the updated `manifest.json`. The next scheduled run will see the
+   docid) back into `manifest.json`, and rewrites
+   `src/lib/source-dates.generated.ts` (the reader's version-note dates, see
+   `source_dates.py`) to match. A general permit's issuance `date` is not on
+   the CDPHE page: set it by hand in the manifest's `permits` entry, then run
+   `python pipeline/source_dates.py`.
+4. Commit the updated `manifest.json` and `source-dates.generated.ts`
+   together (`npm test` fails when they disagree). The next scheduled run will see the
    new value as "ours" and close back out to ✅ — close the GitHub issue by
    hand once you've confirmed that.
 
