@@ -123,3 +123,103 @@
   padding: 3px 6px;
   vertical-align: top;
 }
+
+/* ---------------------------------------------------------------------------
+   EssentialRegs notes inside official text (Sprint 3). Both are emitted by
+   the importer and are NOT official text, so they are set apart from it:
+   small, sans, muted, and dotted-underlined where a tooltip explains them.
+
+   .er-sic   "[sic]" after a typo the official document prints
+             (pipeline/curated_sic.json); the span's title is the tooltip.
+   .equation A hand-transcribed equation (pipeline/curated_equations.json):
+             .eq-math is the display form (stacked fractions, var/sub/sup),
+             .eq-text the same formula in plain text for copying.
+   Unlayered on purpose so they also apply to the reader (reader.css scopes
+   its own rules under .reg-reader) and to provision cards (.card-text).
+--------------------------------------------------------------------------- */
+.er-sic {
+  font-family: var(--font-sans);
+  font-size: 0.72em;
+  font-style: normal;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+  white-space: nowrap;
+}
+.er-note {
+  font-family: var(--font-sans);
+  font-size: 0.8em;
+  color: var(--muted);
+}
+.equation-block {
+  margin: 0.8em 0 1em;
+}
+.equation-block .eq-note {
+  margin: 0 0 0.5em;
+}
+.equation {
+  margin: 0 0 0.9em;
+  padding: 0.6em 0.8em;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  overflow-x: auto;
+}
+.equation .eq-label {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  margin-right: 0.5em;
+}
+.equation .eq-math {
+  font-family: var(--font-serif);
+  font-size: 1.02em;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.equation .eq-math var {
+  font-style: italic;
+}
+.equation .eq-paren {
+  font-size: 1.25em;
+  vertical-align: -0.08em;
+}
+.eq-frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 0.15em;
+  font-size: 0.86em;
+  line-height: 1.15;
+}
+.eq-frac .eq-num {
+  padding: 0 0.25em 0.08em;
+  border-bottom: 1px solid currentColor;
+}
+.eq-frac .eq-den {
+  padding: 0.08em 0.25em 0;
+}
+.eq-frac .eq-frac {
+  font-size: 0.95em;
+}
+.equation pre.eq-text {
+  margin: 0.55em 0 0;
+  padding: 0.35em 0.5em;
+  font-family: var(--font-mono);
+  font-size: 0.78em;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink-soft);
+  background: var(--paper);
+  border-radius: 4px;
+}
+/* A footnote printed under a general permit's table (importer:
+   _table_footnote_paragraphs). Official text, set a little smaller. */
+.table-footnote {
+  margin: 0.3em 0 0.9em;
+  font-size: 0.86em;
+  color: var(--ink-soft);
+}

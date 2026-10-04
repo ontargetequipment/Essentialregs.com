@@ -137,6 +137,9 @@ comment on function public.changelog_public() is
   'Counts of provision_changes by Denver day, regulation and change type, for /changelog. Returns no notes or ids; the only read of provision_changes an anonymous visitor has. ''removed'' rows are counted per row (they hang off the surviving parent).';
 
 -- 3. Log the removal, then delete ------------------------------------------
+-- Note (Sprint 3, Oct 2026): in production the 20 rows were deleted by the
+-- Import workflow's execute path for reg 26 (the apply plan's obsolete ids),
+-- not by the DELETE in this step, which found nothing left to remove.
 
 insert into public.provision_changes (provision_id, change_type, note)
 select 'sec-26-P-C', 'removed',

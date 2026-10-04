@@ -1,0 +1,89 @@
+{
+ "_about": "Hand transcriptions of equations the official PDFs set in Cambria Math, which pdftotext renders as doubled math-italic glyphs. import_ccr.py swaps the garbled lines of each listed provision for this markup (see _swap_equation_lines). Each entry names the PDF page it was read from; `html` is display markup (plain HTML: span/var/sub/sup), `text` the same formula in plain text for copying. Letters and digits of every `text` were checked against the garbled glyph counts and the page image (Sprint 3, Oct 2026). Typos printed in the source (FuelRrate, hhr) are kept as printed and carry a [sic] marker.",
+ "provisions": {
+  "sec-gp12-III-F-3": {
+   "page": 14,
+   "source": "GP12.pdf",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>Emissions</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">month</span></span><span class=\"eq-paren\">)</span> = <span class=\"eq-frac\"><span class=\"eq-num\"><var>Emission factor</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">lb</span><span class=\"eq-den\">MMBTU</span></span><span class=\"eq-paren\">)</span> × <var>Fuel Consumption</var><sub>engine</sub> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">MMSCF</span><span class=\"eq-den\">month</span></span><span class=\"eq-paren\">)</span> × <var>Fuel Gas Heat Content</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">BTU</span><span class=\"eq-den\">SCF</span></span><span class=\"eq-paren\">)</span></span><span class=\"eq-den\"><var>Unit Conversion</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">2000lb</span><span class=\"eq-den\">ton</span></span><span class=\"eq-paren\">)</span></span></span>",
+     "text": "Emissions (ton/month) = [Emission factor (lb/MMBTU) × Fuel Consumption_engine (MMSCF/month) × Fuel Gas Heat Content (BTU/SCF)] / [Unit Conversion (2000lb/ton)]"
+    }
+   ]
+  },
+  "sec-gp12-IV-A-6-b": {
+   "page": 18,
+   "source": "GP12.pdf",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>Fuel Consumption</var><sub>engine</sub> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">MMSCF</span><span class=\"eq-den\">month</span></span><span class=\"eq-paren\">)</span> = <span class=\"eq-frac\"><span class=\"eq-num\"><var>Hours of operation</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hrs</span><span class=\"eq-den\">month</span></span><span class=\"eq-paren\">)</span> × <var>BSFC</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">BTU</span><span class=\"eq-den\">hp hr</span></span><span class=\"eq-paren\">)</span> × <var>Site rated HP</var> (hp)</span><span class=\"eq-den\"><var>Fuel Gas Heat Content</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">BTU</span><span class=\"eq-den\">SCF</span></span><span class=\"eq-paren\">)</span> × 10<sup>6</sup> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">SCF</span><span class=\"eq-den\">MMSCF</span></span><span class=\"eq-paren\">)</span></span></span>",
+     "text": "Fuel Consumption_engine (MMSCF/month) = [Hours of operation (hrs/month) × BSFC (BTU/hp hr) × Site rated HP (hp)] / [Fuel Gas Heat Content (BTU/SCF) × 10^6 (SCF/MMSCF)]"
+    }
+   ]
+  },
+  "sec-gp06-IV-C-1-b-(i)": {
+   "page": 20,
+   "source": "GP06.pdf",
+   "equations": [
+    {
+     "label": "Eq. 1.a.",
+     "html": "<var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X lb</span><span class=\"eq-den\">10<sup>6</sup> Btu</span></span><span class=\"eq-paren\">)</span> ∗ <var>LHV</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">btu</span><span class=\"eq-den\">gal</span></span><span class=\"eq-paren\">)</span> ∗ <var>RunTime</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hrs</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> ∗ <var>FuelUsage</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">gal</span><span class=\"eq-den\">hr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span>",
+     "text": "Emission (ton/year) = EF (X lb / 10^6 Btu) * LHV (btu/gal) * RunTime (hrs/yr) * FuelUsage (gal/hr) * (1 ton / 2000 lb)"
+    },
+    {
+     "label": "Eq. 1.b.",
+     "html": "<var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X lb</span><span class=\"eq-den\">HP−hr</span></span><span class=\"eq-paren\">)</span> ∗ <var>HP</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hp</span><span class=\"eq-den\">1</span></span><span class=\"eq-paren\">)</span> ∗ <var>RunTime</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hrs</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span>",
+     "text": "Emission (ton/year) = EF (X lb / HP-hr) * HP (hp/1) * RunTime (hrs/yr) * (1 ton / 2000 lb)"
+    },
+    {
+     "label": "Eq. 1.c",
+     "html": "<var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X g</span><span class=\"eq-den\">HP−hr</span></span><span class=\"eq-paren\">)</span> ∗ <var>HP</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hp</span><span class=\"eq-den\">1</span></span><span class=\"eq-paren\">)</span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">0.0022lb</span><span class=\"eq-den\">g</span></span><span class=\"eq-paren\">)</span> ∗ <var>RunTime</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hr</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span>",
+     "text": "Emission (ton/year) = EF (X g / HP-hr) * HP (hp/1) (0.0022lb/g) * RunTime (hr/yr) * (1 ton / 2000 lb)"
+    },
+    {
+     "label": "Eq. 1.d",
+     "html": "<var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X lb</span><span class=\"eq-den\">1000 gal</span></span><span class=\"eq-paren\">)</span> ∗ <var>RunTime</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hr</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> ∗ <var>FuelRate</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">gal</span><span class=\"eq-den\">hr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span>",
+     "text": "Emission (ton/year) = EF (X lb / 1000 gal) * RunTime (hr/yr) * FuelRate (gal/hr) * (1 ton / 2000 lb)"
+    },
+    {
+     "label": "Eq. 1.e",
+     "html": "<var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X g</span><span class=\"eq-den\">kw−hr</span></span><span class=\"eq-paren\">)</span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">kw−hr</span><span class=\"eq-den\">1.341 hp−hr</span></span><span class=\"eq-paren\">)</span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">HP</span><span class=\"eq-den\">1</span></span><span class=\"eq-paren\">)</span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">0.0022lb</span><span class=\"eq-den\">g</span></span><span class=\"eq-paren\">)</span> ∗ <var>RunTime</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hr</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span>",
+     "text": "Emission (ton/year) = EF (X g / kw-hr) (kw-hr / 1.341 hp-hr) (HP/1) (0.0022lb/g) * RunTime (hr/yr) (1 ton / 2000 lb)"
+    }
+   ]
+  },
+  "sec-gp06-IV-C-1-b-(ii)": {
+   "page": 21,
+   "source": "GP06.pdf",
+   "equations": [
+    {
+     "label": "Eq. 2.a.",
+     "html": "<b><var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X lb</span><span class=\"eq-den\">10<sup>6</sup> Btu</span></span><span class=\"eq-paren\">)</span> ∗ <var>LHV</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">btu</span><span class=\"eq-den\">gal</span></span><span class=\"eq-paren\">)</span> ∗ <var>FuelUsage</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">gal</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span></b>",
+     "text": "Emission (ton/year) = EF (X lb / 10^6 Btu) * LHV (btu/gal) * FuelUsage (gal/yr) * (1 ton / 2000 lb)"
+    },
+    {
+     "label": "Eq. 2.b.",
+     "html": "<b><var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X lb</span><span class=\"eq-den\">HP−hhr<span class=\"er-sic\" title=\"Printed this way in the official document.\"> [sic]</span></span></span><span class=\"eq-paren\">)</span> ∗ <var>HP</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hp</span><span class=\"eq-den\">1</span></span><span class=\"eq-paren\">)</span> ∗ <var>FuelUsage</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">gal</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-frac\"><span class=\"eq-num\">1</span><span class=\"eq-den\"><var>FuelRrate</var><span class=\"er-sic\" title=\"Printed this way in the official document.\"> [sic]</span></span></span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hhr<span class=\"er-sic\" title=\"Printed this way in the official document.\"> [sic]</span></span><span class=\"eq-den\">gal</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span></b>",
+     "text": "Emission (ton/year) = EF (X lb / HP-hhr) * HP (hp/1) * FuelUsage (gal/yr) * 1/FuelRrate (hhr/gal) * (1 ton / 2000 lb)"
+    },
+    {
+     "label": "Eq. 2.c.",
+     "html": "<var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X g</span><span class=\"eq-den\">HP−hr</span></span><span class=\"eq-paren\">)</span> ∗ <var>HP</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hp</span><span class=\"eq-den\">1</span></span><span class=\"eq-paren\">)</span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">0.0022lb</span><span class=\"eq-den\">g</span></span><span class=\"eq-paren\">)</span> ∗ <var>FuelUsage</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">gal</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-frac\"><span class=\"eq-num\">1</span><span class=\"eq-den\"><var>FuelRrate</var><span class=\"er-sic\" title=\"Printed this way in the official document.\"> [sic]</span></span></span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hr</span><span class=\"eq-den\">gal</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span>",
+     "text": "Emission (ton/year) = EF (X g / HP-hr) * HP (hp/1) (0.0022lb/g) * FuelUsage (gal/yr) * 1/FuelRrate (hr/gal) * (1 ton / 2000 lb)"
+    },
+    {
+     "label": "Eq. 2.d.",
+     "html": "<var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X lb</span><span class=\"eq-den\">1000 gal</span></span><span class=\"eq-paren\">)</span> ∗ <var>FuelUsage</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">gal</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span>",
+     "text": "Emission (ton/year) = EF (X lb / 1000 gal) * FuelUsage (gal/yr) * (1 ton / 2000 lb)"
+    },
+    {
+     "label": "Eq. 2.e.",
+     "html": "<var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X g</span><span class=\"eq-den\">kw−hr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">kw−hr</span><span class=\"eq-den\">1.341 hp−hr</span></span><span class=\"eq-paren\">)</span> ∗ <var>HP</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hp</span><span class=\"eq-den\">1</span></span><span class=\"eq-paren\">)</span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">0.0022lb</span><span class=\"eq-den\">g</span></span><span class=\"eq-paren\">)</span> ∗ <var>FuelUsage</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">gal</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-frac\"><span class=\"eq-num\">1</span><span class=\"eq-den\"><var>FuelRrate</var><span class=\"er-sic\" title=\"Printed this way in the official document.\"> [sic]</span></span></span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hr</span><span class=\"eq-den\">gal</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span>",
+     "text": "Emission (ton/year) = EF (X g / kw-hr) * (kw-hr / 1.341 hp-hr) * HP (hp/1) (0.0022lb/g) * FuelUsage (gal/yr) * 1/FuelRrate (hr/gal) * (1 ton / 2000 lb)"
+    }
+   ]
+  }
+ }
+}

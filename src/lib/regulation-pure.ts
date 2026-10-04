@@ -53,6 +53,10 @@ const ALLOWED_ATTRIBUTES: sanitizeHtmlLib.IOptions["allowedAttributes"] = {
   // noreferrer) -- it has to be allow-listed here too or the attribute
   // filter strips it right back out after the transform runs.
   a: ["href", "name", "target", "rel"],
+  // The importer's "[sic]" marker (span.er-sic, pipeline/curated_sic.json)
+  // carries its explanation as a tooltip. Only spans get `title`: a title
+  // on a link or image is not needed anywhere and stays stripped.
+  span: ["title"],
   td: ["colspan", "rowspan"],
   th: ["colspan", "rowspan"],
   img: ["src", "alt", "width", "height"],

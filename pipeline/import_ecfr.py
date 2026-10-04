@@ -1974,6 +1974,55 @@ KNOWN_LINE_DELETIONS: dict[str, list[dict]] = {
 }
 
 
+# Hand-verified markup fixes to a finished row's HTML (Sprint 3, Oct 2026).
+# The eCFR PDF prints § 60.5413a(b)(3)(i)'s two equations with real
+# subscripts, which pdftotext renders as spaced letters ("E i = K 2C i M p
+# Q i"); the corpus QA split-letter check (corpus_qa.sql 23) reads that as
+# an artifact. Each entry replaces `old` with `new` exactly once in the
+# named row; the letters and digits of both must be identical (checked at
+# apply time), so a fix can only add markup and move whitespace. Reported
+# in the label_fixes_applied list like the other fixes (hits must be 1).
+KNOWN_HTML_FIXES: dict[str, list[dict]] = {
+    "ooooa": [
+        dict(
+            id="sec-ooooa-60.5413a-(b)-(3)-(i)",
+            old="<p>E i = K 2C i M p Q i</p><p>E o = K 2C o M p Q o Where:</p>",
+            new=("<p>E<sub>i</sub> = K<sub>2</sub>C<sub>i</sub>M<sub>p</sub>Q<sub>i</sub></p>"
+                 "<p>E<sub>o</sub> = K<sub>2</sub>C<sub>o</sub>M<sub>p</sub>Q<sub>o</sub></p><p>Where:</p>"),
+            note=("§ 60.5413a(b)(3)(i): the TOC mass-rate equations E_i = K_2 C_i M_p Q_i and "
+                  "E_o = K_2 C_o M_p Q_o, printed with subscripts (OOOOa.pdf, the page carrying "
+                  "§ 60.5413a(b)); pdftotext spaces the subscripts out as separate letters. Same "
+                  "letters and digits, subscript markup added, 'Where:' given its own paragraph."),
+        ),
+    ],
+}
+
+
+def _letters_digits(s: str) -> str:
+    return "".join(ch for ch in s if ch.isalnum())
+
+
+def apply_known_html_fixes(reg: str, rows: list[dict]) -> list[dict]:
+    """Applies KNOWN_HTML_FIXES[reg] to the finished rows in place; returns
+    report rows (old_label/new_label/line_hint/note/hits) like
+    apply_known_label_fixes. Raises when an entry would change letters or
+    digits."""
+    applied: list[dict] = []
+    by_id = {r["id"]: r for r in rows}
+    for fix in KNOWN_HTML_FIXES.get(reg, []):
+        old_ld = _letters_digits(re.sub(r"<[^>]+>", "", fix["old"]))
+        new_ld = _letters_digits(re.sub(r"<[^>]+>", "", fix["new"]))
+        if old_ld != new_ld:
+            raise ValueError(f"KNOWN_HTML_FIXES[{reg!r}] entry changes letters/digits: {fix['id']}")
+        row = by_id.get(fix["id"])
+        hits = row["full_text"].count(fix["old"]) if row else 0
+        if hits:
+            row["full_text"] = row["full_text"].replace(fix["old"], fix["new"])
+        applied.append(dict(old_label=fix["old"], new_label=fix["new"], line_hint=fix["id"],
+                            note=fix["note"], hits=hits))
+    return applied
+
+
 def apply_known_label_fixes(reg: str, lines: list[str]) -> tuple[list[str], list[dict]]:
     fixes = KNOWN_LABEL_FIXES.get(reg, [])
     deletions = KNOWN_LINE_DELETIONS.get(reg, [])
@@ -2568,6 +2617,8 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
                 toc_norm.startswith(body_norm[:40]) or body_norm.startswith(toc_norm[:40])
             ):
                 toc_title_mismatches.append((num, toc_norm, body_norm))
+
+    label_fixes_applied = label_fixes_applied + apply_known_html_fixes(reg, rows)
 
     report = {
         "reg": reg,

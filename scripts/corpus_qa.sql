@@ -42,7 +42,10 @@
 -- in the same run). Check 21 (4 Oct 2026) guards the "AI reviewed" label:
 -- an approved or edited summary whose reviewed_by was not stamped by the AI
 -- second pass is a human-only approval the site would mislabel, so it fails
--- the qa job until the pass runs on it. Run the whole file, top to bottom,
+-- the qa job until the pass runs on it. Checks 22-24 (Sprint 3, Oct 2026)
+-- guard the official text itself: no math-italic equation glyphs (22), no
+-- split-letter runs (23), no Markdown markers (24); each names a curated
+-- importer fix to add rather than a row to edit. Run the whole file, top to bottom,
 -- in one go: Steps 0, 0b and 0c must run before the main query.
 -- ============================================================================
 
@@ -507,6 +510,27 @@ checks as (
          || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not like 'Claude (%') order by id limit 30) r), '')
   from provisions
   where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not like 'Claude (%')
+
+  union all
+  select 22, 'GUARD', 'math_glyphs_in_text', count(*), 0,
+         'Sprint 3 (Oct 2026), GP equations. The GP PDFs set their equations in Cambria Math and pdftotext renders them as doubled math-italic glyphs (U+1D400-U+1D7FF, italic h U+210E) and U+FFFD boxes; the importer now swaps those lines for the curated transcriptions in pipeline/curated_equations.json. Counts rows whose tag-stripped text still carries such a glyph. Expect 0 (was 4: GP12 III.F.3, IV.A.6.b, GP06 IV.C.1.b.(i), (ii)). When above 0, add the transcription to the curated file and re-import; never edit the row by hand.'
+         || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where regexp_replace(full_text, '<[^>]+>', '', 'g') ~ '[\U0001D400-\U0001D7FF\u210E\uFFFD]' order by id limit 30) r), '')
+  from provisions
+  where regexp_replace(full_text, '<[^>]+>', '', 'g') ~ '[\U0001D400-\U0001D7FF\u210E\uFFFD]'
+
+  union all
+  select 23, 'GUARD', 'split_letter_runs', count(*), 0,
+         'Sprint 3 (Oct 2026), split-letter artifacts. pdftotext renders letter-spaced justified text one glyph per word ("t h e f o l l o w i n g", "o w n e r o r o p e r a t o r"); the importer re-spaces every known run (KNOWN_SPACING_FIXES in pipeline/import_ccr.py, letters and digits unchanged) and import_ecfr.py marks the OOOOa equation subscripts. Counts rows whose tag-stripped text has four or more single letters in a row separated by single spaces. Expect 0 (was 10 GP rows plus OOOOa 60.5413a(b)(3)(i)). When above 0, add a spacing fix for the printed run and re-import.'
+         || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where regexp_replace(full_text, '<[^>]+>', '', 'g') ~ '(?<![A-Za-z])(?:[A-Za-z] ){4,}[A-Za-z](?![A-Za-z])' order by id limit 30) r), '')
+  from provisions
+  where regexp_replace(full_text, '<[^>]+>', '', 'g') ~ '(?<![A-Za-z])(?:[A-Za-z] ){4,}[A-Za-z](?![A-Za-z])'
+
+  union all
+  select 24, 'GUARD', 'stray_markdown_in_text', count(*), 0,
+         'Sprint 3 (Oct 2026). Official text never carries Markdown; a stored summary''s **bold**, __bold__, `code`, a heading marker opening a paragraph or a [text](http...) link inside full_text means a summary or an edit leaked into the official column. A footnote "**" after a number, the eCFR''s `quoted'' words and underscores inside an address (Oil__and__Gas__PT@EPA.GOV) are official text and do not match. Expect 0.'
+         || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where full_text ~ '(?<![A-Za-z0-9_*])\*\*[A-Za-z][^*\n]{0,80}\*\*(?![A-Za-z0-9_*])|(?<![A-Za-z0-9_])__[A-Za-z][^_\n]{0,80}__(?![A-Za-z0-9_])|`[^`\n]{1,80}`|(^|<p>)\s*#{1,6}\s|\]\(https?://' order by id limit 30) r), '')
+  from provisions
+  where full_text ~ '(?<![A-Za-z0-9_*])\*\*[A-Za-z][^*\n]{0,80}\*\*(?![A-Za-z0-9_*])|(?<![A-Za-z0-9_])__[A-Za-z][^_\n]{0,80}__(?![A-Za-z0-9_])|`[^`\n]{1,80}`|(^|<p>)\s*#{1,6}\s|\]\(https?://'
 
   union all
   select 20, 'GUARD', 'question_map_ids_exist', count(*), 0,
