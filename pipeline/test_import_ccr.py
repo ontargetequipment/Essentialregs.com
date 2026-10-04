@@ -11779,40 +11779,159 @@ class DefinitionCitationTests(XregBase):
         self.assertNotIn("#sec-7-B-I-B-33", out)
         self.assertNotIn("#sec-7-B-II-A-46", out)
         self.assertEqual(dict(buckets[ic.BUCKET_XREG_RENUMBERED]), {
-            "sec-gp12-I-A\tRegulation Number 7, Part B, I.B.33\tsec-7-B-I-B-34\tWell Production Facility": 1,
-            "sec-gp12-I-A\tRegulation Number 7, Part B, II.A.46\tsec-7-B-II-A-48\tWell Production Facility": 1,
+            "sec-gp12-I-A\tRegulation Number 7, Part B, I.B.33\tsec-7-B-I-B-34\tWell Production Facility\tterm": 1,
+            "sec-gp12-I-A\tRegulation Number 7, Part B, II.A.46\tsec-7-B-II-A-48\tWell Production Facility\tterm": 1,
         })
         self.assertFalse(buckets[ic.BUCKET_XREG_DEF_MISMATCH])
         self.assertFalse(buckets[ic.BUCKET_CROSS_REG])
 
     def test_no_matching_sibling_leaves_plain_text(self):
-        out, buckets = self.dlink(self.GP09_IVG1, reg="gp09", own_id="sec-gp09-IV-G-1")
-        # I.B.20 ("Modified or Modification") is not what the sentence defines, and no
-        # sibling defines "natural gas-driven diaphragm pneumatic pumps" (the term is
-        # "Natural Gas-Driven Diaphragm Pump"): no deep link, the regulation name still links.
-        self.assertIn(", Part B, Section I.B.20., located", out)
-        self.assertNotIn("#sec-7-B-I-B-20", out)
-        self.assertNotIn("#sec-7-B-I-B-22", out)
+        # No sibling defines "produced gas" in any word order: no deep link, the
+        # regulation name still links, the other cite in the paragraph is unaffected.
+        text = ("Produced gas, as defined in Regulation Number 7, Part B, Section I.B.20., must comply with "
+                "Regulation Number 7, Part B, Section I.K.")
+        out, buckets = self.dlink(text, reg="gp09", own_id="sec-gp09-IV-G-1")
+        self.assertIn(", Part B, Section I.B.20., must", out)
+        self.assertNotIn("#sec-7-B-I-B-2", out)
         self.assertIn(_xl("7", "Regulation Number 7"), out)
-        self.assertIn(_xl("7", "Section I.K.", "sec-7-B-I-K"), out, "the other cite in the paragraph is unaffected")
+        self.assertIn(_xl("7", "Section I.K.", "sec-7-B-I-K"), out)
         self.assertEqual(dict(buckets[ic.BUCKET_XREG_DEF_MISMATCH]), {
-            "sec-gp09-IV-G-1\tRegulation Number 7, Part B, I.B.20.\t"
-            "The owner or operator of natural gas-driven diaphragm pneumatic pumps\tModified or Modification": 1,
+            "sec-gp09-IV-G-1\tRegulation Number 7, Part B, I.B.20.\tProduced gas\tModified or Modification": 1,
         })
         self.assertFalse(buckets[ic.BUCKET_XREG_RENUMBERED])
 
-    def test_several_matching_siblings_leave_plain_text(self):
+    # -- Rule 1: the nearest-number tie-break ---------------------------------
+
+    def test_nearest_definition_helper(self):
+        # Closest wins when it is within 5 and strictly closer than the rest.
+        self.assertEqual(ic.nearest_definition(["sec-7-B-II-A-27", "sec-7-B-II-A-47"], "sec-7-B-II-A-45"), "sec-7-B-II-A-47")
+        self.assertEqual(ic.nearest_definition(["sec-7-B-I-B-22"], "sec-7-B-I-B-20"), "sec-7-B-I-B-22")
+        self.assertEqual(ic.nearest_definition(["sec-7-B-II-A-40", "sec-7-B-II-A-50"], "sec-7-B-II-A-45"), None, "equally near")
+        self.assertEqual(ic.nearest_definition(["sec-7-B-II-A-39", "sec-7-B-II-A-27"], "sec-7-B-II-A-45"), None, "nearest is 6 away")
+        self.assertEqual(ic.nearest_definition(["sec-7-B-II-A-40"], "sec-7-B-II-A-45"), "sec-7-B-II-A-40", "exactly 5 away is in")
+        self.assertEqual(ic.nearest_definition([], "sec-7-B-II-A-45"), None)
+        # Letter-numbered definitions have no number to compare: never a guess.
+        self.assertEqual(ic.nearest_definition(["sec-3-A-I-B-a", "sec-3-A-I-B-c"], "sec-3-A-I-B-b"), None)
+        self.assertEqual(ic.nearest_definition(["sec-7-B-II-A-44", "sec-7-B-II-A-x"], "sec-7-B-II-A-45"), None)
+
+    def test_several_matching_siblings_link_the_nearest_number(self):
+        # GP01 IV.B: "no visible emissions during normal operations" cites II.A.45 ("Storage
+        # Vessel"); II.A.27 "Normal Operation" and II.A.47 "Visible Emissions" both match.
+        # 47 is 2 away, 27 is 18 away: the link goes to 47, as a renumbered link.
         out, buckets = self.dlink(self.GP01_IVB, reg="gp01", own_id="sec-gp01-IV-B")
-        self.assertIn(", Part B, Section II.A.45; and", out)
-        self.assertNotIn("#sec-7-B-II-A-4", out)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/7?cited=II.A.45#sec-7-B-II-A-47">Section II.A.45</a>; and', out)
+        self.assertNotIn("#sec-7-B-II-A-45", out)
         self.assertNotIn("#sec-7-B-II-A-27", out)
+        self.assertEqual(dict(buckets[ic.BUCKET_XREG_RENUMBERED]), {
+            "sec-gp01-IV-B\tRegulation Number 7, Part B, II.A.45\tsec-7-B-II-A-47\tVisible Emissions\tnearest": 1})
+        self.assertFalse(buckets[ic.BUCKET_XREG_DEF_MISMATCH])
+
+    def test_two_matches_equally_near_leave_plain_text(self):
+        defs = {"7": {"sec-7-B-II-A-43": "Storage Tank", "sec-7-B-II-A-45": "Storage Vessel",
+                      "sec-7-B-II-A-47": "Visible Emissions"}}
+        text = "Storage tanks with visible emissions, as defined in Regulation Number 7, Part B, Section II.A.45, are covered."
+        out, buckets = self.dlink(text, reg="gp01", defs=defs, own_id="sec-gp01-IV-B")
+        self.assertIn(", Part B, Section II.A.45, are", out)
+        self.assertNotIn("#sec-7-B-II-A-4", out)
         key, = buckets[ic.BUCKET_XREG_DEF_MISMATCH]
         src, cited, phrase, detail = key.split("\t")
         self.assertEqual((src, cited, phrase), ("sec-gp01-IV-B", "Regulation Number 7, Part B, II.A.45",
-                                                "have no visible emissions during normal operations"))
-        self.assertTrue(detail.startswith("Storage Vessel — several siblings match: "), detail)
+                                                "Storage tanks with visible emissions"))
+        self.assertEqual(detail, "Storage Vessel — several siblings match (two are equally near the cited number): "
+                                 "sec-7-B-II-A-43 (Storage Tank), sec-7-B-II-A-47 (Visible Emissions)")
+        self.assertFalse(buckets[ic.BUCKET_XREG_RENUMBERED])
+
+    def test_nearest_match_more_than_five_away_leaves_plain_text(self):
+        # II.A.27 "Normal Operation" (18 away) and II.A.11 "Connector" (34 away) both
+        # match; neither is within 5 of II.A.45: no link.
+        text = ("normal operations of a connector, as defined in Regulation Number 7, "
+                "Part B, Section II.A.45, is covered.")
+        out, buckets = self.dlink(text, reg="gp01", own_id="sec-gp01-IV-B")
+        self.assertIn(", Part B, Section II.A.45, is", out)
+        self.assertNotIn("#sec-7-B-II-A-", out)
+        key, = buckets[ic.BUCKET_XREG_DEF_MISMATCH]
+        detail = key.split("\t")[3]
+        self.assertTrue(detail.startswith("Storage Vessel — several siblings match (none is within 5 of the cited number): "), detail)
         self.assertIn("sec-7-B-II-A-27 (Normal Operation)", detail)
-        self.assertIn("sec-7-B-II-A-47 (Visible Emissions)", detail)
+        self.assertIn("sec-7-B-II-A-11 (Connector)", detail)
+        self.assertFalse(buckets[ic.BUCKET_XREG_RENUMBERED])
+        # A lone contiguous match is still linked however far it moved (rule "term"): the
+        # window only breaks ties.
+        out, buckets = self.dlink("during normal operations, as defined in Regulation Number 7, Part B, Section II.A.45.",
+                                  reg="gp01", own_id="sec-gp01-IV-B")
+        self.assertIn("?cited=II.A.45#sec-7-B-II-A-27", out)
+        key, = buckets[ic.BUCKET_XREG_RENUMBERED]
+        self.assertTrue(key.endswith("\tNormal Operation\tterm"), key)
+
+    # -- Rule 2: the word-order-tolerant term match ---------------------------
+
+    def test_term_words_in_order(self):
+        self.assertTrue(ic.term_words_in_order("Natural Gas-Driven Diaphragm Pump", "natural gas-driven diaphragm pneumatic pumps"))
+        self.assertTrue(ic.term_words_in_order("Well Production Facility", "oil and gas well production facilities"), "contiguous counts")
+        self.assertTrue(ic.term_words_in_order("Storage Tank", "the storage of liquids in tanks"), "words between, singular/plural")
+        self.assertFalse(ic.term_words_in_order("Storage Tank", "tanks for storage"), "the order matters")
+        self.assertFalse(ic.term_words_in_order("Visible Emissions", "no emissions"), "every word is needed")
+        self.assertFalse(ic.term_words_in_order("", "anything"))
+
+    def test_word_order_rule_links_the_unique_sibling(self):
+        # GP09/GP10 IV.G.1: I.B.20 is "Modified or Modification"; "natural gas-driven
+        # diaphragm pneumatic pumps" contains every word of I.B.22's term in order.
+        out, buckets = self.dlink(self.GP09_IVG1, reg="gp09", own_id="sec-gp09-IV-G-1")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/7?cited=I.B.20#sec-7-B-I-B-22">Section I.B.20.</a>, located', out)
+        self.assertNotIn("#sec-7-B-I-B-20", out)
+        self.assertIn(_xl("7", "Section I.K.", "sec-7-B-I-K"), out, "the other cite in the paragraph is unaffected")
+        self.assertEqual(dict(buckets[ic.BUCKET_XREG_RENUMBERED]), {
+            "sec-gp09-IV-G-1\tRegulation Number 7, Part B, I.B.20.\tsec-7-B-I-B-22\tNatural Gas-Driven Diaphragm Pump\tword_order": 1})
+        self.assertFalse(buckets[ic.BUCKET_XREG_DEF_MISMATCH])
+
+    def test_word_order_rule_takes_the_nearest_of_several_within_five(self):
+        defs = {"7": {"sec-7-B-I-B-20": "Modified or Modification", "sec-7-B-I-B-22": "Natural Gas-Driven Diaphragm Pump",
+                      "sec-7-B-I-B-30": "Natural Gas Pump"}}
+        out, buckets = self.dlink(self.GP09_IVG1, reg="gp09", defs=defs, own_id="sec-gp09-IV-G-1")
+        self.assertIn("?cited=I.B.20#sec-7-B-I-B-22", out)
+        key, = buckets[ic.BUCKET_XREG_RENUMBERED]
+        self.assertTrue(key.endswith("\tsec-7-B-I-B-22\tNatural Gas-Driven Diaphragm Pump\tword_order_nearest"), key)
+        # ... and no link when the word-order matches are equally near, or all farther than 5.
+        defs = {"7": {"sec-7-B-I-B-20": "Modified or Modification", "sec-7-B-I-B-18": "Natural Gas Pump",
+                      "sec-7-B-I-B-22": "Natural Gas-Driven Diaphragm Pump"}}
+        out, buckets = self.dlink(self.GP09_IVG1, reg="gp09", defs=defs, own_id="sec-gp09-IV-G-1")
+        self.assertNotIn("#sec-7-B-I-B-", out)
+        key, = buckets[ic.BUCKET_XREG_DEF_MISMATCH]
+        self.assertIn("(two are equally near the cited number)", key)
+        defs = {"7": {"sec-7-B-I-B-20": "Modified or Modification", "sec-7-B-I-B-28": "Natural Gas-Driven Diaphragm Pump"}}
+        out, buckets = self.dlink(self.GP09_IVG1, reg="gp09", defs=defs, own_id="sec-gp09-IV-G-1")
+        self.assertIn("?cited=I.B.20#sec-7-B-I-B-28", out, "a lone word-order match links however far: the window only breaks ties")
+        defs = {"7": {"sec-7-B-I-B-20": "Modified or Modification", "sec-7-B-I-B-28": "Natural Gas-Driven Diaphragm Pump",
+                      "sec-7-B-I-B-34": "Natural Gas Pump"}}
+        out, buckets = self.dlink(self.GP09_IVG1, reg="gp09", defs=defs, own_id="sec-gp09-IV-G-1")
+        self.assertNotIn("#sec-7-B-I-B-", out)
+        key, = buckets[ic.BUCKET_XREG_DEF_MISMATCH]
+        self.assertIn("(none is within 5 of the cited number)", key)
+
+    def test_contiguous_matches_come_before_word_order_matches(self):
+        # A contiguous sibling match is the answer even when another sibling's words occur in order.
+        defs = {"7": {"sec-7-B-I-B-20": "Modified or Modification", "sec-7-B-I-B-21": "Pump",
+                      "sec-7-B-I-B-22": "Natural Gas-Driven Diaphragm Pump"}}
+        out, buckets = self.dlink(self.GP09_IVG1, reg="gp09", defs=defs, own_id="sec-gp09-IV-G-1")
+        self.assertIn("?cited=I.B.20#sec-7-B-I-B-21", out)
+        key, = buckets[ic.BUCKET_XREG_RENUMBERED]
+        self.assertTrue(key.endswith("\tPump\tterm"), key)
+
+    # -- Rule 3: no defining phrase, no guess ----------------------------------
+
+    def test_reference_forms_without_a_defining_phrase_stay_plain_text(self):
+        # GP05/GP07 II.A.1.a, GP09/GP10 II.B and V.A.1, GP12 VII.D.1: "(Reference: Regulation
+        # Number 7 ...)" names no phrase, so neither rule 1 nor rule 2 runs and no target is guessed.
+        for text in ("EPA Method 22 must be used. (Reference: Regulation Number 7, Part B, Sections II.A.45. and II.B.2.b.)",
+                     "Visible emissions must be checked. (Reference: Regulation Number 7, Part B, Section II.A.27.)"):
+            out, buckets = self.dlink(text, reg="gp09", own_id="sec-gp09-II-B")
+            self.assertNotIn("?cited=", out)
+            self.assertNotIn("#sec-7-B-II-A-45", out)
+            self.assertNotIn("#sec-7-B-II-A-27", out)
+            self.assertNotIn("#sec-7-B-II-A-47", out)
+            self.assertFalse(buckets[ic.BUCKET_XREG_RENUMBERED])
+            self.assertEqual(len(buckets[ic.BUCKET_XREG_DEF_MISMATCH]), 1)
+            self.assertIn("\t(no defining phrase)\t", next(iter(buckets[ic.BUCKET_XREG_DEF_MISMATCH])))
 
     def test_no_defining_phrase_requires_the_term_in_the_paragraph(self):
         # A "(Reference: ...)" cite: the term is checked against the whole paragraph, no sibling guess.
@@ -11863,14 +11982,24 @@ class DefinitionCitationTests(XregBase):
         out, _ = self.dlink(self.GP12_IA, own_id="sec-gp12-I-A")
         self.assertIn("?cited=I.B.33#sec-7-B-I-B-34", out)
         self.assertIn("?cited=II.A.46#sec-7-B-II-A-48", out)
-        # GP01/05/07/08/09/10: "no visible emissions during normal operations" matches two siblings -> plain text.
-        out, b = self.dlink(self.GP01_IVB, reg="gp05", own_id="sec-gp05-IV-A")
-        self.assertNotIn("#sec-7-B-II-A-45", out)
-        self.assertEqual(len(b[ic.BUCKET_XREG_DEF_MISMATCH]), 1)
-        # GP09/GP10 IV.G.1: "natural gas-driven diaphragm pneumatic pumps" matches no sibling -> plain text.
-        out, b = self.dlink(self.GP09_IVG1, reg="gp10", own_id="sec-gp10-IV-G-1")
-        self.assertNotIn("#sec-7-B-I-B-20", out)
-        self.assertEqual(len(b[ic.BUCKET_XREG_DEF_MISMATCH]), 1)
+        # GP01/05/07/08/09/10: "no visible emissions during normal operations" matches two siblings;
+        # II.A.47 "Visible Emissions" is the nearer to II.A.45 (rule "nearest").
+        for reg, own in (("gp01", "sec-gp01-IV-B"), ("gp05", "sec-gp05-IV-A"), ("gp07", "sec-gp07-IV-B"),
+                         ("gp08", "sec-gp08-IV-A-2"), ("gp09", "sec-gp09-II-D-4"), ("gp10", "sec-gp10-II-D-4")):
+            out, b = self.dlink(self.GP01_IVB, reg=reg, own_id=own)
+            self.assertIn("?cited=II.A.45#sec-7-B-II-A-47", out, reg)
+            self.assertNotIn("#sec-7-B-II-A-45", out)
+            self.assertEqual(dict(b[ic.BUCKET_XREG_RENUMBERED]),
+                             {f"{own}\tRegulation Number 7, Part B, II.A.45\tsec-7-B-II-A-47\tVisible Emissions\tnearest": 1})
+            self.assertFalse(b[ic.BUCKET_XREG_DEF_MISMATCH])
+        # GP09/GP10 IV.G.1: "natural gas-driven diaphragm pneumatic pumps" holds I.B.22's words in order (rule "word_order").
+        for reg, own in (("gp09", "sec-gp09-IV-G-1"), ("gp10", "sec-gp10-IV-G-1")):
+            out, b = self.dlink(self.GP09_IVG1, reg=reg, own_id=own)
+            self.assertIn("?cited=I.B.20#sec-7-B-I-B-22", out, reg)
+            self.assertNotIn("#sec-7-B-I-B-20", out)
+            self.assertEqual(dict(b[ic.BUCKET_XREG_RENUMBERED]),
+                             {f"{own}\tRegulation Number 7, Part B, I.B.20.\tsec-7-B-I-B-22\tNatural Gas-Driven Diaphragm Pump\tword_order": 1})
+            self.assertFalse(b[ic.BUCKET_XREG_DEF_MISMATCH])
 
     def test_definitions_index_round_trip_and_grouping(self):
         rows = [("sec-7-B-I-B-34", '<p>“Well Production Facility” means all equipment'),
