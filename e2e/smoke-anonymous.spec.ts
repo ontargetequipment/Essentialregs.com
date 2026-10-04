@@ -354,7 +354,8 @@ test.describe("anonymous", () => {
     await expect(page.locator("#search-query")).toHaveValue("do I need a permit for a flare");
     // The Ask content is on the page: the submit button reads "Ask" and a
     // visitor who is not logged in sees the subscription notice.
-    await expect(page.getByRole("button", { name: "Ask", exact: true })).toBeVisible();
+    // Scoped to main: the site header has a submit button named "Search" too.
+    await expect(page.getByRole("main").getByRole("button", { name: "Ask", exact: true })).toBeVisible();
     await expect(page.getByText("Ask is part of the subscription.", { exact: false })).toBeVisible();
     // Keyword switches back on click too, keeping the query.
     await askTabs.nth(0).click();
@@ -362,7 +363,7 @@ test.describe("anonymous", () => {
       timeout: 15_000,
     });
     await expect(page.getByRole("tablist").getByRole("tab").nth(0)).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("button", { name: "Search", exact: true })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("button", { name: "Search", exact: true })).toBeVisible();
   });
 
   test("/search?mode=ask tells a visitor who is not a subscriber that Ask is part of the subscription", async ({ page }) => {
