@@ -4161,6 +4161,13 @@ def render_table_html(table: dict) -> str:
 # regulation — see REG_META). There is no GP04.
 GP_KEYS: tuple[str, ...] = ("gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12")
 
+# Regulations whose table captions may wrap their last words onto the next
+# line: the general permits (GP02 "... Lean Burn" / "Engines") and Reg 26
+# (Tables 3 and 4, "... refinery fuel-" / "fired process heaters"). Every
+# other regulation keeps its baselined caption (the wrapped words stay in
+# the cut lines after the caption, as before).
+CAPTION_WRAP_REGS = frozenset(GP_KEYS) | {"26"}
+
 CORPUS_REGS = {
     "1": "1",
     "2": "2", "3": "3", "6": "6", "7": "7", "8": "8", "9": "9", "22": "22", "24": "24", "26": "26",
@@ -10924,17 +10931,20 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
                 caption_text = caption_key
                 table = tables_by_caption.get(caption_text)
                 if table:
-                    wrap = _caption_wrap_line(own_lines, li, table) if reg in GP_KEYS else None
+                    wrap = _caption_wrap_line(own_lines, li, table) if reg in CAPTION_WRAP_REGS else None
                     if wrap and not table.get("caption_wrapped"):
                         # GP02 prints "Table 1: Emission Standards (g/hp-hr)
                         # for Rich Burn and Lean Burn" / "Engines": the
                         # caption's last word wraps onto its own line, which
                         # the cut below would drop. Shown as part of the
-                        # caption; the lookup key stays the first line. General
-                        # permits only for now: Reg 26's Tables 3 and 4
-                        # ("... for refinery fuel-" / "fired process heaters")
-                        # wrap the same way and keep their baselined captions
-                        # until Reg 26 is next re-imported on purpose.
+                        # caption; the lookup key stays the first line.
+                        # Regulations in CAPTION_WRAP_REGS: the general
+                        # permits (Sprint 3) and, since the AI-review PR
+                        # (Oct 2026), Reg 26, whose Tables 3 and 4 ("... for
+                        # refinery fuel-" / "fired process heaters" and "...
+                        # refinery fuel-fired" / "process heaters") wrap the
+                        # same way. Caption markup only; the official text is
+                        # not altered.
                         table["caption"] = f"{table['caption']} {wrap}"
                         table["caption_wrapped"] = True
                         TABLE_CELL_REPAIRS.append(dict(page="caption", before=caption_text,

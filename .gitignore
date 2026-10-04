@@ -67,3 +67,6 @@ Claude outputs/
 /test-results/
 /playwright-report/
 /blob-report/
+pipeline/review_failed.jsonl
+pipeline/out/review_report.md
+pipeline/out/review_report.json

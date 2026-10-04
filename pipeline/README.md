@@ -57,8 +57,8 @@ ever rotate it in the Anthropic console.
    unchecked. This actually calls Claude and writes 25 real summaries for
    Regulation 7. Open the site and spot-check a few of those provisions —
    the summary shows in the "Plain-English summary" panel under the
-   provision text, marked "AI-generated · not yet human-reviewed" until you
-   set a `last_verified_date` on that row.
+   provision text, marked "AI-generated · not yet reviewed" until the
+   automated review pass below (`review.py`) has checked it.
 3. **Everything:** Once you're happy with the quality, run workflow again
    with all fields blank (and `dry_run` unchecked). This picks up every
    remaining provision across all four regulations. It only ever processes
@@ -437,6 +437,98 @@ be run by hand outside CI —
 prefer generating and reviewing the SQL files above for a manual import.
 See `pipeline/test_import_ccr.py` for the stub-client tests covering its
 chunking, field, and ordering behavior.
+
+# Automated AI review pass (`review.py`)
+
+Every summary on the site carries a badge: **"AI reviewed · <date>"** when its
+`summary_status` is `approved` or `edited`, **"AI-generated · not yet
+reviewed"** while it is `pending`. "AI reviewed" never claims human review
+(owner decision, 4 Oct 2026): it means a separate automated review checked the
+summary against the official text and corrected what was wrong. Until October
+2026 that second pass was done by hand in chat sessions; `pipeline/review.py`
+is the repeatable version, and the **Review pending summaries** workflow
+(`.github/workflows/review.yml`) is how it runs.
+
+**What it selects.** Rows that have a summary and `summary_status = 'pending'`,
+nothing else. Approved, edited and rejected rows are excluded by the query and
+every write re-checks the status, so a row an admin approved meanwhile is left
+alone. Two things put a row back to pending: the parent regeneration
+(`summarize.py --parents`, Phase 0) and the importer (`import_ccr.py apply`),
+which resets a summary to `pending` and clears `reviewed_by`/`reviewed_at`
+whenever a provision's *visible* text changes (see "Re-importing a regulation"
+above). This step is what reviews those rows again -- after a re-import with
+`regenerate_summaries`, run **Review pending summaries** for that `reg`.
+
+**What the reviewer sees.** The official text of the provision and all of its
+descendants, assembled by `summarize.build_prompt()` itself -- the same
+regulation/parent lines, parent-paragraph excerpt, `MAX_PROMPT_WORDS`
+truncation and `CHILD_TEXT_WORDS` outline fallback the summarizer uses, so the
+two cannot drift -- followed by the current summary. The official text is the
+only source of truth; the reviewer gets no regulation hints and no other
+context (`test_review.py` checks the text block is byte-identical to the
+summarizer's prompt).
+
+**Verdicts** (structured JSON, `output_config.format`; anything malformed is a
+fail, see `validate_verdict`):
+
+| verdict | meaning | write (with `execute`) |
+|---|---|---|
+| `pass` | every statement supported; every number, date, threshold, citation and unit matches; nothing asserted to be absent; no advice beyond the text. Style-only rewrites are not corrections. | `summary_status='approved'`, `reviewed_at=now`, `reviewed_by='Claude (AI second-pass review, automated pipeline, <model>, <YYYY-MM-DD>)'`, a `provision_changes` row `summary_approved` |
+| `corrected` | specific errors or omissions that change meaning; the reviewer returns a corrected summary that changes only what is needed, with a one-line reason per change | prior text kept in `summary_original` (an existing value is never overwritten), corrected text written, `summary_status='approved'`, `reviewed_by='Claude (AI second-pass review; summary corrected, automated pipeline, <model>, <YYYY-MM-DD>)'`, a `summary_edited` row whose note is the reasons |
+| `fail` | not fixable with small edits, or the text is too truncated/outlined to verify; also every malformed answer, a cut-off answer, a "pass" on a hedging summary of a provision with descendants, a correction that still hedges or rewrites the summary | nothing; the row stays pending and is listed in the report |
+
+Both `reviewed_by` forms start with `Claude (`, which corpus QA check 21
+(`approved_without_ai_review`) requires on every approved or edited row. The
+public changelog shows counts only (`changelog_public()` returns no notes or
+ids), so the reasons in `provision_changes.note` stay private.
+
+**Running it.** Actions tab -> **Review pending summaries** -> Run workflow:
+
+- **reg** / **ids** / **limit** scope the run (the ids are still filtered to
+  pending rows).
+- **model** -- the reviewer. It is always a separate call from the one that
+  wrote the summary. Default `claude-sonnet-5-5`: a different and stronger
+  model than the Sonnet 4.5 that wrote the pending summaries, and cheaper per
+  token at batch rates ($1 in / $5 out per million) than Sonnet 4.5 ($1.50 /
+  $7.50) even after its tokenizer's ~30% larger counts. The dry run also quotes
+  `claude-sonnet-4-5` (the summarizer's own model) and `claude-opus-5-5`
+  ($2 / $10). Prices: platform.claude.com/docs/en/about-claude/pricing, Batch
+  processing table (the Batches API is 50% off both rates).
+- **effort** -- thinking depth for 5.x models (`low` by default; temperature is
+  not a parameter there). Sonnet 4.5 runs at temperature 0.
+- **max_cost** -- a spend cap: the run refuses to submit above this estimate
+  and cancels the remaining batches once actual spend passes it.
+- **execute** unchecked = **dry run**: no paid call, no write. It prints the
+  row count by regulation, the input tokens (counted with the free
+  `messages.count_tokens` endpoint when the API key is present, a character
+  estimate otherwise -- the report says which), the expected output tokens,
+  the batch price for each model option and how many rows exceed the
+  truncation limit. Always dry-run first.
+
+Every run writes `pipeline/out/review_report.md` and `.json` (uploaded as the
+**review-report** artifact and printed to the job summary): counts by verdict
+and regulation, every corrected row with before / after / reasons, every
+failed row with its reason, token usage and the actual cost, and the model,
+sampling and prompt version used. Rows the reviewer failed, API errors and
+batch timeouts are also logged to `pipeline/review_failed.jsonl`.
+
+**Resumability** is the summarizer's: approved rows drop out of the
+selection, so running again picks up exactly what the last run did not
+finish. A run that submitted batches but hit the 6-hour poll ceiling names
+the batch ids in its log; `--resume-batch <id>` consumes those results
+without submitting (and paying) again. After a run with corrections, re-embed
+the corrected rows (**Embed provisions**, `reg` scoped) so Ask and the related
+panel see the new text.
+
+Locally:
+
+```
+python pipeline/review.py --dry-run                    # quote for everything pending
+python pipeline/review.py --dry-run --reg gp12 --show 2
+python pipeline/review.py --reg gp12 --limit 15 --execute
+python pipeline/review.py --ids sec-7-B-I-B-7 --execute
+python3 -m pytest -q pipeline/test_review.py           # stub clients, no network
+```
 
 # Semantic embeddings (`embed.py`)
 

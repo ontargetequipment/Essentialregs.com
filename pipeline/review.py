@@ -1,0 +1,1203 @@
+#!/usr/bin/env python3
+"""Automated AI second-pass review of pending summaries (essentialregs.com).
+
+Every summary on the site carries a badge: "AI reviewed · <date>" when
+summary_status is approved or edited, "AI-generated · not yet reviewed" while
+it is pending. "AI reviewed" means a separate automated review checked the
+summary against the official text and corrected what was wrong (owner
+decision, 4 Oct 2026); until this step existed that second pass was done by
+hand in chat sessions. This is the repeatable version.
+
+What it does, per pending row (ai_summary set, summary_status = 'pending'):
+
+  1. Rebuilds the exact text the summarizer would be given today --
+     summarize.build_prompt(): regulation and parent chain, the parent
+     paragraph excerpt, the provision's own text (same MAX_PROMPT_WORDS
+     truncation) and every descendant in reading order (full bodies up to
+     CHILD_TEXT_WORDS, an outline past that). The official text is the only
+     source of truth the reviewer gets; nothing else is added.
+  2. Asks a reviewer model (a separate call from the one that wrote the
+     summary; see --model) for a structured verdict:
+       pass       every statement supported, every number/date/threshold/
+                  citation/unit matches, nothing asserted to be absent,
+                  no advice beyond the text;
+       corrected  specific errors or omissions that change meaning; the
+                  reviewer supplies a corrected summary that changes only
+                  what is needed, with a one-line reason per change;
+       fail       not fixable with small edits, or the text given is too
+                  truncated to verify. Anything malformed also counts as
+                  fail. The row stays pending and goes in the report.
+  3. With --execute, writes:
+       pass       summary_status='approved', reviewed_at=now,
+                  reviewed_by='Claude (AI second-pass review, automated
+                  pipeline, <model>, <YYYY-MM-DD>)', a provision_changes
+                  row 'summary_approved';
+       corrected  summary_original = coalesce(existing, old ai_summary),
+                  ai_summary = corrected text, summary_status='approved',
+                  reviewed_by='Claude (AI second-pass review; summary
+                  corrected, automated pipeline, <model>, <YYYY-MM-DD>)',
+                  a provision_changes row 'summary_edited' whose note is
+                  the reviewer's reasons (notes never reach the public
+                  changelog: changelog_public() returns counts only);
+       fail       no change.
+     Approved, edited and rejected rows are never selected, so re-running
+     picks up exactly the rows a previous run did not finish -- the same
+     resumability as summarize.py. Writes are conditional on the row still
+     being pending, so a row an admin approved meanwhile is left alone.
+  4. Writes a report (pipeline/out/review_report.md + .json): counts by
+     verdict and regulation, every corrected row with before/after/reasons,
+     every failed row with its reason, token usage and cost, the model and
+     prompt used.
+
+Without --execute this is a dry run: no paid call, no write. It still reads
+the real rows and prints the row count by regulation, the token count
+(client.messages.count_tokens, a free endpoint, when ANTHROPIC_API_KEY is
+set; a character-based estimate otherwise -- the report says which), the
+expected output tokens, the batch price for each model option and how many
+rows exceed the truncation limit.
+
+Examples:
+    python pipeline/review.py --dry-run                 # everything pending, cost quote
+    python pipeline/review.py --reg gp12 --limit 15 --execute
+    python pipeline/review.py --ids sec-7-B-I-B-7,sec-3-A-I-B-2 --execute
+    python pipeline/review.py --resume-batch msgbatch_abc --execute   # consume a batch a timed-out run left behind
+
+Environment: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY always; ANTHROPIC_API_KEY
+for --execute (and, optionally, for exact token counts in a dry run).
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import summarize as sz  # noqa: E402  -- the summarizer's prompt assembly is reused as is
+
+PIPELINE_DIR = Path(__file__).resolve().parent
+OUT_DIR = PIPELINE_DIR / "out"
+FAILED_LOG_PATH = PIPELINE_DIR / "review_failed.jsonl"
+REPORT_MD_PATH = OUT_DIR / "review_report.md"
+REPORT_JSON_PATH = OUT_DIR / "review_report.json"
+
+DB_PAGE_SIZE = sz.DB_PAGE_SIZE
+BATCH_MAX_REQUESTS = sz.BATCH_MAX_REQUESTS
+POLL_INTERVAL_SECONDS = sz.POLL_INTERVAL_SECONDS
+MAX_POLL_SECONDS = sz.MAX_POLL_SECONDS
+
+# The reviewer. Sonnet 5.5 is a different and stronger model than the
+# Sonnet 4.5 that wrote every pending summary, and at batch rates ($1 in /
+# $5 out per million) it is cheaper per token than Sonnet 4.5 ($1.50 / $7.50)
+# even after its tokenizer's ~30% larger counts. See MODEL_OPTIONS for the
+# alternatives the dry run quotes.
+DEFAULT_MODEL = "claude-sonnet-5-5"
+DEFAULT_EFFORT = "low"      # models that take output_config.effort (thinking on) -- the dry run quotes this
+TEMPERATURE = 0             # models that still take temperature (Sonnet 4.5 family and older)
+REVIEW_MAX_TOKENS = 8000    # JSON verdict (<= ~900 tokens) plus room for adaptive thinking on 5.x models; a cut-off answer is a fail
+COUNT_TOKENS_WORKERS = 6
+COUNT_TOKENS_RETRIES = 4
+
+# Standard (non-batch) USD per million tokens, from
+# https://platform.claude.com/docs/en/about-claude/pricing (fetched 4 Oct
+# 2026). The Message Batches API is 50% off both numbers, applied in
+# estimate_cost(). Every batch here goes through the Batches API.
+MODEL_RATES: dict[str, dict[str, float]] = {
+    "claude-sonnet-4-5": {"in": 3.00, "out": 15.00},
+    "claude-sonnet-4-6": {"in": 3.00, "out": 15.00},
+    "claude-sonnet-5": {"in": 2.00, "out": 10.00},
+    "claude-sonnet-5-5": {"in": 2.00, "out": 10.00},
+    "claude-opus-5": {"in": 5.00, "out": 25.00},
+    "claude-opus-5-5": {"in": 4.00, "out": 20.00},
+    "claude-haiku-4-5": {"in": 1.00, "out": 5.00},
+}
+PRICING_SOURCE = "https://platform.claude.com/docs/en/about-claude/pricing (Batch processing table, read 4 Oct 2026)"
+
+# The options a dry run prices side by side. `tokenizer` names the model
+# whose count_tokens figure applies: Claude 4.7 and later use a tokenizer
+# that produces roughly 30% more tokens for the same text, so Sonnet 5.5 and
+# Opus 5.5 share a count and Sonnet 4.5 has its own.
+MODEL_OPTIONS: list[dict] = [
+    {"model": "claude-sonnet-4-5", "tokenizer": "claude-sonnet-4-5",
+     "note": "the summarizer's own model (temperature 0, no thinking)"},
+    {"model": "claude-sonnet-5-5", "tokenizer": "claude-sonnet-5-5",
+     "note": "recommended: a different, stronger model; adaptive thinking at effort low"},
+    {"model": "claude-opus-5-5", "tokenizer": "claude-sonnet-5-5",
+     "note": "strongest option; adaptive thinking at effort low"},
+]
+
+# Models that still accept `temperature` (and have no thinking). Everything
+# else is a 4.7+ / 5.x model: temperature is rejected (400), thinking is on,
+# and output_config.effort is the depth control.
+TEMPERATURE_MODEL_PREFIXES = (
+    "claude-sonnet-4-5", "claude-sonnet-4-6", "claude-haiku-4-5",
+    "claude-opus-4-5", "claude-opus-4-6", "claude-3-",
+)
+
+# Dry-run output allowance per row. A pass verdict is ~120 tokens of JSON
+# and a correction ~400; roughly one row in five was corrected in the hand
+# passes. Thinking models spend output tokens on reasoning too (effort low).
+EST_OUTPUT_TOKENS_PLAIN = 250
+EST_OUTPUT_TOKENS_THINKING = 900
+# The structured-output schema and its system addition are not in the
+# count_tokens figure (counted on system + messages only); allow for them.
+SCHEMA_TOKEN_ALLOWANCE = 350
+# Character-based fallback when no API key is available for count_tokens.
+CHARS_PER_TOKEN_OLD = 3.8   # Sonnet 4.5 tokenizer, prose with citations
+CHARS_PER_TOKEN_NEW = 2.9   # 4.7+ tokenizer (~30% more tokens)
+
+# A correction must stay a correction: longer than this many times the
+# original (plus a 40-word allowance for a missing threshold or clause)
+# and it is a rewrite, which the spec says is not this step's job.
+CORRECTION_MAX_GROWTH = 1.5
+CORRECTION_GROWTH_ALLOWANCE_WORDS = 40
+
+VERDICTS = ("pass", "corrected", "fail")
+
+# Structured output: the response is constrained to this schema
+# (output_config.format), so a well-formed reply is JSON of this shape.
+# Everything is still validated strictly in validate_verdict() -- a
+# malformed reply is a fail, never a write.
+VERDICT_SCHEMA: dict = {
+    "type": "object",
+    "properties": {
+        "findings": {
+            "type": "array",
+            "description": "Every statement in the summary that is wrong, unsupported, or claims the text is silent when it is not. Empty when the verdict is pass.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "claim": {"type": "string", "description": "The summary's words, quoted."},
+                    "problem": {"type": "string", "description": "What the official text actually says, or that it says nothing of the kind."},
+                },
+                "required": ["claim", "problem"],
+                "additionalProperties": False,
+            },
+        },
+        "verdict": {"type": "string", "enum": list(VERDICTS)},
+        "corrected_summary": {
+            "type": "string",
+            "description": "Only for verdict corrected: the full corrected summary, changing only what is needed. Empty string otherwise.",
+        },
+        "changes": {
+            "type": "array",
+            "description": "Only for verdict corrected: one entry per change. Empty otherwise.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "before": {"type": "string"},
+                    "after": {"type": "string"},
+                    "reason": {"type": "string", "description": "One line, pointing at the text."},
+                },
+                "required": ["before", "after", "reason"],
+                "additionalProperties": False,
+            },
+        },
+        "fail_reason": {
+            "type": "string",
+            "description": "Only for verdict fail: why the summary cannot be fixed with small edits, or what is truncated. Empty string otherwise.",
+        },
+    },
+    "required": ["findings", "verdict", "corrected_summary", "changes", "fail_reason"],
+    "additionalProperties": False,
+}
+
+REVIEW_SYSTEM_PROMPT = (
+    "You are the second-pass reviewer for essentialregs.com, which publishes "
+    "plain-English summaries of regulatory provisions. You check one summary "
+    "against the official text it summarizes. The text you are given -- the "
+    "provision's own words plus the provisions inside it, with the regulation "
+    "and parent lines for orientation -- is the only source of truth. Use no "
+    "other knowledge of this regulation: never judge a statement by what the "
+    "regulation usually says, what a term usually means elsewhere, or what "
+    "you believe the rule to be. If the text does not say it, the summary "
+    "may not say it.\n\n"
+    "Return one of three verdicts.\n\n"
+    "pass: every statement in the summary is supported by the text; every "
+    "number, date, deadline, threshold, percentage, citation, unit, named "
+    "party and geographic qualifier matches the text exactly; the summary "
+    "does not say that anything is absent, not shown, not specified, "
+    "unclear or not stated when the text (including the provisions inside "
+    "it) states it; and the summary adds no requirement, exception, advice, "
+    "example or scope beyond what the text says. Wording you would phrase "
+    "differently is not an error. Style, sentence order, emphasis, "
+    "plain-English paraphrase of legal terms, and leaving out a detail that "
+    "does not change the meaning all pass. If the only changes you would "
+    "make are stylistic, the verdict is pass.\n\n"
+    "corrected: the summary contains one or more specific errors or "
+    "omissions that change its meaning -- a wrong or invented number, date, "
+    "unit, threshold or party; a requirement, exception or cross-reference "
+    "the text does not state; a condition read the wrong way round; a claim "
+    "that the text is silent on something it states (for a provision with "
+    "provisions inside it, a summary that says the text \"does not show\" or "
+    "\"does not specify\" something those provisions state is an error to "
+    "correct); or a missing threshold or condition without which a sentence "
+    "misleads. Supply the complete corrected summary. Change only what is "
+    "needed to make it accurate and keep the original sentences and wording "
+    "everywhere else; do not rewrite for style, do not reorder, do not add "
+    "detail the original did not need. List every change as before / after "
+    "with a one-line reason that points at the text. The corrected summary "
+    "must be plain prose with no markdown, no lists and no headings, and "
+    "must itself follow every rule above: nothing that is not in the text, "
+    "no statement that something is absent when the text or the provisions "
+    "inside it state it.\n\n"
+    "fail: the summary cannot be made accurate with small edits -- it "
+    "describes the wrong thing, or most of its statements are unsupported "
+    "-- or the text you were given is marked as truncated or shown only as "
+    "an outline, so the statements that depend on the missing part cannot "
+    "be verified. Give the reason.\n\n"
+    "Compare literally: a threshold of 500 horsepower passes only if the "
+    "text says 500 horsepower; \"the Division\" and \"the Commission\" are "
+    "different parties; \"may\" and \"must\" are different duties. The "
+    "summary is written for a compliance person who is not a lawyer, so "
+    "plain everyday wording is expected and is not a defect. The summary "
+    "may describe the provision together with the provisions listed inside "
+    "it; that is how it is meant to work. An acronym the text itself "
+    "expands may be expanded that way; one the text only abbreviates may "
+    "not be expanded. A summary that reports an equation as not shown is "
+    "correct when the text lists variables without a formula.\n\n"
+    "Answer with the JSON object only."
+)
+
+REVIEW_PROMPT_VERSION = hashlib.sha1(
+    (REVIEW_SYSTEM_PROMPT + json.dumps(VERDICT_SCHEMA, sort_keys=True)).encode("utf-8")
+).hexdigest()[:10]
+
+REVIEWED_BY_PASS = "Claude (AI second-pass review, automated pipeline, {model}, {date})"
+REVIEWED_BY_CORRECTED = "Claude (AI second-pass review; summary corrected, automated pipeline, {model}, {date})"
+
+
+# --------------------------------------------------------------------------
+# Selection
+# --------------------------------------------------------------------------
+
+CANDIDATE_COLUMNS = ("id, citation, title, parent_id, full_text, sort_order, "
+                     "ai_summary, summary_original, summary_status, summary_model")
+
+
+def iter_candidates(client, reg: Optional[str], limit: Optional[int],
+                    ids: Optional[list[str]] = None):
+    """Yields the rows this step may touch: ai_summary set AND
+    summary_status = 'pending', ordered by (sort_order, id), paginated.
+    Approved, edited and rejected rows are excluded by the query itself,
+    and every write re-checks the status, so an approved row is never
+    selected or changed. `ids` narrows to those ids (still pending-only);
+    `reg` narrows to one regulation's id prefix; `limit` stops early."""
+    if ids:
+        rows_by_id: dict[str, dict] = {}
+        for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
+            chunk = ids[chunk_start:chunk_start + DB_PAGE_SIZE]
+            q = (client.table("provisions").select(CANDIDATE_COLUMNS)
+                 .in_("id", chunk).eq("summary_status", "pending")
+                 .not_.is_("ai_summary", "null"))
+            for row in q.execute().data or []:
+                rows_by_id[row["id"]] = row
+        skipped = [i for i in ids if i not in rows_by_id]
+        if skipped:
+            print(f"  NOTE: {len(skipped)} id(s) from --ids are not pending (or not found) "
+                  f"and are left alone: {', '.join(skipped[:20])}"
+                  f"{' ...' if len(skipped) > 20 else ''}", file=sys.stderr)
+        yielded = 0
+        for provision_id in ids:
+            row = rows_by_id.get(provision_id)
+            if row is None:
+                continue
+            yield row
+            yielded += 1
+            if limit is not None and yielded >= limit:
+                return
+        return
+
+    like_prefix = f"sec-{reg.lower()}-" if reg else None
+    start = 0
+    yielded = 0
+    while True:
+        q = (client.table("provisions").select(CANDIDATE_COLUMNS)
+             .eq("summary_status", "pending")
+             .not_.is_("ai_summary", "null"))
+        if like_prefix:
+            q = q.like("id", f"{like_prefix}%")
+        q = q.order("sort_order").order("id").range(start, start + DB_PAGE_SIZE - 1)
+        rows = q.execute().data or []
+        for row in rows:
+            yield row
+            yielded += 1
+            if limit is not None and yielded >= limit:
+                return
+        if len(rows) < DB_PAGE_SIZE:
+            return
+        start += DB_PAGE_SIZE
+
+
+# --------------------------------------------------------------------------
+# Input assembly (parity with the summarizer) and request building
+# --------------------------------------------------------------------------
+
+@dataclass
+class ReviewInput:
+    provision_id: str
+    prompt: str                   # the user turn: official text block + current summary
+    system: str                   # REVIEW_SYSTEM_PROMPT
+    summary: str                  # the summary under review, exactly as stored
+    text_result: sz.PromptResult  # the summarizer's assembly of the official text
+    chars: int = 0
+
+
+def build_official_text(provision: dict, meta: dict, children_index: dict) -> sz.PromptResult:
+    """The official text exactly as the summarizer assembles it today:
+    summarize.build_prompt() (regulation line, parent chain, parent
+    paragraph excerpt, provision text with the MAX_PROMPT_WORDS cap, and
+    every descendant with the CHILD_TEXT_WORDS budget / outline fallback).
+    Reused rather than copied so the two can never drift apart."""
+    return sz.build_prompt(provision, meta, children_index)
+
+
+def build_review_input(provision: dict, meta: dict, children_index: dict) -> ReviewInput:
+    text = build_official_text(provision, meta, children_index)
+    summary = (provision.get("ai_summary") or "").strip()
+    prompt = (
+        "OFFICIAL TEXT (the only source of truth; assembled exactly as the "
+        "summary's author saw it):\n\n"
+        f"{text.prompt}\n\n"
+        "CURRENT SUMMARY (under review):\n"
+        f"{summary}"
+    )
+    return ReviewInput(
+        provision_id=provision["id"],
+        prompt=prompt,
+        system=REVIEW_SYSTEM_PROMPT,
+        summary=summary,
+        text_result=text,
+        chars=len(prompt) + len(REVIEW_SYSTEM_PROMPT),
+    )
+
+
+def supports_temperature(model: str) -> bool:
+    return model.startswith(TEMPERATURE_MODEL_PREFIXES)
+
+
+def request_params(review: ReviewInput, model: str, effort: str = DEFAULT_EFFORT) -> dict:
+    """The Messages API params for one review, usable for messages.create,
+    messages.count_tokens (minus output_config) and a Batches request.
+    Temperature for the models that take it; output_config.effort for the
+    4.7+/5.x models, where temperature is rejected and thinking is on."""
+    params: dict = {
+        "model": model,
+        "max_tokens": REVIEW_MAX_TOKENS,
+        "system": review.system,
+        "messages": [{"role": "user", "content": review.prompt}],
+        "output_config": {"format": {"type": "json_schema", "schema": VERDICT_SCHEMA}},
+    }
+    if supports_temperature(model):
+        params["temperature"] = TEMPERATURE
+    else:
+        params["output_config"]["effort"] = effort
+    return params
+
+
+def sampling_description(model: str, effort: str) -> str:
+    if supports_temperature(model):
+        return f"temperature={TEMPERATURE}"
+    return f"adaptive thinking, output_config.effort={effort} (temperature is not a parameter on this model)"
+
+
+# --------------------------------------------------------------------------
+# Verdict validation
+# --------------------------------------------------------------------------
+
+@dataclass
+class Verdict:
+    verdict: str                     # pass | corrected | fail
+    corrected_summary: str = ""
+    changes: list[dict] = field(default_factory=list)
+    findings: list[dict] = field(default_factory=list)
+    reason: str = ""                 # fail reason (model's, or the validator's)
+
+    @property
+    def reasons_note(self) -> str:
+        return "; ".join(c["reason"] for c in self.changes)
+
+
+def _message_text(message) -> str:
+    return "".join(
+        getattr(block, "text", "") for block in getattr(message, "content", [])
+        if getattr(block, "type", None) == "text"
+    ).strip()
+
+
+def parse_verdict_text(raw: str) -> dict:
+    """json.loads with the one tolerance the structured-output path never
+    needs but a plain-text model might: a JSON object wrapped in a code
+    fence. Raises ValueError for anything else."""
+    s = (raw or "").strip()
+    if s.startswith("```"):
+        s = re.sub(r"^```(?:json)?\s*", "", s)
+        s = re.sub(r"\s*```$", "", s)
+    try:
+        data = json.loads(s)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"not JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError("JSON is not an object")
+    return data
+
+
+def _normalize(text: str) -> str:
+    return sz.WS_RE.sub(" ", (text or "")).strip()
+
+
+def validate_verdict(data: object, review: ReviewInput, stop_reason: Optional[str] = None) -> Verdict:
+    """Strict validation. Returns a Verdict whose .verdict is one of
+    VERDICTS; anything malformed becomes verdict 'fail' with the reason in
+    .reason (the row stays pending and is listed in the report).
+
+    Rules beyond shape:
+      - stop_reason max_tokens or refusal -> fail (the answer is not whole).
+      - pass on a hedging summary for a provision WITH descendants -> fail
+        (the text's children state what the summary says is absent; the
+        reviewer should have corrected it, so the row is not approved).
+      - corrected needs a non-empty corrected summary that differs from the
+        current one, is whole (ends in terminal punctuation), carries no
+        markdown, does not hedge when the provision has descendants, is not
+        a rewrite (word growth cap), and has at least one change with a
+        non-empty reason.
+      - fail needs a reason (defaults to 'unspecified')."""
+    if stop_reason == "max_tokens":
+        return Verdict("fail", reason="malformed output: answer cut off at max_tokens")
+    if stop_reason == "refusal":
+        return Verdict("fail", reason="model refusal")
+    if not isinstance(data, dict):
+        return Verdict("fail", reason="malformed output: not a JSON object")
+    verdict = data.get("verdict")
+    if verdict not in VERDICTS:
+        return Verdict("fail", reason=f"malformed output: verdict {verdict!r}")
+
+    findings = data.get("findings")
+    if findings is None:
+        findings = []
+    if not isinstance(findings, list) or not all(isinstance(f, dict) for f in findings):
+        return Verdict("fail", reason="malformed output: findings is not a list of objects")
+    findings = [{"claim": str(f.get("claim", "")), "problem": str(f.get("problem", ""))} for f in findings]
+
+    has_descendants = review.text_result.descendant_count > 0
+
+    if verdict == "pass":
+        if has_descendants and sz.is_hedging(review.summary):
+            return Verdict("fail", findings=findings,
+                           reason="reviewer passed a summary that says the text is silent "
+                                  "about something, on a provision with descendants")
+        return Verdict("pass", findings=findings)
+
+    if verdict == "fail":
+        reason = _normalize(str(data.get("fail_reason") or "")) or "unspecified"
+        return Verdict("fail", findings=findings, reason=reason)
+
+    # corrected
+    corrected = data.get("corrected_summary")
+    if not isinstance(corrected, str):
+        return Verdict("fail", findings=findings, reason="malformed output: corrected_summary is not a string")
+    raw_corrected = sz.strip_wrapper_tags(corrected).strip()
+    if not raw_corrected:
+        return Verdict("fail", findings=findings, reason="malformed output: corrected verdict with an empty corrected_summary")
+    # Markdown and line breaks are tested on the raw text, before whitespace
+    # is normalized away: a summary is one plain paragraph.
+    if "\n" in raw_corrected or "**" in raw_corrected or re.match(r"\s*(?:[-*#]|\d+\.)\s", raw_corrected):
+        return Verdict("fail", findings=findings, reason="malformed output: corrected_summary contains markdown or line breaks")
+    corrected = _normalize(raw_corrected)
+    if corrected == _normalize(review.summary):
+        return Verdict("fail", findings=findings, reason="malformed output: corrected_summary is identical to the current summary")
+    if not sz.is_whole(corrected):
+        return Verdict("fail", findings=findings, reason="malformed output: corrected_summary does not end in terminal punctuation")
+    if has_descendants and sz.is_hedging(corrected):
+        return Verdict("fail", findings=findings, reason="corrected summary still says the text is silent, on a provision with descendants")
+    orig_words = len(review.summary.split())
+    if len(corrected.split()) > orig_words * CORRECTION_MAX_GROWTH + CORRECTION_GROWTH_ALLOWANCE_WORDS:
+        return Verdict("fail", findings=findings,
+                       reason=f"correction is a rewrite ({len(corrected.split())} words from {orig_words})")
+    changes = data.get("changes")
+    if not isinstance(changes, list) or not changes or not all(isinstance(c, dict) for c in changes):
+        return Verdict("fail", findings=findings, reason="malformed output: corrected verdict without a changes list")
+    clean_changes = []
+    for c in changes:
+        reason = _normalize(str(c.get("reason") or ""))
+        if not reason:
+            return Verdict("fail", findings=findings, reason="malformed output: a change has no reason")
+        clean_changes.append({"before": _normalize(str(c.get("before") or "")),
+                              "after": _normalize(str(c.get("after") or "")),
+                              "reason": reason})
+    return Verdict("corrected", corrected_summary=corrected, changes=clean_changes, findings=findings)
+
+
+def verdict_from_message(message, review: ReviewInput) -> Verdict:
+    """Message -> Verdict, including the parse step (a parse error is a
+    malformed-output fail)."""
+    stop_reason = getattr(message, "stop_reason", None)
+    if stop_reason in ("max_tokens", "refusal"):
+        return validate_verdict(None, review, stop_reason=stop_reason)
+    raw = _message_text(message)
+    if not raw:
+        return Verdict("fail", reason="malformed output: empty response")
+    try:
+        data = parse_verdict_text(raw)
+    except ValueError as exc:
+        return Verdict("fail", reason=f"malformed output: {exc}")
+    return validate_verdict(data, review, stop_reason=stop_reason)
+
+
+# --------------------------------------------------------------------------
+# Writes
+# --------------------------------------------------------------------------
+
+def reviewed_by_for(verdict: str, model: str, date: Optional[str] = None) -> str:
+    date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    template = REVIEWED_BY_CORRECTED if verdict == "corrected" else REVIEWED_BY_PASS
+    return template.format(model=model, date=date)
+
+
+def _update_if_pending(client, provision_id: str, payload: dict) -> bool:
+    """UPDATE ... WHERE id = ? AND summary_status = 'pending'. Returns
+    whether a row was updated. PostgREST returns the updated rows, so an
+    empty list means the row was no longer pending (an admin got there
+    first) and nothing was written."""
+    res = (client.table("provisions").update(payload)
+           .eq("id", provision_id).eq("summary_status", "pending").execute())
+    data = getattr(res, "data", None)
+    if data is None:
+        return True  # client did not return representation; assume written
+    return len(data) > 0
+
+
+def apply_verdict(client, row: dict, review: ReviewInput, verdict: Verdict, model: str,
+                  date: Optional[str] = None) -> str:
+    """Performs the writes for one verdict. Returns what happened:
+    'approved', 'corrected', 'failed' (no write) or 'skipped_not_pending'."""
+    if verdict.verdict == "fail":
+        return "failed"
+    now = datetime.now(timezone.utc).isoformat()
+    if verdict.verdict == "pass":
+        payload = {
+            "summary_status": "approved",
+            "reviewed_at": now,
+            "reviewed_by": reviewed_by_for("pass", model, date),
+        }
+        if not _update_if_pending(client, row["id"], payload):
+            return "skipped_not_pending"
+        client.table("provision_changes").insert({
+            "provision_id": row["id"],
+            "change_type": "summary_approved",
+            "note": f"AI second-pass review (automated pipeline, {model}): pass",
+        }).execute()
+        return "approved"
+
+    # corrected: keep the prior text in summary_original unless a reviewer
+    # already preserved one there (never overwrite an existing value).
+    payload = {
+        "ai_summary": verdict.corrected_summary,
+        "summary_original": row.get("summary_original") or row.get("ai_summary"),
+        "summary_status": "approved",
+        "reviewed_at": now,
+        "reviewed_by": reviewed_by_for("corrected", model, date),
+    }
+    if not _update_if_pending(client, row["id"], payload):
+        return "skipped_not_pending"
+    client.table("provision_changes").insert({
+        "provision_id": row["id"],
+        "change_type": "summary_edited",
+        "note": f"AI second-pass review (automated pipeline, {model}): {verdict.reasons_note}",
+    }).execute()
+    return "corrected"
+
+
+# --------------------------------------------------------------------------
+# Cost
+# --------------------------------------------------------------------------
+
+def rate_for(model: str) -> dict:
+    """Exact model id first, then the longest known id the given one extends
+    (a dated snapshot such as claude-sonnet-4-5-20250929), then the
+    summarizer's table / fallback."""
+    if model in MODEL_RATES:
+        return MODEL_RATES[model]
+    for key in sorted(MODEL_RATES, key=len, reverse=True):
+        if model.startswith(key + "-"):
+            return MODEL_RATES[key]
+    return sz.rate_for(model)
+
+
+def estimate_cost(model: str, input_tokens: int, output_tokens: int, batch: bool = True) -> float:
+    rates = rate_for(model)
+    discount = 0.5 if batch else 1.0
+    return ((input_tokens / 1_000_000) * rates["in"] + (output_tokens / 1_000_000) * rates["out"]) * discount
+
+
+def estimate_tokens_by_chars(chars: int, model: str) -> int:
+    cpt = CHARS_PER_TOKEN_OLD if supports_temperature(model) else CHARS_PER_TOKEN_NEW
+    return int(chars / cpt)
+
+
+def expected_output_tokens(model: str) -> int:
+    return EST_OUTPUT_TOKENS_PLAIN if supports_temperature(model) else EST_OUTPUT_TOKENS_THINKING
+
+
+def count_tokens_api(client_anthropic, review: ReviewInput, model: str) -> int:
+    """client.messages.count_tokens on system + messages (the free endpoint;
+    output_config is left out and SCHEMA_TOKEN_ALLOWANCE covers it).
+    Retries 429/5xx with backoff."""
+    delay = 2.0
+    for attempt in range(COUNT_TOKENS_RETRIES + 1):
+        try:
+            res = client_anthropic.messages.count_tokens(
+                model=model, system=review.system,
+                messages=[{"role": "user", "content": review.prompt}],
+            )
+            return int(res.input_tokens) + SCHEMA_TOKEN_ALLOWANCE
+        except Exception as exc:  # noqa: BLE001
+            status = getattr(exc, "status_code", None)
+            if attempt == COUNT_TOKENS_RETRIES or status not in (None, 429, 500, 502, 503, 529):
+                raise
+            time.sleep(delay)
+            delay *= 2
+    raise RuntimeError("unreachable")
+
+
+def count_tokens_many(client_anthropic, reviews: list[ReviewInput], model: str,
+                      workers: int = COUNT_TOKENS_WORKERS) -> list[Optional[int]]:
+    """Counts every review's input for `model`, in parallel. None where the
+    endpoint failed for that row (the caller estimates those by chars)."""
+    def one(review: ReviewInput) -> Optional[int]:
+        try:
+            return count_tokens_api(client_anthropic, review, model)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  count_tokens failed for {review.provision_id}: {exc}", file=sys.stderr)
+            return None
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return list(pool.map(one, reviews))
+
+
+# --------------------------------------------------------------------------
+# Run state + report
+# --------------------------------------------------------------------------
+
+@dataclass
+class RunStats:
+    selected: int = 0
+    passed: int = 0
+    corrected: int = 0
+    failed: int = 0
+    skipped_not_pending: int = 0
+    api_errors: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    batches_submitted: int = 0
+    truncated_rows: int = 0      # provision text over MAX_PROMPT_WORDS
+    outline_rows: int = 0        # descendants shown as an outline (over CHILD_TEXT_WORDS)
+    with_descendants: int = 0
+    by_reg: dict = field(default_factory=dict)          # reg -> {selected, pass, corrected, fail}
+    corrected_rows: list = field(default_factory=list)  # dicts: id, reg, before, after, changes
+    failed_rows: list = field(default_factory=list)     # dicts: id, reg, reason
+    passed_rows: list = field(default_factory=list)     # ids
+    batch_ids: list = field(default_factory=list)
+
+    def reg_bucket(self, provision_id: str) -> dict:
+        reg = sz.reg_key_of(provision_id) or "?"
+        return self.by_reg.setdefault(reg, {"selected": 0, "pass": 0, "corrected": 0, "fail": 0})
+
+    def note_selected(self, review: ReviewInput) -> None:
+        self.selected += 1
+        self.reg_bucket(review.provision_id)["selected"] += 1
+        if review.text_result.truncated:
+            self.truncated_rows += 1
+        if review.text_result.outline_mode:
+            self.outline_rows += 1
+        if review.text_result.descendant_count:
+            self.with_descendants += 1
+
+    def note_outcome(self, review: ReviewInput, verdict: Verdict, outcome: str) -> None:
+        bucket = self.reg_bucket(review.provision_id)
+        reg = sz.reg_key_of(review.provision_id) or "?"
+        if outcome == "skipped_not_pending":
+            self.skipped_not_pending += 1
+            return
+        if verdict.verdict == "pass":
+            self.passed += 1
+            bucket["pass"] += 1
+            self.passed_rows.append(review.provision_id)
+        elif verdict.verdict == "corrected":
+            self.corrected += 1
+            bucket["corrected"] += 1
+            self.corrected_rows.append({
+                "id": review.provision_id, "reg": reg,
+                "before": review.summary, "after": verdict.corrected_summary,
+                "changes": verdict.changes, "findings": verdict.findings,
+            })
+        else:
+            self.failed += 1
+            bucket["fail"] += 1
+            self.failed_rows.append({"id": review.provision_id, "reg": reg,
+                                     "reason": verdict.reason, "findings": verdict.findings})
+
+    def add_usage(self, usage) -> None:
+        self.input_tokens += getattr(usage, "input_tokens", 0) or 0
+        self.output_tokens += getattr(usage, "output_tokens", 0) or 0
+
+
+def log_failure(provision_id: str, reason: str) -> None:
+    FAILED_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with FAILED_LOG_PATH.open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"id": provision_id, "reason": reason,
+                            "at": datetime.now(timezone.utc).isoformat()}) + "\n")
+
+
+def build_report(stats: RunStats, model: str, effort: str, execute: bool,
+                 dry_run_quote: Optional[dict] = None, started_at: Optional[str] = None) -> tuple[str, dict]:
+    """(markdown, json-able dict) for this run."""
+    now = datetime.now(timezone.utc).isoformat()
+    actual_cost = estimate_cost(model, stats.input_tokens, stats.output_tokens, batch=True)
+    data = {
+        "run": {
+            "started_at": started_at, "finished_at": now,
+            "mode": "execute" if execute else "dry run (no API call billed, no write)",
+            "model": model,
+            "sampling": sampling_description(model, effort),
+            "prompt_version": REVIEW_PROMPT_VERSION,
+            "system_prompt": REVIEW_SYSTEM_PROMPT,
+            "output_schema": VERDICT_SCHEMA,
+            "pricing_source": PRICING_SOURCE,
+        },
+        "counts": {
+            "selected": stats.selected, "pass": stats.passed, "corrected": stats.corrected,
+            "fail": stats.failed, "skipped_not_pending": stats.skipped_not_pending,
+            "api_errors": stats.api_errors,
+            "truncated_rows": stats.truncated_rows, "outline_rows": stats.outline_rows,
+            "with_descendants": stats.with_descendants,
+        },
+        "by_regulation": dict(sorted(stats.by_reg.items(), key=lambda kv: (-kv[1]["selected"], kv[0]))),
+        "usage": {"input_tokens": stats.input_tokens, "output_tokens": stats.output_tokens,
+                  "cost_usd_batch": round(actual_cost, 4), "batches": stats.batch_ids},
+        "corrected": stats.corrected_rows,
+        "failed": stats.failed_rows,
+        "passed_ids": stats.passed_rows,
+        "dry_run_quote": dry_run_quote,
+    }
+
+    md: list[str] = []
+    md.append(f"# AI second-pass review report -- {data['run']['mode']}")
+    md.append("")
+    md.append(f"- Model: `{model}` ({data['run']['sampling']}); prompt version `{REVIEW_PROMPT_VERSION}`")
+    md.append(f"- Started {started_at}, finished {now}")
+    md.append("")
+    md.append("## Counts")
+    md.append("")
+    md.append("| verdict | rows |")
+    md.append("|---|---:|")
+    md.append(f"| selected (pending with a summary) | {stats.selected:,} |")
+    md.append(f"| pass -> approved | {stats.passed:,} |")
+    md.append(f"| corrected -> approved with new text | {stats.corrected:,} |")
+    md.append(f"| fail (stays pending) | {stats.failed:,} |")
+    md.append(f"| skipped: no longer pending at write time | {stats.skipped_not_pending:,} |")
+    md.append(f"| API errors (stay pending) | {stats.api_errors:,} |")
+    md.append(f"| rows whose provision text exceeds {sz.MAX_PROMPT_WORDS:,} words (truncated) | {stats.truncated_rows:,} |")
+    md.append(f"| rows whose descendants exceed {sz.CHILD_TEXT_WORDS:,} words (outline only) | {stats.outline_rows:,} |")
+    md.append(f"| rows with descendants in the text | {stats.with_descendants:,} |")
+    md.append("")
+    md.append("## By regulation")
+    md.append("")
+    md.append("| reg | selected | pass | corrected | fail |")
+    md.append("|---|---:|---:|---:|---:|")
+    for reg, b in data["by_regulation"].items():
+        md.append(f"| {reg} | {b['selected']:,} | {b['pass']:,} | {b['corrected']:,} | {b['fail']:,} |")
+    md.append("")
+    md.append("## Usage and cost")
+    md.append("")
+    if execute:
+        md.append(f"- Input tokens: {stats.input_tokens:,}; output tokens: {stats.output_tokens:,}")
+        md.append(f"- Actual cost at batch rates: ${actual_cost:,.4f} ({PRICING_SOURCE})")
+        if stats.batch_ids:
+            md.append(f"- Batches: {', '.join(stats.batch_ids)}")
+    if dry_run_quote:
+        q = dry_run_quote
+        md.append(f"- Token count method: {q['method']}")
+        md.append(f"- Expected output tokens per row: {EST_OUTPUT_TOKENS_PLAIN} (no-thinking models), "
+                  f"{EST_OUTPUT_TOKENS_THINKING} (thinking models at effort {effort})")
+        md.append("")
+        md.append("| model | tokenizer | input tokens | output tokens (est.) | batch $/M in | batch $/M out | batch cost | note |")
+        md.append("|---|---|---:|---:|---:|---:|---:|---|")
+        for opt in q["options"]:
+            md.append(f"| {opt['model']} | {opt['tokenizer']} | {opt['input_tokens']:,} | {opt['output_tokens']:,} "
+                      f"| ${opt['batch_in_per_m']:.2f} | ${opt['batch_out_per_m']:.2f} | **${opt['cost_usd']:,.2f}** | {opt['note']} |")
+        md.append("")
+        md.append(f"- Prices: {PRICING_SOURCE}; the Batches API is 50% off the standard input and output rates.")
+    md.append("")
+    md.append(f"## Corrected rows ({len(stats.corrected_rows)})")
+    md.append("")
+    for row in stats.corrected_rows:
+        md.append(f"### {row['id']}")
+        md.append("")
+        md.append(f"**Before:** {row['before']}")
+        md.append("")
+        md.append(f"**After:** {row['after']}")
+        md.append("")
+        for c in row["changes"]:
+            md.append(f"- {c['reason']}" + (f" (\"{c['before']}\" -> \"{c['after']}\")" if c["before"] or c["after"] else ""))
+        md.append("")
+    md.append(f"## Failed rows ({len(stats.failed_rows)}) -- still pending")
+    md.append("")
+    for row in stats.failed_rows:
+        md.append(f"- `{row['id']}`: {row['reason']}")
+    md.append("")
+    return "\n".join(md), data
+
+
+def write_report(md: str, data: dict) -> None:
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    REPORT_MD_PATH.write_text(md, encoding="utf-8")
+    REPORT_JSON_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+# --------------------------------------------------------------------------
+# Dry run
+# --------------------------------------------------------------------------
+
+def dry_run_quote(reviews: list[ReviewInput], client_anthropic, effort: str) -> dict:
+    """Token counts and batch prices for every MODEL_OPTIONS entry. With an
+    Anthropic client the free count_tokens endpoint is used once per
+    distinct tokenizer; otherwise a characters-per-token estimate."""
+    counts_by_tokenizer: dict[str, list[int]] = {}
+    method_parts: list[str] = []
+    tokenizers = sorted({opt["tokenizer"] for opt in MODEL_OPTIONS})
+    for tok in tokenizers:
+        if client_anthropic is not None:
+            print(f"Counting input tokens with the API (free endpoint) for tokenizer {tok}: {len(reviews):,} rows...")
+            counted = count_tokens_many(client_anthropic, reviews, tok)
+            fallback = sum(1 for c in counted if c is None)
+            counts = [c if c is not None else estimate_tokens_by_chars(r.chars, tok)
+                      for c, r in zip(counted, reviews)]
+            method_parts.append(
+                f"{tok}: messages.count_tokens on system + user turn, plus {SCHEMA_TOKEN_ALLOWANCE} "
+                f"tokens per row for the output schema"
+                + (f" ({fallback} rows fell back to a character estimate after API errors)" if fallback else ""))
+        else:
+            counts = [estimate_tokens_by_chars(r.chars, tok) for r in reviews]
+            cpt = CHARS_PER_TOKEN_OLD if supports_temperature(tok) else CHARS_PER_TOKEN_NEW
+            method_parts.append(f"{tok}: character estimate at {cpt} chars/token (no ANTHROPIC_API_KEY, so no count_tokens call)")
+        counts_by_tokenizer[tok] = counts
+
+    options = []
+    for opt in MODEL_OPTIONS:
+        input_tokens = sum(counts_by_tokenizer[opt["tokenizer"]])
+        output_tokens = expected_output_tokens(opt["model"]) * len(reviews)
+        rates = rate_for(opt["model"])
+        options.append({
+            "model": opt["model"], "tokenizer": opt["tokenizer"], "note": opt["note"],
+            "input_tokens": input_tokens, "output_tokens": output_tokens,
+            "batch_in_per_m": rates["in"] / 2, "batch_out_per_m": rates["out"] / 2,
+            "cost_usd": round(estimate_cost(opt["model"], input_tokens, output_tokens, batch=True), 4),
+        })
+    return {"method": "; ".join(method_parts), "rows": len(reviews), "options": options,
+            "per_row_input_tokens": {tok: counts for tok, counts in counts_by_tokenizer.items()}}
+
+
+# --------------------------------------------------------------------------
+# Batch execution
+# --------------------------------------------------------------------------
+
+def submit_batches(client_anthropic, reviews: list[ReviewInput], model: str, effort: str,
+                   stats: RunStats) -> tuple[list[tuple[object, list[str]]], dict[str, str]]:
+    """Submits every review through the Batches API, BATCH_MAX_REQUESTS per
+    batch, all up front (the Phase 0 pilot showed a single batch can wait
+    over an hour to start; submitting them together makes the wall clock
+    the slowest batch rather than the sum). Returns [(batch, custom_ids)]
+    and the custom_id -> provision id map."""
+    custom_id_map: dict[str, str] = {}
+    requests = []
+    for review in reviews:
+        custom_id = sz.make_custom_id(review.provision_id, custom_id_map)
+        requests.append({"custom_id": custom_id, "params": request_params(review, model, effort)})
+    pending: list[tuple[object, list[str]]] = []
+    for start in range(0, len(requests), BATCH_MAX_REQUESTS):
+        chunk = requests[start:start + BATCH_MAX_REQUESTS]
+        print(f"Submitting batch of {len(chunk)} reviews ({start + 1}-{start + len(chunk)} of {len(requests)})...")
+        batch = client_anthropic.messages.batches.create(requests=chunk)
+        stats.batches_submitted += 1
+        stats.batch_ids.append(batch.id)
+        print(f"  batch id: {batch.id} (processing_status '{batch.processing_status}')")
+        pending.append((batch, [r["custom_id"] for r in chunk]))
+    return pending, custom_id_map
+
+
+def consume_batch(client_anthropic, client_supabase, batch_id: str, custom_id_map: dict[str, str],
+                  reviews_by_id: dict[str, ReviewInput], rows_by_id: dict[str, dict],
+                  model: str, stats: RunStats, execute: bool) -> None:
+    """Validates and (with execute) writes every result of one ended batch."""
+    for item in client_anthropic.messages.batches.results(batch_id):
+        provision_id = custom_id_map.get(item.custom_id)
+        if provision_id is None or provision_id not in reviews_by_id:
+            print(f"  WARNING: result {item.custom_id} does not match a selected row; skipped.", file=sys.stderr)
+            continue
+        review = reviews_by_id[provision_id]
+        outcome = item.result
+        if outcome.type != "succeeded":
+            detail = getattr(getattr(outcome, "error", None), "message", outcome.type)
+            stats.api_errors += 1
+            log_failure(provision_id, f"{outcome.type}: {detail}")
+            continue
+        message = outcome.message
+        stats.add_usage(message.usage)
+        verdict = verdict_from_message(message, review)
+        handle_verdict(client_supabase, rows_by_id[provision_id], review, verdict, model, stats, execute)
+
+
+def handle_verdict(client_supabase, row: dict, review: ReviewInput, verdict: Verdict, model: str,
+                   stats: RunStats, execute: bool) -> str:
+    if execute:
+        outcome = apply_verdict(client_supabase, row, review, verdict, model)
+    else:
+        outcome = {"pass": "approved", "corrected": "corrected", "fail": "failed"}[verdict.verdict]
+    if verdict.verdict == "fail":
+        log_failure(review.provision_id, verdict.reason)
+    stats.note_outcome(review, verdict, outcome)
+    return outcome
+
+
+def poll_batches(client_anthropic, client_supabase, pending, custom_id_map, reviews_by_id, rows_by_id,
+                 model: str, stats: RunStats, execute: bool, poll_interval: int,
+                 max_cost: Optional[float] = None) -> None:
+    print(f"Polling {len(pending)} batch(es) every {poll_interval}s...")
+    deadline = time.monotonic() + MAX_POLL_SECONDS
+    while pending:
+        still_pending = []
+        for batch, custom_ids in pending:
+            batch = client_anthropic.messages.batches.retrieve(batch.id)
+            if batch.processing_status != "ended":
+                still_pending.append((batch, custom_ids))
+                continue
+            counts = batch.request_counts
+            print(f"  batch {batch.id} done: succeeded={counts.succeeded} errored={counts.errored} "
+                  f"canceled={counts.canceled} expired={counts.expired}")
+            consume_batch(client_anthropic, client_supabase, batch.id, custom_id_map, reviews_by_id,
+                          rows_by_id, model, stats, execute)
+            spent = estimate_cost(model, stats.input_tokens, stats.output_tokens, batch=True)
+            print(f"  spend so far: ${spent:,.4f}")
+            if max_cost is not None and spent > max_cost and still_pending:
+                print(f"  STOP: spend ${spent:,.4f} passed the cap ${max_cost:,.2f}; cancelling the remaining batches.")
+                for other, other_ids in still_pending:
+                    try:
+                        client_anthropic.messages.batches.cancel(other.id)
+                    except Exception as exc:  # noqa: BLE001
+                        print(f"  cancel failed for {other.id}: {exc}", file=sys.stderr)
+                    for cid in other_ids:
+                        pid = custom_id_map.get(cid, cid)
+                        log_failure(pid, "canceled: spend cap reached")
+                        stats.api_errors += 1
+                return
+        pending = still_pending
+        if not pending:
+            break
+        if time.monotonic() > deadline:
+            for batch, custom_ids in pending:
+                print(f"  WARNING: batch {batch.id} did not finish within {MAX_POLL_SECONDS}s -- "
+                      f"its rows stay pending; consume it later with --resume-batch {batch.id}.")
+                for cid in custom_ids:
+                    log_failure(custom_id_map.get(cid, cid), f"batch poll timeout ({batch.id})")
+                    stats.api_errors += 1
+            break
+        time.sleep(poll_interval)
+
+
+def run_sync(client_anthropic, client_supabase, reviews: list[ReviewInput], rows_by_id: dict[str, dict],
+             model: str, effort: str, stats: RunStats, execute: bool) -> None:
+    """Single synchronous calls (2x the batch price). For small tests only."""
+    for review in reviews:
+        params = request_params(review, model, effort)
+        temperature = params.pop("temperature", None)
+        try:
+            if temperature is not None:
+                message = client_anthropic.messages.create(extra_body={"temperature": temperature}, **params)
+            else:
+                message = client_anthropic.messages.create(**params)
+        except Exception as exc:  # noqa: BLE001
+            stats.api_errors += 1
+            log_failure(review.provision_id, str(exc))
+            continue
+        stats.add_usage(message.usage)
+        verdict = verdict_from_message(message, review)
+        handle_verdict(client_supabase, rows_by_id[review.provision_id], review, verdict, model, stats, execute)
+
+
+# --------------------------------------------------------------------------
+# CLI
+# --------------------------------------------------------------------------
+
+def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Automated AI second-pass review of pending summaries.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--reg", default=None,
+                        help="Limit to one regulation's id prefix (7, 3, 26, gp12, oooob, ...). Omit for all.")
+    parser.add_argument("--ids", default=None,
+                        help="Comma-separated exact provision ids. Only the ones that are pending are reviewed.")
+    parser.add_argument("--limit", type=int, default=None, help="Stop after this many rows.")
+    parser.add_argument("--execute", action="store_true",
+                        help="Make the paid calls and write the verdicts. Without it: dry run, no "
+                             "paid call, no write (count_tokens, a free endpoint, is used when an "
+                             "API key is present).")
+    parser.add_argument("--dry-run", action="store_true", help="Explicit alias for not passing --execute.")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help="Reviewer model id.")
+    parser.add_argument("--effort", default=DEFAULT_EFFORT, choices=["low", "medium", "high"],
+                        help="output_config.effort for models with thinking (ignored for temperature models).")
+    parser.add_argument("--sync", action="store_true",
+                        help="Synchronous Messages calls instead of the Batches API (2x price; small tests).")
+    parser.add_argument("--max-cost", type=float, default=None, metavar="USD",
+                        help="Refuse to submit when the estimate exceeds this, and cancel the remaining "
+                             "batches once actual spend passes it.")
+    parser.add_argument("--resume-batch", default=None, metavar="ID[,ID]",
+                        help="Consume the results of batches a previous run submitted but did not finish "
+                             "polling (the rows must still be pending and in scope). No new submission.")
+    parser.add_argument("--poll-interval", type=int, default=POLL_INTERVAL_SECONDS)
+    parser.add_argument("--show", type=int, default=0, help="Dry run: print the first N review prompts.")
+    return parser.parse_args(argv)
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    args = parse_args(argv)
+    execute = bool(args.execute) and not args.dry_run
+    started_at = datetime.now(timezone.utc).isoformat()
+
+    required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
+    if execute:
+        required.append("ANTHROPIC_API_KEY")
+    sz.require_env(required)
+
+    client_supabase = sz.make_supabase_client()
+    client_anthropic = None
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        import anthropic
+        client_anthropic = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+    if FAILED_LOG_PATH.exists():
+        FAILED_LOG_PATH.unlink()
+
+    ids = [i.strip() for i in args.ids.split(",") if i.strip()] if args.ids else None
+    meta_reg = None if ids else args.reg
+    print(f"Fetching parent/citation metadata{f' for reg {meta_reg}' if meta_reg else ' (all regulations)'}...")
+    meta = sz.fetch_meta(client_supabase, meta_reg)
+    children_index = sz.build_children_index(meta)
+    print(f"  {len(meta):,} rows loaded; {len(children_index):,} have children.")
+
+    print("Selecting pending rows with a summary"
+          f"{f' ({len(ids)} explicit id(s))' if ids else ''}"
+          f"{f' (limit {args.limit})' if args.limit else ''}...")
+    rows = list(iter_candidates(client_supabase, args.reg, args.limit, ids=ids))
+    print(f"  {len(rows):,} rows selected.")
+    if not rows:
+        print("Nothing to review.")
+        md, data = build_report(RunStats(), args.model, args.effort, execute, started_at=started_at)
+        write_report(md, data)
+        return 0
+
+    stats = RunStats()
+    reviews: list[ReviewInput] = []
+    for row in rows:
+        review = build_review_input(row, meta, children_index)
+        stats.note_selected(review)
+        reviews.append(review)
+    reviews_by_id = {r.provision_id: r for r in reviews}
+    rows_by_id = {r["id"]: r for r in rows}
+
+    print(f"  by regulation: " + ", ".join(f"{k}={v['selected']}" for k, v in
+                                           sorted(stats.by_reg.items(), key=lambda kv: -kv[1]['selected'])))
+    print(f"  {stats.truncated_rows} rows have provision text over {sz.MAX_PROMPT_WORDS:,} words (truncated); "
+          f"{stats.outline_rows} have descendants shown as an outline (over {sz.CHILD_TEXT_WORDS:,} words).")
+
+    for review in reviews[:args.show]:
+        print(f"\n--- {review.provision_id} ---\n{review.prompt[:3000]}\n")
+
+    if not execute:
+        quote = dry_run_quote(reviews, client_anthropic, args.effort)
+        md, data = build_report(stats, args.model, args.effort, execute=False,
+                                dry_run_quote=quote, started_at=started_at)
+        write_report(md, data)
+        print("\n" + "=" * 72)
+        print(f"DRY RUN -- {len(reviews):,} pending rows; no paid call made, nothing written.")
+        print("=" * 72)
+        print(f"Token count method: {quote['method']}")
+        for opt in quote["options"]:
+            print(f"  {opt['model']:<20} in={opt['input_tokens']:>12,} out(est)={opt['output_tokens']:>10,} "
+                  f"batch ${opt['batch_in_per_m']:.2f}/${opt['batch_out_per_m']:.2f} per M  "
+                  f"=> ${opt['cost_usd']:,.2f}   {opt['note']}")
+        print(f"Report: {REPORT_MD_PATH}")
+        if args.max_cost is not None:
+            chosen = next((o for o in quote["options"] if o["model"] == args.model), None)
+            if chosen and chosen["cost_usd"] > args.max_cost:
+                print(f"NOTE: the estimate for {args.model} (${chosen['cost_usd']:,.2f}) exceeds --max-cost "
+                      f"${args.max_cost:,.2f}; an --execute run would refuse to submit.")
+        return 0
+
+    # --execute -----------------------------------------------------------
+    print(f"Reviewer: {args.model} ({sampling_description(args.model, args.effort)}); "
+          f"prompt version {REVIEW_PROMPT_VERSION}")
+    if args.resume_batch:
+        batch_ids = [b.strip() for b in args.resume_batch.split(",") if b.strip()]
+        custom_id_map: dict[str, str] = {}
+        for review in reviews:
+            sz.make_custom_id(review.provision_id, custom_id_map)
+        for batch_id in batch_ids:
+            batch = client_anthropic.messages.batches.retrieve(batch_id)
+            if batch.processing_status != "ended":
+                print(f"  batch {batch_id} is still '{batch.processing_status}'; try again later.")
+                continue
+            stats.batch_ids.append(batch_id)
+            consume_batch(client_anthropic, client_supabase, batch_id, custom_id_map, reviews_by_id,
+                          rows_by_id, args.model, stats, execute=True)
+    elif args.sync:
+        run_sync(client_anthropic, client_supabase, reviews, rows_by_id, args.model, args.effort, stats, execute=True)
+    else:
+        if args.max_cost is not None:
+            est_in = sum(estimate_tokens_by_chars(r.chars, args.model) + SCHEMA_TOKEN_ALLOWANCE for r in reviews)
+            est = estimate_cost(args.model, est_in, expected_output_tokens(args.model) * len(reviews), batch=True)
+            if est > args.max_cost:
+                print(f"Refusing to submit: estimated ${est:,.2f} exceeds --max-cost ${args.max_cost:,.2f}.",
+                      file=sys.stderr)
+                md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at)
+                data["run"]["mode"] = f"refused: estimate ${est:,.2f} over --max-cost ${args.max_cost:,.2f}"
+                write_report(md, data)
+                return 2
+        pending, custom_id_map = submit_batches(client_anthropic, reviews, args.model, args.effort, stats)
+        poll_batches(client_anthropic, client_supabase, pending, custom_id_map, reviews_by_id, rows_by_id,
+                     args.model, stats, execute=True, poll_interval=args.poll_interval, max_cost=args.max_cost)
+
+    md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at)
+    write_report(md, data)
+    cost = estimate_cost(args.model, stats.input_tokens, stats.output_tokens, batch=not args.sync)
+    print("\n" + "=" * 72)
+    print(f"Review run -- model={args.model} mode={'sync' if args.sync else 'batch'}")
+    print("=" * 72)
+    print(f"{'Rows selected':40}{stats.selected:>10,}")
+    print(f"{'pass -> approved':40}{stats.passed:>10,}")
+    print(f"{'corrected -> approved (new text)':40}{stats.corrected:>10,}")
+    print(f"{'fail (still pending)':40}{stats.failed:>10,}")
+    print(f"{'skipped (no longer pending)':40}{stats.skipped_not_pending:>10,}")
+    print(f"{'API errors (still pending)':40}{stats.api_errors:>10,}")
+    print(f"{'Input tokens':40}{stats.input_tokens:>10,}")
+    print(f"{'Output tokens':40}{stats.output_tokens:>10,}")
+    print(f"{'Cost (USD)':40}{'$' + format(cost, ',.4f'):>10}")
+    print("=" * 72)
+    print(f"Report: {REPORT_MD_PATH}")
+    if stats.failed or stats.api_errors:
+        print(f"Failures logged to {FAILED_LOG_PATH}; those rows stay pending and are selected again next run.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

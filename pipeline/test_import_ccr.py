@@ -12127,3 +12127,38 @@ class Reg26SubpartJjjjLinkTests(unittest.TestCase):
         self.assertNotIn("KKKK</a>", html)
         html, _ = self.link("see 40 C.F.R. Part 60, Subpart KKKK", reg="7")
         self.assertNotIn("<a", html)
+
+
+class CaptionWrapRegsTests(unittest.TestCase):
+    """Reg 26's Tables 3 and 4 wrap the last words of their captions onto
+    the next line ("Table 3 – operational practices for refinery fuel-" /
+    "fired process heaters"; "Table 4 – NOx limits for refinery fuel-fired"
+    / "process heaters"), the same shape as GP02's "Engines". Reg 26 joined
+    the general permits in CAPTION_WRAP_REGS with the AI-review PR (Oct
+    2026); every other regulation keeps its baselined caption."""
+
+    def _table(self):
+        return {"caption": "x", "rows": [["Process\nheater", "Primary fuel\ntype", "Operational\npractice"],
+                                         ["001-0003-\n002", "Refinery gas", "Operate low\nNOx burners"]]}
+
+    def test_reg26_is_in_the_wrap_set_with_the_general_permits(self):
+        self.assertIn("26", ic.CAPTION_WRAP_REGS)
+        for key in ic.GP_KEYS:
+            self.assertIn(key, ic.CAPTION_WRAP_REGS)
+        for other in ("3", "7", "22", "8", "oooob", "ecmc"):
+            self.assertNotIn(other, ic.CAPTION_WRAP_REGS)
+
+    def test_reg26_table3_and_table4_wrapped_lines_are_recognised(self):
+        lines3 = ["Table 3 – operational practices for refinery fuel-", "fired process heaters", "",
+                  "Process        Primary fuel      Operational"]
+        self.assertEqual(ic._caption_wrap_line(lines3, 0, self._table()), "fired process heaters")
+        lines4 = ["Table 4 – NOx limits for refinery fuel-fired", "process heaters", "",
+                  "Process        Primary fuel      NOx emission"]
+        self.assertEqual(ic._caption_wrap_line(lines4, 0, self._table()), "process heaters")
+
+    def test_a_table_header_line_or_a_digit_line_is_never_a_wrap(self):
+        # the flattened first table line, or a line with digits (Reg 26's
+        # Table 1 wraps "1, 2016" -- deliberately left alone), is not a caption tail
+        self.assertIsNone(ic._caption_wrap_line(["Table 3 – x", "Process heater", "", "y"], 0, self._table()))
+        self.assertIsNone(ic._caption_wrap_line(["Table 1 – ... on or before February", "1, 2016", "", "y"], 0, self._table()))
+        self.assertIsNone(ic._caption_wrap_line(["Table 3 – x", "fired process heaters", "not blank"], 0, self._table()))
