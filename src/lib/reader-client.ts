@@ -176,3 +176,81 @@ export function fillSummaryLinks(model: ReaderModel): void {
 export function buildSearchIndexFromDom(model: ReaderModel): SearchRow[] {
   return model.rows.map((row) => [row.id, row.citation, model.snippetOf(row), model.topGroupOf(row.id)]);
 }
+
+// ---------------------------------------------------------------------------
+// Recently visited provisions (Sprint 3). This browser only: sessionStorage,
+// never the server. Every read and write is wrapped, because storage can be
+// absent, full or blocked (a private window, a cleared site), and the
+// reader must work exactly the same without it.
+// ---------------------------------------------------------------------------
+
+export type RecentVisit = { id: string; reg: string; citation: string; name: string };
+
+export const RECENT_VISITS_KEY = "er:recent-provisions";
+export const RECENT_VISITS_MAX = 10;
+
+type StorageLike = Pick<Storage, "getItem" | "setItem">;
+
+function recentStorage(): StorageLike | null {
+  try {
+    return typeof window !== "undefined" ? window.sessionStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The stored list, newest first; [] when storage is missing or holds junk. */
+export function readRecentVisits(storage: StorageLike | null = recentStorage()): RecentVisit[] {
+  try {
+    const raw = storage?.getItem(RECENT_VISITS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(
+        (v): v is RecentVisit =>
+          !!v &&
+          typeof v === "object" &&
+          typeof (v as RecentVisit).id === "string" &&
+          typeof (v as RecentVisit).reg === "string" &&
+          typeof (v as RecentVisit).citation === "string" &&
+          typeof (v as RecentVisit).name === "string"
+      )
+      .slice(0, RECENT_VISITS_MAX);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Puts `visit` at the top of the list (a repeat moves up rather than
+ * duplicating), keeps the newest RECENT_VISITS_MAX, writes it back. Returns
+ * the new list; a storage failure is swallowed and the list is still returned.
+ */
+export function recordRecentVisit(visit: RecentVisit, storage: StorageLike | null = recentStorage()): RecentVisit[] {
+  const list = [visit, ...readRecentVisits(storage).filter((v) => v.id !== visit.id)].slice(0, RECENT_VISITS_MAX);
+  try {
+    storage?.setItem(RECENT_VISITS_KEY, JSON.stringify(list));
+  } catch {
+    // storage full or blocked: the list lives for this page only
+  }
+  return list;
+}
+
+/** The sidebar's Recent list as HTML: citation, then the regulation name, each a link to the provision. */
+export function recentListHtml(visits: RecentVisit[]): string {
+  return visits
+    .map(
+      (v) =>
+        `<li><a class="recent-link" href="/regulations/${encodeURIComponent(v.reg)}#${encodeURIComponent(v.id)}" data-id="${escapeAttr(v.id)}">` +
+        `<span class="recent-cite">${escapeText(v.citation)}</span><span class="recent-reg">${escapeText(v.name)}</span></a></li>`
+    )
+    .join("");
+}
+
+function escapeText(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function escapeAttr(s: string): string {
+  return escapeText(s).replace(/"/g, "&quot;");
+}

@@ -26,6 +26,7 @@ import {
   versionNote,
 } from "@/lib/reader-nav";
 import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
+import { readRecentVisits, recentListHtml, recordRecentVisit } from "@/lib/reader-client";
 import type { SearchRow } from "@/lib/snippet";
 
 /**
@@ -137,6 +138,19 @@ export function RegulationReader() {
     const rootRow = model.rows.find((r) => r.kind === "reg");
     const pageKey =
       (rootRow ? regKeyOf(rootRow.id) : null) ?? window.location.pathname.split("/")[2] ?? null;
+
+    // The sidebar's "Recent" list (Sprint 3): the last ten provisions this
+    // browser landed on in any reader, from sessionStorage. Hidden while
+    // empty; filled now and after every landing below.
+    const recentWrap = document.getElementById("recent-wrap") as HTMLDetailsElement | null;
+    const recentList = document.getElementById("recent-list");
+    const pageName = pageKey ? regulationDisplayName(pageKey) : "";
+    function renderRecent(visits = readRecentVisits()) {
+      if (!recentWrap || !recentList) return;
+      recentList.innerHTML = recentListHtml(visits);
+      recentWrap.hidden = visits.length === 0;
+    }
+    renderRecent();
 
     // Every lookup of a provision's element goes through the model, never
     // document.getElementById: the popup clones the row it previews, id and
@@ -403,6 +417,9 @@ export function RegulationReader() {
       // now), without a second scroll.
       el.tabIndex = -1;
       el.focus({ preventScroll: true });
+      if (pageKey && id !== rootRow?.id) {
+        renderRecent(recordRecentVisit({ id, reg: pageKey, citation: labelOf(id), name: pageName }));
+      }
       return true;
     }
 
@@ -554,6 +571,17 @@ export function RegulationReader() {
       // group is opened by goToProvision anyway, so nothing is lost).
       // Clicking anywhere else in the summary -- the sub-label text, the
       // marker -- has no <a> under it, so it keeps toggling normally.
+      // A Recent entry of this regulation jumps the same way; one of another
+      // regulation is a plain link to that reader (the hash lands it there).
+      const recent = target.closest("a.recent-link");
+      if (recent) {
+        const rid = recent.getAttribute("data-id") ?? "";
+        if (!model.byId.has(rid)) return;
+        e.preventDefault();
+        goToProvision(rid, { push: true });
+        closeSidebar();
+        return;
+      }
       const link = target.closest("a.nav-link");
       if (!link) return;
       const href = link.getAttribute("href") ?? "";

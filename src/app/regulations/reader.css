@@ -420,6 +420,103 @@
 .reg-reader .summary-body p.summary-badge.is-pending {
   color: #92400e;
 }
+/* Sprint 3: a parent's summary shows two sentences, the rest behind
+   "Show full summary", then its direct children (citation + first words). */
+.reg-reader .summary-body p.summary-overview {
+  margin: 0 0 6px;
+}
+.reg-reader details.summary-more {
+  margin: 0 0 8px;
+}
+.reg-reader details.summary-more > summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 2px 0;
+}
+.reg-reader details.summary-more > summary::-webkit-details-marker {
+  display: none;
+}
+.reg-reader details.summary-more > summary::before {
+  content: "+ ";
+}
+.reg-reader details.summary-more[open] > summary::before {
+  content: "− ";
+}
+.reg-reader details.summary-more[open] > summary {
+  margin-bottom: 6px;
+}
+.reg-reader .summary-children-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 8px 0 4px;
+}
+.reg-reader ul.summary-children {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 12.5px;
+}
+.reg-reader ul.summary-children li {
+  margin: 3px 0;
+}
+.reg-reader .summary-child-snip {
+  color: var(--ink-soft);
+}
+.reg-reader li.summary-children-more {
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+/* Sprint 3: the last provisions this browser visited in any reader
+   (sessionStorage, reader-client.ts recentVisits). A collapsed <details>
+   under the jump box, so it costs the phone sidebar one line. */
+.reg-reader details#recent-wrap {
+  margin: -6px 0 16px;
+  font-size: 12.5px;
+}
+.reg-reader details#recent-wrap > summary {
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tag);
+}
+.reg-reader details#recent-wrap[hidden] {
+  display: none;
+}
+.reg-reader ul#recent-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.reg-reader ul#recent-list li {
+  margin: 4px 0;
+}
+.reg-reader ul#recent-list a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.reg-reader ul#recent-list a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.reg-reader ul#recent-list .recent-cite {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--accent);
+  margin-right: 4px;
+}
+.reg-reader ul#recent-list .recent-reg {
+  color: var(--ink-soft);
+}
+
 .reg-reader .summary-status {
   padding: 6px 12px 9px;
   font-family: var(--mono);

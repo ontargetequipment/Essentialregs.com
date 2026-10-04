@@ -74,6 +74,13 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
           />
           <div id="jump-results" />
         </div>
+        {/* The last provisions this browser visited (Sprint 3): filled by
+            RegulationReader from sessionStorage, hidden while empty, a
+            collapsed <details> so it takes one line on a phone. */}
+        <details id="recent-wrap" hidden>
+          <summary>Recent</summary>
+          <ul id="recent-list" />
+        </details>
         <div className="nav-reg" dangerouslySetInnerHTML={{ __html: reader.navHtml }} />
       </nav>
 

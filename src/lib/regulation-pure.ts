@@ -862,7 +862,8 @@ export function formatReviewedDate(iso: string | null | undefined): string {
  */
 export function summaryPanelHtml(
   p: Pick<Provision, "ai_summary" | "summary_status" | "reviewed_at" | "source_url">,
-  fallbackSourceUrl?: string | null
+  fallbackSourceUrl?: string | null,
+  children?: SummaryChild[]
 ): string {
   // A rejected summary is withheld from every reader entirely — it failed
   // human review, so showing it (even labeled "not yet reviewed") would be
@@ -870,7 +871,22 @@ export function summaryPanelHtml(
   if (p.summary_status === "rejected") return "";
   const paragraphs = summaryParagraphs(p.ai_summary ?? "");
   if (!paragraphs.length) return "";
-  const body = paragraphs.map((t) => `<p>${escapeHtml(t)}</p>`).join("");
+  // A parent's summary (Sprint 3, Oct 2026): the Phase 0 regeneration wrote
+  // parent summaries with every child in view, and they run to three
+  // hundred words. In the reader a provision that has children and a
+  // summary longer than two sentences shows the first two sentences as its
+  // overview, the rest behind "Show full summary", and under that a list of
+  // its direct children. Cards keep the whole first paragraph (they never
+  // pass `children`). The badge stays above the overview, visible with the
+  // panel collapsed either way.
+  const overview = children && children.length ? summaryOverview(paragraphs) : null;
+  const body = overview
+    ? `<p class="summary-overview">${escapeHtml(overview.overview)}</p>` +
+      `<details class="summary-more"><summary>Show full summary</summary>` +
+      overview.rest.map((t) => `<p>${escapeHtml(t)}</p>`).join("") +
+      `</details>` +
+      summaryChildrenHtml(children ?? [])
+    : paragraphs.map((t) => `<p>${escapeHtml(t)}</p>`).join("");
   // The review-status badge is the first thing in the panel body: text
   // with a date ("AI reviewed · Sept 17, 2026" / "AI-generated · not yet
   // reviewed"), never a reviewer. History: the "AI-generated" line was
@@ -905,6 +921,91 @@ export function summaryPanelHtml(
     sourceLinkHtml +
     `</details>`
   );
+}
+
+/** What the summary panel's child list needs to know about one direct child. */
+export type SummaryChild = { id: string; citation: string; snippet: string };
+
+/** At most this many children are listed under a parent's summary overview. */
+export const SUMMARY_CHILDREN_MAX = 8;
+
+/**
+ * The list of a parent's direct children under its summary overview:
+ * citation plus the child's first words, each a reader cross-reference
+ * (the same `.xref` hook the contains boxes use, so a click previews the
+ * child and "Go to full section" lands on it). "" for no children.
+ */
+export function summaryChildrenHtml(children: SummaryChild[]): string {
+  if (!children.length) return "";
+  const shown = children.slice(0, SUMMARY_CHILDREN_MAX);
+  const items = shown
+    .map((c) => {
+      const snip = c.snippet ? ` <span class="summary-child-snip">${escapeHtml(c.snippet)}</span>` : "";
+      return `<li><span class="xref summary-child-link" data-target="${escapeHtml(c.id)}">${escapeHtml(c.citation)}</span>${snip}</li>`;
+    })
+    .join("");
+  const more =
+    children.length > shown.length
+      ? `<li class="summary-children-more">and ${children.length - shown.length} more below</li>`
+      : "";
+  return `<div class="summary-children-label">In this provision</div><ul class="summary-children">${items}${more}</ul>`;
+}
+
+/**
+ * Abbreviations a period does not end a sentence after, when a capital
+ * follows: "No.", "Sec.", "U.S.", "e.g.", a lowercase list letter ("a.")
+ * and a one- or two-digit list number ("3."). A citation label ("II.A.7.",
+ * "I.B.", "60.5395b.") and a year ("2021.") are NOT in the list: the
+ * summaries are prose, and in 20 sampled GP parent summaries every label
+ * followed by a space and a capitalised word ended its sentence ("...as
+ * permitted under provision I.B. If the source...", "...Conditions III.A
+ * and III.B. Specific monthly..."), while a label inside a sentence is
+ * followed by a lowercase word, which the split never fires on anyway.
+ */
+const NOT_SENTENCE_END =
+  /(?:^|[\s(])(?:No|Nos|Sec|Secs|Fig|Figs|vs|etc|approx|Dept|Inc|Co|Corp|Mr|Mrs|Ms|Dr|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|Rev|Reg|Regs|Pt|Para|Paras|Art|Ch|St|U\.S|e\.g|i\.e|cf|al|[a-z]|\d{1,2})\.$/;
+
+/**
+ * Splits summary prose into sentences: at ". ", "! " or "? " (an optional
+ * closing quote or bracket allowed) followed by a capital, a digit or an
+ * opening quote or bracket, except after an abbreviation or a list marker
+ * (NOT_SENTENCE_END). Pure; the reader and its tests share it.
+ */
+export function splitSentences(text: string): string[] {
+  const out: string[] = [];
+  let start = 0;
+  const re = /[.!?]["”’)\]]*\s+(?=["“(\[]?[A-Z0-9])/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const end = m.index + m[0].length;
+    const candidate = text.slice(start, m.index + 1);
+    if (m[0][0] === "." && NOT_SENTENCE_END.test(candidate)) continue;
+    out.push(text.slice(start, end).trim());
+    start = end;
+  }
+  const tail = text.slice(start).trim();
+  if (tail) out.push(tail);
+  return out;
+}
+
+/**
+ * The first `n` sentences of a summary as its overview and the rest as
+ * paragraphs (the original paragraph breaks kept), or null when the summary
+ * has `n` sentences or fewer and needs no expander.
+ */
+export function summaryOverview(paragraphs: string[], n = 2): { overview: string; rest: string[] } | null {
+  const sentences = paragraphs.map(splitSentences);
+  const total = sentences.reduce((acc, s) => acc + s.length, 0);
+  if (total <= n) return null;
+  const head: string[] = [];
+  const rest: string[] = [];
+  for (const para of sentences) {
+    const take = Math.max(0, Math.min(para.length, n - head.length));
+    head.push(...para.slice(0, take));
+    const left = para.slice(take);
+    if (left.length) rest.push(left.join(" "));
+  }
+  return { overview: head.join(" "), rest };
 }
 
 /**
