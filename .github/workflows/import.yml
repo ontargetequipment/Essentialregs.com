@@ -132,7 +132,14 @@ jobs:
         # Read-only. Writes pipeline/out/corpus_ids.json, which `parse` below
         # picks up by default so a citation of another regulation ("Regulation
         # Number 7, Part B, Section I.B.33") links to the exact cited provision
-        # in the LIVE corpus rather than to a possibly stale committed copy.
+        # in the LIVE corpus rather than to a possibly stale committed copy,
+        # and pipeline/out/corpus_definitions.json (every definition row's
+        # defined term), which `parse` uses to verify a deep link into a
+        # definition against the term the citing sentence names -- a permit
+        # written against an older Regulation 7 must not open the wrong
+        # definition (renumbered -> the sibling that defines it; unverifiable
+        # -> plain text). Both default paths; the committed copies are the
+        # fallback when this step is skipped.
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

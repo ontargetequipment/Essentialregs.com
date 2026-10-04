@@ -291,6 +291,23 @@ links to the part root), and the first section of a list carries the
   live corpus. The committed copy is only a convenience for local runs; it
   can be verified against the database with
   `select reg_key, count(*), md5(string_agg(id, ',' order by id collate "C")) from provisions group by reg_key`.
+- **The definitions index** is `pipeline/out/corpus_definitions.json`,
+  written by the same `dump-ids`: `{"7": {"sec-7-B-I-B-34": "Well Production
+  Facility", ...}, ...}`, one entry per row whose text opens with a quoted term
+  followed by "means" (an optional "(State Only)" first). `parse` uses it to
+  verify a deep link whose target is a definition against the phrase the
+  citing sentence says is defined ("well production facilities as defined in
+  Regulation Number 7, Part B, Section I.B.33"): the term must occur in that
+  phrase (case, singular/plural and hyphens tolerated). When it does not --
+  the cited regulation was renumbered after the citing document was written
+  -- the one sibling definition whose term does occur is linked instead, with
+  the printed section in the href (`/regulations/7?cited=I.B.33#sec-7-B-I-B-34`)
+  so the reader's preview can say "cites this as Section I.B.33; in the
+  current Regulation 7 it is I.B.34"; with no or several such siblings the
+  section stays plain text. Both outcomes are listed in the diff report
+  (`renumbered_cross_reg`, `definition_mismatch_no_link`). Without the file
+  every target is accepted as cited. `--corpus-definitions PATH` names
+  another file.
 - **`parse` uses it by default** when the file exists. `--corpus-ids PATH`
   names another file; `--no-corpus-ids` turns deep links off, and the output
   is then byte-for-byte what it was before the feature existed (so is a
