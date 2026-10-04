@@ -9,14 +9,18 @@ import {
   readReaderModel,
 } from "@/lib/reader-client";
 import {
+  citedParamOf,
+  documentShortName,
   foreignOriginOf,
   hashTargetOf,
   originTrailLabel,
   popupEyebrow,
   regulationHref,
+  renumberedNote,
   ReturnTrail,
   rowAtViewportTop,
   rowLabel,
+  stripReaderParams,
   validProvisionId,
 } from "@/lib/reader-nav";
 import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
@@ -88,6 +92,7 @@ export function RegulationReader() {
     const backdrop = document.getElementById("backdrop");
     const popupEyebrowEl = document.getElementById("popup-eyebrow");
     const popupTitle = document.getElementById("popup-title");
+    const popupNote = document.getElementById("popup-note");
     const popupBody = document.getElementById("popup-body");
     const popupTextLabel = document.getElementById("popup-text-label");
     const popupGoto = document.getElementById("popup-goto") as HTMLAnchorElement | null;
@@ -184,7 +189,13 @@ export function RegulationReader() {
     // fallBackToNavigation); onDocClick lets exactly that click through.
     let replayed: Element | null = null;
 
+    function setPopupNote(text: string | null) {
+      if (!popupNote) return;
+      popupNote.textContent = text ?? "";
+      popupNote.hidden = !text;
+    }
     function showPopup(slug: string, origin: string | null) {
+      setPopupNote(null);
       const el = rowEl(slug);
       if (!el || !backdrop || !popupBody || !popupTitle) return;
       previewSeq++;
@@ -228,7 +239,12 @@ export function RegulationReader() {
         window.location.assign(link.href);
       }
     }
-    async function previewOtherRegulation(fallBack: () => void, targetId: string, origin: string | null) {
+    async function previewOtherRegulation(
+      fallBack: () => void,
+      targetId: string,
+      origin: string | null,
+      cited: string | null = null
+    ) {
       const seq = ++previewSeq;
       previewAbort?.abort();
       const abort = (previewAbort = new AbortController());
@@ -253,6 +269,9 @@ export function RegulationReader() {
       popupRemote = true;
       popupTitle.textContent = data.citation || targetId;
       if (popupEyebrowEl) popupEyebrowEl.textContent = name;
+      // A renumbered definition citation (the importer put the printed
+      // section in the href's ?cited=): say so, in one line, under the title.
+      setPopupNote(cited ? renumberedNote(documentShortName(pageKey), cited, data.citation, name) : null);
       const wrap = document.createElement("div");
       wrap.className = "item";
       wrap.innerHTML = data.html; // sanitised server-side (provision-preview.ts)
@@ -260,7 +279,7 @@ export function RegulationReader() {
       popupBody.appendChild(wrap);
       if (popupTextLabel) popupTextLabel.hidden = true;
       if (popupGoto) {
-        popupGoto.setAttribute("href", regulationHref(targetId, origin));
+        popupGoto.setAttribute("href", regulationHref(targetId, origin, cited));
         popupGoto.textContent = `Open in ${name} →`;
       }
       backdrop.classList.add("show");
@@ -393,7 +412,12 @@ export function RegulationReader() {
           return;
         }
         e.preventDefault();
-        void previewOtherRegulation(() => fallBackToNavigation(external), targetId, originOf(external));
+        void previewOtherRegulation(
+          () => fallBackToNavigation(external),
+          targetId,
+          originOf(external),
+          citedParamOf(external.getAttribute("href"))
+        );
         return;
       }
       const xref = target.closest(".xref");
@@ -674,18 +698,21 @@ export function RegulationReader() {
     // the reader came from. Only a valid provision id of a DIFFERENT
     // regulation counts; it becomes the return bar's link back, is stripped
     // from the URL (hash and the other params stay) and is kept in the
-    // history entry's state so a reload still shows the bar.
+    // history entry's state so a reload still shows the bar. `cited` (the
+    // printed section of a renumbered definition citation, see
+    // citedParamOf) rides along on such a link and is stripped the same
+    // way; the note it feeds is the preview popup's, not this page's.
     const fromUrl = foreignOriginOf(window.location.search, pageKey);
     const fromState = (window.history.state as ReaderHistoryState)?.readerReturnFrom;
     const fromOther = fromUrl ?? foreignOriginOf(`?from=${encodeURIComponent(fromState ?? "")}`, pageKey);
-    if (fromUrl) {
-      const params = new URLSearchParams(window.location.search);
-      params.delete("from");
-      const qs = params.toString();
+    const hasCited = new URLSearchParams(window.location.search).has("cited");
+    if (fromUrl || hasCited) {
+      const strip = [...(fromUrl ? ["from"] : []), ...(hasCited ? ["cited"] : [])];
+      const prev = (window.history.state ?? {}) as Record<string, unknown>;
       window.history.replaceState(
-        { ...(window.history.state ?? {}), readerReturnFrom: fromUrl },
+        fromUrl ? { ...prev, readerReturnFrom: fromUrl } : prev,
         "",
-        `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`
+        `${window.location.pathname}${stripReaderParams(window.location.search, strip)}${window.location.hash}`
       );
     }
     if (fromOther) {
@@ -739,6 +766,7 @@ export function RegulationReader() {
             <div id="popup-head-text">
               <div id="popup-eyebrow" />
               <p id="popup-title" />
+              <p id="popup-note" hidden />
             </div>
             <button id="popup-close" aria-label="Close" type="button">
               &times;

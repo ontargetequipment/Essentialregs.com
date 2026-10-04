@@ -546,6 +546,15 @@
   font-size: 17px;
   margin: 2px 0 0;
 }
+/* One line under the title of a cross-regulation preview whose link is a
+   renumbered definition citation: "GP12 cites this as Section I.B.33; in the
+   current Regulation 7 it is I.B.34." Hidden otherwise. */
+.reg-reader #popup-note {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--tag);
+  margin: 4px 0 0;
+}
 .reg-reader #popup-close {
   background: none;
   border: none;
