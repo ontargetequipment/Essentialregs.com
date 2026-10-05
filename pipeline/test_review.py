@@ -175,9 +175,11 @@ class FakeSupabase:
 # --------------------------------------------------------------------------
 
 class _Usage:
-    def __init__(self, i=1000, o=100):
+    def __init__(self, i=1000, o=100, cache_read=0, cache_create=0):
         self.input_tokens = i
         self.output_tokens = o
+        self.cache_read_input_tokens = cache_read
+        self.cache_creation_input_tokens = cache_create
 
 
 class _Block:
@@ -188,10 +190,10 @@ class _Block:
 
 
 class _Message:
-    def __init__(self, text, stop_reason="end_turn", i=1000, o=100):
+    def __init__(self, text, stop_reason="end_turn", i=1000, o=100, cache_read=0, cache_create=0):
         self.content = [_Block(text)]
         self.stop_reason = stop_reason
-        self.usage = _Usage(i, o)
+        self.usage = _Usage(i, o, cache_read, cache_create)
 
 
 class _Outcome:
@@ -453,7 +455,7 @@ def test_request_params_temperature_model(db):
     p = review.request_params(r, "claude-sonnet-4-5")
     assert p["temperature"] == 0 and "effort" not in p["output_config"]
     assert p["output_config"]["format"]["type"] == "json_schema"
-    assert p["messages"][0]["content"] == r.prompt and p["system"] == review.REVIEW_SYSTEM_PROMPT
+    assert p["messages"][0]["content"] == r.prompt and p["system"][0]["text"] == review.REVIEW_SYSTEM_PROMPT
 
 
 def test_request_params_thinking_model(db):
@@ -760,10 +762,11 @@ def test_dry_run_makes_no_batch_and_no_write_and_quotes_every_option(db, monkeyp
     quote = report["dry_run_quote"]
     assert quote["rows"] == 3
     assert [o["model"] for o in quote["options"]] == [o["model"] for o in review.MODEL_OPTIONS]
-    # count_tokens (free) was used once per row per distinct tokenizer, and the
-    # schema allowance added
+    # count_tokens (free) was used once per row per distinct tokenizer (plus one
+    # probe per tokenizer for the system prompt's own size), and the schema
+    # allowance added
     tokenizers = {o["tokenizer"] for o in review.MODEL_OPTIONS}
-    assert len(fake.messages.count_calls) == 3 * len(tokenizers)
+    assert len(fake.messages.count_calls) == (3 + 1) * len(tokenizers)
     for o in quote["options"]:
         assert o["input_tokens"] == 3 * (1234 + review.SCHEMA_TOKEN_ALLOWANCE)
         assert o["cost_usd"] == round(review.estimate_cost(o["model"], o["input_tokens"], o["output_tokens"]), 4)
@@ -970,7 +973,7 @@ def test_audit_execute_writes_nothing_and_reports_would_correct_rows(monkeypatch
     md = (tmp_path / "out" / "review_report.md").read_text()
     assert "Rows the reviewer would correct (NOT changed)" in md and "Current summary" in md
     # the batch went out with the same reviewer prompt
-    assert fake.messages.batches.created[0].requests[0]["params"]["system"] == review.REVIEW_SYSTEM_PROMPT
+    assert fake.messages.batches.created[0].requests[0]["params"]["system"][0]["text"] == review.REVIEW_SYSTEM_PROMPT
 
 
 def test_audit_dry_run_makes_no_batch(monkeypatch, tmp_path):
@@ -1353,3 +1356,72 @@ def test_prompt_version_2_keeps_context_and_single_condition_clarifications():
     assert "part of the Form 2A application" in p
     assert "not a claim that the condition is sufficient by itself" in p
     assert "Spelling out the direct effect" in p
+
+
+# --------------------------------------------------------------------------
+# Prompt caching of the system prompt (owner approval, 5 Oct 2026)
+# --------------------------------------------------------------------------
+
+def test_system_prompt_is_one_cached_block_with_a_one_hour_ttl(db):
+    r = _review_for(db, "sec-7-B-I-C")
+    for model in ("claude-sonnet-5-5", "claude-sonnet-4-5"):
+        p = review.request_params(r, model)
+        assert p["system"] == [{"type": "text", "text": review.REVIEW_SYSTEM_PROMPT,
+                                "cache_control": {"type": "ephemeral", "ttl": "1h"}}]
+        assert review.SYSTEM_CACHE_TTL == "1h"
+    # the user turn (the per-row text) is not cached
+    assert "cache_control" not in json.dumps(p["messages"])
+
+
+def test_cost_counts_cache_writes_at_2x_and_reads_at_a_tenth():
+    base = review.estimate_cost("claude-sonnet-5-5", 1_000_000, 0)                       # $1.00 batch
+    assert review.estimate_cost("claude-sonnet-5-5", 0, 0, cache_creation_tokens=1_000_000) == pytest.approx(base * 2)
+    assert review.estimate_cost("claude-sonnet-5-5", 0, 0, cache_read_tokens=1_000_000) == pytest.approx(base * 0.1)
+    assert review.estimate_cost("claude-sonnet-5-5", 1_000_000, 1_000_000) == pytest.approx(1.00 + 5.00)  # unchanged
+
+
+def test_run_stats_accumulate_cache_tokens_and_share():
+    s = review.RunStats()
+    s.add_usage(_Usage(i=700, o=100, cache_read=2500, cache_create=0))
+    s.add_usage(_Usage(i=700, o=100, cache_read=0, cache_create=2500))
+    s.add_usage(_Usage(i=700, o=100))                                   # a usage without cache fields
+    assert (s.input_tokens, s.cache_read_tokens, s.cache_creation_tokens) == (2100, 2500, 2500)
+    assert s.total_input_tokens == 7100 and s.cache_read_share == pytest.approx(2500 / 7100)
+    assert s.cost("claude-sonnet-5-5") == pytest.approx(review.estimate_cost(
+        "claude-sonnet-5-5", 2100, 300, cache_creation_tokens=2500, cache_read_tokens=2500))
+
+
+def test_report_and_run_summary_state_cache_reads(db, monkeypatch, tmp_path, capsys):
+    answers = {"sec-7-B-I-C": _Message(json.dumps(_pass()), i=700, o=100, cache_create=2500),
+               "sec-7-B-I-C-2": _Message(json.dumps(_pass()), i=700, o=100, cache_read=2500),
+               "sec-3-A-I-B": _Message(json.dumps(_pass()), i=700, o=100, cache_read=2500)}
+    rc, fake, report = _run(db, answers, ["--execute"], monkeypatch, tmp_path)
+    u = report["usage"]
+    assert u["input_tokens"] == 2100 and u["cache_read_input_tokens"] == 5000 and u["cache_creation_input_tokens"] == 2500
+    assert u["total_input_tokens"] == 9600 and u["cache_read_share"] == pytest.approx(5000 / 9600, abs=1e-4)
+    assert u["cost_usd_batch"] == pytest.approx(review.estimate_cost(
+        "claude-sonnet-5-5", 2100, 300, cache_creation_tokens=2500, cache_read_tokens=5000), abs=1e-4)
+    md = (tmp_path / "out" / "review_report.md").read_text()
+    assert "52.1% of input was cache reads" in md and "5,000 read from the cache" in md
+    out = capsys.readouterr().out
+    assert "Cache read tokens" in out and "52.1%" in out
+    # the compact run summary carries the same figures
+    import review_summary
+    text = review_summary.summarize(report)
+    assert "cache_read_input_tokens=5000" in text and "cache_read_share=52.1%" in text
+
+
+def test_spend_cap_counts_cached_tokens(db, monkeypatch, tmp_path):
+    # the cap check must see the whole input, not only the uncached part
+    s = review.RunStats()
+    s.add_usage(_Usage(i=0, o=0, cache_read=10_000_000))
+    assert s.cost("claude-sonnet-5-5") == pytest.approx(1.00)
+
+
+def test_dry_run_quotes_the_full_cache_hit_figure_too(db, monkeypatch, tmp_path):
+    rc, fake, report = _run(db, {}, ["--dry-run"], monkeypatch, tmp_path)
+    for o in report["dry_run_quote"]["options"]:
+        assert 0 < o["cost_usd_with_cache_hits"] <= o["cost_usd"]
+        assert o["system_prompt_tokens"] > 0
+    md = (tmp_path / "out" / "review_report.md").read_text()
+    assert "full cache hits" in md
