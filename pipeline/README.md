@@ -590,6 +590,46 @@ approved/edited ids, whatever their `reviewed_by`: read-only, report only. It
 is how a prompt change is re-checked on the specific rows it was meant to move
 without paying for the whole sample again.
 
+**Context above the provision -- prompt version 3** (owner instruction, 5 Oct
+2026, after the Cowork spot-check of the stage-1 re-review). The summarizer
+shows one parent excerpt of `PARENT_TEXT_CHARS` (400), silently cut with an
+ellipsis, and the reviewer used to get the same. In nested lists the duty sits
+two levels up ("A revised APEN must be filed:" / "Annually by April 30 ... as
+follows:" / the threshold), and a reviewer that reads the cut as silence
+removes true statements: 9 of the 18 stage-1 rows under a "revised APEN must
+be filed" grandparent lost "file a revised APEN", and `sec-gp07-II-B-1-b` lost
+"on request" because those words sit past character 400 of its parent. The
+reviewer now gets, in place of the parent excerpt, **the own text of every
+ancestor from the root down to the parent**, root first, each labelled with
+its id (`build_ancestor_block`, block heading "Text above this provision"):
+up to `ANCESTOR_EXCERPT_CHARS` (1,500) per ancestor and `ANCESTOR_BLOCK_CHARS`
+(6,000) in all; over the total, the farthest ancestors are shrunk to 200
+characters and then dropped, first -- never the parent. Every cut is honest:
+at a sentence end where one lies past 60% of the limit, else at a word
+boundary, and always ending in `[excerpt cut]` (`honest_cut`). The summarizer's
+own prompt is unchanged (`summarize.build_prompt(context_block=...)` is only
+passed by the reviewer); the summary writer's context is a later task. Three
+reviewer rules go with it: a statement supported by any ancestor shown is
+supported; where an excerpt is marked cut, a statement is changed only if the
+visible text contradicts it, never because the visible text lacks it; and a
+correction must not replace a specific, supported duty with a vaguer one. The
+block costs about 300-600 more input tokens per row (the dry run states the
+new per-row figure).
+
+**Snapshot text as the input.** `--audit-ids a,b --from-snapshot` reviews the
+BEFORE summary from `archive.summary_review_snapshot_rereview` instead of the
+live one (read-only; RPC `rereview_snapshot_text`). `--redo-corrections-since
+<timestamp>` (workflow input **redo_corrections_since**) selects every
+snapshotted row the pipeline corrected at or after that time (RPC
+`rereview_corrected_since`) and reviews its BEFORE summary again with the new
+context; on execute, `pass` restores the before text with a pass stamp (the
+earlier correction is withdrawn; one `summary_edited` row), `corrected` writes
+the new text (a `summary_edited` row only when it differs from the live text;
+otherwise `corrected_same`, stamp refreshed), `fail` sets the row to pending
+with the live text untouched. The snapshot's before text is never written.
+Both RPCs: migration `20261005051611_rereview_snapshot_readers.sql`, service
+role only.
+
 **Prompt caching** (owner approval, 5 Oct 2026). The system prompt (~2,500
 tokens, the same for every row) goes out as one cached block with a 1-hour
 TTL (`cache_control: {type: ephemeral, ttl: 1h}`, `SYSTEM_CACHE_TTL`); the

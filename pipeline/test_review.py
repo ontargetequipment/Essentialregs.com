@@ -15,6 +15,7 @@ the dry-run quote.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -411,9 +412,15 @@ def test_selection_carries_the_columns_the_writes_need(db):
 def test_official_text_is_byte_identical_to_the_summarizer_prompt(db):
     meta, idx = _meta(db)
     row = db.row("sec-7-B-I-C")
-    ours = review.build_official_text(row, meta, idx)
-    theirs = sz.build_prompt(row, meta, idx)
+    ours, info = review.build_official_text(row, meta, idx)
+    block, _ = review.build_ancestor_block(row, meta)
+    theirs = sz.build_prompt(row, meta, idx, context_block=block)
     assert ours.prompt == theirs.prompt
+    # the only difference from the summarizer's own prompt is the context block
+    plain = sz.build_prompt(row, meta, idx)
+    assert plain.prompt.split("\nProvision text:")[1] == ours.prompt.split("\nProvision text:")[1]
+    assert "Parent paragraph text" in plain.prompt and "Parent paragraph text" not in ours.prompt
+    assert review.ANCESTOR_BLOCK_HEADING in ours.prompt and info["shown"] >= 1
     assert ours.descendant_count == theirs.descendant_count == 2
     assert ours.truncated == theirs.truncated
     assert ours.outline_mode == theirs.outline_mode
@@ -435,7 +442,9 @@ def test_truncation_rule_is_the_summarizers(monkeypatch, db):
     r = _review_for(db, "sec-7-B-I-C-2")
     assert r.text_result.truncated
     assert "truncated to the first 10" in r.prompt
-    theirs = sz.build_prompt(db.row("sec-7-B-I-C-2"), *_meta(db))
+    meta, idx = _meta(db)
+    theirs = sz.build_prompt(db.row("sec-7-B-I-C-2"), meta, idx,
+                             context_block=review.build_ancestor_block(db.row("sec-7-B-I-C-2"), meta)[0])
     assert theirs.prompt in r.prompt
 
 
@@ -653,7 +662,8 @@ def test_execute_batch_end_to_end(db, monkeypatch, tmp_path):
     rc, fake, report = _run(db, answers, ["--execute"], monkeypatch, tmp_path)
     assert rc == 0
     assert report["counts"] == {"selected": 3, "pass": 1, "corrected": 1, "fail": 1, "skipped_not_pending": 0,
-                                "api_errors": 0, "truncated_rows": 0, "outline_rows": 0, "with_descendants": 1}
+                                "api_errors": 0, "restored": 0, "corrected_same": 0, "corrected_different": 0,
+                                "truncated_rows": 0, "outline_rows": 0, "with_descendants": 1}
     assert report["by_regulation"]["7"] == {"selected": 2, "pass": 1, "corrected": 1, "fail": 0}
     assert report["by_regulation"]["3"] == {"selected": 1, "pass": 0, "corrected": 0, "fail": 1}
     assert db.row("sec-7-B-I-C")["summary_status"] == "approved"
@@ -1433,3 +1443,283 @@ def test_output_allowance_is_the_measured_figure_plus_margin():
     assert 220 <= review.EST_OUTPUT_TOKENS_THINKING <= 400
     assert review.expected_output_tokens("claude-sonnet-5-5") == review.EST_OUTPUT_TOKENS_THINKING
     assert review.expected_output_tokens("claude-sonnet-4-5") == review.EST_OUTPUT_TOKENS_PLAIN
+
+
+
+# --------------------------------------------------------------------------
+# Ancestor context (owner instruction, 5 Oct 2026, after the stage-1 check)
+# --------------------------------------------------------------------------
+
+APEN_GP = (" A revised APEN must be filed: (Reference:  Regulation Number 3 , Part A,  Section II.C. ) ")
+APEN_PARENT = " Annually by April 30th of the year following a significant increase in emissions as follows: "
+APEN_ROW = (" For volatile organic compounds and nitrogen oxides sources in ozone non-attainment areas, a change in "
+            "annual actual emissions of one ton per year or more or five percent, whichever is greater, above the "
+            "level reported on the last APEN submitted to the Division; or ")
+APEN_BEFORE = ("The permit requires you to submit an updated Air Pollutant Emission Notice (APEN) by April 30 if your "
+               "facility is in an ozone non-attainment area and your annual actual emissions of VOC or NOx increased by "
+               "1 tpy or more, or by 5 percent, whichever is greater, compared to the emissions level in your last APEN. "
+               "This applies only when that increase qualifies as a \"significant increase\" under the permit's definition.")
+GP07_PARENT = ("The owner or operator not subject to Conditions I.B. or I.C. or I.D. of this permit must track potential "
+               "emissions from all insignificant activities at the facility on an annual basis to demonstrate compliance "
+               "with the facility emission limitations indicated below. An inventory of each insignificant activity and "
+               "associated emission calculations must be made available to the Division for inspection upon request. For "
+               "the purposes of this condition, insignificant activities are defined as any activity or equipment which "
+               "emits any amount of a regulated pollutant but does not require an APEN or is permit exempt. Note that for "
+               "reclassifications of an existing nonattainment area, the limit applies for the existing classification "
+               "until the effective date of reclassification. ( Regulation Number 3 , Part B.  Section III.E. ) ")
+GP07_ROW = ("Facilities located in an area classified as serious nonattainment for ozone, total potential point source "
+            "emissions from the facility, including all permitted emissions and potential to emit from all insignificant "
+            "activities, must be less than:  Volatile Organic Compounds (VOC): 50 tons per year  Nitrogen Oxides (NOx): "
+            "50 tons per year  Carbon Monoxide (CO): 100 tons per year ")
+GP07_BEFORE = ("The permit requires facilities in a serious ozone nonattainment area to keep total potential point source "
+               "emissions (permitted plus all insignificant activities) below 50 tpy VOC, 50 tpy NOx, and 100 tpy CO. The "
+               "owner or operator must track insignificant-activity emissions annually and make the inventory and "
+               "calculations available to the Division on request.")
+
+
+def _ctx_rows():
+    """The two production chains from the stage-1 spot check, as rows."""
+    def row(pid, parent, cite, title, text, order, summary=None, status="approved", reviewed_by=HAND_STAMP):
+        return {"id": pid, "citation": cite, "title": title, "parent_id": parent, "full_text": f"<p>{text}</p>",
+                "sort_order": order, "ai_summary": summary, "summary_status": status, "summary_original": None,
+                "summary_model": "claude-sonnet-4-5", "reviewed_by": reviewed_by if summary else None,
+                "reviewed_at": "2026-09-20T00:00:00+00:00"}
+    return [
+        row("sec-gp01-top-REG-gp01", None, "APCD General Permit GP01",
+            "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Condensate Storage Tank Batteries — GP01 Issuance 6, July 23, 2025",
+            "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Condensate Storage Tank Batteries — GP01 Issuance 6, July 23, 2025", 0),
+        row("sec-gp01-VIII", "sec-gp01-top-REG-gp01", "VIII.", "VIII. General Permit Terms and Administration",
+            "VIII. General Permit Terms and Administration", 680),
+        row("sec-gp01-VIII-C", "sec-gp01-VIII", "VIII.C.", "VIII.C. General Terms", "VIII.C. General Terms", 710),
+        row("sec-gp01-VIII-C-1", "sec-gp01-VIII-C", "VIII.C.1.", "VIII.C.1.", APEN_GP, 720),
+        row("sec-gp01-VIII-C-1-a", "sec-gp01-VIII-C-1", "VIII.C.1.a.", "VIII.C.1.a.", APEN_PARENT, 730),
+        row("sec-gp01-VIII-C-1-a-(ii)", "sec-gp01-VIII-C-1-a", "VIII.C.1.a.(ii).", "VIII.C.1.a.(ii).", APEN_ROW, 750, APEN_BEFORE),
+        row("sec-gp07-top-REG-gp07", None, "APCD General Permit GP07",
+            "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Hydrocarbon Liquid Loadout — GP07 Issuance 4, July 23, 2025",
+            "GENERAL CONSTRUCTION PERMIT — Oil and Gas Industry — Hydrocarbon Liquid Loadout — GP07 Issuance 4, July 23, 2025", 0),
+        row("sec-gp07-II", "sec-gp07-top-REG-gp07", "II.", "II. Operating Terms and Conditions", "II. Operating Terms and Conditions", 130),
+        row("sec-gp07-II-B", "sec-gp07-II", "II.B.", "II.B. Facility-Wide Emission Limitation Requirements",
+            "II.B. Facility-Wide Emission Limitation Requirements", 210),
+        row("sec-gp07-II-B-1", "sec-gp07-II-B", "II.B.1.", "II.B.1.", GP07_PARENT, 220),
+        row("sec-gp07-II-B-1-b", "sec-gp07-II-B-1", "II.B.1.b.", "II.B.1.b.", GP07_ROW, 240, GP07_BEFORE),
+    ]
+
+
+def test_apen_row_sees_the_grandparent_duty_and_the_parent_timing():
+    db = FakeSupabase(_ctx_rows())
+    r = _review_for(db, "sec-gp01-VIII-C-1-a-(ii)")
+    block = r.prompt.split(review.ANCESTOR_BLOCK_HEADING)[1].split("\nProvision text:")[0]
+    # every ancestor, root first, each labelled with its id, the parent last
+    ids = re.findall(r"^\[(sec-[^\]]+)\]", block, re.M)
+    assert ids == ["sec-gp01-top-REG-gp01", "sec-gp01-VIII", "sec-gp01-VIII-C", "sec-gp01-VIII-C-1", "sec-gp01-VIII-C-1-a"]
+    assert "A revised APEN must be filed" in block                  # the grandparent's duty
+    assert "Annually by April 30th" in block                        # the parent's timing
+    assert review.CUT_MARKER not in block and r.ancestors["cut"] is False
+    # the summarizer's silently cut parent excerpt is gone
+    assert "Parent paragraph text" not in r.prompt and "…" not in block
+    # the summary under review is the one that must keep "revised APEN"
+    assert r.summary == APEN_BEFORE
+
+
+def test_gp07_row_sees_the_whole_parent_including_upon_request():
+    db = FakeSupabase(_ctx_rows())
+    r = _review_for(db, "sec-gp07-II-B-1-b")
+    block = r.prompt.split(review.ANCESTOR_BLOCK_HEADING)[1].split("\nProvision text:")[0]
+    assert "made available to the Division for inspection upon request" in block     # past PARENT_TEXT_CHARS (400)
+    assert "not subject to Conditions I.B. or I.C. or I.D." in block
+    assert len(sz.strip_html(db.row("sec-gp07-II-B-1")["full_text"])) > sz.PARENT_TEXT_CHARS
+    assert review.CUT_MARKER not in block
+
+
+@pytest.mark.parametrize("text,limit,expect_cut,ends_with", [
+    ("Short sentence.", 100, False, "Short sentence."),
+    ("First sentence is here. Second sentence is longer and goes on. Third one.", 65, True, "Second sentence is longer and goes on. " + review.CUT_MARKER),
+    ("word " * 100, 60, True, review.CUT_MARKER),
+])
+def test_honest_cut_cuts_at_a_sentence_end_and_marks_it(text, limit, expect_cut, ends_with):
+    out, cut = review.honest_cut(text, limit)
+    assert cut is expect_cut and out.endswith(ends_with)
+    if cut:
+        assert len(out) <= limit + len(review.CUT_MARKER) + 1
+    else:
+        assert review.CUT_MARKER not in out
+
+
+def test_honest_cut_falls_back_to_a_word_boundary_when_no_sentence_end_is_late_enough():
+    text = "A. " + "x" * 200 + " y" * 50          # sentence end far too early (<60% of the limit)
+    out, cut = review.honest_cut(text, 120)
+    assert cut and out.endswith(review.CUT_MARKER) and not out.startswith("A. " + review.CUT_MARKER)
+
+
+def test_ancestor_block_trims_the_farthest_first_and_never_the_parent(monkeypatch):
+    rows = _ctx_rows()
+    long = ("This ancestor paragraph is long and keeps going with more words. " * 40)   # ~2,600 chars
+    for pid in ("sec-gp01-VIII", "sec-gp01-VIII-C", "sec-gp01-VIII-C-1", "sec-gp01-VIII-C-1-a"):
+        next(r for r in rows if r["id"] == pid)["full_text"] = f"<p>{long}</p>"
+    db = FakeSupabase(rows)
+    meta, _ = _meta(db)
+    row = db.row("sec-gp01-VIII-C-1-a-(ii)")
+    # per-ancestor cap first: each is cut at ~1,500 chars, honestly marked
+    lines, info = review.build_ancestor_block(row, meta)
+    assert info["cut"] is True
+    for line in lines[1:]:
+        if line.startswith("[sec-"):
+            assert len(line) <= review.ANCESTOR_EXCERPT_CHARS + 120
+    # total cap: 4 x 1,500 + root > 6,000 -> the farthest are shrunk to 200, then dropped; the parent keeps 1,500
+    monkeypatch.setattr(review, "ANCESTOR_BLOCK_CHARS", 2500)
+    lines, info = review.build_ancestor_block(row, meta)
+    parent_line = next(l for l in lines if l.startswith("[sec-gp01-VIII-C-1-a]"))
+    assert len(parent_line) > 1400 and parent_line.endswith(review.CUT_MARKER)
+    assert info["omitted"] >= 1 and any("farther ancestor" in l and "omitted" in l for l in lines)
+    assert sum(len(l) for l in lines if l.startswith("[sec-")) <= 2500 + 120
+    shown = [l.split("]")[0][1:] for l in lines if l.startswith("[sec-")]
+    assert shown[-1] == "sec-gp01-VIII-C-1-a"                      # the parent is always the last and present
+    assert "sec-gp01-top-REG-gp01" not in shown                      # the root went first
+    # the order of trimming: whatever remains is a contiguous tail of the chain ending at the parent
+    full = ["sec-gp01-top-REG-gp01", "sec-gp01-VIII", "sec-gp01-VIII-C", "sec-gp01-VIII-C-1", "sec-gp01-VIII-C-1-a"]
+    assert full[-len(shown):] == shown
+
+
+def test_prompt_version_3_states_the_context_rules():
+    p = review.REVIEW_SYSTEM_PROMPT
+    assert "A statement supported by any ancestor shown is supported" in p
+    assert "[excerpt cut]" in p and "change it only if the visible text contradicts it" in p
+    assert "must not replace a specific, supported duty" in p
+    assert "Text above this provision" in p
+    assert review.REVIEW_PROMPT_VERSION not in ("4c41cd5622", "6a8ff2ce6c", "9ace8f1496")
+
+
+# --------------------------------------------------------------------------
+# Snapshot text as the input: --audit-ids --from-snapshot and --redo-corrections-since
+# --------------------------------------------------------------------------
+
+class _RpcAny:
+    """rpc() for the snapshot readers: the fake db keeps the snapshot in
+    tables['archive_snapshot'] and the live rows in tables['provisions']."""
+
+    def __init__(self, db, name, params):
+        self.db, self.name, self.params = db, name, params
+
+    def execute(self):
+        self.db.rpc_calls.append((self.name, dict(self.params), len(self.db.writes)))
+        snap = self.db.tables["archive_snapshot"]
+        if self.name == "rereview_snapshot_text":
+            ids = set(self.params["p_ids"])
+            return _Result([{"id": s["id"], "ai_summary": s["ai_summary"], "snapshot_at": "x"} for s in snap if s["id"] in ids])
+        if self.name == "rereview_corrected_since":
+            out = []
+            for s in snap:
+                live = self.db.row(s["id"])
+                if ("summary corrected, automated pipeline" in (live.get("reviewed_by") or "")
+                        and (live.get("reviewed_at") or "") >= self.params["p_since"]
+                        and live["summary_status"] in ("approved", "edited")):
+                    out.append({"id": s["id"], "before_summary": s["ai_summary"], "live_summary": live["ai_summary"],
+                                "reviewed_at": live["reviewed_at"]})
+            return _Result(out)
+        return _Rpc(self.db, self.name, self.params).execute()
+
+
+def _stage1_db():
+    """After stage 1: the two context rows were corrected (live text is the
+    bad correction, snapshot holds the before text) and one reg 8 row passed."""
+    rows = _ctx_rows()
+    rows.append({"id": "sec-8-A-000", "citation": "0.", "title": "", "parent_id": None, "full_text": f"<p>{LONG}</p>",
+                 "sort_order": 100, "ai_summary": "Reg 8 summary 0.", "summary_status": "approved",
+                 "summary_original": None, "summary_model": "claude-sonnet-4-5", "reviewed_by": PIPELINE_STAMP,
+                 "reviewed_at": "2026-10-05T04:45:00+00:00"})
+    db = FakeSupabase(rows)
+    db.rpc = lambda name, params: _RpcAny(db, name, params)
+    bad_apen = ("The permit requires action annually by April 30 of the year following a significant increase in "
+                "emissions, if your facility is a VOC or NOx source in an ozone non-attainment area.")
+    bad_gp07 = GP07_BEFORE.replace("available to the Division on request", "available to the Division for inspection")
+    for pid, before, live in (("sec-gp01-VIII-C-1-a-(ii)", APEN_BEFORE, bad_apen), ("sec-gp07-II-B-1-b", GP07_BEFORE, bad_gp07)):
+        db.tables["archive_snapshot"].append({"id": pid, "ai_summary": before, "summary_original": None,
+                                              "summary_status": "approved", "reviewed_by": HAND_STAMP,
+                                              "reviewed_at": "2026-09-20T00:00:00+00:00", "summary_model": "m",
+                                              "run_label": "review.py --rereview claude-sonnet-5-5 2026-10-05T04:39"})
+        r = db.row(pid)
+        r.update({"ai_summary": live, "summary_original": before,
+                  "reviewed_by": "Claude (AI second-pass review; summary corrected, automated pipeline, claude-sonnet-5-5, 2026-10-05)",
+                  "reviewed_at": "2026-10-05T04:44:00+00:00"})
+    db.tables["archive_snapshot"].append({"id": "sec-8-A-000", "ai_summary": "Reg 8 summary 0.", "summary_original": None,
+                                          "summary_status": "approved", "reviewed_by": HAND_STAMP, "reviewed_at": "x",
+                                          "summary_model": "m", "run_label": "review.py --rereview ..."})
+    return db
+
+
+def test_audit_ids_from_snapshot_reviews_the_before_text_and_writes_nothing(monkeypatch, tmp_path):
+    db = _stage1_db()
+    before = json.dumps(db.tables, sort_keys=True)
+    answers = {"sec-gp01-VIII-C-1-a-(ii)": _pass(), "sec-gp07-II-B-1-b": _pass()}
+    rc, fake, report = _run(db, answers, ["--audit-ids", "sec-gp01-VIII-C-1-a-(ii),sec-gp07-II-B-1-b", "--from-snapshot", "--execute"],
+                            monkeypatch, tmp_path)
+    assert rc == 0 and db.writes == [] and json.dumps(db.tables, sort_keys=True) == before
+    # the reviewer was given the BEFORE text, not the live correction
+    sent = {fake.custom_id_map[q["custom_id"]]: q["params"]["messages"][0]["content"]
+            for q in fake.messages.batches.created[0].requests}
+    assert sent["sec-gp01-VIII-C-1-a-(ii)"].rstrip().endswith(APEN_BEFORE)
+    assert sent["sec-gp07-II-B-1-b"].rstrip().endswith(GP07_BEFORE)
+    assert "A revised APEN must be filed" in sent["sec-gp01-VIII-C-1-a-(ii)"]
+    assert report["audit"]["from_snapshot"] is True and report["counts"]["pass"] == 2
+
+
+def test_redo_restores_the_original_on_pass_and_writes_new_corrections(monkeypatch, tmp_path):
+    db = _stage1_db()
+    new_gp07 = GP07_BEFORE.replace("The owner or operator must track",
+                                   "An owner or operator not subject to Conditions I.B., I.C. or I.D. must track")
+    answers = {
+        "sec-gp01-VIII-C-1-a-(ii)": _pass(),                                   # earlier correction withdrawn
+        "sec-gp07-II-B-1-b": {"findings": [], "verdict": "corrected", "corrected_summary": new_gp07,
+                              "changes": [{"before": "The owner or operator", "after": "An owner or operator not subject to Conditions I.B., I.C. or I.D.",
+                                           "reason": "Parent paragraph II.B.1. limits the tracking duty."}], "fail_reason": ""},
+    }
+    rc, fake, report = _run(db, answers, ["--redo-corrections-since", "2026-10-05T04:38:00Z", "--execute"], monkeypatch, tmp_path)
+    assert rc == 0
+    assert report["counts"]["selected"] == 2                                   # the passed reg 8 row is not selected
+    assert report["counts"] | {} == report["counts"]
+    assert (report["counts"]["restored"], report["counts"]["corrected_different"], report["counts"]["corrected_same"],
+            report["counts"]["fail"]) == (1, 1, 0, 0)
+    apen = db.row("sec-gp01-VIII-C-1-a-(ii)")
+    assert apen["ai_summary"] == APEN_BEFORE                                    # restored
+    assert apen["summary_original"] == APEN_BEFORE                               # never overwritten
+    assert apen["reviewed_by"].startswith("Claude (AI second-pass review, automated pipeline")
+    assert apen["summary_status"] == "approved"
+    gp07 = db.row("sec-gp07-II-B-1-b")
+    assert gp07["ai_summary"] == new_gp07 and "on request" in gp07["ai_summary"]
+    assert gp07["reviewed_by"].startswith("Claude (AI second-pass review; summary corrected")
+    # one provision_changes row per changed live text
+    assert sorted(c["provision_id"] for c in db.changes) == ["sec-gp01-VIII-C-1-a-(ii)", "sec-gp07-II-B-1-b"]
+    assert any("original summary restored" in c["note"] for c in db.changes)
+    # the snapshot's before text is untouched
+    assert [s["ai_summary"] for s in db.tables["archive_snapshot"] if s["id"] == "sec-gp01-VIII-C-1-a-(ii)"] == [APEN_BEFORE]
+    assert [c[0] for c in db.rpc_calls] == ["rereview_corrected_since"]        # no new snapshot call in redo mode
+    md = (tmp_path / "out" / "review_report.md").read_text()
+    assert "REDO" in md and "original summary restored" in md
+
+
+def test_redo_same_correction_writes_no_change_row_and_fail_goes_pending(monkeypatch, tmp_path):
+    db = _stage1_db()
+    same = db.row("sec-gp07-II-B-1-b")["ai_summary"]                           # the reviewer writes the stage-1 text again
+    answers = {
+        "sec-gp07-II-B-1-b": {"findings": [], "verdict": "corrected", "corrected_summary": same,
+                              "changes": [{"before": "x", "after": "y", "reason": "r"}], "fail_reason": ""},
+        "sec-gp01-VIII-C-1-a-(ii)": _fail("cannot verify"),
+    }
+    rc, fake, report = _run(db, answers, ["--redo-corrections-since", "2026-10-05T04:38:00Z", "--execute"], monkeypatch, tmp_path)
+    assert report["counts"]["corrected_same"] == 1 and report["counts"]["fail"] == 1
+    assert db.row("sec-gp07-II-B-1-b")["ai_summary"] == same and db.changes == []
+    assert db.row("sec-gp07-II-B-1-b")["reviewed_at"] != "2026-10-05T04:44:00+00:00"
+    apen = db.row("sec-gp01-VIII-C-1-a-(ii)")
+    assert apen["summary_status"] == "pending" and apen["ai_summary"].startswith("The permit requires action")
+
+
+def test_redo_dry_run_writes_nothing_and_flags_are_exclusive(monkeypatch, tmp_path):
+    db = _stage1_db()
+    before = json.dumps(db.tables, sort_keys=True)
+    rc, fake, report = _run(db, {}, ["--redo-corrections-since", "2026-10-05T04:38:00Z", "--dry-run"], monkeypatch, tmp_path)
+    assert rc == 0 and db.writes == [] and json.dumps(db.tables, sort_keys=True) == before
+    assert report["dry_run_quote"]["rows"] == 2 and report["run"]["mode"].startswith("REDO")
+    for argv in (["--redo-corrections-since", "x", "--rereview"], ["--redo-corrections-since", "x", "--audit", "5"],
+                 ["--from-snapshot"]):
+        with pytest.raises(SystemExit):
+            review.parse_args(argv)

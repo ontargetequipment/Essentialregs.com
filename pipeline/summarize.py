@@ -1842,11 +1842,15 @@ def build_context(provision: dict, meta: dict[str, dict]) -> tuple[Optional[dict
 
 
 def build_prompt(provision: dict, meta: dict[str, dict],
-                 children_index: Optional[dict[str, list[dict]]] = None) -> PromptResult:
+                 children_index: Optional[dict[str, list[dict]]] = None,
+                 context_block: Optional[list[str]] = None) -> PromptResult:
     """The user prompt for one row. `children_index` (build_children_index
     over `meta`) is what makes the "Provisions inside this one" block
     possible; when it is None it is built from `meta` on the fly, so a row
-    with children in `meta` always gets the block."""
+    with children in `meta` always gets the block. `context_block`, when
+    given, replaces the parent-paragraph excerpt with the caller's own lines
+    (the reviewer passes the full ancestor chain, review.py); the summarizer
+    never passes it, so its prompt is unchanged."""
     root, chain = build_context(provision, meta)
     stripped = strip_html(provision["full_text"])
     words = stripped.split()
@@ -1868,7 +1872,11 @@ def build_prompt(provision: dict, meta: dict[str, dict],
     # regulation root -- the root's own text is a document title, and its
     # citation/title already appear on the "Regulation:" line above.
     parent_excerpt = ""
-    if chain:
+    if context_block is not None:
+        if context_block:
+            lines.append("")
+            lines.extend(context_block)
+    elif chain:
         parent_stripped = strip_html(chain[-1].get("full_text") or "")
         if parent_stripped:
             parent_excerpt = parent_stripped[:PARENT_TEXT_CHARS]
