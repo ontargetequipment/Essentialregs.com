@@ -481,7 +481,7 @@ def test_corrected_verdict(db):
      "identical"),
     ({**_corrected("Owners must inspect engines above 400 hp quarterly")}, "terminal punctuation"),
     ({**_corrected("- Owners must inspect engines above 400 hp quarterly.")}, "markdown"),
-    ({**_corrected("Owners must inspect engines above 400 hp quarterly.\nRecords for five years.")}, "markdown"),
+    ({**_corrected("Owners must inspect engines above 400 hp quarterly.\n1. Records for five years.")}, "markdown"),
     ({**_corrected("Owners must inspect engines above 400 hp quarterly."), "changes": []}, "changes"),
     ({**_corrected("Owners must inspect engines above 400 hp quarterly.", reason="")}, "no reason"),
     ({**_corrected(("Owners must inspect engines above 400 hp quarterly. " * 12).strip())}, "rewrite"),
@@ -960,3 +960,62 @@ def test_audit_respects_the_spend_cap(monkeypatch, tmp_path):
     db = _audit_db()
     rc, fake, report = _run(db, {}, ["--audit", "5", "--execute", "--max-cost", "0.000001"], monkeypatch, tmp_path)
     assert rc == 2 and fake.messages.batches.created == [] and db.writes == []
+
+
+# --------------------------------------------------------------------------
+# Paragraph breaks (5 Oct 2026 run): the reader shows a blank line in a
+# summary as a new paragraph, so a correction keeps the summary's paragraphs.
+# --------------------------------------------------------------------------
+
+def _para_db():
+    rows = _rows()
+    rows.append({"id": "sec-8-B-III-E", "citation": "III.E.", "title": "Notification", "parent_id": None,
+                 "full_text": f"<p>{LONG}</p>", "sort_order": 9,
+                 "ai_summary": "Anyone abating asbestos must notify the Division.\n\nRecords are kept for three years.",
+                 "summary_status": "pending", "summary_original": None, "summary_model": "claude-sonnet-4-5"})
+    return FakeSupabase(rows)
+
+
+def test_correction_keeps_paragraph_breaks():
+    db = _para_db()
+    r = _review_for(db, "sec-8-B-III-E")
+    data = _corrected("Anyone abating asbestos must notify the Division.\n\nRecords are kept   for five years.",
+                      reason="the text says five years")
+    v = review.validate_verdict(data, r)
+    assert v.verdict == "corrected"
+    assert v.corrected_summary == "Anyone abating asbestos must notify the Division.\n\nRecords are kept for five years."
+
+
+def test_a_single_line_break_inside_a_paragraph_becomes_a_space():
+    assert review._normalize_paragraphs("a\nb\n\n\n c  d ") == "a b\n\nc d"
+
+
+def test_paragraph_breaks_alone_are_not_a_correction():
+    db = _para_db()
+    r = _review_for(db, "sec-8-B-III-E")
+    data = _corrected("Anyone abating asbestos must notify the Division. Records are kept for three years.")
+    v = review.validate_verdict(data, r)
+    assert v.verdict == "fail" and "identical" in v.reason
+
+
+def test_paragraph_correction_end_to_end(monkeypatch, tmp_path):
+    db = _para_db()
+    data = _corrected("Anyone abating asbestos must notify the Division in writing.\n\nRecords are kept for three years.",
+                      reason="the text says in writing")
+    _run(db, {"sec-8-B-III-E": data}, ["--execute", "--ids", "sec-8-B-III-E"], monkeypatch, tmp_path)
+    row = db.row("sec-8-B-III-E")
+    assert row["summary_status"] == "approved"
+    assert row["ai_summary"] == "Anyone abating asbestos must notify the Division in writing.\n\nRecords are kept for three years."
+
+
+def test_review_summary_prints_counts_cost_regs_and_failures():
+    import review_summary
+    data = {"run": {"mode": "execute", "model": "claude-sonnet-5-5", "sampling": "effort low", "prompt_version": "x"},
+            "counts": {"selected": 3, "pass": 1, "corrected": 1, "fail": 1},
+            "usage": {"input_tokens": 10, "output_tokens": 2, "cost_usd_batch": 0.12, "batches": ["b1"]},
+            "by_regulation": {"7": {"selected": 3, "pass": 1, "corrected": 1, "fail": 1}},
+            "failed": [{"id": "sec-7-x", "reason": "truncated"}],
+            "corrected": [{"id": "sec-7-y", "before": "old.", "after": "new.", "changes": [{"reason": "r"}]}]}
+    text = review_summary.summarize(data, ["sec-7-y"])
+    assert "cost_usd_batch=0.12" in text and "  7 3 1 1 1" in text and "sec-7-x: truncated" in text
+    assert "before: old." in text and "after: new." in text and text.endswith("=== END SUMMARY ===")

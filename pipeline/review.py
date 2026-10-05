@@ -568,6 +568,18 @@ def _normalize(text: str) -> str:
     return sz.WS_RE.sub(" ", (text or "")).strip()
 
 
+PARAGRAPH_BREAK_RE = re.compile(r"\n\s*\n")
+
+
+def _normalize_paragraphs(text: str) -> str:
+    """Whitespace normalized inside each paragraph, paragraphs kept: the
+    reader shows a blank line in a summary as a paragraph break
+    (summaryPanelHtml), so a correction keeps the summary's paragraphs. A
+    single line break inside a paragraph becomes a space."""
+    paragraphs = [_normalize(p) for p in PARAGRAPH_BREAK_RE.split((text or "").strip())]
+    return "\n\n".join(p for p in paragraphs if p)
+
+
 # Stray Markdown in a summary (the site shows summaries as plain text). Only
 # unambiguous markers: ** and __word__ emphasis, backticks, and a heading or
 # list marker at the start of a line. A lone * is left alone (the summaries
@@ -657,10 +669,13 @@ def validate_verdict(data: object, review: ReviewInput, stop_reason: Optional[st
         return Verdict("fail", findings=findings, reason="malformed output: corrected verdict with an empty corrected_summary")
     # Markdown and line breaks are tested on the raw text, before whitespace
     # is normalized away: a summary is one plain paragraph.
-    if "\n" in raw_corrected or has_markdown_markers(raw_corrected) or re.match(r"\s*\d+\.\s", raw_corrected):
-        return Verdict("fail", findings=findings, reason="malformed output: corrected_summary contains markdown or line breaks")
-    corrected = _normalize(raw_corrected)
-    if corrected == _normalize(review.summary):
+    # Markdown is tested on the raw text. Paragraph breaks are allowed (the
+    # reader renders a blank line as a new paragraph, and multi-paragraph
+    # summaries exist); a numbered or bulleted line is not.
+    if has_markdown_markers(raw_corrected) or re.search(r"(?:^|\n)\s*\d+\.\s", raw_corrected):
+        return Verdict("fail", findings=findings, reason="malformed output: corrected_summary contains markdown")
+    corrected = _normalize_paragraphs(raw_corrected)
+    if _normalize(corrected) == _normalize(review.summary):
         return Verdict("fail", findings=findings, reason="malformed output: corrected_summary is identical to the current summary")
     if not sz.is_whole(corrected):
         return Verdict("fail", findings=findings, reason="malformed output: corrected_summary does not end in terminal punctuation")
@@ -687,7 +702,7 @@ def validate_verdict(data: object, review: ReviewInput, stop_reason: Optional[st
     claims_markdown_only = all(
         _is_markdown_only_change(c["before"], c["after"]) or "markdown" in c["reason"].lower()
         for c in clean_changes)
-    if claims_markdown_only and corrected != strip_markdown_markers(review.summary):
+    if claims_markdown_only and _normalize(corrected) != strip_markdown_markers(review.summary):
         return Verdict("fail", findings=findings,
                        reason="Markdown-only correction changed more than the markers")
     return Verdict("corrected", corrected_summary=corrected, changes=clean_changes, findings=findings)
