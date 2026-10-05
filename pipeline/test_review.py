@@ -1585,6 +1585,7 @@ def test_prompt_version_3_states_the_context_rules():
     assert "A statement supported by any ancestor shown is supported" in p
     assert "[excerpt cut]" in p and "change it only if the visible text contradicts it" in p
     assert "must not replace a specific, supported duty" in p
+    assert "a limit an ancestor places on the duty" in p and "widens the scope" in p
     assert "Text above this provision" in p
     assert review.REVIEW_PROMPT_VERSION not in ("4c41cd5622", "6a8ff2ce6c", "9ace8f1496")
 
