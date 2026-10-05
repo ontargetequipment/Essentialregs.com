@@ -498,8 +498,13 @@ ids), so the reasons in `provision_changes.note` stay private.
   processing table (the Batches API is 50% off both rates).
 - **effort** -- thinking depth for 5.x models (`low` by default; temperature is
   not a parameter there). Sonnet 4.5 runs at temperature 0.
-- **max_cost** -- a spend cap: the run refuses to submit above this estimate
-  and cancels the remaining batches once actual spend passes it.
+- **max_cost** -- a spend cap: the run refuses to submit when the pre-submit
+  estimate exceeds it, and cancels the remaining batches once actual spend
+  passes it. Since 5 Oct 2026 the pre-submit estimate assumes the cached
+  system prompt is read from the cache on every row but the first (the log
+  also prints the no-cache ceiling); measured runs sit near that floor (81% of
+  input tokens were cache reads in stage 1), and the actual-spend cap is the
+  guard during the run.
 - **execute** unchecked = **dry run**: no paid call, no write. It prints the
   row count by regulation, the input tokens (counted with the free
   `messages.count_tokens` endpoint when the API key is present, a character

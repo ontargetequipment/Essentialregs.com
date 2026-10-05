@@ -1312,11 +1312,16 @@ def count_tokens_api(client_anthropic, review: ReviewInput, model: str) -> int:
     raise RuntimeError("unreachable")
 
 
-def estimate_run_cost(client_anthropic, reviews: list[ReviewInput], model: str) -> tuple[float, str]:
+def estimate_run_cost(client_anthropic, reviews: list[ReviewInput], model: str) -> tuple[float, str, float]:
     """Batch-price estimate for submitting `reviews` to `model`: input
     tokens from the free count_tokens endpoint (a character estimate for
     rows it fails on, or with no client) plus expected_output_tokens per
-    row. Returns (usd, method)."""
+    row. Returns (ceiling_usd, method, floor_usd): the ceiling assumes no
+    cache hit at all, the floor assumes the system prompt is written once
+    and read from the cache on every other row. Measured runs sit near the
+    floor (81% of input tokens were cache reads in the 3,049-row stage-1
+    run), so the pre-submit --max-cost check refuses on the floor; the
+    actual-spend cap during the run is the real guard."""
     if client_anthropic is not None:
         counted = count_tokens_many(client_anthropic, reviews, model)
         est_in = sum(c if c is not None else estimate_tokens_by_chars(r.chars, model) + SCHEMA_TOKEN_ALLOWANCE
@@ -1326,7 +1331,12 @@ def estimate_run_cost(client_anthropic, reviews: list[ReviewInput], model: str) 
         est_in = sum(estimate_tokens_by_chars(r.chars, model) + SCHEMA_TOKEN_ALLOWANCE for r in reviews)
         method = "character estimate"
     est_out = expected_output_tokens(model) * len(reviews)
-    return estimate_cost(model, est_in, est_out, batch=True), method
+    ceiling = estimate_cost(model, est_in, est_out, batch=True)
+    sys_tok = estimate_tokens_by_chars(len(REVIEW_SYSTEM_PROMPT), model)
+    n = len(reviews)
+    floor = estimate_cost(model, max(0, est_in - sys_tok * n), est_out, batch=True,
+                          cache_creation_tokens=sys_tok if n else 0, cache_read_tokens=sys_tok * max(0, n - 1))
+    return ceiling, method, floor
 
 
 def count_tokens_many(client_anthropic, reviews: list[ReviewInput], model: str,
@@ -2048,12 +2058,13 @@ def main(argv: Optional[list[str]] = None) -> int:
                  execute=write, rereview=rereview, redo=redo)
     else:
         if args.max_cost is not None:
-            est, method = estimate_run_cost(client_anthropic, reviews, args.model)
+            ceiling, method, est = estimate_run_cost(client_anthropic, reviews, args.model)
             print(f"Estimated cost ({method} input, {expected_output_tokens(args.model)} output tokens per row): "
-                  f"${est:,.2f}; cap ${args.max_cost:,.2f}")
+                  f"${est:,.2f} with cache hits on the system prompt (ceiling without any: ${ceiling:,.2f}); "
+                  f"cap ${args.max_cost:,.2f}")
             if est > args.max_cost:
-                print(f"Refusing to submit: estimated ${est:,.2f} exceeds --max-cost ${args.max_cost:,.2f}.",
-                      file=sys.stderr)
+                print(f"Refusing to submit: estimated ${est:,.2f} (ceiling ${ceiling:,.2f}) exceeds --max-cost "
+                      f"${args.max_cost:,.2f}.", file=sys.stderr)
                 md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at,
                                         audit=audit_info, rereview=rereview, snapshot=snapshot_info, redo=redo_since)
                 data["run"]["mode"] = f"refused: estimate ${est:,.2f} over --max-cost ${args.max_cost:,.2f}"

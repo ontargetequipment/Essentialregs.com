@@ -1724,3 +1724,14 @@ def test_redo_dry_run_writes_nothing_and_flags_are_exclusive(monkeypatch, tmp_pa
                  ["--from-snapshot"]):
         with pytest.raises(SystemExit):
             review.parse_args(argv)
+
+
+def test_pre_submit_estimate_returns_ceiling_and_cache_floor(db):
+    reviews = [_review_for(db, pid) for pid in ("sec-7-B-I-C", "sec-7-B-I-C-2", "sec-3-A-I-B")]
+    ceiling, method, floor = review.estimate_run_cost(None, reviews, "claude-sonnet-5-5")
+    assert method == "character estimate" and 0 < floor < ceiling
+    # the floor is the ceiling with the system prompt read from the cache on every row but the first
+    sys_tok = review.estimate_tokens_by_chars(len(review.REVIEW_SYSTEM_PROMPT), "claude-sonnet-5-5")
+    saved = review.estimate_cost("claude-sonnet-5-5", sys_tok * 3, 0) - review.estimate_cost(
+        "claude-sonnet-5-5", 0, 0, cache_creation_tokens=sys_tok, cache_read_tokens=sys_tok * 2)
+    assert ceiling - floor == pytest.approx(saved, abs=1e-9)
