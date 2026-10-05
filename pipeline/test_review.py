@@ -128,14 +128,39 @@ class _Query:
         raise AssertionError(self.op)
 
 
+class _Rpc:
+    def __init__(self, db: "FakeSupabase", name: str, params: dict):
+        self.db, self.name, self.params = db, name, params
+
+    def execute(self):
+        assert self.name == "snapshot_summaries_for_rereview", self.name
+        ids = set(self.params["p_ids"])
+        have = {r["id"] for r in self.db.tables["archive_snapshot"]}
+        added = 0
+        for r in self.db.tables["provisions"]:
+            if r["id"] in ids and r["id"] not in have:        # on conflict (id) do nothing
+                self.db.tables["archive_snapshot"].append({
+                    k: r.get(k) for k in ("id", "ai_summary", "summary_original", "summary_status",
+                                          "reviewed_by", "reviewed_at", "summary_model")}
+                    | {"run_label": self.params.get("p_run_label")})
+                added += 1
+        self.db.rpc_calls.append((self.name, dict(self.params), len(self.db.writes)))
+        return _Result(added)
+
+
 class FakeSupabase:
     def __init__(self, provisions: list[dict]):
-        self.tables = {"provisions": [dict(r) for r in provisions], "provision_changes": []}
+        self.tables = {"provisions": [dict(r) for r in provisions], "provision_changes": [],
+                       "archive_snapshot": []}
         self.writes: list = []
         self.queries: list = []
+        self.rpc_calls: list = []       # (name, params, number of writes made before the call)
 
     def table(self, name):
         return _Query(self, name)
+
+    def rpc(self, name, params):
+        return _Rpc(self, name, params)
 
     def row(self, provision_id: str) -> dict:
         return next(r for r in self.tables["provisions"] if r["id"] == provision_id)
@@ -1019,3 +1044,283 @@ def test_review_summary_prints_counts_cost_regs_and_failures():
     text = review_summary.summarize(data, ["sec-7-y"])
     assert "cost_usd_batch=0.12" in text and "  7 3 1 1 1" in text and "sec-7-x: truncated" in text
     assert "before: old." in text and "after: new." in text and text.endswith("=== END SUMMARY ===")
+
+
+# --------------------------------------------------------------------------
+# Prompt version 2 (Oct 2026): the three plain-English allowances
+# --------------------------------------------------------------------------
+
+def test_prompt_version_2_states_the_three_allowances_and_keeps_the_strict_rules():
+    p = review.REVIEW_SYSTEM_PROMPT
+    assert "1. Acronyms and agency names" in p and "volatile organic compounds (VOC)" in p
+    assert "2. Illustrative examples" in p and "does not narrow or widen" in p
+    assert "3. Source typos" in p and "trionyl chloride" in p
+    # the strict core is untouched
+    assert "Compare literally" in p and "\"may\" and \"must\" are different duties" in p
+    assert "If the text does not say it, the summary may not say it." in p
+    # the old sentence that forbade expanding an acronym the text only abbreviates is gone
+    assert "one the text only abbreviates may not be expanded" not in p
+    assert review.REVIEW_PROMPT_VERSION != "4c41cd5622"      # version 1 (PRs #52-#56)
+
+
+@pytest.mark.parametrize("before,after,reason,expected", [
+    ("equipment leaks of volatile organic compounds (VOC)", "equipment leaks of VOC",
+     "The text only abbreviates VOC and does not expand it.", True),
+    ("Colorado Parks and Wildlife (CPW)", "CPW", "The text only abbreviates CPW and never expands it.", True),
+    ("maximum allowable operating pressure (MAOP)", "maximum allowable operating pressure",
+     "The text spells out the term and never uses the acronym MAOP.", True),
+    ("CEDRI (the EPA's Compliance and Emissions Data Reporting Interface)", "CEDRI",
+     "The text only abbreviates CEDRI and does not expand it.", True),
+    # a wrong expansion is a real correction
+    ("the Air Quality Control Commission (AQCC)", "the Division",
+     "The text names the Division, a different party; the acronym expansion is wrong.", False),
+    # words added or substituted: not a removal
+    ("exceeding MAOP plus 6 psig", "exceeding the maximum allowable operating pressure plus 6 psig",
+     "Follows from removing the acronym; the text uses the full term.", False),
+    # a removal for a non-acronym reason is a real correction
+    ("inspect every 500 hp engine quarterly", "inspect every engine quarterly",
+     "The text sets no horsepower threshold.", False),
+])
+def test_acronym_pairing_removal_detection(before, after, reason, expected):
+    assert review._is_acronym_pairing_removal(before, after, reason) is expected
+
+
+def _acr_db():
+    rows = _rows()
+    rows.append({"id": "sec-6-A-SUBPART-VVa", "citation": "Subpart VVa", "title": "", "parent_id": None,
+                 "full_text": "<p>Standards of performance for equipment leaks of VOC.</p>", "sort_order": 50,
+                 "ai_summary": "This subpart sets standards for equipment leaks of volatile organic compounds (VOC) at affected facilities.",
+                 "summary_status": "pending", "summary_original": None, "summary_model": "claude-sonnet-4-5"})
+    return FakeSupabase(rows)
+
+
+def test_correction_that_only_strips_a_correct_expansion_is_a_pass():
+    db = _acr_db()
+    rv = _review_for(db, "sec-6-A-SUBPART-VVa")
+    data = {"findings": [{"claim": "volatile organic compounds (VOC)", "problem": "text only says VOC"}],
+            "verdict": "corrected",
+            "corrected_summary": "This subpart sets standards for equipment leaks of VOC at affected facilities.",
+            "changes": [{"before": "equipment leaks of volatile organic compounds (VOC)", "after": "equipment leaks of VOC",
+                         "reason": "The text only abbreviates VOC and does not expand it."}],
+            "fail_reason": ""}
+    v = review.validate_verdict(data, rv)
+    assert v.verdict == "pass" and v.reason == review.ACRONYM_ONLY_REASON and v.corrected_summary == ""
+
+
+def test_correction_with_a_real_error_beside_an_expansion_removal_stays_corrected():
+    db = _acr_db()
+    rv = _review_for(db, "sec-6-A-SUBPART-VVa")
+    data = {"findings": [], "verdict": "corrected",
+            "corrected_summary": "This subpart sets standards for equipment leaks of VOC at affected facilities after 2007.",
+            "changes": [{"before": "volatile organic compounds (VOC)", "after": "VOC",
+                         "reason": "The text only abbreviates VOC."},
+                        {"before": "at affected facilities", "after": "at affected facilities after 2007",
+                         "reason": "The text limits the standard to facilities constructed after 2007."}],
+            "fail_reason": ""}
+    assert review.validate_verdict(data, rv).verdict == "corrected"
+
+
+def test_acronym_only_pass_still_fails_on_markdown():
+    db = _acr_db()
+    db.row("sec-6-A-SUBPART-VVa")["ai_summary"] = "This subpart sets standards for **equipment leaks** of volatile organic compounds (VOC)."
+    rv = _review_for(db, "sec-6-A-SUBPART-VVa")
+    data = {"findings": [], "verdict": "corrected",
+            "corrected_summary": "This subpart sets standards for equipment leaks of VOC.",
+            "changes": [{"before": "volatile organic compounds (VOC)", "after": "VOC",
+                         "reason": "The text only abbreviates VOC."}], "fail_reason": ""}
+    v = review.validate_verdict(data, rv)
+    assert v.verdict == "fail" and "Markdown" in v.reason
+
+
+# --------------------------------------------------------------------------
+# --rereview: the hand-approved rows (Oct 2026)
+# --------------------------------------------------------------------------
+
+PIPELINE_STAMP = "Claude (AI second-pass review, automated pipeline, claude-sonnet-5-5, 2026-10-05)"
+HAND_STAMP = "Claude (AI second-pass review, full text read, per owner instruction 2026-09-20)"
+
+
+def _rereview_db():
+    rows = _rows()
+    for i in range(6):
+        rows.append({"id": f"sec-8-A-{i:03d}", "citation": f"{i}.", "title": "", "parent_id": None,
+                     "full_text": f"<p>{LONG}</p>", "sort_order": 100 + i, "ai_summary": f"Reg 8 summary {i}.",
+                     "summary_status": "edited" if i == 1 else "approved",
+                     "summary_original": "kept original" if i == 2 else None,
+                     "summary_model": "claude-sonnet-4-5",
+                     "reviewed_by": PIPELINE_STAMP if i >= 4 else (None if i == 3 else HAND_STAMP),
+                     "reviewed_at": "2026-09-20T00:00:00+00:00"})
+    return FakeSupabase(rows)
+
+
+def test_rereview_selects_hand_approved_and_edited_rows_only():
+    db = _rereview_db()
+    ids = [r["id"] for r in review.iter_candidates(db, None, None, rereview=True)]
+    # the approved reg 7 row (hand stamp) + reg 8 rows 0-3 (hand stamp, edited, kept original, null reviewed_by)
+    assert ids == ["sec-7-B-I-C-1", "sec-8-A-000", "sec-8-A-001", "sec-8-A-002", "sec-8-A-003"]
+    for r in review.iter_candidates(db, None, None, rereview=True):
+        assert r["summary_status"] in ("approved", "edited") and r["ai_summary"]
+        assert "automated pipeline" not in (r.get("reviewed_by") or "")
+    # pending, rejected and pipeline-stamped rows never appear
+    assert not {"sec-7-B-I-C", "sec-7-B-I-D", "sec-8-A-004", "sec-8-A-005"} & set(ids)
+    # reg prefix, limit, ids and the comma list still work
+    assert [r["id"] for r in review.iter_candidates(db, "8", 2, rereview=True)] == ["sec-8-A-000", "sec-8-A-001"]
+    assert [r["id"] for r in review.iter_candidates(db, "8,7", None, rereview=True)][-1] == "sec-7-B-I-C-1"
+    picked = [r["id"] for r in review.iter_candidates(db, None, None, ids=["sec-8-A-004", "sec-7-B-I-C", "sec-8-A-001"],
+                                                      rereview=True)]
+    assert picked == ["sec-8-A-001"]
+    # the normal selection is unchanged
+    assert [r["id"] for r in review.iter_candidates(db, None, None)] == ["sec-7-B-I-C", "sec-7-B-I-C-2", "sec-3-A-I-B"]
+
+
+def test_is_rereview_row():
+    assert review.is_rereview_row({"summary_status": "approved", "ai_summary": "x", "reviewed_by": HAND_STAMP})
+    assert review.is_rereview_row({"summary_status": "edited", "ai_summary": "x", "reviewed_by": None})
+    assert not review.is_rereview_row({"summary_status": "approved", "ai_summary": "x", "reviewed_by": PIPELINE_STAMP})
+    assert not review.is_rereview_row({"summary_status": "pending", "ai_summary": "x", "reviewed_by": HAND_STAMP})
+    assert not review.is_rereview_row({"summary_status": "approved", "ai_summary": None, "reviewed_by": HAND_STAMP})
+
+
+def test_rereview_pass_stamps_reviewer_and_date_and_nothing_else():
+    db = _rereview_db()
+    rv = _review_for(db, "sec-8-A-001")      # an 'edited' row
+    before = dict(db.row("sec-8-A-001"))
+    out = review.apply_verdict(db, db.row("sec-8-A-001"), rv, review.Verdict("pass"), "claude-sonnet-5-5",
+                               date="2026-10-06", rereview=True)
+    row = db.row("sec-8-A-001")
+    assert out == "approved"
+    assert row["reviewed_by"] == "Claude (AI second-pass review, automated pipeline, claude-sonnet-5-5, 2026-10-06)"
+    assert row["reviewed_at"] != before["reviewed_at"]
+    assert row["summary_status"] == "edited" and row["ai_summary"] == before["ai_summary"]
+    assert row["summary_original"] == before["summary_original"]
+    assert db.changes == []                  # the summary did not change: no changelog row
+    # stamped rows drop out of the next re-review selection
+    assert "sec-8-A-001" not in [r["id"] for r in review.iter_candidates(db, None, None, rereview=True)]
+
+
+def test_rereview_fail_sets_pending_and_leaves_the_text_alone():
+    db = _rereview_db()
+    rv = _review_for(db, "sec-8-A-000")
+    before = dict(db.row("sec-8-A-000"))
+    out = review.apply_verdict(db, db.row("sec-8-A-000"), rv, review.Verdict("fail", reason="cannot verify"),
+                               "claude-sonnet-5-5", rereview=True)
+    row = db.row("sec-8-A-000")
+    assert out == "failed_to_pending"
+    assert row["summary_status"] == "pending"
+    assert row["ai_summary"] == before["ai_summary"] and row["summary_original"] == before["summary_original"]
+    assert db.changes == []
+    # it is now a normal pending row, and no longer a re-review row
+    assert "sec-8-A-000" in [r["id"] for r in review.iter_candidates(db, None, None)]
+    assert "sec-8-A-000" not in [r["id"] for r in review.iter_candidates(db, None, None, rereview=True)]
+    # normal mode: fail still writes nothing
+    db2 = _rereview_db()
+    assert review.apply_verdict(db2, db2.row("sec-7-B-I-C"), _review_for(db2, "sec-7-B-I-C"),
+                                review.Verdict("fail", reason="x"), "m") == "failed"
+    assert db2.writes == []
+
+
+def test_rereview_corrected_writes_as_today():
+    db = _rereview_db()
+    rv = _review_for(db, "sec-8-A-002")      # has a summary_original already
+    v = review.Verdict("corrected", corrected_summary="Reg 8 summary 2, for five years.",
+                       changes=[{"before": "x", "after": "y", "reason": "the text says five years"}])
+    out = review.apply_verdict(db, db.row("sec-8-A-002"), rv, v, "claude-sonnet-5-5", date="2026-10-06", rereview=True)
+    row = db.row("sec-8-A-002")
+    assert out == "corrected"
+    assert row["ai_summary"] == "Reg 8 summary 2, for five years." and row["summary_original"] == "kept original"
+    assert row["summary_status"] == "approved"
+    assert row["reviewed_by"].startswith("Claude (AI second-pass review; summary corrected, automated pipeline")
+    assert db.changes[0]["change_type"] == "summary_edited" and "five years" in db.changes[0]["note"]
+    # a corrected row without a summary_original gets the prior text
+    rv3 = _review_for(db, "sec-8-A-003")
+    review.apply_verdict(db, db.row("sec-8-A-003"), rv3, v, "claude-sonnet-5-5", rereview=True)
+    assert db.row("sec-8-A-003")["summary_original"] == "Reg 8 summary 3."
+
+
+def test_rereview_write_is_skipped_when_the_row_is_no_longer_approved():
+    db = _rereview_db()
+    rv = _review_for(db, "sec-8-A-000")
+    row = db.row("sec-8-A-000")
+    row["summary_status"] = "rejected"       # an admin rejected it after selection
+    for verdict in (review.Verdict("pass"), review.Verdict("fail", reason="x"),
+                    review.Verdict("corrected", corrected_summary="New.", changes=[{"before": "", "after": "", "reason": "r"}])):
+        assert review.apply_verdict(db, row, rv, verdict, "m", rereview=True) == "skipped_not_pending"
+    assert db.row("sec-8-A-000")["summary_status"] == "rejected" and db.changes == []
+
+
+def test_rereview_execute_snapshots_every_selected_row_before_the_first_write(monkeypatch, tmp_path):
+    db = _rereview_db()
+    selected = [r["id"] for r in review.iter_candidates(db, None, None, rereview=True)]
+    pre = {r["id"]: dict(r) for r in db.tables["provisions"]}
+    answers = {
+        "sec-7-B-I-C-1": _pass(),
+        "sec-8-A-000": _fail("the text is shown only as an outline"),
+        "sec-8-A-001": _pass(),
+        "sec-8-A-002": {"findings": [], "verdict": "corrected", "corrected_summary": "Reg 8 summary 2, for five years.",
+                        "changes": [{"before": "x", "after": "y", "reason": "the text says five years"}], "fail_reason": ""},
+        "sec-8-A-003": "not json at all",
+    }
+    rc, fake, report = _run(db, answers, ["--rereview", "--execute"], monkeypatch, tmp_path)
+    assert rc == 0
+    # snapshot: one RPC call, every selected id, made before any write
+    assert [c[0] for c in db.rpc_calls] == ["snapshot_summaries_for_rereview"]
+    name, params, writes_before = db.rpc_calls[0]
+    assert sorted(params["p_ids"]) == sorted(selected) and writes_before == 0
+    assert "--rereview" in params["p_run_label"]
+    snap = {r["id"]: r for r in db.tables["archive_snapshot"]}
+    assert set(snap) == set(selected)
+    for pid in selected:
+        assert snap[pid]["ai_summary"] == pre[pid]["ai_summary"]
+        assert snap[pid]["summary_status"] == pre[pid]["summary_status"]
+        assert snap[pid]["reviewed_by"] == pre[pid].get("reviewed_by")
+    assert report["run"]["snapshot"]["added"] == len(selected) and report["run"]["selection"] == "rereview"
+    # outcomes
+    assert report["counts"]["selected"] == 5 and report["counts"]["pass"] == 2
+    assert report["counts"]["corrected"] == 1 and report["counts"]["fail"] == 2
+    assert db.row("sec-7-B-I-C-1")["reviewed_by"].startswith("Claude (AI second-pass review, automated pipeline")
+    assert db.row("sec-7-B-I-C-1")["summary_status"] == "approved"
+    assert db.row("sec-8-A-001")["summary_status"] == "edited"
+    assert db.row("sec-8-A-000")["summary_status"] == "pending" and db.row("sec-8-A-000")["ai_summary"] == "Reg 8 summary 0."
+    assert db.row("sec-8-A-003")["summary_status"] == "pending"      # malformed answer = fail = pending
+    assert db.row("sec-8-A-002")["ai_summary"].endswith("five years.")
+    assert all(f["set_pending"] for f in report["failed"])
+    # untouched: pending rows, the rejected row, the pipeline-stamped rows
+    for pid in ("sec-7-B-I-C", "sec-7-B-I-C-2", "sec-3-A-I-B", "sec-7-B-I-D", "sec-8-A-004", "sec-8-A-005"):
+        assert db.row(pid) == pre[pid]
+    # only one changelog row: the correction
+    assert [c["change_type"] for c in db.changes] == ["summary_edited"]
+    md = (tmp_path / "out" / "review_report.md").read_text()
+    assert "RE-REVIEW" in md and "set back to pending" in md
+    # a second re-review run finds nothing: passes are stamped, fails are pending
+    rc2, fake2, report2 = _run(db, {}, ["--rereview", "--execute"], monkeypatch, tmp_path)
+    assert report2["counts"]["selected"] == 0 and fake2.messages.batches.created == []
+    assert len(db.rpc_calls) == 1          # no snapshot call when nothing is selected
+    # the failed rows are now ordinary pending rows for the normal review
+    assert sorted(r["id"] for r in review.iter_candidates(db, "8", None)) == ["sec-8-A-000", "sec-8-A-003"]
+
+
+def test_rereview_dry_run_makes_no_snapshot_no_batch_no_write(monkeypatch, tmp_path):
+    db = _rereview_db()
+    before = json.dumps(db.tables, sort_keys=True)
+    rc, fake, report = _run(db, {}, ["--rereview", "--dry-run"], monkeypatch, tmp_path)
+    assert rc == 0 and fake.messages.batches.created == [] and db.writes == [] and db.rpc_calls == []
+    assert json.dumps(db.tables, sort_keys=True) == before
+    assert report["dry_run_quote"]["rows"] == 5 and report["run"]["mode"].startswith("RE-REVIEW")
+    assert report["by_regulation"]["8"]["selected"] == 4 and report["by_regulation"]["7"]["selected"] == 1
+
+
+def test_rereview_and_audit_are_exclusive():
+    with pytest.raises(SystemExit):
+        review.parse_args(["--rereview", "--audit", "5"])
+
+
+def test_rereview_snapshot_failure_aborts_before_any_write(monkeypatch, tmp_path):
+    db = _rereview_db()
+
+    class Boom:
+        def execute(self):
+            raise RuntimeError("function snapshot_summaries_for_rereview does not exist")
+    monkeypatch.setattr(db, "rpc", lambda name, params: Boom())
+    with pytest.raises(RuntimeError):
+        _run(db, {"sec-8-A-000": _pass()}, ["--rereview", "--execute"], monkeypatch, tmp_path)
+    assert db.writes == []

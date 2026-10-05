@@ -450,7 +450,8 @@ is the repeatable version, and the **Review pending summaries** workflow
 (`.github/workflows/review.yml`) is how it runs.
 
 **What it selects.** Rows that have a summary and `summary_status = 'pending'`,
-nothing else. Approved, edited and rejected rows are excluded by the query and
+nothing else (the one exception is **re-review mode**, below, which selects
+the hand-approved rows instead). Approved, edited and rejected rows are excluded by the query and
 every write re-checks the status, so a row an admin approved meanwhile is left
 alone. Two things put a row back to pending: the parent regeneration
 (`summarize.py --parents`, Phase 0) and the importer (`import_ccr.py apply`),
@@ -538,6 +539,81 @@ quote.
 blank line as a paragraph break). A correction keeps them: whitespace is
 normalized inside each paragraph and the blank lines between paragraphs are
 kept; Markdown is still rejected.
+
+**Prompt version 2: three plain-English allowances** (owner instruction, 5 Oct
+2026, after the 200-row audit). The audit's 82 would-corrects were about a
+third real errors and mostly strictness that made a summary worse without
+making it more accurate, plus one would-be correction that was itself wrong.
+The reviewer keeps every strict rule (numbers, dates, thresholds, citations,
+scope, parties, conditions and exceptions must match the text; nothing may be
+asserted that the text does not say; style-only rewrites are a pass) and gets
+exactly three allowances:
+
+1. *Acronyms and agency names.* A correct expansion of an acronym or short name
+   the text uses is not an error and must not be removed or abbreviated
+   ("volatile organic compounds (VOC)", "maximum allowable operating pressure
+   (MAOP)", "Colorado Parks and Wildlife (CPW)"), whether the text uses the
+   acronym, the full term or both. It is an error only if the expansion is
+   wrong or contradicts the text. The validator backs this up: a `corrected`
+   whose every change only removes words for an abbreviation/expansion reason
+   (`_is_acronym_pairing_removal`) is treated as `pass` -- the reviewer found
+   nothing else wrong. A reason that says the expansion is *wrong*, or a change
+   that adds or substitutes words, is a real correction and goes through.
+2. *Illustrative examples.* An example clearly marked as one ("like", "such
+   as", "for example") is not an error when it is consistent with the text and
+   does not narrow or widen the provision's scope. It is an error when the
+   text gives its own list and the example is not on it, or when the example
+   changes scope. "Including X" correctly renders "including, but not limited
+   to, X"; wording that claims completeness ("specifically", "namely") where
+   the text says the list is not exhaustive is still an error.
+3. *Source typos.* The reviewer never changes a summary to reproduce an evident
+   typo in the official text ("trionyl chloride" for thionyl chloride); the
+   summary uses the correct word.
+
+Two clarifications ride with them: the regulation and parent lines are part of
+the text the reviewer is given, so a summary may say where the provision sits
+(the rule, form or program those lines name); and a summary of one item in a
+list of conditions need not repeat the other items. The old sentence "an
+acronym the text only abbreviates may not be expanded" is gone (it contradicted
+allowance 1). The prompt version (sha1 of prompt + schema, printed in every
+report) changed from `4c41cd5622` (version 1, PRs #52-#56) to the value
+`review.REVIEW_PROMPT_VERSION` prints.
+
+**Re-review mode** (`--rereview`, workflow input **rereview**) selects the
+*other* population: rows that are already `approved` or `edited`, have a
+summary, and whose `reviewed_by` does not contain "automated pipeline" -- the
+16,467 summaries the September hand passes approved (the same predicate as
+audit mode, `is_rereview_row`). Same text, same prompt, same validation;
+`reg`, `ids` and `limit` work as usual (so the general permits and Regulations
+3 and 7 can go first). The writes differ, and each is guarded by
+`summary_status in ('approved','edited')` at write time:
+
+| verdict | write in `--rereview` |
+|---|---|
+| `pass` | `reviewed_by` = the pipeline stamp, `reviewed_at` = now; status and text unchanged; **no** `provision_changes` row (the summary did not change) |
+| `corrected` | exactly as in the normal mode: prior text to `summary_original` (never overwriting one), corrected text, `summary_status='approved'`, corrected stamp, a `summary_edited` row |
+| `fail` | `summary_status = 'pending'`; summary text, `summary_original`, `reviewed_by` untouched; listed in the report (`set_pending: true`). The row shows "not yet reviewed" until the normal pending review or a regeneration picks it up |
+
+Because a pass or correction stamps the row and a fail makes it pending, every
+row is selected by `--rereview` once; a second run finds only API-error rows.
+**Snapshot first**: before the first write of an execute run, every selected
+row's `ai_summary`, `summary_original`, `summary_status`, `reviewed_by`,
+`reviewed_at` and `summary_model` are copied into
+`archive.summary_review_snapshot_rereview` through the service-role RPC
+`snapshot_summaries_for_rereview(ids, run_label)` (migration
+`20261005023100_summary_rereview_snapshot.sql`; the `archive` schema is not
+exposed through PostgREST, so the copy is made server side). A row already in
+the snapshot is not overwritten (`on conflict do nothing`), so the table holds
+the text as it stood before the first re-review touched the row -- the same
+safety net `archive.summary_review_snapshot_20261005` gave the 5 Oct run. An
+RPC error aborts the run before any write. A dry run makes no snapshot call.
+`--rereview` and `--audit` are different selections and cannot be combined.
+
+```
+python pipeline/review.py --rereview --dry-run                        # count by regulation, exact cost
+python pipeline/review.py --rereview --reg gp01,gp02,gp03,gp05,gp06,gp07,gp08,gp09,gp10,gp11,gp12,3,7 --execute --max-cost 10
+python pipeline/review.py --rereview --execute --max-cost 40          # the rest
+```
 
 **Reading a run.** On a large run the job log is longer than the GitHub API
 returns (it keeps the end), so the last step prints a compact summary from

@@ -6,7 +6,9 @@ name: Review pending summaries
 # verdict: pass -> approved, corrected -> approved with the corrected text and
 # the prior text kept in summary_original, fail -> left pending and listed in
 # the report. Without `execute` it is a dry run: no paid call, no write, a cost
-# quote per model option. See pipeline/README.md, "Automated AI review pass".
+# quote per model option. `rereview` selects the hand-approved rows instead
+# (snapshot first; fail -> pending). See pipeline/README.md, "Automated AI
+# review pass".
 
 on:
   workflow_dispatch:
@@ -44,6 +46,11 @@ on:
         description: "Audit mode: random seed for the sample (same seed, same sample)."
         required: false
         default: "20261005"
+      rereview:
+        description: "RE-REVIEW MODE: select approved/edited rows whose reviewed_by does not contain 'automated pipeline' (the September hand passes) instead of pending rows. With execute: every selected row is snapshotted to archive first; pass stamps reviewed_by/reviewed_at, corrected writes as usual, fail sets the row back to pending with its text unchanged. reg/ids/limit apply. Not combinable with audit_sample."
+        type: boolean
+        required: false
+        default: false
       execute:
         description: "Execute: make the paid calls and write the verdicts (audit mode: make the paid calls, write nothing). Leave unchecked for a dry run (no paid calls, no writes, cost quote only)."
         type: boolean
@@ -86,6 +93,7 @@ jobs:
           if [ -n "${{ inputs.limit }}" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
           if [ -n "${{ inputs.max_cost }}" ]; then ARGS+=(--max-cost "${{ inputs.max_cost }}"); fi
           if [ -n "${{ inputs.audit_sample }}" ]; then ARGS+=(--audit "${{ inputs.audit_sample }}" --seed "${{ inputs.seed }}"); fi
+          if [ "${{ inputs.rereview }}" = "true" ]; then ARGS+=(--rereview); fi
           if [ "${{ inputs.execute }}" = "true" ]; then ARGS+=(--execute); else ARGS+=(--dry-run); fi
           ARGS+=(--model "${{ inputs.model }}" --effort "${{ inputs.effort }}")
           echo "Running: python review.py ${ARGS[*]}"
