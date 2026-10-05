@@ -123,3 +123,10 @@ jobs:
             pipeline/review_failed.jsonl
           retention-days: 90
           if-no-files-found: warn
+
+      - name: Run summary (printed last, so it survives log truncation)
+        # The full report above can be longer than the GitHub API returns for
+        # a job log; the API keeps the end. This compact summary (counts,
+        # actual cost, by regulation, failed rows) is the last thing printed.
+        if: always()
+        run: python review_summary.py out/review_report.json

@@ -534,6 +534,19 @@ row's id, current summary, the reviewer's text and reasons. `--seed` makes the
 sample repeatable; `max_cost` applies as usual. Without `execute` it is a cost
 quote.
 
+**Paragraphs.** A summary may have several paragraphs (the reader shows a
+blank line as a paragraph break). A correction keeps them: whitespace is
+normalized inside each paragraph and the blank lines between paragraphs are
+kept; Markdown is still rejected.
+
+**Reading a run.** On a large run the job log is longer than the GitHub API
+returns (it keeps the end), so the last step prints a compact summary from
+`out/review_report.json` (`pipeline/review_summary.py`): counts, actual cost,
+the table by regulation and every failed row. The **Review report summary**
+workflow (input `run_id`, optional `ids`) prints the same summary for any past
+run from its review-report artifact, plus the before / after / reasons of the
+listed corrected rows. Read only.
+
 **Resumability** is the summarizer's: approved rows drop out of the
 selection, so running again picks up exactly what the last run did not
 finish. A run that submitted batches but hit the 6-hour poll ceiling names
