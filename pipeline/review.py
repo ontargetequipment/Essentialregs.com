@@ -173,11 +173,16 @@ TEMPERATURE_MODEL_PREFIXES = (
     "claude-opus-4-5", "claude-opus-4-6", "claude-3-",
 )
 
-# Dry-run output allowance per row. A pass verdict is ~120 tokens of JSON
-# and a correction ~400; roughly one row in five was corrected in the hand
-# passes. Thinking models spend output tokens on reasoning too (effort low).
+# Output allowance per row for the dry-run quote and the pre-submit
+# --max-cost check. A pass verdict is ~120 tokens of JSON and a correction
+# ~400; thinking models spend output tokens on reasoning too (effort low).
+# Measured, 5 Oct 2026: the 200-row audit on claude-sonnet-5-5 at effort low
+# used 44,030 output tokens (220 per row, 39% corrected); a 17-row re-check
+# with 59% corrected used 338 per row. 300 is that measurement plus margin
+# (the earlier 900 was a guess made before any run; it refused a $18-capped
+# run whose real cost was about $9).
 EST_OUTPUT_TOKENS_PLAIN = 250
-EST_OUTPUT_TOKENS_THINKING = 900
+EST_OUTPUT_TOKENS_THINKING = 300
 # The structured-output schema and its system addition are not in the
 # count_tokens figure (counted on system + messages only); allow for them.
 SCHEMA_TOKEN_ALLOWANCE = 350
