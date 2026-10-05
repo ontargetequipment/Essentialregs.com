@@ -141,6 +141,17 @@ MODEL_RATES: dict[str, dict[str, float]] = {
 }
 PRICING_SOURCE = "https://platform.claude.com/docs/en/about-claude/pricing (Batch processing table, read 4 Oct 2026)"
 
+# Prompt caching (owner approval, 5 Oct 2026). The system prompt (~2,500
+# tokens, identical for every row) is sent as a cached block with a 1-hour
+# TTL, so across a batch most rows read it from the cache instead of paying
+# full input price for it. Multipliers on the model's input rate, from the
+# pricing page: a 1-hour cache write bills 2x, a cache read 0.1x; the batch
+# discount applies to both. Hits inside a concurrent batch are best-effort,
+# so the report states the measured share of input served from the cache.
+SYSTEM_CACHE_TTL = "1h"
+CACHE_WRITE_MULTIPLIER_1H = 2.0
+CACHE_READ_MULTIPLIER = 0.1
+
 # The options a dry run prices side by side. `tokenizer` names the model
 # whose count_tokens figure applies: Claude 4.7 and later use a tokenizer
 # that produces roughly 30% more tokens for the same text, so Sonnet 5.5 and
@@ -658,7 +669,9 @@ def request_params(review: ReviewInput, model: str, effort: str = DEFAULT_EFFORT
     params: dict = {
         "model": model,
         "max_tokens": REVIEW_MAX_TOKENS,
-        "system": review.system,
+        # The system prompt is the same for every row: one cached block, 1h TTL.
+        "system": [{"type": "text", "text": review.system,
+                    "cache_control": {"type": "ephemeral", "ttl": SYSTEM_CACHE_TTL}}],
         "messages": [{"role": "user", "content": review.prompt}],
         "output_config": {"format": {"type": "json_schema", "schema": VERDICT_SCHEMA}},
     }
@@ -1028,10 +1041,18 @@ def rate_for(model: str) -> dict:
     return sz.rate_for(model)
 
 
-def estimate_cost(model: str, input_tokens: int, output_tokens: int, batch: bool = True) -> float:
+def estimate_cost(model: str, input_tokens: int, output_tokens: int, batch: bool = True,
+                  cache_creation_tokens: int = 0, cache_read_tokens: int = 0) -> float:
+    """USD for the given usage. `input_tokens` is the uncached input (what
+    the API reports in usage.input_tokens); cached system-prompt tokens
+    come separately as 1h cache writes (2x input rate) and cache reads
+    (0.1x). The batch discount halves all of it."""
     rates = rate_for(model)
     discount = 0.5 if batch else 1.0
-    return ((input_tokens / 1_000_000) * rates["in"] + (output_tokens / 1_000_000) * rates["out"]) * discount
+    inp = (input_tokens
+           + cache_creation_tokens * CACHE_WRITE_MULTIPLIER_1H
+           + cache_read_tokens * CACHE_READ_MULTIPLIER) / 1_000_000 * rates["in"]
+    return (inp + (output_tokens / 1_000_000) * rates["out"]) * discount
 
 
 def estimate_tokens_by_chars(chars: int, model: str) -> int:
@@ -1107,8 +1128,10 @@ class RunStats:
     failed: int = 0
     skipped_not_pending: int = 0
     api_errors: int = 0
-    input_tokens: int = 0
+    input_tokens: int = 0            # uncached input, as the API reports it
     output_tokens: int = 0
+    cache_creation_tokens: int = 0   # system prompt written to the cache (1h TTL, 2x)
+    cache_read_tokens: int = 0       # system prompt served from the cache (0.1x)
     batches_submitted: int = 0
     truncated_rows: int = 0      # provision text over MAX_PROMPT_WORDS
     outline_rows: int = 0        # descendants shown as an outline (over CHILD_TEXT_WORDS)
@@ -1161,6 +1184,24 @@ class RunStats:
     def add_usage(self, usage) -> None:
         self.input_tokens += getattr(usage, "input_tokens", 0) or 0
         self.output_tokens += getattr(usage, "output_tokens", 0) or 0
+        self.cache_creation_tokens += getattr(usage, "cache_creation_input_tokens", 0) or 0
+        self.cache_read_tokens += getattr(usage, "cache_read_input_tokens", 0) or 0
+
+    @property
+    def total_input_tokens(self) -> int:
+        """Everything the model read: uncached + cache writes + cache reads."""
+        return self.input_tokens + self.cache_creation_tokens + self.cache_read_tokens
+
+    @property
+    def cache_read_share(self) -> float:
+        """Share of all input tokens that were served from the cache (0..1)."""
+        total = self.total_input_tokens
+        return (self.cache_read_tokens / total) if total else 0.0
+
+    def cost(self, model: str, batch: bool = True) -> float:
+        return estimate_cost(model, self.input_tokens, self.output_tokens, batch=batch,
+                             cache_creation_tokens=self.cache_creation_tokens,
+                             cache_read_tokens=self.cache_read_tokens)
 
 
 def log_failure(provision_id: str, reason: str) -> None:
@@ -1180,7 +1221,7 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
     `rereview` the selection was the hand-approved rows and a fail set the
     row back to pending; `snapshot` says what was archived first."""
     now = datetime.now(timezone.utc).isoformat()
-    actual_cost = estimate_cost(model, stats.input_tokens, stats.output_tokens, batch=True)
+    actual_cost = stats.cost(model, batch=True)
     if audit is not None:
         mode = ("AUDIT of approved summaries -- reviewer called, NOTHING written to the database"
                 if execute else "AUDIT dry run (no API call billed, no write)")
@@ -1211,6 +1252,10 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
         },
         "by_regulation": dict(sorted(stats.by_reg.items(), key=lambda kv: (-kv[1]["selected"], kv[0]))),
         "usage": {"input_tokens": stats.input_tokens, "output_tokens": stats.output_tokens,
+                  "cache_creation_input_tokens": stats.cache_creation_tokens,
+                  "cache_read_input_tokens": stats.cache_read_tokens,
+                  "total_input_tokens": stats.total_input_tokens,
+                  "cache_read_share": round(stats.cache_read_share, 4),
                   "cost_usd_batch": round(actual_cost, 4), "batches": stats.batch_ids},
         "corrected": stats.corrected_rows,
         "failed": stats.failed_rows,
@@ -1269,8 +1314,14 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
     md.append("## Usage and cost")
     md.append("")
     if execute:
-        md.append(f"- Input tokens: {stats.input_tokens:,}; output tokens: {stats.output_tokens:,}")
-        md.append(f"- Actual cost at batch rates: ${actual_cost:,.4f} ({PRICING_SOURCE})")
+        md.append(f"- Input tokens: {stats.total_input_tokens:,} in all -- {stats.input_tokens:,} uncached, "
+                  f"{stats.cache_creation_tokens:,} written to the cache ({SYSTEM_CACHE_TTL} TTL), "
+                  f"{stats.cache_read_tokens:,} read from the cache "
+                  f"(**{stats.cache_read_share:.1%} of input was cache reads**); "
+                  f"output tokens: {stats.output_tokens:,}")
+        md.append(f"- Actual cost at batch rates: ${actual_cost:,.4f} (cache writes at "
+                  f"{CACHE_WRITE_MULTIPLIER_1H:g}x and reads at {CACHE_READ_MULTIPLIER:g}x the input rate; "
+                  f"{PRICING_SOURCE})")
         if stats.batch_ids:
             md.append(f"- Batches: {', '.join(stats.batch_ids)}")
     if dry_run_quote:
@@ -1279,13 +1330,17 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
         md.append(f"- Expected output tokens per row: {EST_OUTPUT_TOKENS_PLAIN} (no-thinking models), "
                   f"{EST_OUTPUT_TOKENS_THINKING} (thinking models at effort {effort})")
         md.append("")
-        md.append("| model | tokenizer | input tokens | output tokens (est.) | batch $/M in | batch $/M out | batch cost | note |")
-        md.append("|---|---|---:|---:|---:|---:|---:|---|")
+        md.append("| model | tokenizer | input tokens | output tokens (est.) | batch $/M in | batch $/M out | batch cost, no cache hits | batch cost, full cache hits | note |")
+        md.append("|---|---|---:|---:|---:|---:|---:|---:|---|")
         for opt in q["options"]:
             md.append(f"| {opt['model']} | {opt['tokenizer']} | {opt['input_tokens']:,} | {opt['output_tokens']:,} "
-                      f"| ${opt['batch_in_per_m']:.2f} | ${opt['batch_out_per_m']:.2f} | **${opt['cost_usd']:,.2f}** | {opt['note']} |")
+                      f"| ${opt['batch_in_per_m']:.2f} | ${opt['batch_out_per_m']:.2f} | **${opt['cost_usd']:,.2f}** "
+                      f"| ${opt.get('cost_usd_with_cache_hits', opt['cost_usd']):,.2f} | {opt['note']} |")
         md.append("")
-        md.append(f"- Prices: {PRICING_SOURCE}; the Batches API is 50% off the standard input and output rates.")
+        md.append(f"- Prices: {PRICING_SOURCE}; the Batches API is 50% off the standard input and output rates. "
+                  f"The system prompt ({', '.join(f'{k}: {v:,} tokens' for k, v in (q.get('system_prompt_tokens') or {}).items())}) "
+                  f"is sent as a cached block ({SYSTEM_CACHE_TTL} TTL); 'full cache hits' assumes one write and a cache "
+                  f"read on every other row. Hits inside a batch are best-effort, so the real figure lies between the two.")
     md.append("")
     corrected_heading = ("Rows the reviewer would correct (NOT changed)" if audit is not None
                          else "Corrected rows")
@@ -1346,18 +1401,45 @@ def dry_run_quote(reviews: list[ReviewInput], client_anthropic, effort: str) -> 
             method_parts.append(f"{tok}: character estimate at {cpt} chars/token (no ANTHROPIC_API_KEY, so no count_tokens call)")
         counts_by_tokenizer[tok] = counts
 
+    # The system prompt's own size per tokenizer (count_tokens on the system
+    # prompt plus a one-word user turn), for the "with cache hits" figure:
+    # every row after the first reads it from the cache instead of paying
+    # full input price.
+    system_tokens: dict[str, int] = {}
+    for tok in tokenizers:
+        if client_anthropic is not None and reviews:
+            probe = ReviewInput(provision_id="_system_probe", prompt="x", system=reviews[0].system,
+                                summary="", text_result=reviews[0].text_result)
+            try:
+                system_tokens[tok] = max(0, count_tokens_api(client_anthropic, probe, tok) - SCHEMA_TOKEN_ALLOWANCE)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  count_tokens failed for the system prompt ({tok}): {exc}", file=sys.stderr)
+                system_tokens[tok] = estimate_tokens_by_chars(len(REVIEW_SYSTEM_PROMPT), tok)
+        else:
+            system_tokens[tok] = estimate_tokens_by_chars(len(REVIEW_SYSTEM_PROMPT), tok)
+
     options = []
     for opt in MODEL_OPTIONS:
         input_tokens = sum(counts_by_tokenizer[opt["tokenizer"]])
         output_tokens = expected_output_tokens(opt["model"]) * len(reviews)
         rates = rate_for(opt["model"])
+        sys_tok = system_tokens[opt["tokenizer"]]
+        n = len(reviews)
+        # Full cache hits: one write of the system prompt, n-1 reads, the rest uncached.
+        cached_reads = sys_tok * max(0, n - 1)
+        uncached = max(0, input_tokens - sys_tok * n)
         options.append({
             "model": opt["model"], "tokenizer": opt["tokenizer"], "note": opt["note"],
             "input_tokens": input_tokens, "output_tokens": output_tokens,
+            "system_prompt_tokens": sys_tok,
             "batch_in_per_m": rates["in"] / 2, "batch_out_per_m": rates["out"] / 2,
             "cost_usd": round(estimate_cost(opt["model"], input_tokens, output_tokens, batch=True), 4),
+            "cost_usd_with_cache_hits": round(estimate_cost(
+                opt["model"], uncached, output_tokens, batch=True,
+                cache_creation_tokens=sys_tok if n else 0, cache_read_tokens=cached_reads), 4),
         })
     return {"method": "; ".join(method_parts), "rows": len(reviews), "options": options,
+            "system_prompt_tokens": system_tokens,
             "per_row_input_tokens": {tok: counts for tok, counts in counts_by_tokenizer.items()}}
 
 
@@ -1445,7 +1527,7 @@ def poll_batches(client_anthropic, client_supabase, pending, custom_id_map, revi
                   f"canceled={counts.canceled} expired={counts.expired}")
             consume_batch(client_anthropic, client_supabase, batch.id, custom_id_map, reviews_by_id,
                           rows_by_id, model, stats, execute, rereview=rereview)
-            spent = estimate_cost(model, stats.input_tokens, stats.output_tokens, batch=True)
+            spent = stats.cost(model, batch=True)
             print(f"  spend so far: ${spent:,.4f}")
             if max_cost is not None and spent > max_cost and still_pending:
                 print(f"  STOP: spend ${spent:,.4f} passed the cap ${max_cost:,.2f}; cancelling the remaining batches.")
@@ -1641,7 +1723,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         for opt in quote["options"]:
             print(f"  {opt['model']:<20} in={opt['input_tokens']:>12,} out(est)={opt['output_tokens']:>10,} "
                   f"batch ${opt['batch_in_per_m']:.2f}/${opt['batch_out_per_m']:.2f} per M  "
-                  f"=> ${opt['cost_usd']:,.2f}   {opt['note']}")
+                  f"=> ${opt['cost_usd']:,.2f} (no cache hits) / ${opt['cost_usd_with_cache_hits']:,.2f} "
+                  f"(full cache hits)   {opt['note']}")
         print(f"Report: {REPORT_MD_PATH}")
         if args.max_cost is not None:
             chosen = next((o for o in quote["options"] if o["model"] == args.model), None)
@@ -1703,7 +1786,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at,
                             audit=audit_info, rereview=rereview, snapshot=snapshot_info)
     write_report(md, data)
-    cost = estimate_cost(args.model, stats.input_tokens, stats.output_tokens, batch=not args.sync)
+    cost = stats.cost(args.model, batch=not args.sync)
     print("\n" + "=" * 72)
     print(f"Review run -- model={args.model} mode={'sync' if args.sync else 'batch'}"
           f"{' AUDIT (nothing written)' if not write else ''}")
@@ -1715,7 +1798,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"{'skipped (status changed meanwhile)' if rereview else 'skipped (no longer pending)':40}"
           f"{stats.skipped_not_pending:>10,}")
     print(f"{'API errors (still pending)':40}{stats.api_errors:>10,}")
-    print(f"{'Input tokens':40}{stats.input_tokens:>10,}")
+    print(f"{'Input tokens (uncached)':40}{stats.input_tokens:>10,}")
+    print(f"{'Cache write tokens (' + SYSTEM_CACHE_TTL + ')':40}{stats.cache_creation_tokens:>10,}")
+    print(f"{'Cache read tokens':40}{stats.cache_read_tokens:>10,}")
+    print(f"{'Cache reads, share of all input':40}{format(stats.cache_read_share, '.1%'):>10}")
     print(f"{'Output tokens':40}{stats.output_tokens:>10,}")
     print(f"{'Cost (USD)':40}{'$' + format(cost, ',.4f'):>10}")
     print("=" * 72)

@@ -590,6 +590,19 @@ approved/edited ids, whatever their `reviewed_by`: read-only, report only. It
 is how a prompt change is re-checked on the specific rows it was meant to move
 without paying for the whole sample again.
 
+**Prompt caching** (owner approval, 5 Oct 2026). The system prompt (~2,500
+tokens, the same for every row) goes out as one cached block with a 1-hour
+TTL (`cache_control: {type: ephemeral, ttl: 1h}`, `SYSTEM_CACHE_TTL`); the
+per-row text is not cached. Within a batch most rows then read it from the
+cache: a 1-hour cache write bills 2x the input rate, a read 0.1x, both halved
+by the batch discount (`estimate_cost`). Hits inside a concurrent batch are
+best-effort, so every report and run summary states the measured figures:
+uncached input, cache writes, cache reads and the **share of all input served
+from the cache** (`usage.cache_read_share`; also in `review_summary.py`), and
+the spend cap counts cached tokens at their rates. The dry run quotes two
+figures per model: no cache hits (the ceiling) and full cache hits (one write,
+a read on every other row).
+
 **Re-review mode** (`--rereview`, workflow input **rereview**) selects the
 *other* population: rows that are already `approved` or `edited`, have a
 summary, and whose `reviewed_by` does not contain "automated pipeline" -- the

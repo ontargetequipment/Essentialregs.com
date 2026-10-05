@@ -29,7 +29,11 @@ def summarize(data: dict, ids: list[str] | None = None) -> str:
            f"started {run.get('started_at')} finished {run.get('finished_at')}",
            "counts: " + ", ".join(f"{k}={v}" for k, v in counts.items()),
            f"usage: input_tokens={usage.get('input_tokens')} output_tokens={usage.get('output_tokens')} "
-           f"cost_usd_batch={usage.get('cost_usd_batch')} batches={','.join(usage.get('batches') or [])}"]
+           f"cost_usd_batch={usage.get('cost_usd_batch')} batches={','.join(usage.get('batches') or [])}",
+           f"cache: cache_read_input_tokens={usage.get('cache_read_input_tokens', 0)} "
+           f"cache_creation_input_tokens={usage.get('cache_creation_input_tokens', 0)} "
+           f"total_input_tokens={usage.get('total_input_tokens', usage.get('input_tokens'))} "
+           f"cache_read_share={usage.get('cache_read_share', 0.0):.1%}"]
     if data.get("audit"):
         a = data["audit"]
         out.append(f"audit: requested={a.get('requested')} seed={a.get('seed')} eligible={a.get('eligible')} "
