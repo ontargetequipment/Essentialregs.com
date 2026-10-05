@@ -1425,3 +1425,11 @@ def test_dry_run_quotes_the_full_cache_hit_figure_too(db, monkeypatch, tmp_path)
         assert o["system_prompt_tokens"] > 0
     md = (tmp_path / "out" / "review_report.md").read_text()
     assert "full cache hits" in md
+
+
+def test_output_allowance_is_the_measured_figure_plus_margin():
+    # 220/row measured on the 200-row audit (5 Oct 2026); the allowance must
+    # cover it without the pre-run guess of 900 that over-quoted by 3x.
+    assert 220 <= review.EST_OUTPUT_TOKENS_THINKING <= 400
+    assert review.expected_output_tokens("claude-sonnet-5-5") == review.EST_OUTPUT_TOKENS_THINKING
+    assert review.expected_output_tokens("claude-sonnet-4-5") == review.EST_OUTPUT_TOKENS_PLAIN
