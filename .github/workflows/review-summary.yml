@@ -1,0 +1,45 @@
+name: Review report summary
+
+# Prints the compact summary of a past "Review pending summaries" run from its
+# review-report artifact (counts, actual cost, by regulation, failed rows),
+# and with `ids` the before / after / reasons of those corrected rows. Read
+# only: no API call, no database access.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run id of the Review pending summaries run (the number in its URL)."
+        required: true
+      ids:
+        description: "Optional comma-separated provision ids whose correction details to print."
+        required: false
+        default: ""
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download the run's review-report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: review-report
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: report
+
+      - name: Print the summary
+        env:
+          IDS: ${{ inputs.ids }}
+        run: python pipeline/review_summary.py report/out/review_report.json --ids "$IDS"
