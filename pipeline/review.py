@@ -526,7 +526,7 @@ CORRECTED_SINCE_RPC = "rereview_corrected_since"
 
 def fetch_snapshot_text(client, ids: list[str]) -> dict[str, str]:
     """id -> the BEFORE summary from archive.summary_review_snapshot_rereview
-    (service-role RPC of migration 20261005050000). Read-only."""
+    (service-role RPC of migration 20261005051611). Read-only."""
     out: dict[str, str] = {}
     for start in range(0, len(ids), SNAPSHOT_CHUNK):
         chunk = ids[start:start + SNAPSHOT_CHUNK]
