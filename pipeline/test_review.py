@@ -1324,3 +1324,32 @@ def test_rereview_snapshot_failure_aborts_before_any_write(monkeypatch, tmp_path
     with pytest.raises(RuntimeError):
         _run(db, {"sec-8-A-000": _pass()}, ["--rereview", "--execute"], monkeypatch, tmp_path)
     assert db.writes == []
+
+
+def test_audit_ids_reviews_exact_approved_rows_and_writes_nothing(monkeypatch, tmp_path, capsys):
+    db = _rereview_db()
+    before = json.dumps(db.tables, sort_keys=True)
+    # a hand-approved row, a pipeline-stamped row (allowed: explicit ids), a pending row and an unknown id
+    ids = "sec-8-A-004,sec-8-A-000,sec-7-B-I-C,sec-nope"
+    answers = {"sec-8-A-004": _pass(),
+               "sec-8-A-000": {"findings": [], "verdict": "corrected", "corrected_summary": "Reg 8 summary 0, for five years.",
+                               "changes": [{"before": "x", "after": "y", "reason": "the text says five years"}], "fail_reason": ""}}
+    rc, fake, report = _run(db, answers, ["--audit-ids", ids, "--execute"], monkeypatch, tmp_path)
+    assert rc == 0
+    assert db.writes == [] and db.rpc_calls == [] and json.dumps(db.tables, sort_keys=True) == before
+    assert report["run"]["mode"].startswith("AUDIT") and report["counts"]["selected"] == 2
+    assert report["audit"]["ids"] == ["sec-8-A-004", "sec-8-A-000"] and report["audit"]["skipped_ids"] == ["sec-7-B-I-C", "sec-nope"]
+    assert report["counts"]["pass"] == 1 and report["corrected"][0]["id"] == "sec-8-A-000"
+    assert "left out" in capsys.readouterr().err
+
+
+def test_audit_ids_and_rereview_are_exclusive():
+    with pytest.raises(SystemExit):
+        review.parse_args(["--rereview", "--audit-ids", "sec-x"])
+
+
+def test_prompt_version_2_keeps_context_and_single_condition_clarifications():
+    p = review.REVIEW_SYSTEM_PROMPT
+    assert "part of the Form 2A application" in p
+    assert "not a claim that the condition is sufficient by itself" in p
+    assert "Spelling out the direct effect" in p

@@ -570,14 +570,25 @@ exactly three allowances:
    typo in the official text ("trionyl chloride" for thionyl chloride); the
    summary uses the correct word.
 
-Two clarifications ride with them: the regulation and parent lines are part of
-the text the reviewer is given, so a summary may say where the provision sits
-(the rule, form or program those lines name); and a summary of one item in a
-list of conditions need not repeat the other items. The old sentence "an
-acronym the text only abbreviates may not be expanded" is gone (it contradicted
-allowance 1). The prompt version (sha1 of prompt + schema, printed in every
-report) changed from `4c41cd5622` (version 1, PRs #52-#56) to the value
-`review.REVIEW_PROMPT_VERSION` prints.
+Three clarifications ride with them: the regulation and parent lines and the
+parent paragraph are part of the text the reviewer is given, so a summary may
+say where the provision sits and connect it to that context (a requirement
+under "Rule 304 -- Form 2A ... Application" is part of the Form 2A
+application); a summary of one item in a list of conditions need not repeat the
+other items, and "if" / "when" / "only when" is not a claim that the condition
+is sufficient by itself; and spelling out the direct effect of what the text
+says ("considered as sulfur dioxide" means the sulfur dioxide requirements
+apply) is paraphrase, not an addition. The old sentence "an acronym the text
+only abbreviates may not be expanded" is gone (it contradicted allowance 1).
+The prompt version (sha1 of prompt + schema, printed in every report) changed
+from `4c41cd5622` (version 1, PRs #52-#56) to the value
+`review.REVIEW_PROMPT_VERSION` prints (`9ace8f1496` at merge). Proof on the
+same 200-row audit sample (seed 20261005): see `docs/CEO_PHASE_PLAN.md`.
+
+`--audit-ids a,b,c` (workflow input **audit_ids**) is audit mode on exact
+approved/edited ids, whatever their `reviewed_by`: read-only, report only. It
+is how a prompt change is re-checked on the specific rows it was meant to move
+without paying for the whole sample again.
 
 **Re-review mode** (`--rereview`, workflow input **rereview**) selects the
 *other* population: rows that are already `approved` or `edited`, have a

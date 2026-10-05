@@ -291,13 +291,26 @@ REVIEW_SYSTEM_PROMPT = (
     "it; that is how it is meant to work. A summary that reports an "
     "equation as not shown is correct when the text lists variables "
     "without a formula. The regulation and parent lines above the "
-    "provision are part of the text you are given: a summary may say where "
-    "the provision sits (the rule, section, form or program those lines "
-    "name). A summary of one provision inside a list -- one condition, one "
-    "item, one paragraph among several -- describes that provision; it "
-    "need not repeat the other items or say that they exist, and that is "
-    "not an error unless it says in words that the item is the only "
-    "condition.\n\n"
+    "provision, and the parent paragraph, are part of the text you are "
+    "given: a summary may say where the provision sits and connect it to "
+    "that context -- a requirement listed under a rule headed \"Form 2A ... "
+    "Application\" may be said to be part of the Form 2A application; a "
+    "condition under \"an engine is exempt if:\" may be said to give an "
+    "exemption. Do not correct a summary for stating that context. A "
+    "summary of one provision inside a list -- one condition, one item, one "
+    "paragraph among several joined by \"and\" or \"or\" -- describes that "
+    "provision; it need not repeat the other items or say that they exist. "
+    "Saying the result follows \"if\" or \"when\" the condition holds, or "
+    "applies \"only\" when it holds, is not a claim that the condition is "
+    "sufficient by itself, and rewriting it as \"this is one of several "
+    "conditions\" is not a correction; it is an error only when the summary "
+    "says in words that nothing else is required. Spelling out the direct "
+    "effect of what the text says in everyday words is paraphrase, not an "
+    "addition: a form \"considered as\" or \"treated as\" sulfur dioxide is "
+    "subject to the sulfur dioxide requirements, a thing \"deemed\" X is X, "
+    "and a summary may say so, as long as it adds no number, date, party, "
+    "threshold, exception or requirement of its own. Tense (\"is\" / \"will "
+    "be\") and voice are style.\n\n"
     "Three allowances. These are about plain English; nothing in them "
     "loosens the rules above on numbers, dates, thresholds, citations, "
     "scope, parties, conditions and exceptions, which must still match the "
@@ -556,6 +569,37 @@ def select_audit_sample(client, n: int, seed: int, reg: Optional[str] = None,
     info = {"requested": n, "seed": seed, "eligible": sum(sizes.values()),
             "eligible_by_reg": dict(sorted(sizes.items())), "allocation": dict(sorted(alloc.items())),
             "exclude_reviewed_by": exclude_reviewed_by, "statuses": list(AUDIT_STATUSES)}
+    return rows, info
+
+
+def select_audit_ids(client, ids: list[str]) -> tuple[list[dict], dict]:
+    """Audit mode on explicit ids (read-only, like select_audit_sample):
+    the approved/edited rows among `ids` that have a summary, in the order
+    given, whatever their reviewed_by (so a row the pipeline already
+    stamped can be re-checked too). Ids that are not approved/edited or
+    not found are reported and left out."""
+    rows_by_id: dict[str, dict] = {}
+    for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
+        chunk = ids[chunk_start:chunk_start + DB_PAGE_SIZE]
+        q = (client.table("provisions").select(CANDIDATE_COLUMNS)
+             .in_("id", chunk).in_("summary_status", list(AUDIT_STATUSES))
+             .not_.is_("ai_summary", "null"))
+        for row in q.execute().data or []:
+            rows_by_id[row["id"]] = row
+    skipped = [i for i in ids if i not in rows_by_id]
+    if skipped:
+        print(f"  NOTE: {len(skipped)} id(s) from --audit-ids are not approved/edited with a summary "
+              f"(or not found) and are left out: {', '.join(skipped[:20])}"
+              f"{' ...' if len(skipped) > 20 else ''}", file=sys.stderr)
+    rows = [rows_by_id[i] for i in ids if i in rows_by_id]
+    sizes: dict[str, int] = {}
+    for r in rows:
+        reg = sz.reg_key_of(r["id"]) or "?"
+        sizes[reg] = sizes.get(reg, 0) + 1
+    info = {"requested": len(ids), "seed": None, "eligible": len(rows), "ids": [r["id"] for r in rows],
+            "skipped_ids": skipped, "eligible_by_reg": dict(sorted(sizes.items())),
+            "allocation": dict(sorted(sizes.items())),
+            "exclude_reviewed_by": "(none: explicit ids)", "statuses": list(AUDIT_STATUSES)}
     return rows, info
 
 
@@ -1496,9 +1540,15 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
                              "first; pass stamps reviewed_by/reviewed_at, corrected writes as usual, fail sets "
                              "summary_status back to 'pending' and leaves the text alone. --reg/--ids/--limit "
                              "apply. Not combinable with --audit.")
+    parser.add_argument("--audit-ids", default=None, metavar="ID[,ID]",
+                        help="AUDIT MODE on exact ids: review these approved/edited rows (whatever their "
+                             "reviewed_by) and write NOTHING; the report lists would-corrects. For re-checking "
+                             "specific rows after a prompt change. Ignores --audit/--seed/--ids/--limit/--reg.")
     args = parser.parse_args(argv)
+    if args.audit_ids:
+        args.audit = 0   # audit mode, selection by ids
     if args.rereview and args.audit is not None:
-        parser.error("--rereview and --audit are different selections; pass one.")
+        parser.error("--rereview and --audit/--audit-ids are different selections; pass one.")
     return args
 
 
@@ -1529,7 +1579,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     children_index = sz.build_children_index(meta)
     print(f"  {len(meta):,} rows loaded; {len(children_index):,} have children.")
 
-    if args.audit is not None:
+    if args.audit_ids:
+        audit_ids = [i.strip() for i in args.audit_ids.split(",") if i.strip()]
+        print(f"AUDIT on {len(audit_ids)} explicit id(s). Nothing will be written to the database.")
+        rows, audit_info = select_audit_ids(client_supabase, audit_ids)
+        print(f"  {len(rows):,} approved/edited rows found.")
+    elif args.audit is not None:
         print(f"AUDIT: sampling {args.audit} approved rows (seed {args.seed}) whose reviewed_by does not "
               f"contain '{AUDIT_EXCLUDE_REVIEWED_BY}'. Nothing will be written to the database.")
         rows, audit_info = select_audit_sample(client_supabase, args.audit, args.seed,
