@@ -306,8 +306,9 @@ REVIEW_SYSTEM_PROMPT = (
     "may describe the provision together with the provisions listed inside "
     "it; that is how it is meant to work. A summary that reports an "
     "equation as not shown is correct when the text lists variables "
-    "without a formula. The regulation and parent lines above the "
-    "provision, and the parent paragraph, are part of the text you are "
+    "without a formula. The regulation line and the block \"Text above this "
+    "provision\" -- the own text of every ancestor from the root down to the "
+    "parent, each labelled with its id -- are part of the text you are "
     "given: a summary may say where the provision sits and connect it to "
     "that context -- a requirement listed under a rule headed \"Form 2A ... "
     "Application\" may be said to be part of the Form 2A application; a "
@@ -361,6 +362,27 @@ REVIEW_SYSTEM_PROMPT = (
     "chloride, a doubled or dropped letter). The summary uses the correct "
     "word; a summary that already does is not in error on that point.\n\n"
     "Everything else is unchanged. Style-only rewrites are a pass.\n\n"
+    "Context above the provision. The duty a nested item serves is often "
+    "stated two or more levels up (\"A revised APEN must be filed:\" / "
+    "\"Annually by April 30 ... as follows:\" / the threshold). Three rules "
+    "follow. (a) A statement supported by any ancestor shown is supported; "
+    "do not remove or weaken it because the provision's own text lacks it. "
+    "The converse holds too: a limit an ancestor places on the duty -- who "
+    "it applies to (\"the owner or operator not subject to Conditions I.B., "
+    "I.C. or I.D.\"), when, or under what condition -- binds the provision, "
+    "so a summary that states the ancestor's duty for everyone, or without "
+    "that condition, widens the scope and is corrected by adding the limit "
+    "in the ancestor's words. "
+    "(b) Where an excerpt is marked cut -- it ends with [excerpt cut], or a "
+    "note says the provision text or the ancestor list was truncated -- the "
+    "missing part is not silence: do not remove or change a statement "
+    "solely because the visible text does not contain it; change it only "
+    "if the visible text contradicts it. (c) A correction must not replace "
+    "a specific, supported duty (\"file a revised APEN\", \"make the inventory "
+    "available on request\") with a vaguer one (\"requires action\", "
+    "\"requires a report\", \"available for inspection\"); if you cannot "
+    "state the duty as precisely as the summary did, leave the summary's "
+    "words.\n\n"
     "Answer with the JSON object only."
 )
 
@@ -504,6 +526,72 @@ def snapshot_for_rereview(client, ids: list[str], run_label: str) -> int:
     return added
 
 
+SNAPSHOT_TEXT_RPC = "rereview_snapshot_text"
+CORRECTED_SINCE_RPC = "rereview_corrected_since"
+
+
+def fetch_snapshot_text(client, ids: list[str]) -> dict[str, str]:
+    """id -> the BEFORE summary from archive.summary_review_snapshot_rereview
+    (service-role RPC of migration 20261005051611). Read-only."""
+    out: dict[str, str] = {}
+    for start in range(0, len(ids), SNAPSHOT_CHUNK):
+        chunk = ids[start:start + SNAPSHOT_CHUNK]
+        res = client.rpc(SNAPSHOT_TEXT_RPC, {"p_ids": chunk}).execute()
+        for row in getattr(res, "data", None) or []:
+            if row.get("ai_summary"):
+                out[row["id"]] = row["ai_summary"]
+    return out
+
+
+def with_snapshot_text(client, rows: list[dict]) -> list[dict]:
+    """The same rows with ai_summary replaced by the snapshot's BEFORE text
+    and the live text kept in `_live_summary`. Rows with no snapshot entry
+    are dropped (reported)."""
+    before = fetch_snapshot_text(client, [r["id"] for r in rows])
+    kept: list[dict] = []
+    for r in rows:
+        if r["id"] not in before:
+            continue
+        r = dict(r)
+        r["_live_summary"] = r.get("ai_summary")
+        r["ai_summary"] = before[r["id"]]
+        kept.append(r)
+    missing = [r["id"] for r in rows if r["id"] not in before]
+    if missing:
+        print(f"  NOTE: {len(missing)} id(s) have no snapshot entry and are left out: "
+              f"{', '.join(missing[:20])}{' ...' if len(missing) > 20 else ''}", file=sys.stderr)
+    return kept
+
+
+def select_redo_candidates(client, since: str) -> list[dict]:
+    """--redo-corrections-since: every snapshotted row the pipeline corrected
+    at or after `since` (RPC rereview_corrected_since), as full rows whose
+    ai_summary is the snapshot's BEFORE text and whose `_live_summary` is
+    the correction now on the site. Approved/edited rows only."""
+    res = client.rpc(CORRECTED_SINCE_RPC, {"p_since": since}).execute()
+    found = {r["id"]: r for r in (getattr(res, "data", None) or [])}
+    ids = list(found)
+    rows_by_id: dict[str, dict] = {}
+    for start in range(0, len(ids), DB_PAGE_SIZE):
+        chunk = ids[start:start + DB_PAGE_SIZE]
+        q = (client.table("provisions").select(CANDIDATE_COLUMNS)
+             .in_("id", chunk).in_("summary_status", list(REREVIEW_STATUSES))
+             .not_.is_("ai_summary", "null"))
+        for row in q.execute().data or []:
+            rows_by_id[row["id"]] = row
+    rows: list[dict] = []
+    for pid in ids:
+        row = rows_by_id.get(pid)
+        if row is None or not found[pid].get("before_summary"):
+            continue
+        row = dict(row)
+        row["_live_summary"] = row.get("ai_summary")
+        row["ai_summary"] = found[pid]["before_summary"]
+        rows.append(row)
+    rows.sort(key=lambda r: (r.get("sort_order") or 0, r["id"]))
+    return rows
+
+
 # --------------------------------------------------------------------------
 # Audit selection (read-only)
 # --------------------------------------------------------------------------
@@ -631,23 +719,108 @@ class ReviewInput:
     summary: str                  # the summary under review, exactly as stored
     text_result: sz.PromptResult  # the summarizer's assembly of the official text
     chars: int = 0
+    ancestors: dict = field(default_factory=dict)   # build_ancestor_block() info
 
 
-def build_official_text(provision: dict, meta: dict, children_index: dict) -> sz.PromptResult:
-    """The official text exactly as the summarizer assembles it today:
-    summarize.build_prompt() (regulation line, parent chain, parent
-    paragraph excerpt, provision text with the MAX_PROMPT_WORDS cap, and
-    every descendant with the CHILD_TEXT_WORDS budget / outline fallback).
-    Reused rather than copied so the two can never drift apart."""
-    return sz.build_prompt(provision, meta, children_index)
+# The context above the provision (owner instruction, 5 Oct 2026, after the
+# stage-1 spot check). The summarizer shows the reviewer one parent excerpt
+# of PARENT_TEXT_CHARS, silently cut; the duty a nested item serves often
+# sits two levels up ("A revised APEN must be filed:" / "Annually by April
+# 30 ... as follows:" / the threshold), and a reviewer that treats the cut
+# as silence removes true statements. The reviewer now gets the own text of
+# every ancestor from the root down to the parent, each labelled with its
+# id, cut honestly (at a sentence end where possible, always ending in
+# CUT_MARKER), ANCESTOR_EXCERPT_CHARS per ancestor and ANCESTOR_BLOCK_CHARS
+# in all; over the total, the farthest ancestors are shrunk, then dropped,
+# first -- never the parent.
+ANCESTOR_EXCERPT_CHARS = 1500
+ANCESTOR_BLOCK_CHARS = 6000
+ANCESTOR_MIN_CHARS = 200
+CUT_MARKER = "[excerpt cut]"
+ANCESTOR_BLOCK_HEADING = "Text above this provision (every ancestor, root first; the last is the parent):"
+SENTENCE_END_RE = re.compile(r"[.;:!?][\"')\]]?\s")
+
+
+def honest_cut(text: str, limit: int) -> tuple[str, bool]:
+    """`text` whole when it fits in `limit` characters; otherwise cut at
+    the last sentence end inside the limit (if one lies past 60% of it),
+    else at the last word boundary, and marked with CUT_MARKER. Returns
+    (excerpt, was_cut)."""
+    text = sz.WS_RE.sub(" ", text or "").strip()
+    if len(text) <= limit:
+        return text, False
+    head = text[:limit]
+    cut_at = None
+    for m in SENTENCE_END_RE.finditer(head):
+        if m.end() >= limit * 0.6:
+            cut_at = m.end()
+    if cut_at is None:
+        space = head.rfind(" ")
+        cut_at = space if space > limit * 0.5 else limit
+    return head[:cut_at].rstrip() + " " + CUT_MARKER, True
+
+
+def build_ancestor_block(provision: dict, meta: dict) -> tuple[list[str], dict]:
+    """Lines for the "Text above this provision" block and an info dict
+    (shown, cut, omitted). Every ancestor from the regulation root down to
+    the parent, root first, each as "[id] citation: own text", with
+    honest_cut at ANCESTOR_EXCERPT_CHARS. If the block passes
+    ANCESTOR_BLOCK_CHARS, the farthest ancestor is shrunk to
+    ANCESTOR_MIN_CHARS, then dropped (a line says how many were omitted),
+    and so on towards the parent, which is never trimmed below its own
+    allowance."""
+    root, chain = sz.build_context(provision, meta)
+    nodes = ([root] if root else []) + list(chain)
+    entries: list[dict] = []
+    for node in nodes:
+        text = sz.strip_html(node.get("full_text") or "") or (node.get("title") or "")
+        excerpt, cut = honest_cut(text, ANCESTOR_EXCERPT_CHARS)
+        entries.append({"id": node["id"], "citation": node.get("citation") or node["id"],
+                        "excerpt": excerpt, "cut": cut, "limit": ANCESTOR_EXCERPT_CHARS})
+    if not entries:
+        return [], {"shown": 0, "cut": False, "omitted": 0}
+    omitted = 0
+
+    def total() -> int:
+        return sum(len(e["excerpt"]) for e in entries)
+
+    while total() > ANCESTOR_BLOCK_CHARS and len(entries) > 1:
+        far = entries[0]
+        if far["limit"] > ANCESTOR_MIN_CHARS:
+            far["limit"] = ANCESTOR_MIN_CHARS
+            far["excerpt"], far["cut"] = honest_cut(far["excerpt"].removesuffix(CUT_MARKER), ANCESTOR_MIN_CHARS)
+            far["cut"] = far["cut"] or far["excerpt"].endswith(CUT_MARKER)
+        else:
+            entries.pop(0)
+            omitted += 1
+    lines = [ANCESTOR_BLOCK_HEADING]
+    if omitted:
+        lines.append(f"[{omitted} farther ancestor{'s' if omitted != 1 else ''} omitted for length]")
+    for e in entries:
+        lines.append(f"[{e['id']}] {e['citation']}: {e['excerpt']}")
+    info = {"shown": len(entries), "cut": omitted > 0 or any(e["cut"] for e in entries), "omitted": omitted,
+            "ids": [e["id"] for e in entries]}
+    return lines, info
+
+
+def build_official_text(provision: dict, meta: dict, children_index: dict) -> tuple[sz.PromptResult, dict]:
+    """The official text as the summarizer assembles it (summarize.build_prompt:
+    regulation line, parent chain lines, provision text with the
+    MAX_PROMPT_WORDS cap, every descendant with the CHILD_TEXT_WORDS budget /
+    outline fallback) with one difference: the summarizer's single, silently
+    cut parent excerpt is replaced by build_ancestor_block(). Everything
+    else is reused rather than copied so the two cannot drift apart."""
+    block, info = build_ancestor_block(provision, meta)
+    return sz.build_prompt(provision, meta, children_index, context_block=block), info
 
 
 def build_review_input(provision: dict, meta: dict, children_index: dict) -> ReviewInput:
-    text = build_official_text(provision, meta, children_index)
+    text, ancestors = build_official_text(provision, meta, children_index)
     summary = (provision.get("ai_summary") or "").strip()
     prompt = (
-        "OFFICIAL TEXT (the only source of truth; assembled exactly as the "
-        "summary's author saw it):\n\n"
+        "OFFICIAL TEXT (the only source of truth; the provision and the provisions "
+        "inside it as the summary's author saw them, plus the text of every ancestor "
+        "above the provision):\n\n"
         f"{text.prompt}\n\n"
         "CURRENT SUMMARY (under review):\n"
         f"{summary}"
@@ -659,6 +832,7 @@ def build_review_input(provision: dict, meta: dict, children_index: dict) -> Rev
         summary=summary,
         text_result=text,
         chars=len(prompt) + len(REVIEW_SYSTEM_PROMPT),
+        ancestors=ancestors,
     )
 
 
@@ -973,8 +1147,13 @@ def _update_if_pending(client, provision_id: str, payload: dict) -> bool:
     return _update_if_status(client, provision_id, payload, ("pending",))
 
 
+REDO_NOTE_RESTORED = ("AI second-pass review (automated pipeline, {model}): re-review with the full "
+                      "ancestor context found no error; the earlier correction is withdrawn and the "
+                      "original summary restored")
+
+
 def apply_verdict(client, row: dict, review: ReviewInput, verdict: Verdict, model: str,
-                  date: Optional[str] = None, rereview: bool = False) -> str:
+                  date: Optional[str] = None, rereview: bool = False, redo: bool = False) -> str:
     """Performs the writes for one verdict. Returns what happened:
     'approved', 'corrected', 'failed' (no write), 'failed_to_pending'
     (--rereview: status set back to pending, text untouched) or
@@ -986,8 +1165,10 @@ def apply_verdict(client, row: dict, review: ReviewInput, verdict: Verdict, mode
     and reviewed_at and changes nothing else (no provision_changes row --
     the summary did not change); corrected is the same write as normal
     mode; fail sets summary_status = 'pending'."""
-    guard = REREVIEW_STATUSES if rereview else ("pending",)
+    guard = REREVIEW_STATUSES if (rereview or redo) else ("pending",)
     now = datetime.now(timezone.utc).isoformat()
+    if redo:
+        return _apply_redo(client, row, verdict, model, date, now, guard)
     if verdict.verdict == "fail":
         if not rereview:
             return "failed"
@@ -1028,6 +1209,47 @@ def apply_verdict(client, row: dict, review: ReviewInput, verdict: Verdict, mode
         "note": f"AI second-pass review (automated pipeline, {model}): {verdict.reasons_note}",
     }).execute()
     return "corrected"
+
+
+def _apply_redo(client, row: dict, verdict: Verdict, model: str, date: Optional[str], now: str,
+                guard: tuple[str, ...]) -> str:
+    """--redo-corrections-since writes. The row under review carries the
+    snapshot's BEFORE text in ai_summary and the current correction in
+    _live_summary. pass -> the before text is restored (the earlier
+    correction is withdrawn), pass stamp, a summary_edited row because the
+    live text changes; corrected -> the new correction, corrected stamp, a
+    summary_edited row only when it differs from the live text
+    ('corrected_same' when the reviewer wrote the same correction again);
+    fail -> pending, live text untouched. summary_original is never
+    overwritten."""
+    live = row.get("_live_summary") or ""
+    if verdict.verdict == "fail":
+        if not _update_if_status(client, row["id"], {"summary_status": "pending"}, guard):
+            return "skipped_not_pending"
+        return "failed_to_pending"
+    if verdict.verdict == "pass":
+        payload = {"ai_summary": row["ai_summary"], "summary_status": "approved", "reviewed_at": now,
+                   "reviewed_by": reviewed_by_for("pass", model, date)}
+        if not _update_if_status(client, row["id"], payload, guard):
+            return "skipped_not_pending"
+        if _normalize(row["ai_summary"]) != _normalize(live):
+            client.table("provision_changes").insert({
+                "provision_id": row["id"], "change_type": "summary_edited",
+                "note": REDO_NOTE_RESTORED.format(model=model)}).execute()
+        return "restored"
+    payload = {"ai_summary": verdict.corrected_summary, "summary_status": "approved", "reviewed_at": now,
+               "reviewed_by": reviewed_by_for("corrected", model, date)}
+    if not row.get("summary_original"):
+        payload["summary_original"] = row["ai_summary"]
+    if not _update_if_status(client, row["id"], payload, guard):
+        return "skipped_not_pending"
+    if _normalize(verdict.corrected_summary) == _normalize(live):
+        return "corrected_same"
+    client.table("provision_changes").insert({
+        "provision_id": row["id"], "change_type": "summary_edited",
+        "note": f"AI second-pass review (automated pipeline, {model}; re-review with the full ancestor "
+                f"context): {verdict.reasons_note}"}).execute()
+    return "corrected_different"
 
 
 # --------------------------------------------------------------------------
@@ -1090,11 +1312,16 @@ def count_tokens_api(client_anthropic, review: ReviewInput, model: str) -> int:
     raise RuntimeError("unreachable")
 
 
-def estimate_run_cost(client_anthropic, reviews: list[ReviewInput], model: str) -> tuple[float, str]:
+def estimate_run_cost(client_anthropic, reviews: list[ReviewInput], model: str) -> tuple[float, str, float]:
     """Batch-price estimate for submitting `reviews` to `model`: input
     tokens from the free count_tokens endpoint (a character estimate for
     rows it fails on, or with no client) plus expected_output_tokens per
-    row. Returns (usd, method)."""
+    row. Returns (ceiling_usd, method, floor_usd): the ceiling assumes no
+    cache hit at all, the floor assumes the system prompt is written once
+    and read from the cache on every other row. Measured runs sit near the
+    floor (81% of input tokens were cache reads in the 3,049-row stage-1
+    run), so the pre-submit --max-cost check refuses on the floor; the
+    actual-spend cap during the run is the real guard."""
     if client_anthropic is not None:
         counted = count_tokens_many(client_anthropic, reviews, model)
         est_in = sum(c if c is not None else estimate_tokens_by_chars(r.chars, model) + SCHEMA_TOKEN_ALLOWANCE
@@ -1104,7 +1331,12 @@ def estimate_run_cost(client_anthropic, reviews: list[ReviewInput], model: str) 
         est_in = sum(estimate_tokens_by_chars(r.chars, model) + SCHEMA_TOKEN_ALLOWANCE for r in reviews)
         method = "character estimate"
     est_out = expected_output_tokens(model) * len(reviews)
-    return estimate_cost(model, est_in, est_out, batch=True), method
+    ceiling = estimate_cost(model, est_in, est_out, batch=True)
+    sys_tok = estimate_tokens_by_chars(len(REVIEW_SYSTEM_PROMPT), model)
+    n = len(reviews)
+    floor = estimate_cost(model, max(0, est_in - sys_tok * n), est_out, batch=True,
+                          cache_creation_tokens=sys_tok if n else 0, cache_read_tokens=sys_tok * max(0, n - 1))
+    return ceiling, method, floor
 
 
 def count_tokens_many(client_anthropic, reviews: list[ReviewInput], model: str,
@@ -1132,6 +1364,9 @@ class RunStats:
     corrected: int = 0
     failed: int = 0
     skipped_not_pending: int = 0
+    restored: int = 0            # redo: pass -> original restored
+    corrected_same: int = 0      # redo: same correction as before
+    corrected_different: int = 0 # redo: a different correction
     api_errors: int = 0
     input_tokens: int = 0            # uncached input, as the API reports it
     output_tokens: int = 0
@@ -1167,6 +1402,12 @@ class RunStats:
         if outcome == "skipped_not_pending":
             self.skipped_not_pending += 1
             return
+        if outcome == "restored":
+            self.restored += 1
+        elif outcome == "corrected_same":
+            self.corrected_same += 1
+        elif outcome == "corrected_different":
+            self.corrected_different += 1
         if verdict.verdict == "pass":
             self.passed += 1
             bucket["pass"] += 1
@@ -1178,6 +1419,7 @@ class RunStats:
                 "id": review.provision_id, "reg": reg,
                 "before": review.summary, "after": verdict.corrected_summary,
                 "changes": verdict.changes, "findings": verdict.findings,
+                "outcome": outcome,
             })
         else:
             self.failed += 1
@@ -1219,7 +1461,7 @@ def log_failure(provision_id: str, reason: str) -> None:
 def build_report(stats: RunStats, model: str, effort: str, execute: bool,
                  dry_run_quote: Optional[dict] = None, started_at: Optional[str] = None,
                  audit: Optional[dict] = None, rereview: bool = False,
-                 snapshot: Optional[dict] = None) -> tuple[str, dict]:
+                 snapshot: Optional[dict] = None, redo: Optional[str] = None) -> tuple[str, dict]:
     """(markdown, json-able dict) for this run. With `audit` (the sample
     info from select_audit_sample) the report is an audit report: nothing
     was written, and corrected rows are listed as would-correct. With
@@ -1230,6 +1472,9 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
     if audit is not None:
         mode = ("AUDIT of approved summaries -- reviewer called, NOTHING written to the database"
                 if execute else "AUDIT dry run (no API call billed, no write)")
+    elif redo:
+        mode = (f"REDO of pipeline corrections since {redo} (before text re-reviewed with the ancestor context) -- "
+                + ("execute" if execute else "dry run (no API call billed, no write)"))
     elif rereview:
         mode = ("RE-REVIEW of hand-approved summaries -- execute"
                 if execute else "RE-REVIEW of hand-approved summaries -- dry run (no API call billed, no write)")
@@ -1239,7 +1484,8 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
         "run": {
             "started_at": started_at, "finished_at": now,
             "mode": mode,
-            "selection": "audit" if audit is not None else ("rereview" if rereview else "pending"),
+            "selection": ("audit" if audit is not None else "redo" if redo else "rereview" if rereview else "pending"),
+            "redo_since": redo,
             "snapshot": snapshot,
             "model": model,
             "sampling": sampling_description(model, effort),
@@ -1252,6 +1498,8 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
             "selected": stats.selected, "pass": stats.passed, "corrected": stats.corrected,
             "fail": stats.failed, "skipped_not_pending": stats.skipped_not_pending,
             "api_errors": stats.api_errors,
+            "restored": stats.restored, "corrected_same": stats.corrected_same,
+            "corrected_different": stats.corrected_different,
             "truncated_rows": stats.truncated_rows, "outline_rows": stats.outline_rows,
             "with_descendants": stats.with_descendants,
         },
@@ -1290,6 +1538,12 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
         md.append(f"| pass (reviewer finds no error) | {stats.passed:,} |")
         md.append(f"| corrected (reviewer would correct; NOT written) | {stats.corrected:,} |")
         md.append(f"| fail (reviewer cannot verify or fix; NOT written) | {stats.failed:,} |")
+    elif redo:
+        md.append(f"| selected (pipeline corrections since {redo}, before text re-reviewed) | {stats.selected:,} |")
+        md.append(f"| pass -> original summary restored, earlier correction withdrawn | {stats.restored:,} |")
+        md.append(f"| corrected, same text as the earlier correction | {stats.corrected_same:,} |")
+        md.append(f"| corrected, different text (written) | {stats.corrected_different:,} |")
+        md.append(f"| fail -> set back to pending (live text unchanged) | {stats.failed:,} |")
     elif rereview:
         md.append(f"| selected (approved/edited, not yet reviewed by the pipeline) | {stats.selected:,} |")
         md.append(f"| pass -> reviewed_by/reviewed_at stamped, text unchanged | {stats.passed:,} |")
@@ -1478,7 +1732,8 @@ def submit_batches(client_anthropic, reviews: list[ReviewInput], model: str, eff
 
 def consume_batch(client_anthropic, client_supabase, batch_id: str, custom_id_map: dict[str, str],
                   reviews_by_id: dict[str, ReviewInput], rows_by_id: dict[str, dict],
-                  model: str, stats: RunStats, execute: bool, rereview: bool = False) -> None:
+                  model: str, stats: RunStats, execute: bool, rereview: bool = False,
+                  redo: bool = False) -> None:
     """Validates and (with execute) writes every result of one ended batch."""
     for item in client_anthropic.messages.batches.results(batch_id):
         provision_id = custom_id_map.get(item.custom_id)
@@ -1496,13 +1751,19 @@ def consume_batch(client_anthropic, client_supabase, batch_id: str, custom_id_ma
         stats.add_usage(message.usage)
         verdict = verdict_from_message(message, review)
         handle_verdict(client_supabase, rows_by_id[provision_id], review, verdict, model, stats, execute,
-                       rereview=rereview)
+                       rereview=rereview, redo=redo)
 
 
 def handle_verdict(client_supabase, row: dict, review: ReviewInput, verdict: Verdict, model: str,
-                   stats: RunStats, execute: bool, rereview: bool = False) -> str:
+                   stats: RunStats, execute: bool, rereview: bool = False, redo: bool = False) -> str:
     if execute:
-        outcome = apply_verdict(client_supabase, row, review, verdict, model, rereview=rereview)
+        outcome = apply_verdict(client_supabase, row, review, verdict, model, rereview=rereview, redo=redo)
+    elif redo:
+        live = row.get("_live_summary") or ""
+        outcome = {"pass": "restored",
+                   "corrected": ("corrected_same" if _normalize(verdict.corrected_summary) == _normalize(live)
+                                 else "corrected_different"),
+                   "fail": "failed_to_pending"}[verdict.verdict]
     else:
         outcome = {"pass": "approved", "corrected": "corrected",
                    "fail": "failed_to_pending" if rereview else "failed"}[verdict.verdict]
@@ -1514,7 +1775,7 @@ def handle_verdict(client_supabase, row: dict, review: ReviewInput, verdict: Ver
 
 def poll_batches(client_anthropic, client_supabase, pending, custom_id_map, reviews_by_id, rows_by_id,
                  model: str, stats: RunStats, execute: bool, poll_interval: int,
-                 max_cost: Optional[float] = None, rereview: bool = False) -> None:
+                 max_cost: Optional[float] = None, rereview: bool = False, redo: bool = False) -> None:
     """Polls until every batch ends and consumes each one. `execute` is
     whether verdicts are WRITTEN (False in audit mode: the reviewer is
     called, nothing is written)."""
@@ -1531,7 +1792,7 @@ def poll_batches(client_anthropic, client_supabase, pending, custom_id_map, revi
             print(f"  batch {batch.id} done: succeeded={counts.succeeded} errored={counts.errored} "
                   f"canceled={counts.canceled} expired={counts.expired}")
             consume_batch(client_anthropic, client_supabase, batch.id, custom_id_map, reviews_by_id,
-                          rows_by_id, model, stats, execute, rereview=rereview)
+                          rows_by_id, model, stats, execute, rereview=rereview, redo=redo)
             spent = stats.cost(model, batch=True)
             print(f"  spend so far: ${spent:,.4f}")
             if max_cost is not None and spent > max_cost and still_pending:
@@ -1561,7 +1822,8 @@ def poll_batches(client_anthropic, client_supabase, pending, custom_id_map, revi
 
 
 def run_sync(client_anthropic, client_supabase, reviews: list[ReviewInput], rows_by_id: dict[str, dict],
-             model: str, effort: str, stats: RunStats, execute: bool, rereview: bool = False) -> None:
+             model: str, effort: str, stats: RunStats, execute: bool, rereview: bool = False,
+             redo: bool = False) -> None:
     """Single synchronous calls (2x the batch price). For small tests only."""
     for review in reviews:
         params = request_params(review, model, effort)
@@ -1578,7 +1840,7 @@ def run_sync(client_anthropic, client_supabase, reviews: list[ReviewInput], rows
         stats.add_usage(message.usage)
         verdict = verdict_from_message(message, review)
         handle_verdict(client_supabase, rows_by_id[review.provision_id], review, verdict, model, stats, execute,
-                       rereview=rereview)
+                       rereview=rereview, redo=redo)
 
 
 # --------------------------------------------------------------------------
@@ -1631,9 +1893,22 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
                         help="AUDIT MODE on exact ids: review these approved/edited rows (whatever their "
                              "reviewed_by) and write NOTHING; the report lists would-corrects. For re-checking "
                              "specific rows after a prompt change. Ignores --audit/--seed/--ids/--limit/--reg.")
+    parser.add_argument("--from-snapshot", action="store_true",
+                        help="With --audit-ids: review the BEFORE summary from archive.summary_review_snapshot_rereview "
+                             "instead of the live one (read-only).")
+    parser.add_argument("--redo-corrections-since", default=None, metavar="TIMESTAMP",
+                        help="REDO MODE: select every snapshotted row the pipeline corrected at or after this "
+                             "timestamp and review its BEFORE summary again. With --execute: pass restores the "
+                             "before text (pass stamp), corrected writes the new text, fail sets pending; one "
+                             "provision_changes row wherever the live text changes. Not combinable with "
+                             "--rereview/--audit.")
     args = parser.parse_args(argv)
     if args.audit_ids:
         args.audit = 0   # audit mode, selection by ids
+    if args.redo_corrections_since and (args.rereview or args.audit is not None):
+        parser.error("--redo-corrections-since is its own selection; do not combine it with --rereview or --audit.")
+    if args.from_snapshot and not args.audit_ids:
+        parser.error("--from-snapshot needs --audit-ids.")
     if args.rereview and args.audit is not None:
         parser.error("--rereview and --audit/--audit-ids are different selections; pass one.")
     return args
@@ -1666,11 +1941,20 @@ def main(argv: Optional[list[str]] = None) -> int:
     children_index = sz.build_children_index(meta)
     print(f"  {len(meta):,} rows loaded; {len(children_index):,} have children.")
 
+    redo_since: Optional[str] = args.redo_corrections_since or None
     if args.audit_ids:
         audit_ids = [i.strip() for i in args.audit_ids.split(",") if i.strip()]
         print(f"AUDIT on {len(audit_ids)} explicit id(s). Nothing will be written to the database.")
         rows, audit_info = select_audit_ids(client_supabase, audit_ids)
         print(f"  {len(rows):,} approved/edited rows found.")
+        if args.from_snapshot:
+            rows = with_snapshot_text(client_supabase, rows)
+            audit_info["from_snapshot"] = True
+            print(f"  {len(rows):,} rows reviewed on their snapshot (BEFORE) text.")
+    elif redo_since:
+        print(f"REDO: snapshotted rows the pipeline corrected since {redo_since}; the BEFORE text is reviewed again.")
+        rows = select_redo_candidates(client_supabase, redo_since)
+        print(f"  {len(rows):,} rows selected.")
     elif args.audit is not None:
         print(f"AUDIT: sampling {args.audit} approved rows (seed {args.seed}) whose reviewed_by does not "
               f"contain '{AUDIT_EXCLUDE_REVIEWED_BY}'. Nothing will be written to the database.")
@@ -1689,11 +1973,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     # Verdicts are written only on a real (execute) run that is not an audit.
     write = execute and audit_info is None
     rereview = bool(args.rereview)
+    redo = bool(redo_since)
     snapshot_info: Optional[dict] = None
     if not rows:
         print("Nothing to review.")
         md, data = build_report(RunStats(), args.model, args.effort, execute, started_at=started_at,
-                                audit=audit_info, rereview=rereview)
+                                audit=audit_info, rereview=rereview, redo=redo_since)
         write_report(md, data)
         return 0
 
@@ -1717,7 +2002,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     if not execute:
         quote = dry_run_quote(reviews, client_anthropic, args.effort)
         md, data = build_report(stats, args.model, args.effort, execute=False,
-                                dry_run_quote=quote, started_at=started_at, audit=audit_info, rereview=rereview)
+                                dry_run_quote=quote, started_at=started_at, audit=audit_info, rereview=rereview,
+                                redo=redo_since)
         write_report(md, data)
         print("\n" + "=" * 72)
         print(f"DRY RUN -- {len(reviews):,} "
@@ -1766,30 +2052,31 @@ def main(argv: Optional[list[str]] = None) -> int:
                 continue
             stats.batch_ids.append(batch_id)
             consume_batch(client_anthropic, client_supabase, batch_id, custom_id_map, reviews_by_id,
-                          rows_by_id, args.model, stats, execute=write, rereview=rereview)
+                          rows_by_id, args.model, stats, execute=write, rereview=rereview, redo=redo)
     elif args.sync:
         run_sync(client_anthropic, client_supabase, reviews, rows_by_id, args.model, args.effort, stats,
-                 execute=write, rereview=rereview)
+                 execute=write, rereview=rereview, redo=redo)
     else:
         if args.max_cost is not None:
-            est, method = estimate_run_cost(client_anthropic, reviews, args.model)
+            ceiling, method, est = estimate_run_cost(client_anthropic, reviews, args.model)
             print(f"Estimated cost ({method} input, {expected_output_tokens(args.model)} output tokens per row): "
-                  f"${est:,.2f}; cap ${args.max_cost:,.2f}")
+                  f"${est:,.2f} with cache hits on the system prompt (ceiling without any: ${ceiling:,.2f}); "
+                  f"cap ${args.max_cost:,.2f}")
             if est > args.max_cost:
-                print(f"Refusing to submit: estimated ${est:,.2f} exceeds --max-cost ${args.max_cost:,.2f}.",
-                      file=sys.stderr)
+                print(f"Refusing to submit: estimated ${est:,.2f} (ceiling ${ceiling:,.2f}) exceeds --max-cost "
+                      f"${args.max_cost:,.2f}.", file=sys.stderr)
                 md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at,
-                                        audit=audit_info, rereview=rereview, snapshot=snapshot_info)
+                                        audit=audit_info, rereview=rereview, snapshot=snapshot_info, redo=redo_since)
                 data["run"]["mode"] = f"refused: estimate ${est:,.2f} over --max-cost ${args.max_cost:,.2f}"
                 write_report(md, data)
                 return 2
         pending, custom_id_map = submit_batches(client_anthropic, reviews, args.model, args.effort, stats)
         poll_batches(client_anthropic, client_supabase, pending, custom_id_map, reviews_by_id, rows_by_id,
                      args.model, stats, execute=write, poll_interval=args.poll_interval, max_cost=args.max_cost,
-                     rereview=rereview)
+                     rereview=rereview, redo=redo)
 
     md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at,
-                            audit=audit_info, rereview=rereview, snapshot=snapshot_info)
+                            audit=audit_info, rereview=rereview, snapshot=snapshot_info, redo=redo_since)
     write_report(md, data)
     cost = stats.cost(args.model, batch=not args.sync)
     print("\n" + "=" * 72)
@@ -1799,6 +2086,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"{'Rows selected':40}{stats.selected:>10,}")
     print(f"{'pass -> stamped, text unchanged' if rereview else 'pass -> approved':40}{stats.passed:>10,}")
     print(f"{'corrected -> approved (new text)':40}{stats.corrected:>10,}")
+    if redo:
+        print(f"{'  restored (correction withdrawn)':40}{stats.restored:>10,}")
+        print(f"{'  same correction as before':40}{stats.corrected_same:>10,}")
+        print(f"{'  different correction':40}{stats.corrected_different:>10,}")
     print(f"{'fail (set back to pending)' if rereview else 'fail (still pending)':40}{stats.failed:>10,}")
     print(f"{'skipped (status changed meanwhile)' if rereview else 'skipped (no longer pending)':40}"
           f"{stats.skipped_not_pending:>10,}")

@@ -50,6 +50,15 @@ on:
         description: "AUDIT MODE on exact ids: comma-separated approved/edited provision ids to re-check read-only (nothing written; report only). Overrides audit_sample/seed/ids/limit/reg."
         required: false
         default: ""
+      from_snapshot:
+        description: "With audit_ids: review the BEFORE summary from archive.summary_review_snapshot_rereview instead of the live one (read-only)."
+        type: boolean
+        required: false
+        default: false
+      redo_corrections_since:
+        description: "REDO MODE: timestamp (e.g. 2026-10-05T04:38:00Z). Every snapshotted row the pipeline corrected at or after it has its BEFORE summary reviewed again with the full ancestor context; pass restores the before text, corrected writes the new text, fail sets pending. Not combinable with rereview/audit_sample."
+        required: false
+        default: ""
       rereview:
         description: "RE-REVIEW MODE: select approved/edited rows whose reviewed_by does not contain 'automated pipeline' (the September hand passes) instead of pending rows. With execute: every selected row is snapshotted to archive first; pass stamps reviewed_by/reviewed_at, corrected writes as usual, fail sets the row back to pending with its text unchanged. reg/ids/limit apply. Not combinable with audit_sample."
         type: boolean
@@ -98,6 +107,8 @@ jobs:
           if [ -n "${{ inputs.max_cost }}" ]; then ARGS+=(--max-cost "${{ inputs.max_cost }}"); fi
           if [ -n "${{ inputs.audit_sample }}" ]; then ARGS+=(--audit "${{ inputs.audit_sample }}" --seed "${{ inputs.seed }}"); fi
           if [ -n "${{ inputs.audit_ids }}" ]; then ARGS+=(--audit-ids "${{ inputs.audit_ids }}"); fi
+          if [ "${{ inputs.from_snapshot }}" = "true" ]; then ARGS+=(--from-snapshot); fi
+          if [ -n "${{ inputs.redo_corrections_since }}" ]; then ARGS+=(--redo-corrections-since "${{ inputs.redo_corrections_since }}"); fi
           if [ "${{ inputs.rereview }}" = "true" ]; then ARGS+=(--rereview); fi
           if [ "${{ inputs.execute }}" = "true" ]; then ARGS+=(--execute); else ARGS+=(--dry-run); fi
           ARGS+=(--model "${{ inputs.model }}" --effort "${{ inputs.effort }}")
