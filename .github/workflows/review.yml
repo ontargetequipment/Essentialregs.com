@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       reg:
-        description: "Regulation to review (e.g. 7, 3, 26, gp12, oooob). Leave blank for every pending row."
+        description: "Regulation(s) to review: one id prefix (7, 3, 26, gp12, oooob) or a comma-separated list (gp01,gp02,...), taken in that order. Leave blank for every pending row."
         required: false
         default: ""
       ids:
@@ -36,8 +36,16 @@ on:
         description: "Spend cap in USD: refuse to submit above this estimate; cancel the remaining batches once actual spend passes it. Leave blank for no cap."
         required: false
         default: ""
+      audit_sample:
+        description: "AUDIT MODE: review N random approved rows (reviewed_by not containing 'automated pipeline', spread across regulations) and write NOTHING to the database, only the report. Leave blank for the normal pending-row review."
+        required: false
+        default: ""
+      seed:
+        description: "Audit mode: random seed for the sample (same seed, same sample)."
+        required: false
+        default: "20261005"
       execute:
-        description: "Execute: make the paid calls and write the verdicts. Leave unchecked for a dry run (no paid calls, no writes, cost quote only)."
+        description: "Execute: make the paid calls and write the verdicts (audit mode: make the paid calls, write nothing). Leave unchecked for a dry run (no paid calls, no writes, cost quote only)."
         type: boolean
         required: false
         default: false
@@ -77,6 +85,7 @@ jobs:
           if [ -n "${{ inputs.ids }}" ]; then ARGS+=(--ids "${{ inputs.ids }}"); fi
           if [ -n "${{ inputs.limit }}" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
           if [ -n "${{ inputs.max_cost }}" ]; then ARGS+=(--max-cost "${{ inputs.max_cost }}"); fi
+          if [ -n "${{ inputs.audit_sample }}" ]; then ARGS+=(--audit "${{ inputs.audit_sample }}" --seed "${{ inputs.seed }}"); fi
           if [ "${{ inputs.execute }}" = "true" ]; then ARGS+=(--execute); else ARGS+=(--dry-run); fi
           ARGS+=(--model "${{ inputs.model }}" --effort "${{ inputs.effort }}")
           echo "Running: python review.py ${ARGS[*]}"

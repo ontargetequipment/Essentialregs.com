@@ -485,7 +485,8 @@ ids), so the reasons in `provision_changes.note` stay private.
 **Running it.** Actions tab -> **Review pending summaries** -> Run workflow:
 
 - **reg** / **ids** / **limit** scope the run (the ids are still filtered to
-  pending rows).
+  pending rows). **reg** also takes a comma-separated list
+  (`gp01,gp02,...`), reviewed in that order.
 - **model** -- the reviewer. It is always a separate call from the one that
   wrote the summary. Default `claude-sonnet-5-5`: a different and stronger
   model than the Sonnet 4.5 that wrote the pending summaries, and cheaper per
@@ -511,6 +512,27 @@ and regulation, every corrected row with before / after / reasons, every
 failed row with its reason, token usage and the actual cost, and the model,
 sampling and prompt version used. Rows the reviewer failed, API errors and
 batch timeouts are also logged to `pipeline/review_failed.jsonl`.
+
+**Stray Markdown** (owner instruction, 5 Oct 2026). The site shows a summary
+as plain text, so `**bold**`, `__bold__`, backticks or a leading `#` / list
+marker in a summary is an error. When that is the only problem the reviewer
+returns `corrected` with the markers removed and nothing else changed (one
+change, reason "stray Markdown markers removed"); the validator checks that a
+Markdown-only correction is exactly the current summary without its markers,
+and a `pass` on a summary that still carries markers is not approved (it fails
+and is retried). A lone `*` (footnote marker) and runs of underscores (form
+blanks, names) are not Markdown.
+
+**Audit mode** (`--audit N`, workflow input **audit_sample**) runs the same
+reviewer, same prompt and same validation over a seeded random sample of N
+summaries that are already approved or edited and whose `reviewed_by` does not
+contain "automated pipeline" (the hand passes from before this step existed),
+spread across regulations: one per regulation, the rest in proportion to size
+(`allocate_sample`). It writes **nothing** to the database, only the report,
+whose "Rows the reviewer would correct (NOT changed)" section lists each such
+row's id, current summary, the reviewer's text and reasons. `--seed` makes the
+sample repeatable; `max_cost` applies as usual. Without `execute` it is a cost
+quote.
 
 **Resumability** is the summarizer's: approved rows drop out of the
 selection, so running again picks up exactly what the last run did not

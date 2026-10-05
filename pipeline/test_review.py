@@ -774,3 +774,189 @@ def test_max_cost_refuses_to_submit(db, monkeypatch, tmp_path):
     assert rc == 2
     assert fake.messages.batches.created == []
     assert all(r["summary_status"] != "approved" or r["id"] == "sec-7-B-I-C-1" for r in db.tables["provisions"])
+
+
+# --------------------------------------------------------------------------
+# Stray Markdown (owner instruction, 5 Oct 2026): a summary whose only
+# problem is Markdown markers is "corrected" with the markers removed and
+# nothing else changed.
+# --------------------------------------------------------------------------
+
+def _md_db():
+    rows = _rows()
+    rows.append({"id": "sec-3-A-I-B-33", "citation": "I.B.33.", "title": "Modification", "parent_id": None,
+                 "full_text": f"<p>{LONG}</p>", "sort_order": 8,
+                 "ai_summary": "**Modification** means any physical change that increases emissions.",
+                 "summary_status": "pending", "summary_original": "older text kept by a reviewer",
+                 "summary_model": "claude-sonnet-4-5"})
+    return FakeSupabase(rows)
+
+
+def _md_only(after="Modification means any physical change that increases emissions."):
+    return {"findings": [{"claim": "**Modification**", "problem": "stray Markdown"}], "verdict": "corrected",
+            "corrected_summary": after,
+            "changes": [{"before": "**Modification**", "after": "Modification",
+                         "reason": "stray Markdown markers removed"}],
+            "fail_reason": ""}
+
+
+@pytest.mark.parametrize("text, has", [
+    ("**Modification** means x.", True),
+    ("a __bold__ b.", True),
+    ("use `code` here.", True),
+    ("- a list item.", True),
+    ("# A heading", True),
+    ("Applies to engines over 2,000 hp.*", False),     # footnote star
+    ("Fill in ______ and sign.", False),               # form blank
+    ("snake_case_name stays.", False),
+])
+def test_markdown_marker_detection(text, has):
+    assert review.has_markdown_markers(text) is has
+
+
+def test_markdown_only_correction_is_accepted():
+    db = _md_db()
+    r = _review_for(db, "sec-3-A-I-B-33")
+    v = review.validate_verdict(_md_only(), r)
+    assert v.verdict == "corrected"
+    assert v.corrected_summary == "Modification means any physical change that increases emissions."
+    assert v.reasons_note == "stray Markdown markers removed"
+
+
+def test_markdown_only_correction_that_changes_anything_else_is_a_fail():
+    db = _md_db()
+    r = _review_for(db, "sec-3-A-I-B-33")
+    v = review.validate_verdict(_md_only("Modification means any change that increases emissions."), r)
+    assert v.verdict == "fail" and "more than the markers" in v.reason
+
+
+def test_a_real_correction_may_also_drop_markdown():
+    db = _md_db()
+    r = _review_for(db, "sec-3-A-I-B-33")
+    data = _md_only("Modification means any physical change that increases or adds emissions.")
+    data["changes"] = [{"before": "**Modification**", "after": "Modification", "reason": "stray Markdown markers removed"},
+                       {"before": "increases emissions", "after": "increases or adds emissions",
+                        "reason": "the text also covers a pollutant not emitted before"}]
+    assert review.validate_verdict(data, r).verdict == "corrected"
+
+
+def test_pass_on_a_summary_with_markdown_is_not_approved():
+    db = _md_db()
+    r = _review_for(db, "sec-3-A-I-B-33")
+    v = review.validate_verdict(_pass(), r)
+    assert v.verdict == "fail" and "Markdown" in v.reason
+
+
+def test_corrected_text_that_keeps_markdown_is_a_fail():
+    db = _md_db()
+    r = _review_for(db, "sec-3-A-I-B-33")
+    v = review.validate_verdict(_md_only("**Modification** means any physical change that adds emissions."), r)
+    assert v.verdict == "fail" and "markdown" in v.reason.lower()
+
+
+def test_markdown_only_correction_end_to_end_keeps_summary_original(monkeypatch, tmp_path):
+    db = _md_db()
+    rc, fake, report = _run(db, {"sec-3-A-I-B-33": _md_only()}, ["--execute", "--ids", "sec-3-A-I-B-33"],
+                            monkeypatch, tmp_path)
+    row = db.row("sec-3-A-I-B-33")
+    assert row["ai_summary"] == "Modification means any physical change that increases emissions."
+    assert row["summary_status"] == "approved"
+    assert row["summary_original"] == "older text kept by a reviewer"       # never overwritten
+    assert row["reviewed_by"].startswith("Claude (AI second-pass review; summary corrected, automated pipeline")
+    assert db.changes[-1]["change_type"] == "summary_edited"
+    assert db.changes[-1]["note"].endswith("stray Markdown markers removed")
+
+
+def test_prompt_states_the_markdown_rule():
+    assert "Stray Markdown markers" in review.REVIEW_SYSTEM_PROMPT
+    assert "nothing else changed" in review.REVIEW_SYSTEM_PROMPT
+
+
+# --------------------------------------------------------------------------
+# Several regulations in one run
+# --------------------------------------------------------------------------
+
+def test_reg_accepts_a_comma_separated_list_in_order(db):
+    assert [r["id"] for r in review.iter_candidates(db, "3,7", None)] == ["sec-3-A-I-B", "sec-7-B-I-C", "sec-7-B-I-C-2"]
+    assert [r["id"] for r in review.iter_candidates(db, "3,7", 2)] == ["sec-3-A-I-B", "sec-7-B-I-C"]
+
+
+# --------------------------------------------------------------------------
+# Audit mode: approved rows, read-only
+# --------------------------------------------------------------------------
+
+def test_allocate_sample_spreads_and_sums():
+    sizes = {"7": 1000, "3": 500, "gp01": 3, "p190": 1, "ecmc": 2000}
+    alloc = review.allocate_sample(sizes, 200)
+    assert sum(alloc.values()) == 200
+    assert all(alloc[r] >= 1 for r in sizes)                 # every regulation represented
+    assert all(alloc[r] <= sizes[r] for r in sizes)
+    assert alloc["ecmc"] > alloc["7"] > alloc["3"] > alloc["gp01"]
+    assert review.allocate_sample({"a": 3, "b": 2}, 10) == {"a": 3, "b": 2}   # n over the population
+    assert sum(review.allocate_sample(sizes, 3).values()) == 3                # fewer slots than regs
+
+
+def _audit_db():
+    rows = _rows()
+    for i in range(30):
+        rows.append({"id": f"sec-8-A-{i:03d}", "citation": f"{i}.", "title": "", "parent_id": None,
+                     "full_text": f"<p>{LONG}</p>", "sort_order": 100 + i, "ai_summary": f"Reg 8 summary {i}.",
+                     "summary_status": "approved" if i % 5 else "edited", "summary_original": None,
+                     "summary_model": "claude-sonnet-4-5",
+                     "reviewed_by": ("Claude (AI second-pass review, automated pipeline, claude-sonnet-5-5, 2026-10-05)"
+                                     if i < 10 else "Claude (AI second-pass review, full text read, per owner instruction 2026-09-20)")})
+    return FakeSupabase(rows)
+
+
+def test_audit_sample_excludes_pipeline_reviewed_and_non_approved_rows():
+    db = _audit_db()
+    rows, info = review.select_audit_sample(db, 8, seed=1)
+    ids = [r["id"] for r in rows]
+    assert len(ids) == 8 and len(set(ids)) == 8
+    for r in rows:
+        assert r["summary_status"] in ("approved", "edited")
+        assert "automated pipeline" not in (r.get("reviewed_by") or "")
+    assert info["eligible"] == 21          # 20 hand-reviewed reg 8 rows + the approved reg 7 row
+    assert set(info["allocation"]) == {"7", "8"}
+    # seeded: the same sample every time
+    assert [r["id"] for r in review.select_audit_sample(db, 8, seed=1)[0]] == ids
+    assert [r["id"] for r in review.select_audit_sample(db, 8, seed=2)[0]] != ids
+
+
+def test_audit_execute_writes_nothing_and_reports_would_correct_rows(monkeypatch, tmp_path):
+    db = _audit_db()
+    before = json.dumps(db.tables, sort_keys=True)
+    sample, _ = review.select_audit_sample(db, 6, seed=7)
+    answers = {r["id"]: _pass() for r in sample}
+    target = sample[0]["id"]
+    answers[target] = {"findings": [], "verdict": "corrected",
+                       "corrected_summary": db.row(target)["ai_summary"].rstrip(".") + " for five years.",
+                       "changes": [{"before": "x", "after": "y", "reason": "the text says five years"}],
+                       "fail_reason": ""}
+    rc, fake, report = _run(db, answers, ["--audit", "6", "--seed", "7", "--execute"], monkeypatch, tmp_path)
+    assert rc == 0
+    assert db.writes == [] and json.dumps(db.tables, sort_keys=True) == before   # NOTHING written
+    assert report["run"]["mode"].startswith("AUDIT")
+    assert report["counts"]["selected"] == 6 and report["counts"]["corrected"] == 1 and report["counts"]["pass"] == 5
+    would = report["corrected"][0]
+    assert would["id"] == target and would["before"] == db.row(target)["ai_summary"]
+    assert would["changes"][0]["reason"] == "the text says five years"
+    assert report["audit"]["seed"] == 7 and report["audit"]["exclude_reviewed_by"] == "automated pipeline"
+    md = (tmp_path / "out" / "review_report.md").read_text()
+    assert "Rows the reviewer would correct (NOT changed)" in md and "Current summary" in md
+    # the batch went out with the same reviewer prompt
+    assert fake.messages.batches.created[0].requests[0]["params"]["system"] == review.REVIEW_SYSTEM_PROMPT
+
+
+def test_audit_dry_run_makes_no_batch(monkeypatch, tmp_path):
+    db = _audit_db()
+    rc, fake, report = _run(db, {}, ["--audit", "5", "--dry-run"], monkeypatch, tmp_path)
+    assert rc == 0 and fake.messages.batches.created == [] and db.writes == []
+    assert report["dry_run_quote"]["rows"] == 5
+    assert report["run"]["mode"].startswith("AUDIT dry run")
+
+
+def test_audit_respects_the_spend_cap(monkeypatch, tmp_path):
+    db = _audit_db()
+    rc, fake, report = _run(db, {}, ["--audit", "5", "--execute", "--max-cost", "0.000001"], monkeypatch, tmp_path)
+    assert rc == 2 and fake.messages.batches.created == [] and db.writes == []

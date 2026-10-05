@@ -72,6 +72,7 @@ import argparse
 import hashlib
 import json
 import os
+import random
 import re
 import sys
 import time
@@ -229,7 +230,8 @@ REVIEW_SYSTEM_PROMPT = (
     "does not say that anything is absent, not shown, not specified, "
     "unclear or not stated when the text (including the provisions inside "
     "it) states it; and the summary adds no requirement, exception, advice, "
-    "example or scope beyond what the text says. Wording you would phrase "
+    "example or scope beyond what the text says; and the summary carries no "
+    "Markdown markup. Wording you would phrase "
     "differently is not an error. Style, sentence order, emphasis, "
     "plain-English paraphrase of legal terms, and leaving out a detail that "
     "does not change the meaning all pass. If the only changes you would "
@@ -251,6 +253,13 @@ REVIEW_SYSTEM_PROMPT = (
     "must itself follow every rule above: nothing that is not in the text, "
     "no statement that something is absent when the text or the provisions "
     "inside it state it.\n\n"
+    "Stray Markdown markers in the summary -- ** or __ around a word, a "
+    "leading # or list marker, backticks -- are also an error, because the "
+    "summary is shown as plain text. When they are the only problem, return "
+    "corrected with the markers removed and nothing else changed: the "
+    "corrected summary is the current one, word for word, without the "
+    "markers, with a single change whose reason is \"stray Markdown markers "
+    "removed\".\n\n"
     "fail: the summary cannot be made accurate with small edits -- it "
     "describes the wrong thing, or most of its statements are unsupported "
     "-- or the text you were given is marked as truncated or shown only as "
@@ -292,7 +301,20 @@ def iter_candidates(client, reg: Optional[str], limit: Optional[int],
     Approved, edited and rejected rows are excluded by the query itself,
     and every write re-checks the status, so an approved row is never
     selected or changed. `ids` narrows to those ids (still pending-only);
-    `reg` narrows to one regulation's id prefix; `limit` stops early."""
+    `reg` narrows to one regulation's id prefix, or to several given as a
+    comma-separated list ("gp01,gp02,..."), taken in that order; `limit`
+    stops early."""
+    regs = [r.strip() for r in (reg or "").split(",") if r.strip()]
+    if not ids and len(regs) > 1:
+        yielded = 0
+        for one in regs:
+            remaining = None if limit is None else limit - yielded
+            if remaining is not None and remaining <= 0:
+                return
+            for row in iter_candidates(client, one, remaining):
+                yield row
+                yielded += 1
+        return
     if ids:
         rows_by_id: dict[str, dict] = {}
         for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
@@ -337,6 +359,96 @@ def iter_candidates(client, reg: Optional[str], limit: Optional[int],
         if len(rows) < DB_PAGE_SIZE:
             return
         start += DB_PAGE_SIZE
+
+
+# --------------------------------------------------------------------------
+# Audit selection (read-only)
+# --------------------------------------------------------------------------
+
+# The audit re-checks summaries that were approved before this pipeline
+# existed (the hand passes in chat sessions). A reviewed_by containing this
+# marks a row this pipeline already reviewed; those are left out.
+AUDIT_EXCLUDE_REVIEWED_BY = "automated pipeline"
+AUDIT_STATUSES = ("approved", "edited")
+
+
+def allocate_sample(sizes: dict[str, int], n: int) -> dict[str, int]:
+    """How many rows to draw from each regulation for an n-row sample
+    spread across regulations: one from every regulation that has any
+    (largest first when n is smaller than the number of regulations), the
+    rest in proportion to each regulation's remaining size, largest
+    remainders first. Never more than a regulation has."""
+    regs = sorted(r for r, c in sizes.items() if c > 0)
+    total = sum(sizes[r] for r in regs)
+    if n >= total:
+        return {r: sizes[r] for r in regs}
+    alloc = {r: 0 for r in regs}
+    if n < len(regs):
+        for r in sorted(regs, key=lambda r: (-sizes[r], r))[:n]:
+            alloc[r] = 1
+        return {r: c for r, c in alloc.items() if c}
+    for r in regs:
+        alloc[r] = 1
+    remaining = n - len(regs)
+    rest = {r: sizes[r] - 1 for r in regs}
+    rest_total = sum(rest.values())
+    quotas = {r: (remaining * rest[r] / rest_total) if rest_total else 0.0 for r in regs}
+    for r in regs:
+        alloc[r] += int(quotas[r])
+    left = n - sum(alloc.values())
+    for r in sorted(regs, key=lambda r: (-(quotas[r] - int(quotas[r])), -sizes[r], r)):
+        if left <= 0:
+            break
+        if alloc[r] < sizes[r]:
+            alloc[r] += 1
+            left -= 1
+    return alloc
+
+
+def select_audit_sample(client, n: int, seed: int, reg: Optional[str] = None,
+                        exclude_reviewed_by: str = AUDIT_EXCLUDE_REVIEWED_BY) -> tuple[list[dict], dict]:
+    """A seeded random sample of n approved/edited rows with a summary whose
+    reviewed_by does not contain `exclude_reviewed_by`, spread across
+    regulations (allocate_sample). Read-only. Returns (rows in sample
+    order, info for the report)."""
+    eligible: dict[str, list[str]] = {}
+    like_prefix = f"sec-{reg.lower()}-" if reg else None
+    start = 0
+    while True:
+        q = (client.table("provisions").select("id, reviewed_by, summary_status")
+             .in_("summary_status", list(AUDIT_STATUSES))
+             .not_.is_("ai_summary", "null"))
+        if like_prefix:
+            q = q.like("id", f"{like_prefix}%")
+        q = q.order("id").range(start, start + sz.META_PAGE_SIZE - 1)
+        page = q.execute().data or []
+        for row in page:
+            if exclude_reviewed_by.lower() in (row.get("reviewed_by") or "").lower():
+                continue
+            eligible.setdefault(sz.reg_key_of(row["id"]) or "?", []).append(row["id"])
+        if len(page) < sz.META_PAGE_SIZE:
+            break
+        start += sz.META_PAGE_SIZE
+
+    sizes = {r: len(v) for r, v in eligible.items()}
+    alloc = allocate_sample(sizes, n)
+    rng = random.Random(seed)
+    picked: list[str] = []
+    for r in sorted(alloc):
+        picked.extend(rng.sample(sorted(eligible[r]), alloc[r]))
+
+    rows_by_id: dict[str, dict] = {}
+    for chunk_start in range(0, len(picked), DB_PAGE_SIZE):
+        chunk = picked[chunk_start:chunk_start + DB_PAGE_SIZE]
+        q = (client.table("provisions").select(CANDIDATE_COLUMNS + ", reviewed_by")
+             .in_("id", chunk).in_("summary_status", list(AUDIT_STATUSES)))
+        for row in q.execute().data or []:
+            rows_by_id[row["id"]] = row
+    rows = [rows_by_id[i] for i in picked if i in rows_by_id]
+    info = {"requested": n, "seed": seed, "eligible": sum(sizes.values()),
+            "eligible_by_reg": dict(sorted(sizes.items())), "allocation": dict(sorted(alloc.items())),
+            "exclude_reviewed_by": exclude_reviewed_by, "statuses": list(AUDIT_STATUSES)}
+    return rows, info
 
 
 # --------------------------------------------------------------------------
@@ -456,6 +568,33 @@ def _normalize(text: str) -> str:
     return sz.WS_RE.sub(" ", (text or "")).strip()
 
 
+# Stray Markdown in a summary (the site shows summaries as plain text). Only
+# unambiguous markers: ** and __word__ emphasis, backticks, and a heading or
+# list marker at the start of a line. A lone * is left alone (the summaries
+# use it as a footnote marker, "... 2,000 hp.*", WHOLE_ANSWER_RE), and so is a
+# run of underscores that is a form blank ("____") or part of a name.
+MARKDOWN_MARKER_RE = re.compile(r"\*\*|(?<![\w_])__(?=[^\s_])|(?<=[^\s_])__(?![\w_])|`|(?:^|(?<=\n))[ \t]*(?:#{1,6}|[-*+])[ \t]+")
+
+
+def has_markdown_markers(text: str) -> bool:
+    return bool(MARKDOWN_MARKER_RE.search(text or ""))
+
+
+def strip_markdown_markers(text: str) -> str:
+    """The summary with its stray Markdown markers removed and nothing else
+    changed (whitespace normalized)."""
+    return _normalize(MARKDOWN_MARKER_RE.sub("", text or ""))
+
+
+def _is_markdown_only_change(before: str, after: str) -> bool:
+    """True when `after` is `before` with Markdown markers removed (and
+    `before` had some)."""
+    return has_markdown_markers(before) and strip_markdown_markers(before) == _normalize(after)
+
+
+MARKDOWN_ONLY_REASON = "stray Markdown markers removed"
+
+
 def validate_verdict(data: object, review: ReviewInput, stop_reason: Optional[str] = None) -> Verdict:
     """Strict validation. Returns a Verdict whose .verdict is one of
     VERDICTS; anything malformed becomes verdict 'fail' with the reason in
@@ -496,6 +635,13 @@ def validate_verdict(data: object, review: ReviewInput, stop_reason: Optional[st
             return Verdict("fail", findings=findings,
                            reason="reviewer passed a summary that says the text is silent "
                                   "about something, on a provision with descendants")
+        if has_markdown_markers(review.summary):
+            # The prompt makes stray Markdown a correction ("markers removed,
+            # nothing else changed"); a pass here would approve markup the
+            # reader shows as literal asterisks. Not approved; the next run
+            # retries it.
+            return Verdict("fail", findings=findings,
+                           reason="reviewer passed a summary that carries stray Markdown markers")
         return Verdict("pass", findings=findings)
 
     if verdict == "fail":
@@ -511,7 +657,7 @@ def validate_verdict(data: object, review: ReviewInput, stop_reason: Optional[st
         return Verdict("fail", findings=findings, reason="malformed output: corrected verdict with an empty corrected_summary")
     # Markdown and line breaks are tested on the raw text, before whitespace
     # is normalized away: a summary is one plain paragraph.
-    if "\n" in raw_corrected or "**" in raw_corrected or re.match(r"\s*(?:[-*#]|\d+\.)\s", raw_corrected):
+    if "\n" in raw_corrected or has_markdown_markers(raw_corrected) or re.match(r"\s*\d+\.\s", raw_corrected):
         return Verdict("fail", findings=findings, reason="malformed output: corrected_summary contains markdown or line breaks")
     corrected = _normalize(raw_corrected)
     if corrected == _normalize(review.summary):
@@ -535,6 +681,15 @@ def validate_verdict(data: object, review: ReviewInput, stop_reason: Optional[st
         clean_changes.append({"before": _normalize(str(c.get("before") or "")),
                               "after": _normalize(str(c.get("after") or "")),
                               "reason": reason})
+    # A correction that claims to be Markdown-only (every change is a
+    # markers-removed change, or every reason says so) must be exactly the
+    # current summary without its markers: nothing else may change.
+    claims_markdown_only = all(
+        _is_markdown_only_change(c["before"], c["after"]) or "markdown" in c["reason"].lower()
+        for c in clean_changes)
+    if claims_markdown_only and corrected != strip_markdown_markers(review.summary):
+        return Verdict("fail", findings=findings,
+                       reason="Markdown-only correction changed more than the markers")
     return Verdict("corrected", corrected_summary=corrected, changes=clean_changes, findings=findings)
 
 
@@ -670,6 +825,23 @@ def count_tokens_api(client_anthropic, review: ReviewInput, model: str) -> int:
     raise RuntimeError("unreachable")
 
 
+def estimate_run_cost(client_anthropic, reviews: list[ReviewInput], model: str) -> tuple[float, str]:
+    """Batch-price estimate for submitting `reviews` to `model`: input
+    tokens from the free count_tokens endpoint (a character estimate for
+    rows it fails on, or with no client) plus expected_output_tokens per
+    row. Returns (usd, method)."""
+    if client_anthropic is not None:
+        counted = count_tokens_many(client_anthropic, reviews, model)
+        est_in = sum(c if c is not None else estimate_tokens_by_chars(r.chars, model) + SCHEMA_TOKEN_ALLOWANCE
+                     for c, r in zip(counted, reviews))
+        method = "count_tokens"
+    else:
+        est_in = sum(estimate_tokens_by_chars(r.chars, model) + SCHEMA_TOKEN_ALLOWANCE for r in reviews)
+        method = "character estimate"
+    est_out = expected_output_tokens(model) * len(reviews)
+    return estimate_cost(model, est_in, est_out, batch=True), method
+
+
 def count_tokens_many(client_anthropic, reviews: list[ReviewInput], model: str,
                       workers: int = COUNT_TOKENS_WORKERS) -> list[Optional[int]]:
     """Counts every review's input for `model`, in parallel. None where the
@@ -759,14 +931,22 @@ def log_failure(provision_id: str, reason: str) -> None:
 
 
 def build_report(stats: RunStats, model: str, effort: str, execute: bool,
-                 dry_run_quote: Optional[dict] = None, started_at: Optional[str] = None) -> tuple[str, dict]:
-    """(markdown, json-able dict) for this run."""
+                 dry_run_quote: Optional[dict] = None, started_at: Optional[str] = None,
+                 audit: Optional[dict] = None) -> tuple[str, dict]:
+    """(markdown, json-able dict) for this run. With `audit` (the sample
+    info from select_audit_sample) the report is an audit report: nothing
+    was written, and corrected rows are listed as would-correct."""
     now = datetime.now(timezone.utc).isoformat()
     actual_cost = estimate_cost(model, stats.input_tokens, stats.output_tokens, batch=True)
+    if audit is not None:
+        mode = ("AUDIT of approved summaries -- reviewer called, NOTHING written to the database"
+                if execute else "AUDIT dry run (no API call billed, no write)")
+    else:
+        mode = "execute" if execute else "dry run (no API call billed, no write)"
     data = {
         "run": {
             "started_at": started_at, "finished_at": now,
-            "mode": "execute" if execute else "dry run (no API call billed, no write)",
+            "mode": mode,
             "model": model,
             "sampling": sampling_description(model, effort),
             "prompt_version": REVIEW_PROMPT_VERSION,
@@ -788,6 +968,7 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
         "failed": stats.failed_rows,
         "passed_ids": stats.passed_rows,
         "dry_run_quote": dry_run_quote,
+        "audit": audit,
     }
 
     md: list[str] = []
@@ -796,14 +977,26 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
     md.append(f"- Model: `{model}` ({data['run']['sampling']}); prompt version `{REVIEW_PROMPT_VERSION}`")
     md.append(f"- Started {started_at}, finished {now}")
     md.append("")
+    if audit is not None:
+        md.append(f"- Audit sample: {audit['requested']} requested, seed {audit['seed']}, from "
+                  f"{audit['eligible']:,} {'/'.join(audit['statuses'])} rows whose reviewed_by does not contain "
+                  f"\"{audit['exclude_reviewed_by']}\"; allocation by regulation: "
+                  + ", ".join(f"{k}={v}" for k, v in audit["allocation"].items()))
+        md.append("")
     md.append("## Counts")
     md.append("")
     md.append("| verdict | rows |")
     md.append("|---|---:|")
-    md.append(f"| selected (pending with a summary) | {stats.selected:,} |")
-    md.append(f"| pass -> approved | {stats.passed:,} |")
-    md.append(f"| corrected -> approved with new text | {stats.corrected:,} |")
-    md.append(f"| fail (stays pending) | {stats.failed:,} |")
+    if audit is not None:
+        md.append(f"| sampled (approved, audited) | {stats.selected:,} |")
+        md.append(f"| pass (reviewer finds no error) | {stats.passed:,} |")
+        md.append(f"| corrected (reviewer would correct; NOT written) | {stats.corrected:,} |")
+        md.append(f"| fail (reviewer cannot verify or fix; NOT written) | {stats.failed:,} |")
+    else:
+        md.append(f"| selected (pending with a summary) | {stats.selected:,} |")
+        md.append(f"| pass -> approved | {stats.passed:,} |")
+        md.append(f"| corrected -> approved with new text | {stats.corrected:,} |")
+        md.append(f"| fail (stays pending) | {stats.failed:,} |")
     md.append(f"| skipped: no longer pending at write time | {stats.skipped_not_pending:,} |")
     md.append(f"| API errors (stay pending) | {stats.api_errors:,} |")
     md.append(f"| rows whose provision text exceeds {sz.MAX_PROMPT_WORDS:,} words (truncated) | {stats.truncated_rows:,} |")
@@ -838,19 +1031,22 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
         md.append("")
         md.append(f"- Prices: {PRICING_SOURCE}; the Batches API is 50% off the standard input and output rates.")
     md.append("")
-    md.append(f"## Corrected rows ({len(stats.corrected_rows)})")
+    corrected_heading = ("Rows the reviewer would correct (NOT changed)" if audit is not None
+                         else "Corrected rows")
+    md.append(f"## {corrected_heading} ({len(stats.corrected_rows)})")
     md.append("")
     for row in stats.corrected_rows:
         md.append(f"### {row['id']}")
         md.append("")
-        md.append(f"**Before:** {row['before']}")
+        md.append(f"**{'Current summary' if audit is not None else 'Before'}:** {row['before']}")
         md.append("")
-        md.append(f"**After:** {row['after']}")
+        md.append(f"**{'Reviewer would write' if audit is not None else 'After'}:** {row['after']}")
         md.append("")
         for c in row["changes"]:
             md.append(f"- {c['reason']}" + (f" (\"{c['before']}\" -> \"{c['after']}\")" if c["before"] or c["after"] else ""))
         md.append("")
-    md.append(f"## Failed rows ({len(stats.failed_rows)}) -- still pending")
+    md.append(f"## Failed rows ({len(stats.failed_rows)})"
+              + (" -- NOT changed" if audit is not None else " -- still pending"))
     md.append("")
     for row in stats.failed_rows:
         md.append(f"- `{row['id']}`: {row['reason']}")
@@ -972,6 +1168,9 @@ def handle_verdict(client_supabase, row: dict, review: ReviewInput, verdict: Ver
 def poll_batches(client_anthropic, client_supabase, pending, custom_id_map, reviews_by_id, rows_by_id,
                  model: str, stats: RunStats, execute: bool, poll_interval: int,
                  max_cost: Optional[float] = None) -> None:
+    """Polls until every batch ends and consumes each one. `execute` is
+    whether verdicts are WRITTEN (False in audit mode: the reviewer is
+    called, nothing is written)."""
     print(f"Polling {len(pending)} batch(es) every {poll_interval}s...")
     deadline = time.monotonic() + MAX_POLL_SECONDS
     while pending:
@@ -1044,7 +1243,8 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--reg", default=None,
-                        help="Limit to one regulation's id prefix (7, 3, 26, gp12, oooob, ...). Omit for all.")
+                        help="Limit to one regulation's id prefix (7, 3, 26, gp12, oooob, ...), or several "
+                             "comma-separated (gp01,gp02,...). Omit for all.")
     parser.add_argument("--ids", default=None,
                         help="Comma-separated exact provision ids. Only the ones that are pending are reviewed.")
     parser.add_argument("--limit", type=int, default=None, help="Stop after this many rows.")
@@ -1066,6 +1266,12 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
                              "polling (the rows must still be pending and in scope). No new submission.")
     parser.add_argument("--poll-interval", type=int, default=POLL_INTERVAL_SECONDS)
     parser.add_argument("--show", type=int, default=0, help="Dry run: print the first N review prompts.")
+    parser.add_argument("--audit", type=int, default=None, metavar="N",
+                        help="AUDIT MODE: review a seeded random sample of N approved/edited rows whose "
+                             "reviewed_by does not contain 'automated pipeline', spread across regulations. "
+                             "Writes NOTHING to the database, only the report; with --execute the reviewer "
+                             "is called (paid), without it a cost quote. Ignores --ids/--limit.")
+    parser.add_argument("--seed", type=int, default=20261005, help="Audit mode: random seed for the sample.")
     return parser.parse_args(argv)
 
 
@@ -1088,21 +1294,33 @@ def main(argv: Optional[list[str]] = None) -> int:
     if FAILED_LOG_PATH.exists():
         FAILED_LOG_PATH.unlink()
 
-    ids = [i.strip() for i in args.ids.split(",") if i.strip()] if args.ids else None
-    meta_reg = None if ids else args.reg
+    audit_info: Optional[dict] = None
+    ids = [i.strip() for i in args.ids.split(",") if i.strip()] if args.ids and args.audit is None else None
+    meta_reg = None if (ids or args.audit is not None or (args.reg and "," in args.reg)) else args.reg
     print(f"Fetching parent/citation metadata{f' for reg {meta_reg}' if meta_reg else ' (all regulations)'}...")
     meta = sz.fetch_meta(client_supabase, meta_reg)
     children_index = sz.build_children_index(meta)
     print(f"  {len(meta):,} rows loaded; {len(children_index):,} have children.")
 
-    print("Selecting pending rows with a summary"
-          f"{f' ({len(ids)} explicit id(s))' if ids else ''}"
-          f"{f' (limit {args.limit})' if args.limit else ''}...")
-    rows = list(iter_candidates(client_supabase, args.reg, args.limit, ids=ids))
-    print(f"  {len(rows):,} rows selected.")
+    if args.audit is not None:
+        print(f"AUDIT: sampling {args.audit} approved rows (seed {args.seed}) whose reviewed_by does not "
+              f"contain '{AUDIT_EXCLUDE_REVIEWED_BY}'. Nothing will be written to the database.")
+        rows, audit_info = select_audit_sample(client_supabase, args.audit, args.seed,
+                                               reg=args.reg if args.reg and "," not in args.reg else None)
+        print(f"  {audit_info['eligible']:,} eligible rows; {len(rows):,} sampled across "
+              f"{len(audit_info['allocation'])} regulations.")
+    else:
+        print("Selecting pending rows with a summary"
+              f"{f' ({len(ids)} explicit id(s))' if ids else ''}"
+              f"{f' (limit {args.limit})' if args.limit else ''}...")
+        rows = list(iter_candidates(client_supabase, args.reg, args.limit, ids=ids))
+        print(f"  {len(rows):,} rows selected.")
+    # Verdicts are written only on a real (execute) run that is not an audit.
+    write = execute and audit_info is None
     if not rows:
         print("Nothing to review.")
-        md, data = build_report(RunStats(), args.model, args.effort, execute, started_at=started_at)
+        md, data = build_report(RunStats(), args.model, args.effort, execute, started_at=started_at,
+                                audit=audit_info)
         write_report(md, data)
         return 0
 
@@ -1126,10 +1344,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     if not execute:
         quote = dry_run_quote(reviews, client_anthropic, args.effort)
         md, data = build_report(stats, args.model, args.effort, execute=False,
-                                dry_run_quote=quote, started_at=started_at)
+                                dry_run_quote=quote, started_at=started_at, audit=audit_info)
         write_report(md, data)
         print("\n" + "=" * 72)
-        print(f"DRY RUN -- {len(reviews):,} pending rows; no paid call made, nothing written.")
+        print(f"DRY RUN -- {len(reviews):,} {'sampled approved' if audit_info else 'pending'} rows; "
+              f"no paid call made, nothing written.")
         print("=" * 72)
         print(f"Token count method: {quote['method']}")
         for opt in quote["options"]:
@@ -1146,7 +1365,8 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     # --execute -----------------------------------------------------------
     print(f"Reviewer: {args.model} ({sampling_description(args.model, args.effort)}); "
-          f"prompt version {REVIEW_PROMPT_VERSION}")
+          f"prompt version {REVIEW_PROMPT_VERSION}"
+          f"{'; AUDIT: verdicts are NOT written' if not write else ''}")
     if args.resume_batch:
         batch_ids = [b.strip() for b in args.resume_batch.split(",") if b.strip()]
         custom_id_map: dict[str, str] = {}
@@ -1159,29 +1379,33 @@ def main(argv: Optional[list[str]] = None) -> int:
                 continue
             stats.batch_ids.append(batch_id)
             consume_batch(client_anthropic, client_supabase, batch_id, custom_id_map, reviews_by_id,
-                          rows_by_id, args.model, stats, execute=True)
+                          rows_by_id, args.model, stats, execute=write)
     elif args.sync:
-        run_sync(client_anthropic, client_supabase, reviews, rows_by_id, args.model, args.effort, stats, execute=True)
+        run_sync(client_anthropic, client_supabase, reviews, rows_by_id, args.model, args.effort, stats, execute=write)
     else:
         if args.max_cost is not None:
-            est_in = sum(estimate_tokens_by_chars(r.chars, args.model) + SCHEMA_TOKEN_ALLOWANCE for r in reviews)
-            est = estimate_cost(args.model, est_in, expected_output_tokens(args.model) * len(reviews), batch=True)
+            est, method = estimate_run_cost(client_anthropic, reviews, args.model)
+            print(f"Estimated cost ({method} input, {expected_output_tokens(args.model)} output tokens per row): "
+                  f"${est:,.2f}; cap ${args.max_cost:,.2f}")
             if est > args.max_cost:
                 print(f"Refusing to submit: estimated ${est:,.2f} exceeds --max-cost ${args.max_cost:,.2f}.",
                       file=sys.stderr)
-                md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at)
+                md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at,
+                                        audit=audit_info)
                 data["run"]["mode"] = f"refused: estimate ${est:,.2f} over --max-cost ${args.max_cost:,.2f}"
                 write_report(md, data)
                 return 2
         pending, custom_id_map = submit_batches(client_anthropic, reviews, args.model, args.effort, stats)
         poll_batches(client_anthropic, client_supabase, pending, custom_id_map, reviews_by_id, rows_by_id,
-                     args.model, stats, execute=True, poll_interval=args.poll_interval, max_cost=args.max_cost)
+                     args.model, stats, execute=write, poll_interval=args.poll_interval, max_cost=args.max_cost)
 
-    md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at)
+    md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at,
+                            audit=audit_info)
     write_report(md, data)
     cost = estimate_cost(args.model, stats.input_tokens, stats.output_tokens, batch=not args.sync)
     print("\n" + "=" * 72)
-    print(f"Review run -- model={args.model} mode={'sync' if args.sync else 'batch'}")
+    print(f"Review run -- model={args.model} mode={'sync' if args.sync else 'batch'}"
+          f"{' AUDIT (nothing written)' if not write else ''}")
     print("=" * 72)
     print(f"{'Rows selected':40}{stats.selected:>10,}")
     print(f"{'pass -> approved':40}{stats.passed:>10,}")
@@ -1194,7 +1418,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"{'Cost (USD)':40}{'$' + format(cost, ',.4f'):>10}")
     print("=" * 72)
     print(f"Report: {REPORT_MD_PATH}")
-    if stats.failed or stats.api_errors:
+    if (stats.failed or stats.api_errors) and write:
         print(f"Failures logged to {FAILED_LOG_PATH}; those rows stay pending and are selected again next run.")
     return 0
 
