@@ -92,6 +92,12 @@ and nobody has to ask for it. Since 6 Oct 2026 (ReviewBuiltIn):
    seeded, with the ancestor text the reviewer saw) to
    `docs/imports/<date>/<label>_chain_sample_40.md` and opens a pull request
    with it. The Cowork session checks the sample against the official text.
+   Opening that pull request (and the monthly audit's) needs the repository
+   setting **Settings → Actions → General → "Allow GitHub Actions to create
+   and approve pull requests"**; until it is on, the run pushes the sample to
+   the branch `chain-sample/<label>-<run id>`, logs a warning naming it, and
+   someone opens the pull request from that branch by hand (the sample is in
+   the `chain-report` artifact too).
 4. **Make the regulation public** — its summaries do not appear on the public
    `/sample` or `/regulations/<reg>/preview` pages until nothing of it is still
    pending review (`teaserSummariesVisible`, `gatePublicSummaries`).
