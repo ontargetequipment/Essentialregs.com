@@ -555,8 +555,8 @@ checks as (
   union all
   select 25, 'GUARD', 'summary_pending_over_24h', count(*), 0,
          'ReviewBuiltIn (owner decision, 5 Oct 2026). Review runs in the same workflow run that writes a summary, so a summary that has been pending for more than 24 hours means a run died, was skipped, or the reviewer failed the row twice and nobody acted. Counts rows with a summary, summary_status pending and summary_generated_at (or, when that is null, updated_at) older than 24 hours, less the allow-listed ids in pending_allowlist (each with its reason). Expect 0. When above 0: re-run the summarize workflow for the ids (it reviews what it writes), or add the id to pending_allowlist with the reason it cannot be verified.'
-         || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select p.id from provisions p where p.ai_summary is not null and p.summary_status = ''pending'' and coalesce(p.summary_generated_at, p.updated_at) < now() - interval ''24 hours'' and p.id not in (select id from pending_allowlist) order by p.id limit 30) r), '')
-         || coalesce(' Allow-listed (still pending): ' || (select string_agg(p.id || '' ('' || a.reason || '')'', ''; '' order by p.id) from provisions p join pending_allowlist a on a.id = p.id where p.summary_status = ''pending''), '')
+         || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select p.id from provisions p where p.ai_summary is not null and p.summary_status = 'pending' and coalesce(p.summary_generated_at, p.updated_at) < now() - interval '24 hours' and p.id not in (select id from pending_allowlist) order by p.id limit 30) r), '')
+         || coalesce(' Allow-listed (still pending): ' || (select string_agg(p.id || ' (' || a.reason || ')', '; ' order by p.id) from provisions p join pending_allowlist a on a.id = p.id where p.summary_status = 'pending'), '')
   from provisions p
   where p.ai_summary is not null and p.summary_status = 'pending'
     and coalesce(p.summary_generated_at, p.updated_at) < now() - interval '24 hours'
