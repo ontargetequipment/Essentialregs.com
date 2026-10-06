@@ -312,24 +312,12 @@ with plain as (
 -- problem the check exists to catch.
 pending_allowlist (id, reason) as (
   values
-    -- The 13 rows left pending by the October re-review (docs/CEO_PHASE_PLAN.md,
-    -- "Still pending after step 2"). Listed here until the ReviewBuiltIn
-    -- chained run after PR #67 merges (item 8d) has reviewed them; every row
-    -- it approves comes off this list, every row still pending keeps its
-    -- real reason here.
-    ('sec-1-X', 'text over the old 6,000-word cap and 17 children in outline mode; re-run with the 16,000-word cap after PR #67'),
-    ('sec-11-H-APPENDIX-A-2.15-C', 'Markdown-only correction that also changed wording; validator accepts it since PR #67, re-run after merge'),
-    ('sec-2-C-I', 'text over the old 6,000-word cap (7,067 words); re-run with the 16,000-word cap after PR #67'),
-    ('sec-21-A-II-E', 'Markdown-only correction that also changed wording; validator accepts it since PR #67, re-run after merge'),
-    ('sec-21-A-II-I', 'Markdown-only correction that also changed wording; validator accepts it since PR #67, re-run after merge'),
-    ('sec-28-F-I', 'text over the old 6,000-word cap (7,565 words); re-run with the 16,000-word cap after PR #67'),
-    ('sec-3-F-I-C', 'text over the old 6,000-word cap (9,842 words); re-run with the 16,000-word cap after PR #67'),
-    ('sec-31-K-I', 'text over the old 6,000-word cap (15,401 words); re-run with the 16,000-word cap after PR #67'),
-    ('sec-7-C-N', 'text over the old 6,000-word cap (8,718 words); re-run with the 16,000-word cap after PR #67'),
-    ('sec-8-B-VII-K', 'text over the old 6,000-word cap (6,057 words), summarizer hedged twice; re-run with the new writer after PR #67'),
-    ('sec-aqs-VII-B', 'heading-only row (163 words); the new writer gives it an overview from its subsections, re-run after PR #67'),
-    ('sec-cp-V-D', 'text over the old 6,000-word cap (9,846 words); re-run with the 16,000-word cap after PR #67'),
-    ('sec-jjjj-60.4233-(f)-(4)-(iv)', 'correction was a rewrite (134 words from 61); regenerate with the new writer after PR #67')
+    -- Empty since 6 Oct 2026: the 13 rows the October re-review left pending
+    -- were all approved by the first chained run after PR #67 (run
+    -- 37480868158; 9 passed as written, 4 corrected). Add a row here only
+    -- when the reviewer has failed it twice and it cannot be verified, with
+    -- the reason and the date; remove it the moment it is approved.
+    ('__none__', 'placeholder: no row is allow-listed; replace this entry with the first real one')
 ),
 repeated_text_allowlist (id, reason) as (
   values

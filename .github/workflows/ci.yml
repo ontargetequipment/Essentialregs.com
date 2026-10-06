@@ -95,6 +95,18 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.base_url != '')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # One smoke job at a time, repository-wide. Every smoke run signs in as
+    # the same smoke account, and Ask allows ASK_RATE_LIMIT (30) searches a
+    # minute per user (src/lib/semantic.ts); three preview deployments whose
+    # smoke jobs overlapped (6 Oct 2026, 15:07-15:10) pushed that account past
+    # the limit and the Ask page answered "Too many searches in the last
+    # minute", so e2e/ask-timing.spec.ts failed on commits that changed only
+    # documentation. Queued jobs wait for the running one (GitHub keeps at most
+    # one waiting per group and cancels an older waiting job when a newer one
+    # queues, which only ever drops a superseded deployment's smoke).
+    concurrency:
+      group: smoke-shared-account
+      cancel-in-progress: false
     env:
       BASE_URL: ${{ github.event.deployment_status.environment_url || inputs.base_url }}
       # Production deployments run the anonymous group only.
