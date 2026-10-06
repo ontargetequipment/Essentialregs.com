@@ -68,6 +68,7 @@ PIPELINE_DIR = Path(__file__).resolve().parent
 FAILED_LOG_PATH = PIPELINE_DIR / "failed.jsonl"
 
 DB_PAGE_SIZE = 200          # rows fetched per Supabase page while scanning candidates
+IDS_IN_BATCH = 100          # ids per in.(...) filter: long ids ride in the request URL (500 overflowed it in embed.py)
 META_PAGE_SIZE = 1000       # rows fetched per page when building the id->citation/parent map
 MIN_WORDS = 25              # tag-stripped word count below this = headings-only, skip
 # The provision's own text is shown whole up to this many words. Was 6,000
@@ -1615,8 +1616,8 @@ def iter_candidates(client, reg: Optional[str], force: bool, limit: Optional[int
 
     if ids:
         rows_by_id: dict[str, dict] = {}
-        for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
-            chunk = ids[chunk_start:chunk_start + DB_PAGE_SIZE]
+        for chunk_start in range(0, len(ids), IDS_IN_BATCH):
+            chunk = ids[chunk_start:chunk_start + IDS_IN_BATCH]
             q = (client.table("provisions")
                  .select("id, citation, title, parent_id, full_text, sort_order")
                  .in_("id", chunk))

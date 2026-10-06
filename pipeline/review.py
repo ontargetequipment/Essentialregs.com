@@ -466,8 +466,8 @@ def iter_candidates(client, reg: Optional[str], limit: Optional[int],
     keep = is_rereview_row if rereview else (lambda row: True)
     if ids:
         rows_by_id: dict[str, dict] = {}
-        for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
-            chunk = ids[chunk_start:chunk_start + DB_PAGE_SIZE]
+        for chunk_start in range(0, len(ids), sz.IDS_IN_BATCH):
+            chunk = ids[chunk_start:chunk_start + sz.IDS_IN_BATCH]
             q = _status_filter(client.table("provisions").select(CANDIDATE_COLUMNS).in_("id", chunk), rereview)
             q = q.not_.is_("ai_summary", "null")
             for row in q.execute().data or []:
@@ -599,8 +599,8 @@ def select_redo_candidates(client, since: str, until: Optional[str] = None) -> l
         offset += REDO_PAGE
     ids = list(found)
     rows_by_id: dict[str, dict] = {}
-    for start in range(0, len(ids), DB_PAGE_SIZE):
-        chunk = ids[start:start + DB_PAGE_SIZE]
+    for start in range(0, len(ids), sz.IDS_IN_BATCH):
+        chunk = ids[start:start + sz.IDS_IN_BATCH]
         q = (client.table("provisions").select(CANDIDATE_COLUMNS)
              .in_("id", chunk).in_("summary_status", list(REREVIEW_STATUSES))
              .not_.is_("ai_summary", "null"))
@@ -699,8 +699,8 @@ def select_audit_sample(client, n: int, seed: int, reg: Optional[str] = None,
         picked.extend(rng.sample(sorted(eligible[r]), alloc[r]))
 
     rows_by_id: dict[str, dict] = {}
-    for chunk_start in range(0, len(picked), DB_PAGE_SIZE):
-        chunk = picked[chunk_start:chunk_start + DB_PAGE_SIZE]
+    for chunk_start in range(0, len(picked), sz.IDS_IN_BATCH):
+        chunk = picked[chunk_start:chunk_start + sz.IDS_IN_BATCH]
         q = (client.table("provisions").select(CANDIDATE_COLUMNS + ", reviewed_by")
              .in_("id", chunk).in_("summary_status", list(AUDIT_STATUSES)))
         for row in q.execute().data or []:
@@ -720,8 +720,8 @@ def select_audit_ids(client, ids: list[str]) -> tuple[list[dict], dict]:
     stamped can be re-checked too). Ids that are not approved/edited or
     not found are reported and left out."""
     rows_by_id: dict[str, dict] = {}
-    for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
-        chunk = ids[chunk_start:chunk_start + DB_PAGE_SIZE]
+    for chunk_start in range(0, len(ids), sz.IDS_IN_BATCH):
+        chunk = ids[chunk_start:chunk_start + sz.IDS_IN_BATCH]
         q = (client.table("provisions").select(CANDIDATE_COLUMNS)
              .in_("id", chunk).in_("summary_status", list(AUDIT_STATUSES))
              .not_.is_("ai_summary", "null"))

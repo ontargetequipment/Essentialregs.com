@@ -110,8 +110,8 @@ def select_ancestor_rows(client, ancestor_ids: list[str], meta: dict, children_i
     bodies (not outline mode). Returns (rows, skipped ids with reasons)."""
     rows: list[dict] = []
     skipped: list[str] = []
-    for start in range(0, len(ancestor_ids), sz.DB_PAGE_SIZE):
-        chunk = ancestor_ids[start:start + sz.DB_PAGE_SIZE]
+    for start in range(0, len(ancestor_ids), sz.IDS_IN_BATCH):
+        chunk = ancestor_ids[start:start + sz.IDS_IN_BATCH]
         q = (client.table("provisions")
              .select("id, citation, title, parent_id, full_text, sort_order, ai_summary")
              .in_("id", chunk))
@@ -446,8 +446,8 @@ def build_sample(client_supabase, meta: dict, children_index: dict, r1: review.R
     want = set(pass_ids) | {r["id"] for r in corr_rows}
     rows_by_id: dict[str, dict] = {}
     ids = sorted(want)
-    for start in range(0, len(ids), sz.DB_PAGE_SIZE):
-        chunk = ids[start:start + sz.DB_PAGE_SIZE]
+    for start in range(0, len(ids), sz.IDS_IN_BATCH):
+        chunk = ids[start:start + sz.IDS_IN_BATCH]
         q = client_supabase.table("provisions").select("id, citation, title, parent_id, full_text, ai_summary, summary_original, summary_status, reviewed_by").in_("id", chunk)
         for row in q.execute().data or []:
             rows_by_id[row["id"]] = row

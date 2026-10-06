@@ -144,8 +144,8 @@ def select_corrected_rows(client, groups: list[tuple[str, int]], seed: int, sinc
         rng.shuffle(ids)
         picked.extend(ids[:n])
     rows_by_id: dict[str, dict] = {}
-    for s in range(0, len(picked), sz.DB_PAGE_SIZE):
-        chunk = picked[s:s + sz.DB_PAGE_SIZE]
+    for s in range(0, len(picked), sz.IDS_IN_BATCH):
+        chunk = picked[s:s + sz.IDS_IN_BATCH]
         q = client.table("provisions").select(review.CANDIDATE_COLUMNS).in_("id", chunk)
         for row in q.execute().data or []:
             rows_by_id[row["id"]] = row

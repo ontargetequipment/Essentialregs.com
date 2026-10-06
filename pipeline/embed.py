@@ -722,7 +722,9 @@ def run(args: argparse.Namespace, client=None, stats: Optional[RunStats] = None)
         stats.touched_ids = sorted(done_ids)
 
     if not args.dry_run and not args.skip_neighbors:
-        ids = None if (args.reg is None and args.limit is None) else stats.touched_ids
+        # Whole-corpus rebuild only for a whole-corpus run; a reg, limit or
+        # explicit-ids run recomputes the rows it touched.
+        ids = None if (args.reg is None and args.limit is None and not ids) else stats.touched_ids
         if ids is None or ids:
             print("Recomputing related-provision neighbours"
                   f"{' for the whole corpus' if ids is None else f' for {len(ids):,} rows'}...")
