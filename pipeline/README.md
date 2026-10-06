@@ -624,9 +624,12 @@ new per-row figure).
 **Snapshot text as the input.** `--audit-ids a,b --from-snapshot` reviews the
 BEFORE summary from `archive.summary_review_snapshot_rereview` instead of the
 live one (read-only; RPC `rereview_snapshot_text`). `--redo-corrections-since
-<timestamp>` (workflow input **redo_corrections_since**) selects every
-snapshotted row the pipeline corrected at or after that time (RPC
-`rereview_corrected_since`) and reviews its BEFORE summary again with the new
+<timestamp>` (workflow input **redo_corrections_since**; `--redo-until` /
+**redo_until** bounds it from above so a redo can be resumed without
+re-selecting the rows it already re-corrected) selects every snapshotted row
+the pipeline corrected in that window (RPC `rereview_corrected_between`,
+paged -- PostgREST caps one call at 1,000 rows, which left 247 of 1,247 rows
+out of the first redo run) and reviews its BEFORE summary again with the new
 context; on execute, `pass` restores the before text with a pass stamp (the
 earlier correction is withdrawn; one `summary_edited` row), `corrected` writes
 the new text (a `summary_edited` row only when it differs from the live text;

@@ -1607,16 +1607,19 @@ class _RpcAny:
         if self.name == "rereview_snapshot_text":
             ids = set(self.params["p_ids"])
             return _Result([{"id": s["id"], "ai_summary": s["ai_summary"], "snapshot_at": "x"} for s in snap if s["id"] in ids])
-        if self.name == "rereview_corrected_since":
+        if self.name == "rereview_corrected_between":
             out = []
             for s in snap:
                 live = self.db.row(s["id"])
+                until = self.params.get("p_until")
                 if ("summary corrected, automated pipeline" in (live.get("reviewed_by") or "")
                         and (live.get("reviewed_at") or "") >= self.params["p_since"]
+                        and (until is None or (live.get("reviewed_at") or "") < until)
                         and live["summary_status"] in ("approved", "edited")):
                     out.append({"id": s["id"], "before_summary": s["ai_summary"], "live_summary": live["ai_summary"],
                                 "reviewed_at": live["reviewed_at"]})
-            return _Result(out)
+            lo = self.params.get("p_offset") or 0
+            return _Result(out[lo:lo + (self.params.get("p_limit") or 500)])
         return _Rpc(self.db, self.name, self.params).execute()
 
 
@@ -1693,7 +1696,7 @@ def test_redo_restores_the_original_on_pass_and_writes_new_corrections(monkeypat
     assert any("original summary restored" in c["note"] for c in db.changes)
     # the snapshot's before text is untouched
     assert [s["ai_summary"] for s in db.tables["archive_snapshot"] if s["id"] == "sec-gp01-VIII-C-1-a-(ii)"] == [APEN_BEFORE]
-    assert [c[0] for c in db.rpc_calls] == ["rereview_corrected_since"]        # no new snapshot call in redo mode
+    assert [c[0] for c in db.rpc_calls] == ["rereview_corrected_between"]        # no new snapshot call in redo mode
     md = (tmp_path / "out" / "review_report.md").read_text()
     assert "REDO" in md and "original summary restored" in md
 
@@ -1735,3 +1738,16 @@ def test_pre_submit_estimate_returns_ceiling_and_cache_floor(db):
     saved = review.estimate_cost("claude-sonnet-5-5", sys_tok * 3, 0) - review.estimate_cost(
         "claude-sonnet-5-5", 0, 0, cache_creation_tokens=sys_tok, cache_read_tokens=sys_tok * 2)
     assert ceiling - floor == pytest.approx(saved, abs=1e-9)
+
+
+def test_redo_selection_pages_and_honours_until(monkeypatch):
+    db = _stage1_db()
+    monkeypatch.setattr(review, "REDO_PAGE", 1)                 # force two pages for the two corrected rows
+    rows = review.select_redo_candidates(db, "2026-10-05T04:38:00Z")
+    assert sorted(r["id"] for r in rows) == ["sec-gp01-VIII-C-1-a-(ii)", "sec-gp07-II-B-1-b"]
+    assert len([c for c in db.rpc_calls if c[0] == "rereview_corrected_between"]) == 3   # 1 + 1 + empty page
+    # a row the first redo already re-corrected (later reviewed_at) is outside the until bound
+    db.row("sec-gp07-II-B-1-b")["reviewed_at"] = "2026-10-05T05:50:00+00:00"
+    rows = review.select_redo_candidates(db, "2026-10-05T04:38:00Z", "2026-10-05T05:45:00Z")
+    assert [r["id"] for r in rows] == ["sec-gp01-VIII-C-1-a-(ii)"]
+    assert review.parse_args(["--redo-corrections-since", "a", "--redo-until", "b"]).redo_until == "b"

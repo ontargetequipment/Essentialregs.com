@@ -527,7 +527,7 @@ def snapshot_for_rereview(client, ids: list[str], run_label: str) -> int:
 
 
 SNAPSHOT_TEXT_RPC = "rereview_snapshot_text"
-CORRECTED_SINCE_RPC = "rereview_corrected_since"
+CORRECTED_SINCE_RPC = "rereview_corrected_between"
 
 
 def fetch_snapshot_text(client, ids: list[str]) -> dict[str, str]:
@@ -563,13 +563,28 @@ def with_snapshot_text(client, rows: list[dict]) -> list[dict]:
     return kept
 
 
-def select_redo_candidates(client, since: str) -> list[dict]:
+REDO_PAGE = 500
+
+
+def select_redo_candidates(client, since: str, until: Optional[str] = None) -> list[dict]:
     """--redo-corrections-since: every snapshotted row the pipeline corrected
-    at or after `since` (RPC rereview_corrected_since), as full rows whose
-    ai_summary is the snapshot's BEFORE text and whose `_live_summary` is
-    the correction now on the site. Approved/edited rows only."""
-    res = client.rpc(CORRECTED_SINCE_RPC, {"p_since": since}).execute()
-    found = {r["id"]: r for r in (getattr(res, "data", None) or [])}
+    at or after `since` and, when given, before `until` (RPC
+    rereview_corrected_between, migration 20261006012200, paged: PostgREST
+    caps a function's result at 1,000 rows, which silently left 247 of 1,247
+    rows out of the first redo run), as full rows whose ai_summary is the snapshot's BEFORE text and
+    whose `_live_summary` is the correction now on the site. `until` lets a
+    redo be resumed: rows a redo already re-corrected carry a later
+    reviewed_at and fall outside the window. Approved/edited rows only."""
+    found: dict[str, dict] = {}
+    offset = 0
+    while True:
+        params = {"p_since": since, "p_until": until, "p_limit": REDO_PAGE, "p_offset": offset}
+        page = getattr(client.rpc(CORRECTED_SINCE_RPC, params).execute(), "data", None) or []
+        for r in page:
+            found[r["id"]] = r
+        if len(page) < REDO_PAGE:
+            break
+        offset += REDO_PAGE
     ids = list(found)
     rows_by_id: dict[str, dict] = {}
     for start in range(0, len(ids), DB_PAGE_SIZE):
@@ -1896,6 +1911,9 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--from-snapshot", action="store_true",
                         help="With --audit-ids: review the BEFORE summary from archive.summary_review_snapshot_rereview "
                              "instead of the live one (read-only).")
+    parser.add_argument("--redo-until", default=None, metavar="TIMESTAMP",
+                        help="With --redo-corrections-since: only corrections made before this timestamp (resume a "
+                             "redo without re-selecting the rows it already re-corrected).")
     parser.add_argument("--redo-corrections-since", default=None, metavar="TIMESTAMP",
                         help="REDO MODE: select every snapshotted row the pipeline corrected at or after this "
                              "timestamp and review its BEFORE summary again. With --execute: pass restores the "
@@ -1953,7 +1971,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             print(f"  {len(rows):,} rows reviewed on their snapshot (BEFORE) text.")
     elif redo_since:
         print(f"REDO: snapshotted rows the pipeline corrected since {redo_since}; the BEFORE text is reviewed again.")
-        rows = select_redo_candidates(client_supabase, redo_since)
+        rows = select_redo_candidates(client_supabase, redo_since, args.redo_until or None)
         print(f"  {len(rows):,} rows selected.")
     elif args.audit is not None:
         print(f"AUDIT: sampling {args.audit} approved rows (seed {args.seed}) whose reviewed_by does not "
