@@ -105,7 +105,15 @@ Owner decision (Brody, Oct 5 2026): review is part of how a regulation gets onto
 
 The new `SYSTEM_PROMPT_TEMPLATE` (summarize.py) has a numbered rule with a short example for each of the first ten types, keeps the three things the reviewer allows (correct acronym expansions or standard names, clearly marked examples that do not change scope, correct spelling where the source has a typo), and keeps the Phase 0 descendants, mid-sentence, 40 CFR Administrator and equations paragraphs. The old writer is kept verbatim in `pipeline/legacy_writer.py` for the proof only.
 
-**Writer proof** (read-only, Review workflow input `writer_proof`, `pipeline/writer_proof.py`): WRITER_PROOF_RESULTS
+**Writer proof** (read-only, Review workflow input `writer_proof`, `pipeline/writer_proof.py`; owner-approved spend $3). 150 provisions the pipeline reviewer corrected in October (seeded, 30 each from the general permits, Regulation 3, Regulation 7, OOOOb and ECMC; none over the old cap or in outline mode) were regenerated with the OLD writer (the 5 Oct prompt and its 400-character parent excerpt, kept verbatim in `pipeline/legacy_writer.py`) and the NEW writer (the rewritten rules plus the full ancestor chain), without writing to the database, and both sets were scored by the reviewer (claude-sonnet-5-5, prompt v4) in audit mode.
+
+| attempt | rows | old writer would-correct | new writer would-correct | cost | run |
+|---|---:|---:|---:|---:|---|
+| 1 (rules as first written) | 150 | **49.3%** (74 corrected, 0 fail) | **26.0%** (39 corrected, 0 fail) | $2.12 | [37471297852](https://github.com/ontargetequipment/Essentialregs.com/actions/runs/37471297852), report `docs/imports/2026-10-06/writer_proof_attempt1_150.md` |
+| 2 (rules sharpened on attempt 1's remaining reasons; new writer only, on the first 100 of the same rows, where the old writer scored 53.0% and attempt 1 27.0%) | 100 | 53.0% (attempt 1 data) | ATTEMPT2_RESULT | ATTEMPT2_COST | ATTEMPT2_RUN |
+
+By group, attempt 1 (old -> new): general permits 60.0% -> 30.0%, Regulation 3 70.0% -> 36.7%, Regulation 7 26.7% -> 16.7%, OOOOb 30.0% -> 20.0%, ECMC 60.0% -> 26.7%. Attempt 1 fell just short of halving (the target was 24.7%, 37 rows; it reached 39). The reasons left against the new writer were read one by one (51 reasons on 39 rows): an item in a list of options stated as the requirement; a qualifier the text does not have ("written", "site-specific", "whichever comes first"); a body renamed ("the Administrator" given an agency name, "the state Act" named); a cited section labelled ("the monitoring requirements of"); and a listed item framed differently from the text (a procedural item counted among the "circumstances", a rule that applies to every item stated as "only when" one holds). Attempt 2 adds one sentence to each of the rules concerned (1, 2, 4, 8 and the descendants paragraph). ATTEMPT2_VERDICT
+
 
 ## Citation links (rules in force since Oct 4 2026, PRs #46, #47 and the citation follow-up)
 
