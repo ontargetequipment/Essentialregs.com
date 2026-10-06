@@ -359,6 +359,18 @@ def test_chain_regenerates_ancestors_whose_prompt_holds_the_descendants(monkeypa
     assert parent["summary_status"] == "approved" and parent["summary_original"] == "Old parent summary that will be regenerated."
 
 
+def test_an_empty_ids_file_selects_nothing(monkeypatch, tmp_path):
+    """An import that changed nothing hands the chain an empty id list; that
+    must select nothing, never fall through to a whole-corpus scan."""
+    db = _EmbedDb(_rows())
+    ids = tmp_path / "ids.txt"
+    ids.write_text("")
+    rc, fake, report = _run(db, {}, {}, ["--ids-file", str(ids), "--skip-embed"], monkeypatch, tmp_path)
+    assert rc == 0 and report["counts"]["selected"] == 0
+    assert not fake.messages.batches.created and not db.writes
+    assert any("empty" in n for n in report["notes"])
+
+
 def test_parse_resume_spec():
     assert run_chain.parse_resume("summarize=a,b;review=c") == {"summarize": ["a", "b"], "review": ["c"]}
     assert run_chain.parse_resume(None) == {}

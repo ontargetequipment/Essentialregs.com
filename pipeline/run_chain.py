@@ -140,10 +140,16 @@ def select_rows(client, args, meta: dict, children_index: dict) -> tuple[list[di
         ids = [i.strip() for i in args.ids.split(",") if i.strip()]
     else:
         ids = None
-    rows = list(sz.iter_candidates(client, args.reg, args.force, args.limit, ids=ids,
-                                   parent_ids=set(children_index) if args.parents else None,
-                                   longer_than=args.longer_than))
     notes: list[str] = []
+    if ids is not None and not ids:
+        # An explicit but empty id list (an import that changed nothing)
+        # selects nothing -- never fall through to the whole-corpus scan.
+        rows: list[dict] = []
+        notes.append("explicit id list is empty: nothing selected")
+    else:
+        rows = list(sz.iter_candidates(client, args.reg, args.force, args.limit, ids=ids,
+                                       parent_ids=set(children_index) if args.parents else None,
+                                       longer_than=args.longer_than))
     if args.ancestor_ids_file:
         ancestor_ids = [a for a in sz.load_ids_file(args.ancestor_ids_file) if a not in {r["id"] for r in rows}]
         anc_rows, skipped = select_ancestor_rows(client, ancestor_ids, meta, children_index)

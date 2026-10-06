@@ -2700,6 +2700,11 @@ def main(argv: Optional[list[str]] = None) -> int:
           f"{' [parents: rows with a summary and at least one child]' if args.parents else ''}"
           f"{f' [summary longer than {args.longer_than} chars]' if args.longer_than is not None else ''}"
           f"{' [force: regenerating existing summaries too]' if args.force and not ids and not args.parents else ''}...")
+    if ids is not None and not ids:
+        # An explicit but empty id list (an import that changed nothing)
+        # selects nothing -- never fall through to the whole-corpus scan.
+        print("Nothing to do: the id list is empty.")
+        return 0
     rows = list(iter_candidates(client_supabase, args.reg, args.force, args.limit, ids=ids,
                                 parent_ids=set(children_index) if args.parents else None,
                                 longer_than=args.longer_than))
