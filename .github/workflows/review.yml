@@ -8,7 +8,9 @@ name: Review pending summaries
 # the report. Without `execute` it is a dry run: no paid call, no write, a cost
 # quote per model option. `rereview` selects the hand-approved rows instead
 # (snapshot first; fail -> pending). See pipeline/README.md, "Automated AI
-# review pass".
+# review pass". Since 6 Oct 2026 (ReviewBuiltIn) the review also runs
+# automatically inside the Generate summaries and Import workflows for the
+# rows they write; this workflow is for re-reviews, audits and redo runs.
 
 on:
   workflow_dispatch:
@@ -35,9 +37,18 @@ on:
         options: [low, medium, high]
         default: low
       max_cost:
-        description: "Spend cap in USD: refuse to submit above this estimate; cancel the remaining batches once actual spend passes it. Leave blank for no cap."
+        description: "Cap on the WHOLE run in USD: refuse to submit above this estimate; cancel the remaining batches once actual spend passes it. Leave blank for no run cap. The standing budget ($10 per regulation per run, pipeline/budget.py) applies as well, always."
         required: false
         default: ""
+      approved_budget:
+        description: "Owner-approved budget in USD per regulation for THIS run, replacing the standing $10 rule. Printed at the top of the report. Leave blank for the standing rule."
+        required: false
+        default: ""
+      audit_population:
+        description: "Audit mode: which approved rows to sample -- hand (reviewed_by without 'automated pipeline', the original audit), pipeline (AI-reviewed rows, what the monthly audit uses), all."
+        type: choice
+        options: [hand, pipeline, all]
+        default: hand
       audit_sample:
         description: "AUDIT MODE: review N random approved rows (reviewed_by not containing 'automated pipeline', spread across regulations) and write NOTHING to the database, only the report. Leave blank for the normal pending-row review."
         required: false
@@ -77,6 +88,23 @@ on:
         type: boolean
         required: false
         default: false
+      writer_proof:
+        description: "WRITER PROOF (ReviewBuiltIn item 3, read-only for the database): regenerate provisions the reviewer corrected in October 2026 with the OLD and the NEW writer instructions and score both with the reviewer in audit mode (pipeline/writer_proof.py). 'quote' = cost estimate only; 'execute' = paid calls, nothing written. Overrides every other input except max_cost."
+        type: choice
+        options: [none, quote, execute]
+        default: none
+      proof_groups:
+        description: "Writer proof: group:count per group (gp = every general permit)."
+        required: false
+        default: "gp:30,3:30,7:30,oooob:30,ecmc:30"
+      proof_seed:
+        description: "Writer proof: sample seed."
+        required: false
+        default: "20261006"
+      proof_arms:
+        description: "Writer proof: writers to run (old,new or one of them)."
+        required: false
+        default: "old,new"
 
 jobs:
   review:
@@ -100,7 +128,25 @@ jobs:
       - name: Unit tests
         run: python -m pytest test_review.py -q
 
+      - name: Writer proof (old vs new writer instructions; nothing written)
+        if: ${{ inputs.writer_proof != 'none' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          CAP="${{ inputs.max_cost }}"; if [ -z "$CAP" ]; then CAP=3; fi
+          ARGS=(--groups "${{ inputs.proof_groups }}" --seed "${{ inputs.proof_seed }}" --arms "${{ inputs.proof_arms }}" --max-cost "$CAP")
+          if [ "${{ inputs.writer_proof }}" = "execute" ]; then ARGS+=(--execute); else ARGS+=(--dry-run); fi
+          echo "Running: python writer_proof.py ${ARGS[*]}"
+          python writer_proof.py "${ARGS[@]}"
+          if [ -f out/writer_proof.md ]; then
+            head -c 60000 out/writer_proof.md >> "$GITHUB_STEP_SUMMARY"
+            echo "::group::writer_proof.md"; cat out/writer_proof.md; echo "::endgroup::"
+          fi
+
       - name: Run review
+        if: ${{ inputs.writer_proof == 'none' }}
         env:
           # The API key is passed to dry runs too: review.py only uses it there
           # for messages.count_tokens, a free endpoint, so the quote is exact.
@@ -113,7 +159,8 @@ jobs:
           if [ -n "${{ inputs.ids }}" ]; then ARGS+=(--ids "${{ inputs.ids }}"); fi
           if [ -n "${{ inputs.limit }}" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
           if [ -n "${{ inputs.max_cost }}" ]; then ARGS+=(--max-cost "${{ inputs.max_cost }}"); fi
-          if [ -n "${{ inputs.audit_sample }}" ]; then ARGS+=(--audit "${{ inputs.audit_sample }}" --seed "${{ inputs.seed }}"); fi
+          if [ -n "${{ inputs.audit_sample }}" ]; then ARGS+=(--audit "${{ inputs.audit_sample }}" --seed "${{ inputs.seed }}" --audit-population "${{ inputs.audit_population }}"); fi
+          if [ -n "${{ inputs.approved_budget }}" ]; then ARGS+=(--approved-budget "${{ inputs.approved_budget }}"); fi
           if [ -n "${{ inputs.audit_ids }}" ]; then ARGS+=(--audit-ids "${{ inputs.audit_ids }}"); fi
           if [ "${{ inputs.from_snapshot }}" = "true" ]; then ARGS+=(--from-snapshot); fi
           if [ -n "${{ inputs.redo_corrections_since }}" ]; then ARGS+=(--redo-corrections-since "${{ inputs.redo_corrections_since }}"); fi
@@ -155,6 +202,8 @@ jobs:
             pipeline/out/review_report.md
             pipeline/out/review_report.json
             pipeline/review_failed.jsonl
+            pipeline/out/writer_proof.md
+            pipeline/out/writer_proof.json
           retention-days: 90
           if-no-files-found: warn
 
@@ -162,5 +211,5 @@ jobs:
         # The full report above can be longer than the GitHub API returns for
         # a job log; the API keeps the end. This compact summary (counts,
         # actual cost, by regulation, failed rows) is the last thing printed.
-        if: always()
+        if: ${{ always() && inputs.writer_proof == 'none' }}
         run: python review_summary.py out/review_report.json

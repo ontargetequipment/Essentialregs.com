@@ -1,7 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { ProvisionCard } from "@/components/ProvisionCard";
 import { RelatedProvisions } from "@/components/RelatedProvisions";
-import { fetchRegulationRoots, regKeyOf, rootIdOf, sampleCards } from "@/lib/regulation";
+import {
+  fetchPendingSummaryCounts,
+  fetchRegulationRoots,
+  gatePublicSummaries,
+  regKeyOf,
+  rootIdOf,
+  sampleCards,
+} from "@/lib/regulation";
 import type { Provision } from "@/lib/types";
 
 export const metadata = {
@@ -41,10 +48,18 @@ export default async function SamplePage() {
   // citation and title only, through the service-role client, so a prospect
   // sees exactly what a subscriber sees.
   const regKeys = Array.from(new Set((data ?? []).map((p) => regKeyOf(p.id)).filter(Boolean))) as string[];
-  const roots = await fetchRegulationRoots(regKeys.map(rootIdOf));
+  const [roots, pendingByReg] = await Promise.all([
+    fetchRegulationRoots(regKeys.map(rootIdOf)),
+    fetchPendingSummaryCounts(regKeys),
+  ]);
 
+  // A summary is public only once it is AI reviewed and its regulation's
+  // review run has finished (gatePublicSummaries, owner decision 5 Oct 2026).
   const provisions = sampleCards(
-    (data ?? []).map((p) => ({ ...p, cross_references: p.cross_references ?? [] })),
+    gatePublicSummaries(
+      (data ?? []).map((p) => ({ ...p, cross_references: p.cross_references ?? [] })),
+      pendingByReg
+    ),
     roots,
     SAMPLE_ORDER
   ) as Provision[];

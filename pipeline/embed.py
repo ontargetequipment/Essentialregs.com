@@ -104,6 +104,9 @@ NEIGHBOR_RETRY_SLEEP = 2         # seconds; doubled on every retry of the same b
 NEIGHBOR_LOG_EVERY = 40          # batches between progress lines (~1,000 provisions at full size)
 MAX_RETRIES = 6
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import budget as budget_module  # noqa: E402
+
 TAG_RE = re.compile(r"<[^>]+>")
 NBSP_RE = re.compile(r"&nbsp;")
 WS_RE = re.compile(r"\s+")
@@ -255,14 +258,27 @@ def build_chunks(provision: dict, parent: Optional[dict], model: str) -> list[Ch
 # --------------------------------------------------------------------------
 
 def make_supabase_client():
-    from supabase import create_client
+    """supabase-py behind the reconnecting wrapper (dbclient.py): a
+    connection the host closes mid-run is reopened and the request
+    replayed."""
+    from dbclient import make_reconnecting_client
 
-    return create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    return make_reconnecting_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
 
 
-def fetch_provisions(client, reg: Optional[str], limit: Optional[int]) -> list[dict]:
+def fetch_provisions(client, reg: Optional[str], limit: Optional[int],
+                     ids: Optional[list[str]] = None) -> list[dict]:
     like_prefix = f"sec-{reg.lower()}-" if reg else None
     cols = "id, citation, title, parent_id, full_text, ai_summary, summary_status, jurisdiction_level, sort_order"
+    if ids:
+        # Exact rows (the chained run embeds exactly what it wrote), in
+        # IN_BATCH-sized id lists so long ids fit the request URL.
+        out: list[dict] = []
+        for i in range(0, len(ids), IN_BATCH):
+            chunk = ids[i:i + IN_BATCH]
+            out.extend(client.table("provisions").select(cols).in_("id", chunk).execute().data or [])
+        out.sort(key=lambda r: r["id"])
+        return out[:limit] if limit is not None else out
     # Page on `id`, never on sort_order: sort_order is only unique within one
     # regulation, and paging a whole-corpus query on a column with ties lets
     # PostgREST hand back the same row twice and skip another (the duplicate
@@ -546,6 +562,8 @@ class RunStats:
     failed: int = 0
     neighbors_written: int = 0
     touched_ids: list[str] = field(default_factory=list)
+    budget_stopped: Optional[str] = None      # the budget message when it stopped the run
+    spent_by_reg: dict = field(default_factory=dict)
 
 
 def estimate_cost(model: str, tokens: int) -> float:
@@ -609,10 +627,12 @@ def plan_work(provisions: list[dict], parents: dict[str, dict], existing: dict[t
     return todo, counts
 
 
-def run(args: argparse.Namespace) -> int:
+def run(args: argparse.Namespace, client=None, stats: Optional[RunStats] = None) -> int:
+    """`client` and `stats` are injected by the chained run (run_chain.py),
+    which embeds exactly the rows it wrote with the run's own budget."""
     model = args.model
-    stats = RunStats()
-    client = make_supabase_client()
+    stats = stats if stats is not None else RunStats()
+    client = client if client is not None else make_supabase_client()
 
     if args.neighbors_only:
         print("Recomputing related-provision neighbours for the whole corpus (no API calls)...")
@@ -620,9 +640,11 @@ def run(args: argparse.Namespace) -> int:
         print(f"  {stats.neighbors_written:,} neighbour rows written.")
         return 0
 
+    ids = [i.strip() for i in args.ids.split(",") if i.strip()] if getattr(args, "ids", None) else None
     print(f"Fetching provisions{f' for reg {args.reg}' if args.reg else ' (all regulations)'}"
+          f"{f' ({len(ids)} explicit ids)' if ids else ''}"
           f"{f' (limit {args.limit})' if args.limit else ''}...")
-    provisions = fetch_provisions(client, args.reg, args.limit)
+    provisions = fetch_provisions(client, args.reg, args.limit, ids=ids)
     print(f"  {len(provisions):,} rows.")
     parents = fetch_parents(client, (p.get("parent_id") for p in provisions))
     existing = {} if args.force else fetch_existing_hashes(client, [p["id"] for p in provisions], args.reg)
@@ -632,6 +654,19 @@ def run(args: argparse.Namespace) -> int:
     print(f"  {stats.provisions_skipped_unchanged:,} provisions unchanged; "
           f"{len(todo):,} chunks to embed across "
           f"{len({c.provision_id for c in todo}):,} provisions.")
+
+    # The standing budget (budget.py) applies here too; embedding is cents,
+    # but the estimate is recorded per regulation so the chained run can add
+    # it to the summarize and review figures, and a wildly wrong selection
+    # is stopped before the first call.
+    budget = getattr(args, "budget", None) or budget_module.budget_from_args(getattr(args, "approved_budget", None))
+    for c in todo:
+        budget.estimate(reg_key_of(c.provision_id) or "?", "embed", estimate_cost(model, estimate_tokens(len(c.text))))
+    over = budget.over_estimate()
+    if over and not args.dry_run:
+        stats.budget_stopped = budget.stop_message_estimate(over)
+        print(stats.budget_stopped, file=sys.stderr)
+        return 2
 
     if not todo:
         print("Nothing to embed.")
@@ -662,6 +697,9 @@ def run(args: argparse.Namespace) -> int:
                 continue
             stats.requests += 1
             stats.tokens += tokens
+            for pid in {c.provision_id for c in batch}:
+                share = sum(len(c.text) for c in batch if c.provision_id == pid) / max(1, sum(len(c.text) for c in batch))
+                budget.spend(reg_key_of(pid) or "?", "embed", estimate_cost(model, int(tokens * share)))
             now = datetime.now(timezone.utc).isoformat()
             rows = [{
                 "provision_id": c.provision_id,
@@ -684,13 +722,16 @@ def run(args: argparse.Namespace) -> int:
         stats.touched_ids = sorted(done_ids)
 
     if not args.dry_run and not args.skip_neighbors:
-        ids = None if (args.reg is None and args.limit is None) else stats.touched_ids
+        # Whole-corpus rebuild only for a whole-corpus run; a reg, limit or
+        # explicit-ids run recomputes the rows it touched.
+        ids = None if (args.reg is None and args.limit is None and not ids) else stats.touched_ids
         if ids is None or ids:
             print("Recomputing related-provision neighbours"
                   f"{' for the whole corpus' if ids is None else f' for {len(ids):,} rows'}...")
             stats.neighbors_written = recompute_neighbors(client, ids)
 
     print_report(stats, model, args.dry_run)
+    stats.spent_by_reg = {reg: budget.spent_total(reg) for reg in budget.spent}
     return 1 if stats.failed else 0
 
 
@@ -714,6 +755,11 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
                         help="Do not recompute provision_neighbors after embedding.")
     parser.add_argument("--neighbors-only", action="store_true",
                         help="Only recompute provision_neighbors for the whole corpus.")
+    parser.add_argument("--ids", default=None,
+                        help="Comma-separated exact provision ids to embed (changed rows only unless --force).")
+    parser.add_argument("--approved-budget", type=float, default=None, metavar="USD",
+                        help="Owner-approved budget per regulation for this run (budget.py); the standing "
+                             f"${budget_module.STANDING_BUDGET_USD:.0f} rule otherwise.")
     parser.add_argument("--start-after", default=None, metavar="PROVISION_ID",
                         help="With --neighbors-only: skip ids up to and including this one "
                              "(the 'last=' id from a failed run's log) instead of starting over.")

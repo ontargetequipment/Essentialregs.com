@@ -14,6 +14,20 @@
 -- purpose. Checks 1-3 and 8 print their hit ids so a failure can be read
 -- from the job summary without a second query.
 --
+-- ReviewBuiltIn (owner decision, 5 Oct 2026; built 6 Oct 2026): three GUARD
+-- checks make the review step mandatory. 19 approved_without_review_date
+-- (an approved/edited row with no reviewed_at), 21 approved_outside_pipeline
+-- (an approved/edited row whose reviewed_by does not contain 'automated
+-- pipeline' -- it replaced the looser 'starts with Claude (' test of 4 Oct),
+-- and 25 summary_pending_over_24h (a summary that has sat pending for more
+-- than 24 hours, less the short allow-list pending_allowlist below, each
+-- entry with its reason). All three are expected 0; the qa job on every pull
+-- request and the daily "Summary guard" workflow
+-- (.github/workflows/summary-guard.yml) both fail on them, and the daily run
+-- opens the issue "Summary guard failed". Production also carries the
+-- trigger provisions_summary_approval_only_by_pipeline (migration
+-- 20261006090000), which refuses an approval outside the pipeline outright.
+--
 -- Every check here corresponds to a defect that has ALREADY happened once and
 -- is recorded in EssentialRegs_Known_Issues_and_Fixes.md. This file exists so
 -- the next one is caught by a query instead of by somebody noticing.
@@ -291,6 +305,32 @@ with plain as (
 -- the source is a run of parallel paragraphs, each read by hand on
 -- 2 Oct 2026. A NEW hit on check 1 must be read the same way, never added
 -- here blindly: the Reg 3 Part F signature it exists for looks identical.
+-- Check 25 allow-list: rows that cannot be verified by the automated
+-- reviewer and are left pending on purpose (ReviewBuiltIn item 4). Every
+-- entry carries its reason and the date it was last tried; a row leaves the
+-- list the moment it is approved. Keep it short: a long list here is the
+-- problem the check exists to catch.
+pending_allowlist (id, reason) as (
+  values
+    -- The 13 rows left pending by the October re-review (docs/CEO_PHASE_PLAN.md,
+    -- "Still pending after step 2"). Listed here until the ReviewBuiltIn
+    -- chained run after PR #67 merges (item 8d) has reviewed them; every row
+    -- it approves comes off this list, every row still pending keeps its
+    -- real reason here.
+    ('sec-1-X', 'text over the old 6,000-word cap and 17 children in outline mode; re-run with the 16,000-word cap after PR #67'),
+    ('sec-11-H-APPENDIX-A-2.15-C', 'Markdown-only correction that also changed wording; validator accepts it since PR #67, re-run after merge'),
+    ('sec-2-C-I', 'text over the old 6,000-word cap (7,067 words); re-run with the 16,000-word cap after PR #67'),
+    ('sec-21-A-II-E', 'Markdown-only correction that also changed wording; validator accepts it since PR #67, re-run after merge'),
+    ('sec-21-A-II-I', 'Markdown-only correction that also changed wording; validator accepts it since PR #67, re-run after merge'),
+    ('sec-28-F-I', 'text over the old 6,000-word cap (7,565 words); re-run with the 16,000-word cap after PR #67'),
+    ('sec-3-F-I-C', 'text over the old 6,000-word cap (9,842 words); re-run with the 16,000-word cap after PR #67'),
+    ('sec-31-K-I', 'text over the old 6,000-word cap (15,401 words); re-run with the 16,000-word cap after PR #67'),
+    ('sec-7-C-N', 'text over the old 6,000-word cap (8,718 words); re-run with the 16,000-word cap after PR #67'),
+    ('sec-8-B-VII-K', 'text over the old 6,000-word cap (6,057 words), summarizer hedged twice; re-run with the new writer after PR #67'),
+    ('sec-aqs-VII-B', 'heading-only row (163 words); the new writer gives it an overview from its subsections, re-run after PR #67'),
+    ('sec-cp-V-D', 'text over the old 6,000-word cap (9,846 words); re-run with the 16,000-word cap after PR #67'),
+    ('sec-jjjj-60.4233-(f)-(4)-(iv)', 'correction was a rewrite (134 words from 61); regenerate with the new writer after PR #67')
+),
 repeated_text_allowlist (id, reason) as (
   values
     ('sec-jjjj-60.4231-(b)',  'JJJJ s 60.4231(b): parallel paragraph; each sub-item reopens "Stationary SI internal combustion engine manufacturers must certify..."'),
@@ -499,17 +539,28 @@ checks as (
   ) d
 
   union all
-  select 19, 'GUARD', 'summary_status_badge_inputs', count(*), 0,
-         'Trust badge (1 Oct 2026; "AI reviewed" since 4 Oct 2026). Every summary in the reader and on the Ask, keyword and related cards carries "AI reviewed · <reviewed_at>" for summary_status approved/edited, or "AI-generated · not yet reviewed" for pending (summaryStatusBadge in src/lib/regulation-pure.ts). A reviewed row with a null reviewed_at renders "AI reviewed" with no date, which a reader cannot date-check. Counts rows with summary_status in (approved, edited) and reviewed_at null. Expect 0; report the count if not, do not fix the data from a web PR (the review actions and the pipeline set reviewed_at).'
+  select 19, 'GUARD', 'approved_without_review_date', count(*), 0,
+         'Trust badge (1 Oct 2026; "AI reviewed" since 4 Oct 2026; ReviewBuiltIn guard since 6 Oct 2026). Every summary in the reader and on the Ask, keyword and related cards carries "AI reviewed · <reviewed_at>" for summary_status approved/edited (summaryStatusBadge in src/lib/regulation-pure.ts). An approved or edited row with a null reviewed_at was not stamped by the review step, and renders "AI reviewed" with no date. Counts rows with summary_status in (approved, edited) and reviewed_at null. Expect 0 (the trigger provisions_summary_approval_only_by_pipeline refuses the write). When above 0, send the rows through pipeline/review.py; never edit reviewed_at by hand.'
+         || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where summary_status in ('approved', 'edited') and reviewed_at is null order by id limit 30) r), '')
   from provisions
   where summary_status in ('approved', 'edited') and reviewed_at is null
 
   union all
-  select 21, 'GUARD', 'approved_without_ai_review', count(*), 0,
-         'AI reviewed label (owner decision, 4 Oct 2026). The badge reads "AI reviewed" for every approved or edited summary and depends on summary_status alone, so it is only true when the AI second pass has actually run on the row. The pass stamps reviewed_by as ''Claude (...)''; the admin queue (src/app/admin/review/actions.ts) stamps the admin''s email instead. Counts rows with summary_status in (approved, edited) whose reviewed_by is null or does not start with ''Claude ('': each one is a human-only approval the site would mislabel. Expect 0. When above 0, send the listed rows through the AI second pass (which re-stamps reviewed_by) rather than editing reviewed_by by hand.'
-         || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not like 'Claude (%') order by id limit 30) r), '')
+  select 21, 'GUARD', 'approved_outside_pipeline', count(*), 0,
+         'AI reviewed label (owner decision, 4 Oct 2026; tightened 6 Oct 2026, ReviewBuiltIn). The badge reads "AI reviewed" for every approved or edited summary and depends on summary_status alone, so it is only true when pipeline/review.py has actually run on the row. Both of its stamps contain ''automated pipeline''. Counts rows with summary_status in (approved, edited) whose reviewed_by is null or does not contain ''automated pipeline'': each one is an approval made outside the pipeline (a hand pass, a script, the old admin Approve button) that the site would mislabel. Expect 0 (the trigger provisions_summary_approval_only_by_pipeline refuses the write; this check is the loud failure if the trigger is ever dropped). When above 0, set the rows back to pending and let the next review run stamp them; never edit reviewed_by by hand.'
+         || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not ilike '%automated pipeline%') order by id limit 30) r), '')
   from provisions
-  where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not like 'Claude (%')
+  where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not ilike '%automated pipeline%')
+
+  union all
+  select 25, 'GUARD', 'summary_pending_over_24h', count(*), 0,
+         'ReviewBuiltIn (owner decision, 5 Oct 2026). Review runs in the same workflow run that writes a summary, so a summary that has been pending for more than 24 hours means a run died, was skipped, or the reviewer failed the row twice and nobody acted. Counts rows with a summary, summary_status pending and summary_generated_at (or, when that is null, updated_at) older than 24 hours, less the allow-listed ids in pending_allowlist (each with its reason). Expect 0. When above 0: re-run the summarize workflow for the ids (it reviews what it writes), or add the id to pending_allowlist with the reason it cannot be verified.'
+         || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select p.id from provisions p where p.ai_summary is not null and p.summary_status = 'pending' and coalesce(p.summary_generated_at, p.updated_at) < now() - interval '24 hours' and p.id not in (select id from pending_allowlist) order by p.id limit 30) r), '')
+         || coalesce(' Allow-listed (still pending): ' || (select string_agg(p.id || ' (' || a.reason || ')', '; ' order by p.id) from provisions p join pending_allowlist a on a.id = p.id where p.summary_status = 'pending'), '')
+  from provisions p
+  where p.ai_summary is not null and p.summary_status = 'pending'
+    and coalesce(p.summary_generated_at, p.updated_at) < now() - interval '24 hours'
+    and p.id not in (select id from pending_allowlist)
 
   union all
   select 22, 'GUARD', 'math_glyphs_in_text', count(*), 0,

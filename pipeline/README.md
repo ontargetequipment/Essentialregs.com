@@ -4,6 +4,98 @@ This runs entirely in GitHub Actions — you don't need to install anything or
 run any commands on your own computer. You just need to add three secrets
 once, then click a button to run it.
 
+## Review is built in (owner decision, Brody, 5 Oct 2026)
+
+Review is part of how a regulation gets onto the site. No summary reaches a
+customer labelled "AI reviewed" without passing through `pipeline/review.py`,
+and nobody has to ask for it. Since 6 Oct 2026 (ReviewBuiltIn):
+
+- **One run, three stages, one report.** The **Generate summaries** workflow
+  runs `pipeline/run_chain.py`: it writes every summary as `pending`, reviews
+  exactly the rows it wrote (`review.py`, same reviewer, same prompt), embeds
+  them, and writes one report (`pipeline/out/chain_report.md`, the
+  **chain-report** artifact and the job summary). Rows the reviewer fails are
+  regenerated once and reviewed again in the same run; rows that fail twice
+  stay pending and are listed at the top of the report.
+- **Imports trigger it too.** The **Import regulation** workflow runs the same
+  chained run after every execute, on every row whose letters or digits
+  changed plus its ancestors (their summaries are written from the provision
+  and its descendants). No checkbox; `skip_summaries` is the emergency
+  opt-out, off by default. Link-markup-only changes (a new cross-reference
+  span, a [sic] marker, whitespace, punctuation) do not trigger it and keep
+  the row's review state (`text_letters_digits_changed`, tested).
+- **Only `review.py` approves.** A summary becomes `approved` or `edited` only
+  through `review.py`. The admin page (`/admin/review`) can reject a summary,
+  send it back to pending, or save an edited text as pending for the next
+  review; its Approve buttons are gone. The database trigger
+  `provisions_summary_approval_only_by_pipeline` (migration
+  `20261006090000`) refuses any approval whose `reviewed_by` does not carry
+  "automated pipeline" or whose `reviewed_at` is null, and
+  `test_run_chain.py` fails if any other file in the repo writes an approval.
+- **Guards that fail loudly.** `scripts/corpus_qa.sql` checks 25
+  `summary_pending_over_24h` (expected 0, less the short `pending_allowlist`
+  in the same file, each entry with its reason), 21 `approved_outside_pipeline`
+  (expected 0; replaced the looser check of 4 Oct) and 19
+  `approved_without_review_date` (expected 0). CI's qa job runs them on every
+  pull request; the daily **Summary guard** workflow
+  (`.github/workflows/summary-guard.yml`, 07:17 Mountain) runs them too and
+  opens the issue **"Summary guard failed"** with the counts and ids when any is
+  above 0, and does nothing when all are 0. Every chained run also prints the
+  three counts at the end of its log (`pipeline/summary_guard.py`).
+- **A monthly spot-check.** The **Monthly summary audit** workflow
+  (`monthly-audit.yml`, the 1st of each month) runs the reviewer in audit mode
+  (`review.py --audit 100 --audit-population pipeline`, current prompt, full
+  ancestor context) over 100 random AI-reviewed summaries, read-only, capped
+  at $1. It writes the report to `docs/imports/audits/<YYYY-MM>.md` through a
+  pull request and opens the issue **"Monthly summary audit: \<rate\>
+  would-correct"** when the would-correct rate is above 10 percent. It never
+  changes a summary.
+- **The standing spending rule, enforced in code.** The pipeline may spend up
+  to **$10 per regulation per run** on summaries, review and embedding combined
+  without asking (`pipeline/budget.py`, `STANDING_BUDGET_USD`, the one place
+  the number lives). Before the first paid call every stage's estimate is added
+  per regulation; if any regulation is over, the run makes no paid call and
+  stops with a message asking for owner approval (exit code 2). During the run
+  actual spend is recorded per regulation after every batch; passing the
+  budget cancels the remaining batches and leaves the remaining rows pending.
+  The only override is the workflow input **approved_budget**, which the run
+  prints at the top of its report. `summarize.py`, `review.py` and `embed.py`
+  enforce the same rule when run on their own.
+- **Reconnect and resume.** Every database write goes through
+  `pipeline/dbclient.py`, which reopens the connection and replays the request
+  when the host closes it (it does so after 10,000 requests on one HTTP/2
+  connection, which killed the stage 2b run on 6 Oct 2026). A chained run that
+  dies after submitting its batches writes their ids to
+  `pipeline/out/chain_state.json`; re-run it with the same selection inputs and
+  **resume_batches** (`summarize=msgbatch_a;review=msgbatch_b;...`) and it
+  consumes those batches without submitting or paying again.
+- **The writer sees what the reviewer sees.** The summarizer's prompt carries
+  the same "Text above this provision" block the reviewer has had since
+  PR #61 (`summarize.build_ancestor_block`, re-exported by `review.py`; one
+  copy), the whole provision text up to 16,000 words (was 6,000), and a
+  rewritten system prompt with one rule and example per error type the
+  October re-review found most often (parties, duty vs option, numbers and
+  dates, dropped conditions, ancestor limits, scope, open lists, citations,
+  purpose, terms). The proof (`writer_proof.py`, the **writer_proof** input of
+  the Review workflow) is recorded in `docs/CEO_PHASE_PLAN.md`.
+
+### Order of operations for a new regulation
+
+1. **Import** — Actions → **Import regulation from official PDF** → dry run
+   (unchecked `execute`), read the stats and diff report, then run again with
+   `execute`. The chained run follows automatically.
+2. **Summarize, review and embed in one run** — automatic after the import
+   (new rows and changed rows) and, for a regulation imported before 6 Oct
+   2026 or for a full redo, **Generate summaries** with `reg` set. Within the
+   $10 per regulation budget; above it the run stops and asks.
+3. **Spot-check** — the run writes a 40-row sample (20 pass, 20 corrected,
+   seeded, with the ancestor text the reviewer saw) to
+   `docs/imports/<date>/<label>_chain_sample_40.md` and opens a pull request
+   with it. The Cowork session checks the sample against the official text.
+4. **Make the regulation public** — its summaries do not appear on the public
+   `/sample` or `/regulations/<reg>/preview` pages until nothing of it is still
+   pending review (`teaserSummariesVisible`, `gatePublicSummaries`).
+
 ## Working rule: fetch and merge before editing
 
 More than one Claude Code session works in this repo, sometimes at the same
@@ -31,20 +123,29 @@ ever rotate it in the Anthropic console.
 
 1. On GitHub, go to the **Actions** tab → **Generate summaries** (in the left
    sidebar) → **Run workflow** (button on the right).
-2. You'll see four optional fields:
+2. The fields (all optional):
    - **reg** — leave blank to process every regulation, or type `7`, `3`,
      `26`, or `oooob` to do just one.
    - **limit** — leave blank for no limit, or type a number to only process
      that many provisions (useful for test runs).
-   - **dry_run** — check this to preview what would happen without spending
-     any money or changing anything in the database.
-   - **model** — leave as `claude-sonnet-4-5` unless you're deliberately
-     trying a different model.
+   - **dry_run** — check this to preview the selection and the estimate for
+     all three stages against the budget without spending any money or
+     changing anything in the database.
+   - **model** / **review_model** — the writer (`claude-sonnet-4-5`) and the
+     reviewer (`claude-sonnet-5-5`, always a separate call).
    - **force** — leave unchecked for normal use. Check this only when you
      want to regenerate summaries that already exist (see "Regenerating a
      regulation from scratch" below) — combine it with a specific `reg` so
      you don't accidentally re-spend money re-summarizing everything.
-3. Click the green **Run workflow** button.
+   - **ids** — exact provision ids to regenerate, review and embed.
+   - **approved_budget** — only when the owner has approved more than the
+     standing $10 per regulation for this run; printed at the top of the
+     report.
+   - **resume_batches** — only to finish a run that died after submitting
+     (see "Reconnect and resume" above).
+3. Click the green **Run workflow** button. The run summarizes, reviews and
+   embeds; read `chain_report.md` in the job summary: the budget, the rows
+   still pending (expected none), the counts per stage and every correction.
 
 ### The recommended first-time sequence
 
@@ -57,14 +158,16 @@ ever rotate it in the Anthropic console.
    unchecked. This actually calls Claude and writes 25 real summaries for
    Regulation 7. Open the site and spot-check a few of those provisions —
    the summary shows in the "Plain-English summary" panel under the
-   provision text, marked "AI-generated · not yet reviewed" until the
-   automated review pass below (`review.py`) has checked it.
+   provision text, marked "AI reviewed · <date>" once the same run's review
+   stage has checked it (a row the reviewer failed twice stays
+   "AI-generated · not yet reviewed" and is listed at the top of the report).
 3. **Everything:** Once you're happy with the quality, run workflow again
    with all fields blank (and `dry_run` unchecked). This picks up every
-   remaining provision across all four regulations. It only ever processes
+   remaining provision across every regulation. It only ever processes
    provisions that don't already have a summary, so it's safe to click this
    even if a previous run is still in progress or only got partway through
-   — it just picks up where it left off.
+   — it just picks up where it left off. The $10 per regulation budget
+   applies to every regulation in the run separately.
 
 The run can take a while (the workflow allows up to 6 hours) because it
 submits your provisions to Anthropic's Batch API and waits for the batch to
@@ -179,15 +282,12 @@ only place with the service-role key that can write to the database.
    to actually write it.
 6. Run the workflow again with the same **reg**, this time with **execute**
    checked. This performs the exact same plan directly against the
-   database. Also check **regenerate_summaries** if you want it to
-   automatically regenerate AI summaries afterwards for exactly the
-   provisions whose text changed (equivalent to the "Generate summaries"
-   workflow's "Regenerating a regulation from scratch" flow, but scoped
-   to only what this import actually touched — see step 4 of the manual
-   flow below for what that command is doing).
-7. If you didn't check **regenerate_summaries** in step 6, go run the
-   **Generate summaries** workflow separately afterwards (see the top of
-   this file), or check it next time.
+   database, then runs the chained summarize → review → embed run on every
+   provision whose letters or digits changed (plus its ancestors) and
+   embeds every other changed row. No further click is needed;
+   **skip_summaries** is the emergency opt-out and stays unchecked.
+7. Read the chained run's report in the job summary (budget, rows still
+   pending, corrections) and the spot-check sample pull request it opens.
 
 Nothing about this requires installing anything locally — the three repo
 secrets from the top of this file (`ANTHROPIC_API_KEY`, `SUPABASE_URL`,
@@ -241,9 +341,14 @@ This writes, under `pipeline/out/apply_reg7/`:
   the final state resolves; no id is both deleted and upserted; every
   deleted id's removal note resolved to a surviving ancestor).
 - `summary_regen_ids.txt` — the ids that actually need a fresh AI summary:
-  every `new` row, and every `changed` row whose *visible* text changed
-  (markup-only changes, like a newly-linked cross-reference, don't need
-  regeneration — the existing summary is still accurate).
+  every `new` row, and every `changed` row whose visible text changed in its
+  *letters or digits* (`text_letters_digits_changed`; markup-only changes,
+  like a newly-linked cross-reference or a [sic] marker, and whitespace or
+  punctuation differences don't need regeneration — the existing summary is
+  still accurate and the row keeps its review state).
+- `summary_regen_ancestor_ids.txt` — the ancestors of those rows, which the
+  chained run regenerates when they have a summary of their own and their
+  prompt holds the descendants' text (not outline mode).
 - `01_upsert_NNN.sql`, `02_provision_removed_notes_NNN.sql`,
   `03_deletes_NNN.sql` — run in that numeric/prefix order, each file sized
   to run as one paste/execute. `01_upsert_*` is one ordered upsert stream
@@ -449,24 +554,30 @@ summary against the official text and corrected what was wrong. Until October
 is the repeatable version, and the **Review pending summaries** workflow
 (`.github/workflows/review.yml`) is how it runs.
 
+**Where it runs.** Since 6 Oct 2026 the review runs inside the chained run
+(`run_chain.py`: the Generate summaries and Import workflows) on exactly the
+rows that run wrote; the **Review pending summaries** workflow is for
+re-reviews, audits, redo runs, resuming and the writer proof. It is the only
+code path that makes a summary `approved` or `edited` (database trigger
+`provisions_summary_approval_only_by_pipeline`).
+
 **What it selects.** Rows that have a summary and `summary_status = 'pending'`,
 nothing else (the one exception is **re-review mode**, below, which selects
 the hand-approved rows instead). Approved, edited and rejected rows are excluded by the query and
-every write re-checks the status, so a row an admin approved meanwhile is left
-alone. Two things put a row back to pending: the parent regeneration
-(`summarize.py --parents`, Phase 0) and the importer (`import_ccr.py apply`),
+every write re-checks the status. Three things put a row back to pending: the
+summarizer (every write is pending), the importer (`import_ccr.py apply`),
 which resets a summary to `pending` and clears `reviewed_by`/`reviewed_at`
-whenever a provision's *visible* text changes (see "Re-importing a regulation"
-above). This step is what reviews those rows again -- after a re-import with
-`regenerate_summaries`, run **Review pending summaries** for that `reg`.
+whenever a provision's letters or digits change (see "Re-importing a
+regulation" above), and the admin page's "send back to pending".
 
 **What the reviewer sees.** The official text of the provision and all of its
 descendants, assembled by `summarize.build_prompt()` itself -- the same
-regulation/parent lines, parent-paragraph excerpt, `MAX_PROMPT_WORDS`
-truncation and `CHILD_TEXT_WORDS` outline fallback the summarizer uses, so the
-two cannot drift -- followed by the current summary. The official text is the
-only source of truth; the reviewer gets no regulation hints and no other
-context (`test_review.py` checks the text block is byte-identical to the
+regulation line, the same "Text above this provision" ancestor block, the
+same `MAX_PROMPT_WORDS` (16,000 since 6 Oct 2026, so every row in the corpus
+is seen whole) and `CHILD_TEXT_WORDS` outline fallback the summarizer uses,
+so the two cannot drift -- followed by the current summary. The official text
+is the only source of truth; the reviewer gets no regulation hints and no
+other context (`test_review.py` checks the text block is byte-identical to the
 summarizer's prompt).
 
 **Verdicts** (structured JSON, `output_config.format`; anything malformed is a
@@ -498,13 +609,23 @@ ids), so the reasons in `provision_changes.note` stay private.
   processing table (the Batches API is 50% off both rates).
 - **effort** -- thinking depth for 5.x models (`low` by default; temperature is
   not a parameter there). Sonnet 4.5 runs at temperature 0.
-- **max_cost** -- a spend cap: the run refuses to submit when the pre-submit
-  estimate exceeds it, and cancels the remaining batches once actual spend
-  passes it. Since 5 Oct 2026 the pre-submit estimate assumes the cached
+- **max_cost** -- a cap on the whole run: the run refuses to submit when the
+  pre-submit estimate exceeds it, and cancels the remaining batches once actual
+  spend passes it. Since 5 Oct 2026 the pre-submit estimate assumes the cached
   system prompt is read from the cache on every row but the first (the log
   also prints the no-cache ceiling); measured runs sit near that floor (81% of
   input tokens were cache reads in stage 1), and the actual-spend cap is the
-  guard during the run.
+  guard during the run. The standing **$10 per regulation per run** budget
+  (`budget.py`) applies as well, always; **approved_budget** replaces it for
+  one run and is printed at the top of the report.
+- **audit_population** -- with audit_sample: `hand` (reviewed_by without
+  "automated pipeline", the original audit), `pipeline` (AI-reviewed rows: the
+  monthly audit) or `all`.
+- **writer_proof** -- `quote` or `execute`: the writer proof instead of a
+  review (`writer_proof.py`): the provisions the reviewer corrected in October
+  regenerated with the old and the new writer instructions and scored by the
+  reviewer, nothing written; `proof_groups`, `proof_seed`, `proof_arms` scope
+  it and `max_cost` (default $3) caps it.
 - **execute** unchecked = **dry run**: no paid call, no write. It prints the
   row count by regulation, the input tokens (counted with the free
   `messages.count_tokens` endpoint when the API key is present, a character
@@ -523,11 +644,27 @@ batch timeouts are also logged to `pipeline/review_failed.jsonl`.
 as plain text, so `**bold**`, `__bold__`, backticks or a leading `#` / list
 marker in a summary is an error. When that is the only problem the reviewer
 returns `corrected` with the markers removed and nothing else changed (one
-change, reason "stray Markdown markers removed"); the validator checks that a
-Markdown-only correction is exactly the current summary without its markers,
-and a `pass` on a summary that still carries markers is not approved (it fails
-and is retried). A lone `*` (footnote marker) and runs of underscores (form
-blanks, names) are not Markdown.
+change, reason "stray Markdown markers removed"); a `pass` on a summary that
+still carries markers is not approved (it fails and is retried). Since 6 Oct
+2026 a correction labelled Markdown-only that also changed wording is accepted
+as an ordinary correction under the ordinary limits (growth cap, no markdown,
+whole answer), with the wording change recorded as a change of its own -- the
+old "changed more than the markers" fail kept three rows pending for a label.
+A lone `*` (footnote marker) and runs of underscores (form blanks, names) are
+not Markdown.
+
+**Prompt version 4: correct expansions and standard names stay** (6 Oct 2026,
+ReviewBuiltIn item 8c). About 2% of the October corrections removed a correct
+expansion because the provision itself did not define it ("Comprehensive Area
+Plan" turned back into "CAP" on sec-ecmc-309-e-(6)-A although Rule 314 is
+titled Comprehensive Area Plans; "Title V operating permit" removed on
+sec-oooob-60.5360b-(c) although 40 CFR parts 70 and 71 are the Title V
+permit programs). The reviewer now keeps an expansion or standard name that
+is correct and is defined elsewhere in the same regulation or is the ordinary
+name of the cited program, and removes it only if it is wrong; the validator
+also treats an expansion turned back into its acronym for an acronym reason
+as allowance 1 (pass). Both rows are fixtures in `test_review.py`. Applies to
+new reviews only; the corpus was not re-run for it.
 
 **Audit mode** (`--audit N`, workflow input **audit_sample**) runs the same
 reviewer, same prompt and same validation over a seeded random sample of N
@@ -705,10 +842,11 @@ path recovers a run whose writer died mid-batch: the stage 2b re-review
 (6 Oct 2026, 11,917 rows) lost its database connection after 10,000 requests
 on one HTTP/2 connection (`httpx.RemoteProtocolError: ConnectionTerminated`)
 while writing batch 8 of 12; the resume run finished the remaining 4,520 rows
-from the already-paid batches. Reconnecting inside the write loop is on the
-ReviewBuiltIn list. After a run with corrections, re-embed
-the corrected rows (**Embed provisions**, `reg` scoped) so Ask and the related
-panel see the new text.
+from the already-paid batches. Since 6 Oct 2026 the write loop reconnects by
+itself (`dbclient.py`, tested with a mocked dropped connection), and the
+chained run has the same resume (`resume_batches`). After a standalone run
+with corrections, re-embed the corrected rows (**Embed provisions**, `reg`
+scoped); the chained run embeds what it wrote.
 
 Locally:
 

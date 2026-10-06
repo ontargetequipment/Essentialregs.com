@@ -1038,6 +1038,36 @@ export function containsBoxHtml(children: Provision[]): string {
  * exactly the wrong label an anonymous visitor used to see when the roots
  * were read through the RLS-bound client.
  */
+/**
+ * Public sample page (ReviewBuiltIn, owner decision 5 Oct 2026): a
+ * summary is shown to a logged-out visitor only when its own row is
+ * AI reviewed (approved or edited) AND its regulation has no summary still
+ * waiting for the automated review -- a regulation's summaries are not
+ * shown on public sample or preview pages until its review run has
+ * finished. Rows that fail the gate keep everything else and lose only
+ * ai_summary (ProvisionCard then renders no summary panel). Pure.
+ */
+/**
+ * Whether a regulation's summaries may be shown on a public page: only once
+ * nothing of it is still pending review (ReviewBuiltIn, owner decision
+ * 5 Oct 2026). Pure so it can be unit-tested.
+ */
+export function teaserSummariesVisible(pendingSummaries: number): boolean {
+  return pendingSummaries <= 0;
+}
+
+export function gatePublicSummaries<T extends Pick<Provision, "id" | "ai_summary" | "summary_status">>(
+  rows: T[],
+  pendingByReg: Map<string, number>
+): T[] {
+  return rows.map((p) => {
+    const key = regKeyOf(p.id);
+    const reviewed = p.summary_status === "approved" || p.summary_status === "edited";
+    const regDone = (key ? pendingByReg.get(key) ?? 0 : 0) <= 0;
+    return reviewed && regDone ? p : { ...p, ai_summary: null };
+  });
+}
+
 export function sampleCards<T extends Pick<Provision, "id" | "citation" | "title">>(
   rows: T[],
   roots: Pick<Provision, "id" | "citation">[],

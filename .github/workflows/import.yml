@@ -11,21 +11,24 @@ on:
         type: boolean
         required: false
         default: false
-      regenerate_summaries:
-        description: "Regenerate summaries: after a successful execute, also run summarize.py --force on exactly the ids the apply plan says need a fresh summary. Ignored unless execute is also checked."
+      skip_summaries:
+        description: "EMERGENCY opt-out: do NOT run the chained summarize -> review -> embed run after the import. Normally every row whose letters or digits changed (and its ancestors) is regenerated, reviewed and embedded in this same run, within the standing $10 per regulation budget. Leave unchecked."
         type: boolean
         required: false
         default: false
-      embed:
-        description: "Embed: after a successful execute (and summaries, if requested), run embed.py for this regulation so semantic search and the related-provisions panel pick up the new/changed rows. Only rows whose text or summary changed are sent to Voyage. Ignored unless execute is also checked."
-        type: boolean
+      approved_budget:
+        description: "Owner-approved budget in USD per regulation for this run's summaries, replacing the standing $10 rule. Leave blank for the standing rule."
         required: false
-        default: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   import:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 360   # the chained run polls the Batches API, like the summarize workflow
     env:
       REG: ${{ inputs.reg }}
     steps:
@@ -195,27 +198,40 @@ jobs:
           echo "### reg${REG}_diff_report.md (first 60 lines)"
           head -n 60 "pipeline/out/reg${REG}_diff_report.md" || echo "(not found -- an earlier step must have failed)"
 
-      - name: Regenerate summaries for the ids this import changed
-        # Both inputs are `type: boolean`, so in the `inputs` context they are
-        # real booleans. Comparing one to the string 'true' coerces both to
-        # numbers (true -> 1, 'true' -> NaN), which is never equal -- the old
-        # `== 'true'` form meant this step could never run, no matter what was
-        # checked. The shell steps above get away with `= "true"` because
-        # interpolating into bash renders the literal text `true`.
-        if: ${{ inputs.execute && inputs.regenerate_summaries }}
+      - name: Summarize, review and embed the rows this import changed (the chained run)
+        # Runs automatically after every execute (ReviewBuiltIn, owner
+        # decision 5 Oct 2026): every row whose letters or digits changed,
+        # plus its ancestors, is regenerated, reviewed and embedded here, in
+        # this run, within the standing $10 per regulation budget
+        # (pipeline/budget.py). Both inputs are `type: boolean`, so in the
+        # `inputs` context they are real booleans (never compare them to the
+        # string 'true' here).
+        if: ${{ inputs.execute && !inputs.skip_summaries }}
+        id: chain
         working-directory: pipeline
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CHAIN_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          python summarize.py \
-            --ids-file "../pipeline/out/apply_reg${REG}/summary_regen_ids.txt" \
-            --force \
-            --model claude-sonnet-4-5
+          ARGS=(--ids-file "out/apply_reg${REG}/summary_regen_ids.txt"
+                --ancestor-ids-file "out/apply_reg${REG}/summary_regen_ancestor_ids.txt"
+                --label "import-reg${REG}" --sample-dir "../docs/imports/$(date -u +%Y-%m-%d)")
+          if [ -n "${{ inputs.approved_budget }}" ]; then ARGS+=(--approved-budget "${{ inputs.approved_budget }}"); fi
+          echo "Running: python run_chain.py ${ARGS[*]}"
+          python run_chain.py "${ARGS[@]}"
+          if [ -f out/chain_report.md ]; then
+            head -c 60000 out/chain_report.md >> "$GITHUB_STEP_SUMMARY"
+            echo "::group::chain_report.md"; cat out/chain_report.md; echo "::endgroup::"
+          fi
 
-      - name: Embed new/changed rows for semantic search
-        if: ${{ inputs.execute && inputs.embed }}
+      - name: Embed every other changed row (heading-only rows, markup-only changes)
+        # The chained run embeds the rows it wrote. Rows whose text changed
+        # but that carry no summary (headings-only) are embedded here; the
+        # content hash means unchanged rows cost nothing.
+        if: ${{ inputs.execute }}
         working-directory: pipeline
         env:
           VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
@@ -223,6 +239,24 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           python embed.py --reg "$REG"
+
+      - name: Open a pull request with the spot-check sample
+        if: ${{ inputs.execute && !inputs.skip_summaries && steps.chain.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add docs/imports
+          if git diff --cached --quiet; then echo "No sample document to commit."; exit 0; fi
+          BRANCH="chain-sample/import-reg${REG}-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git commit -m "Import reg ${REG}: 40-row spot-check sample from the chained run (run ${{ github.run_id }})"
+          git push -u origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "Import reg ${REG}: spot-check sample (run ${{ github.run_id }})" \
+            --body "The 40-row spot-check sample from the chained run that followed the import of reg ${REG}: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}." \
+            || echo "::warning::Could not open the pull request. The sample is in the import artifact and on branch $BRANCH."
 
       - name: Upload import report (no SQL batch files)
         if: always()

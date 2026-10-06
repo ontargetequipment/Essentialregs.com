@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeHtml, stripHtml, titleWithoutCitation } from "@/lib/regulation";
 import { regKeyOf } from "@/lib/changelog";
-import { approveSummary, rejectSummary, saveEditAndApprove } from "./actions";
+import { rejectSummary, saveEditForReview, sendBackToPending } from "./actions";
 
 export const metadata = { title: "Review queue" };
 
@@ -168,14 +168,17 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
     <div className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="text-2xl font-bold text-zinc-900">Summary review queue</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Every AI-generated summary needs a human pass before it&apos;s trusted in
-        the reader. Approve it as-is, edit it and approve, or reject it
-        (rejected summaries are withheld from every reader until re-approved).
+        Every summary is written as pending and becomes &ldquo;AI reviewed&rdquo; only
+        when the automated second-pass review (pipeline/review.py) approves it, in the
+        same run that wrote it. This page cannot approve a summary: it can send one back
+        to pending for another review, save an edited text as pending so the reviewer
+        checks the edit, or reject it (rejected summaries are withheld from every reader).
       </p>
       <p className="mt-2 text-sm text-amber-800">
-        The site labels every approved summary &ldquo;AI reviewed&rdquo;, never as checked by a
-        person: an approval here must be followed by the AI second pass before the next
-        release, or corpus QA (approved_without_ai_review) fails CI.
+        The database refuses an approval that did not come from the pipeline
+        (trigger provisions_summary_approval_only_by_pipeline), and corpus QA
+        (approved_outside_pipeline, summary_pending_over_24h) fails CI if one slips through
+        or a row sits pending for more than a day.
       </p>
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -273,7 +276,7 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
                   with the row's fields as a query string.
                 */}
                 <form
-                  action={approveSummary}
+                  action={sendBackToPending}
                   method="post"
                   className="mt-4 flex flex-col gap-2"
                 >
@@ -288,21 +291,21 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
                     <input
                       type="text"
                       name="note"
-                      placeholder="Optional note (shown on reject)"
+                      placeholder="Optional note (kept with the change)"
                       maxLength={280}
                       className="min-w-0 flex-1 rounded-md border border-zinc-300 px-3 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20"
                     />
                     <button
-                      formAction={approveSummary}
+                      formAction={sendBackToPending}
                       className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
                     >
-                      Approve
+                      Send back to pending (AI re-review)
                     </button>
                     <button
-                      formAction={saveEditAndApprove}
+                      formAction={saveEditForReview}
                       className="rounded-md border border-emerald-600 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
                     >
-                      Save edit &amp; approve
+                      Save edit as pending
                     </button>
                     <button
                       formAction={rejectSummary}

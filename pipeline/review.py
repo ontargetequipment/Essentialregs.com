@@ -102,6 +102,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import summarize as sz  # noqa: E402  -- the summarizer's prompt assembly is reused as is
+import budget as budget_module  # noqa: E402
 
 PIPELINE_DIR = Path(__file__).resolve().parent
 OUT_DIR = PIPELINE_DIR / "out"
@@ -292,7 +293,10 @@ REVIEW_SYSTEM_PROMPT = (
     "corrected with the markers removed and nothing else changed: the "
     "corrected summary is the current one, word for word, without the "
     "markers, with a single change whose reason is \"stray Markdown markers "
-    "removed\".\n\n"
+    "removed\". When the summary has other errors as well, return one "
+    "corrected summary that removes the markers and fixes the errors, and "
+    "list the marker removal and every other change separately; it is then "
+    "an ordinary correction.\n\n"
     "fail: the summary cannot be made accurate with small edits -- it "
     "describes the wrong thing, or most of its statements are unsupported "
     "-- or the text you were given is marked as truncated or shown only as "
@@ -343,7 +347,15 @@ REVIEW_SYSTEM_PROMPT = (
     "acronym with a term the text spells out. It is an error only if the "
     "expansion is wrong or contradicts the text (the text names a "
     "different body or a different term). Do not return corrected to "
-    "remove, shorten or re-abbreviate a correct expansion.\n\n"
+    "remove, shorten or re-abbreviate a correct expansion. The same holds "
+    "for an expansion or a standard name that the provision itself does not "
+    "define: keep it when it is correct and is defined elsewhere in the same "
+    "regulation or is the ordinary name of the cited program -- "
+    "\"Comprehensive Area Plan\" for \"CAP\" (the regulation's Rule 314 is "
+    "titled Comprehensive Area Plans), \"Title V operating permit\" for a "
+    "permit under 40 CFR part 70 or part 71 (the Title V permit programs). "
+    "That the provision's own text does not define the term is not a reason "
+    "to remove it; remove or correct it only if it is wrong.\n\n"
     "2. Illustrative examples. An example clearly marked as one -- "
     "\"like\", \"such as\", \"for example\", \"e.g.\" -- is not an error when "
     "it is consistent with the text and does not narrow or widen what the "
@@ -454,8 +466,8 @@ def iter_candidates(client, reg: Optional[str], limit: Optional[int],
     keep = is_rereview_row if rereview else (lambda row: True)
     if ids:
         rows_by_id: dict[str, dict] = {}
-        for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
-            chunk = ids[chunk_start:chunk_start + DB_PAGE_SIZE]
+        for chunk_start in range(0, len(ids), sz.IDS_IN_BATCH):
+            chunk = ids[chunk_start:chunk_start + sz.IDS_IN_BATCH]
             q = _status_filter(client.table("provisions").select(CANDIDATE_COLUMNS).in_("id", chunk), rereview)
             q = q.not_.is_("ai_summary", "null")
             for row in q.execute().data or []:
@@ -587,8 +599,8 @@ def select_redo_candidates(client, since: str, until: Optional[str] = None) -> l
         offset += REDO_PAGE
     ids = list(found)
     rows_by_id: dict[str, dict] = {}
-    for start in range(0, len(ids), DB_PAGE_SIZE):
-        chunk = ids[start:start + DB_PAGE_SIZE]
+    for start in range(0, len(ids), sz.IDS_IN_BATCH):
+        chunk = ids[start:start + sz.IDS_IN_BATCH]
         q = (client.table("provisions").select(CANDIDATE_COLUMNS)
              .in_("id", chunk).in_("summary_status", list(REREVIEW_STATUSES))
              .not_.is_("ai_summary", "null"))
@@ -645,12 +657,20 @@ def allocate_sample(sizes: dict[str, int], n: int) -> dict[str, int]:
     return alloc
 
 
+AUDIT_POPULATIONS = ("hand", "pipeline", "all")
+
+
 def select_audit_sample(client, n: int, seed: int, reg: Optional[str] = None,
-                        exclude_reviewed_by: str = AUDIT_EXCLUDE_REVIEWED_BY) -> tuple[list[dict], dict]:
-    """A seeded random sample of n approved/edited rows with a summary whose
-    reviewed_by does not contain `exclude_reviewed_by`, spread across
-    regulations (allocate_sample). Read-only. Returns (rows in sample
-    order, info for the report)."""
+                        exclude_reviewed_by: str = AUDIT_EXCLUDE_REVIEWED_BY,
+                        population: str = "hand") -> tuple[list[dict], dict]:
+    """A seeded random sample of n approved/edited rows with a summary,
+    spread across regulations (allocate_sample). Read-only. `population`:
+    "hand" (the default and the original audit: reviewed_by does NOT contain
+    `exclude_reviewed_by`, the September hand passes), "pipeline" (reviewed_by
+    DOES contain it -- the monthly spot-check of AI-reviewed summaries), or
+    "all". Returns (rows in sample order, info for the report)."""
+    if population not in AUDIT_POPULATIONS:
+        raise ValueError(f"population must be one of {AUDIT_POPULATIONS}")
     eligible: dict[str, list[str]] = {}
     like_prefix = f"sec-{reg.lower()}-" if reg else None
     start = 0
@@ -663,7 +683,8 @@ def select_audit_sample(client, n: int, seed: int, reg: Optional[str] = None,
         q = q.order("id").range(start, start + sz.META_PAGE_SIZE - 1)
         page = q.execute().data or []
         for row in page:
-            if exclude_reviewed_by.lower() in (row.get("reviewed_by") or "").lower():
+            marked = exclude_reviewed_by.lower() in (row.get("reviewed_by") or "").lower()
+            if (population == "hand" and marked) or (population == "pipeline" and not marked):
                 continue
             eligible.setdefault(sz.reg_key_of(row["id"]) or "?", []).append(row["id"])
         if len(page) < sz.META_PAGE_SIZE:
@@ -678,8 +699,8 @@ def select_audit_sample(client, n: int, seed: int, reg: Optional[str] = None,
         picked.extend(rng.sample(sorted(eligible[r]), alloc[r]))
 
     rows_by_id: dict[str, dict] = {}
-    for chunk_start in range(0, len(picked), DB_PAGE_SIZE):
-        chunk = picked[chunk_start:chunk_start + DB_PAGE_SIZE]
+    for chunk_start in range(0, len(picked), sz.IDS_IN_BATCH):
+        chunk = picked[chunk_start:chunk_start + sz.IDS_IN_BATCH]
         q = (client.table("provisions").select(CANDIDATE_COLUMNS + ", reviewed_by")
              .in_("id", chunk).in_("summary_status", list(AUDIT_STATUSES)))
         for row in q.execute().data or []:
@@ -687,7 +708,8 @@ def select_audit_sample(client, n: int, seed: int, reg: Optional[str] = None,
     rows = [rows_by_id[i] for i in picked if i in rows_by_id]
     info = {"requested": n, "seed": seed, "eligible": sum(sizes.values()),
             "eligible_by_reg": dict(sorted(sizes.items())), "allocation": dict(sorted(alloc.items())),
-            "exclude_reviewed_by": exclude_reviewed_by, "statuses": list(AUDIT_STATUSES)}
+            "exclude_reviewed_by": exclude_reviewed_by, "population": population,
+            "statuses": list(AUDIT_STATUSES)}
     return rows, info
 
 
@@ -698,8 +720,8 @@ def select_audit_ids(client, ids: list[str]) -> tuple[list[dict], dict]:
     stamped can be re-checked too). Ids that are not approved/edited or
     not found are reported and left out."""
     rows_by_id: dict[str, dict] = {}
-    for chunk_start in range(0, len(ids), DB_PAGE_SIZE):
-        chunk = ids[chunk_start:chunk_start + DB_PAGE_SIZE]
+    for chunk_start in range(0, len(ids), sz.IDS_IN_BATCH):
+        chunk = ids[chunk_start:chunk_start + sz.IDS_IN_BATCH]
         q = (client.table("provisions").select(CANDIDATE_COLUMNS)
              .in_("id", chunk).in_("summary_status", list(AUDIT_STATUSES))
              .not_.is_("ai_summary", "null"))
@@ -738,95 +760,32 @@ class ReviewInput:
 
 
 # The context above the provision (owner instruction, 5 Oct 2026, after the
-# stage-1 spot check). The summarizer shows the reviewer one parent excerpt
-# of PARENT_TEXT_CHARS, silently cut; the duty a nested item serves often
-# sits two levels up ("A revised APEN must be filed:" / "Annually by April
-# 30 ... as follows:" / the threshold), and a reviewer that treats the cut
-# as silence removes true statements. The reviewer now gets the own text of
-# every ancestor from the root down to the parent, each labelled with its
-# id, cut honestly (at a sentence end where possible, always ending in
-# CUT_MARKER), ANCESTOR_EXCERPT_CHARS per ancestor and ANCESTOR_BLOCK_CHARS
-# in all; over the total, the farthest ancestors are shrunk, then dropped,
-# first -- never the parent.
-ANCESTOR_EXCERPT_CHARS = 1500
-ANCESTOR_BLOCK_CHARS = 6000
-ANCESTOR_MIN_CHARS = 200
-CUT_MARKER = "[excerpt cut]"
-ANCESTOR_BLOCK_HEADING = "Text above this provision (every ancestor, root first; the last is the parent):"
-SENTENCE_END_RE = re.compile(r"[.;:!?][\"')\]]?\s")
+# stage-1 spot check) lives in summarize.py since 6 Oct 2026, where the
+# writer uses it too: build_ancestor_block gives the own text of every
+# ancestor from the root down to the parent, honestly cut. Re-exported here
+# so the reviewer's callers and tests keep their names.
+ANCESTOR_EXCERPT_CHARS = sz.ANCESTOR_EXCERPT_CHARS
+ANCESTOR_BLOCK_CHARS = sz.ANCESTOR_BLOCK_CHARS
+ANCESTOR_MIN_CHARS = sz.ANCESTOR_MIN_CHARS
+CUT_MARKER = sz.CUT_MARKER
+ANCESTOR_BLOCK_HEADING = sz.ANCESTOR_BLOCK_HEADING
+SENTENCE_END_RE = sz.SENTENCE_END_RE
+honest_cut = sz.honest_cut
+build_ancestor_block = sz.build_ancestor_block
 
 
-def honest_cut(text: str, limit: int) -> tuple[str, bool]:
-    """`text` whole when it fits in `limit` characters; otherwise cut at
-    the last sentence end inside the limit (if one lies past 60% of it),
-    else at the last word boundary, and marked with CUT_MARKER. Returns
-    (excerpt, was_cut)."""
-    text = sz.WS_RE.sub(" ", text or "").strip()
-    if len(text) <= limit:
-        return text, False
-    head = text[:limit]
-    cut_at = None
-    for m in SENTENCE_END_RE.finditer(head):
-        if m.end() >= limit * 0.6:
-            cut_at = m.end()
-    if cut_at is None:
-        space = head.rfind(" ")
-        cut_at = space if space > limit * 0.5 else limit
-    return head[:cut_at].rstrip() + " " + CUT_MARKER, True
-
-
-def build_ancestor_block(provision: dict, meta: dict) -> tuple[list[str], dict]:
-    """Lines for the "Text above this provision" block and an info dict
-    (shown, cut, omitted). Every ancestor from the regulation root down to
-    the parent, root first, each as "[id] citation: own text", with
-    honest_cut at ANCESTOR_EXCERPT_CHARS. If the block passes
-    ANCESTOR_BLOCK_CHARS, the farthest ancestor is shrunk to
-    ANCESTOR_MIN_CHARS, then dropped (a line says how many were omitted),
-    and so on towards the parent, which is never trimmed below its own
-    allowance."""
-    root, chain = sz.build_context(provision, meta)
-    nodes = ([root] if root else []) + list(chain)
-    entries: list[dict] = []
-    for node in nodes:
-        text = sz.strip_html(node.get("full_text") or "") or (node.get("title") or "")
-        excerpt, cut = honest_cut(text, ANCESTOR_EXCERPT_CHARS)
-        entries.append({"id": node["id"], "citation": node.get("citation") or node["id"],
-                        "excerpt": excerpt, "cut": cut, "limit": ANCESTOR_EXCERPT_CHARS})
-    if not entries:
-        return [], {"shown": 0, "cut": False, "omitted": 0}
-    omitted = 0
-
-    def total() -> int:
-        return sum(len(e["excerpt"]) for e in entries)
-
-    while total() > ANCESTOR_BLOCK_CHARS and len(entries) > 1:
-        far = entries[0]
-        if far["limit"] > ANCESTOR_MIN_CHARS:
-            far["limit"] = ANCESTOR_MIN_CHARS
-            far["excerpt"], far["cut"] = honest_cut(far["excerpt"].removesuffix(CUT_MARKER), ANCESTOR_MIN_CHARS)
-            far["cut"] = far["cut"] or far["excerpt"].endswith(CUT_MARKER)
-        else:
-            entries.pop(0)
-            omitted += 1
-    lines = [ANCESTOR_BLOCK_HEADING]
-    if omitted:
-        lines.append(f"[{omitted} farther ancestor{'s' if omitted != 1 else ''} omitted for length]")
-    for e in entries:
-        lines.append(f"[{e['id']}] {e['citation']}: {e['excerpt']}")
-    info = {"shown": len(entries), "cut": omitted > 0 or any(e["cut"] for e in entries), "omitted": omitted,
-            "ids": [e["id"] for e in entries]}
-    return lines, info
-
-
-def build_official_text(provision: dict, meta: dict, children_index: dict) -> tuple[sz.PromptResult, dict]:
-    """The official text as the summarizer assembles it (summarize.build_prompt:
-    regulation line, parent chain lines, provision text with the
-    MAX_PROMPT_WORDS cap, every descendant with the CHILD_TEXT_WORDS budget /
-    outline fallback) with one difference: the summarizer's single, silently
-    cut parent excerpt is replaced by build_ancestor_block(). Everything
-    else is reused rather than copied so the two cannot drift apart."""
-    block, info = build_ancestor_block(provision, meta)
-    return sz.build_prompt(provision, meta, children_index, context_block=block), info
+def build_official_text(provision: dict, meta: dict, children_index: dict,
+                        heading_overview: bool = False) -> tuple[sz.PromptResult, dict]:
+    """The official text exactly as the summarizer assembles it
+    (summarize.build_prompt: regulation line, the ancestor block, the
+    provision text at MAX_PROMPT_WORDS, every descendant with the
+    CHILD_TEXT_WORDS budget / outline fallback). Since 6 Oct 2026 the writer
+    and the reviewer share one assembly, so the two cannot drift apart. A
+    heading-only row summarized as an overview is reviewed against the same
+    descendants' text (the overview instruction is left out: the reviewer
+    judges the summary, not the writer's brief)."""
+    result = sz.build_prompt(provision, meta, children_index)
+    return result, result.ancestors
 
 
 def build_review_input(provision: dict, meta: dict, children_index: dict) -> ReviewInput:
@@ -964,6 +923,8 @@ def _is_markdown_only_change(before: str, after: str) -> bool:
 
 
 MARKDOWN_ONLY_REASON = "stray Markdown markers removed"
+MARKDOWN_PLUS_WORDING_REASON = ("validator: the reviewer labelled this Markdown-only but also changed wording; "
+                                "accepted as an ordinary correction (the wording change is this entry)")
 
 # Allowance 1 (prompt version 2, Oct 2026) in the validator: a "correction"
 # whose every change only shortens the summary by taking out words -- an
@@ -973,7 +934,7 @@ MARKDOWN_ONLY_REASON = "stray Markdown markers removed"
 # the expansion is wrong (names a different body, contradicts the text) is
 # a real correction and is left alone; so is any change that adds or
 # substitutes words.
-ACRONYM_REASON_RE = re.compile(r"acronym|abbreviat|expan[ds]|spell(?:s|ed)? out|short(?:ened)? form|initialism", re.I)
+ACRONYM_REASON_RE = re.compile(r"acronym|abbreviat|expan[ds]|spell(?:s|ed)? out|short(?:ened)? form|initialism|does not define|not defined|undefined", re.I)
 ACRONYM_REAL_ERROR_RE = re.compile(r"\bwrong|incorrect|contradict|different|mis-?nam|is not the|does not stand|not what", re.I)
 WORD_RE = re.compile(r"[A-Za-z0-9§.%/-]+")
 
@@ -987,16 +948,39 @@ def _is_subsequence(short: list[str], long: list[str]) -> bool:
     return all(any(w == x for x in it) for w in short)
 
 
+def _initials(words: list[str]) -> str:
+    return "".join(w[0] for w in words if w and w[0].isalpha())
+
+
+def _is_expansion_to_acronym(before: str, after: str) -> bool:
+    """True when `after` replaces an expansion in `before` with its acronym
+    ("Comprehensive Area Plan" -> "CAP"): the after text is one 2-8 letter
+    token (optionally with a trailing period) whose letters are the initials
+    of a contiguous run of the before text's words, or the before text
+    already pairs the expansion with that acronym."""
+    token = (after or "").strip().rstrip(".")
+    if not re.fullmatch(r"[A-Za-z]{2,8}", token):
+        return False
+    b = _words(before)
+    if token.lower() in b:
+        return True
+    initials = _initials(b).lower()
+    return token.lower() in initials
+
+
 def _is_acronym_pairing_removal(before: str, after: str, reason: str) -> bool:
-    """True when `after` is `before` with words removed only (no word added
-    or changed) and the reason is about an acronym / abbreviation /
-    expansion rather than about the expansion being wrong."""
+    """True when the change only takes out a correct expansion or pairing
+    for an acronym / abbreviation / expansion reason rather than because
+    the expansion is wrong: `after` is `before` with words removed only (no
+    word added or changed), or `after` is the acronym of the expansion in
+    `before` (prompt version 4, 6 Oct 2026: "Comprehensive Area Plan" ->
+    "CAP")."""
     if not ACRONYM_REASON_RE.search(reason or "") or ACRONYM_REAL_ERROR_RE.search(reason or ""):
         return False
     b, a = _words(before), _words(after)
     if not b or len(a) >= len(b):
         return False
-    return _is_subsequence(a, b)
+    return _is_subsequence(a, b) or _is_expansion_to_acronym(before, after)
 
 
 ACRONYM_ONLY_REASON = ("validator: the reviewer's only changes removed a correct acronym "
@@ -1098,14 +1082,18 @@ def validate_verdict(data: object, review: ReviewInput, stop_reason: Optional[st
                               "after": _normalize(str(c.get("after") or "")),
                               "reason": reason})
     # A correction that claims to be Markdown-only (every change is a
-    # markers-removed change, or every reason says so) must be exactly the
-    # current summary without its markers: nothing else may change.
+    # markers-removed change, or every reason says so) but also changed
+    # wording used to be a fail (sec-11-H-APPENDIX-A-2.15-C, sec-21-A-II-E
+    # and sec-21-A-II-I stayed pending twice over it). Since 6 Oct 2026 it is
+    # an ordinary correction under the ordinary limits (growth cap, no
+    # markdown, whole answer, no hedging -- all tested above); the wording
+    # change is recorded as a change of its own so the reasons stay honest.
     claims_markdown_only = all(
         _is_markdown_only_change(c["before"], c["after"]) or "markdown" in c["reason"].lower()
         for c in clean_changes)
     if claims_markdown_only and _normalize(corrected) != strip_markdown_markers(review.summary):
-        return Verdict("fail", findings=findings,
-                       reason="Markdown-only correction changed more than the markers")
+        clean_changes.append({"before": strip_markdown_markers(review.summary), "after": _normalize(corrected),
+                              "reason": MARKDOWN_PLUS_WORDING_REASON})
     # Allowance 1: every change only strips a correct acronym expansion or
     # pairing -> the summary is right as it stands; the verdict is pass
     # (subject to the same checks a pass gets).
@@ -1354,6 +1342,34 @@ def estimate_run_cost(client_anthropic, reviews: list[ReviewInput], model: str) 
     return ceiling, method, floor
 
 
+def estimate_into_budget(client_anthropic, reviews: list[ReviewInput], model: str, budget) -> None:
+    """Adds this run's review estimate to `budget` per regulation, at the
+    cache-hit floor (the system prompt read from the cache on every row but
+    the first of each regulation), the same basis as the --max-cost
+    pre-submit check."""
+    if client_anthropic is not None:
+        counted = count_tokens_many(client_anthropic, reviews, model)
+    else:
+        counted = [None] * len(reviews)
+    sys_tok = estimate_tokens_by_chars(len(REVIEW_SYSTEM_PROMPT), model)
+    out_tok = expected_output_tokens(model)
+    seen_regs: set[str] = set()
+    for c, r in zip(counted, reviews):
+        tokens = c if c is not None else estimate_tokens_by_chars(r.chars, model) + SCHEMA_TOKEN_ALLOWANCE
+        reg = sz.reg_key_of(r.provision_id) or "?"
+        first = reg not in seen_regs
+        seen_regs.add(reg)
+        usd = estimate_cost(model, max(0, tokens - sys_tok), out_tok, batch=True,
+                            cache_creation_tokens=sys_tok if first else 0,
+                            cache_read_tokens=0 if first else sys_tok)
+        budget.estimate(reg, "review", usd)
+
+
+def record_spend(stats: "RunStats", model: str, budget, batch: bool = True) -> None:
+    for reg, usd in stats.cost_by_reg(model, batch=batch).items():
+        budget.set_spent(reg, "review", usd)
+
+
 def count_tokens_many(client_anthropic, reviews: list[ReviewInput], model: str,
                       workers: int = COUNT_TOKENS_WORKERS) -> list[Optional[int]]:
     """Counts every review's input for `model`, in parallel. None where the
@@ -1396,6 +1412,8 @@ class RunStats:
     failed_rows: list = field(default_factory=list)     # dicts: id, reg, reason
     passed_rows: list = field(default_factory=list)     # ids
     batch_ids: list = field(default_factory=list)
+    usage_by_reg: dict = field(default_factory=dict)    # reg -> token buckets (cost attribution)
+    budget_stopped: Optional[str] = None                # the budget message when it stopped the run
 
     def reg_bucket(self, provision_id: str) -> dict:
         reg = sz.reg_key_of(provision_id) or "?"
@@ -1443,11 +1461,24 @@ class RunStats:
                                      "reason": verdict.reason, "findings": verdict.findings,
                                      "set_pending": outcome == "failed_to_pending"})
 
-    def add_usage(self, usage) -> None:
-        self.input_tokens += getattr(usage, "input_tokens", 0) or 0
-        self.output_tokens += getattr(usage, "output_tokens", 0) or 0
-        self.cache_creation_tokens += getattr(usage, "cache_creation_input_tokens", 0) or 0
-        self.cache_read_tokens += getattr(usage, "cache_read_input_tokens", 0) or 0
+    def add_usage(self, usage, reg: Optional[str] = None) -> None:
+        parts = {"input_tokens": getattr(usage, "input_tokens", 0) or 0,
+                 "output_tokens": getattr(usage, "output_tokens", 0) or 0,
+                 "cache_creation_tokens": getattr(usage, "cache_creation_input_tokens", 0) or 0,
+                 "cache_read_tokens": getattr(usage, "cache_read_input_tokens", 0) or 0}
+        self.input_tokens += parts["input_tokens"]
+        self.output_tokens += parts["output_tokens"]
+        self.cache_creation_tokens += parts["cache_creation_tokens"]
+        self.cache_read_tokens += parts["cache_read_tokens"]
+        bucket = self.usage_by_reg.setdefault(reg or "?", {k: 0 for k in parts})
+        for k, v in parts.items():
+            bucket[k] += v
+
+    def cost_by_reg(self, model: str, batch: bool = True) -> dict[str, float]:
+        return {reg: estimate_cost(model, b["input_tokens"], b["output_tokens"], batch=batch,
+                                   cache_creation_tokens=b["cache_creation_tokens"],
+                                   cache_read_tokens=b["cache_read_tokens"])
+                for reg, b in self.usage_by_reg.items()}
 
     @property
     def total_input_tokens(self) -> int:
@@ -1476,7 +1507,8 @@ def log_failure(provision_id: str, reason: str) -> None:
 def build_report(stats: RunStats, model: str, effort: str, execute: bool,
                  dry_run_quote: Optional[dict] = None, started_at: Optional[str] = None,
                  audit: Optional[dict] = None, rereview: bool = False,
-                 snapshot: Optional[dict] = None, redo: Optional[str] = None) -> tuple[str, dict]:
+                 snapshot: Optional[dict] = None, redo: Optional[str] = None,
+                 budget=None) -> tuple[str, dict]:
     """(markdown, json-able dict) for this run. With `audit` (the sample
     info from select_audit_sample) the report is an audit report: nothing
     was written, and corrected rows are listed as would-correct. With
@@ -1537,6 +1569,13 @@ def build_report(stats: RunStats, model: str, effort: str, execute: bool,
     md.append("")
     md.append(f"- Model: `{model}` ({data['run']['sampling']}); prompt version `{REVIEW_PROMPT_VERSION}`")
     md.append(f"- Started {started_at}, finished {now}")
+    if budget is not None:
+        md.extend(budget.header_lines())
+        if stats.budget_stopped:
+            md.append(f"- **{stats.budget_stopped}**")
+        data["run"]["budget"] = {"usd_per_reg": budget.usd_per_reg, "source": budget.source,
+                                 "estimates": budget.estimates, "spent": budget.spent,
+                                 "stopped": stats.budget_stopped}
     md.append("")
     if audit is not None:
         md.append(f"- Audit sample: {audit['requested']} requested, seed {audit['seed']}, from "
@@ -1763,7 +1802,7 @@ def consume_batch(client_anthropic, client_supabase, batch_id: str, custom_id_ma
             log_failure(provision_id, f"{outcome.type}: {detail}")
             continue
         message = outcome.message
-        stats.add_usage(message.usage)
+        stats.add_usage(message.usage, sz.reg_key_of(provision_id))
         verdict = verdict_from_message(message, review)
         handle_verdict(client_supabase, rows_by_id[provision_id], review, verdict, model, stats, execute,
                        rereview=rereview, redo=redo)
@@ -1788,12 +1827,27 @@ def handle_verdict(client_supabase, row: dict, review: ReviewInput, verdict: Ver
     return outcome
 
 
+def _cancel_remaining(client_anthropic, still_pending, custom_id_map, stats: RunStats, reason: str) -> None:
+    for other, other_ids in still_pending:
+        try:
+            client_anthropic.messages.batches.cancel(other.id)
+        except Exception as exc:  # noqa: BLE001
+            print(f"  cancel failed for {other.id}: {exc}", file=sys.stderr)
+        for cid in other_ids:
+            pid = custom_id_map.get(cid, cid)
+            log_failure(pid, reason)
+            stats.api_errors += 1
+
+
 def poll_batches(client_anthropic, client_supabase, pending, custom_id_map, reviews_by_id, rows_by_id,
                  model: str, stats: RunStats, execute: bool, poll_interval: int,
-                 max_cost: Optional[float] = None, rereview: bool = False, redo: bool = False) -> None:
+                 max_cost: Optional[float] = None, rereview: bool = False, redo: bool = False,
+                 budget=None) -> None:
     """Polls until every batch ends and consumes each one. `execute` is
     whether verdicts are WRITTEN (False in audit mode: the reviewer is
-    called, nothing is written)."""
+    called, nothing is written). `max_cost` is the run's total cap;
+    `budget` (budget.Budget) the per-regulation one: either passing cancels
+    the remaining batches and leaves their rows pending."""
     print(f"Polling {len(pending)} batch(es) every {poll_interval}s...")
     deadline = time.monotonic() + MAX_POLL_SECONDS
     while pending:
@@ -1812,16 +1866,17 @@ def poll_batches(client_anthropic, client_supabase, pending, custom_id_map, revi
             print(f"  spend so far: ${spent:,.4f}")
             if max_cost is not None and spent > max_cost and still_pending:
                 print(f"  STOP: spend ${spent:,.4f} passed the cap ${max_cost:,.2f}; cancelling the remaining batches.")
-                for other, other_ids in still_pending:
-                    try:
-                        client_anthropic.messages.batches.cancel(other.id)
-                    except Exception as exc:  # noqa: BLE001
-                        print(f"  cancel failed for {other.id}: {exc}", file=sys.stderr)
-                    for cid in other_ids:
-                        pid = custom_id_map.get(cid, cid)
-                        log_failure(pid, "canceled: spend cap reached")
-                        stats.api_errors += 1
+                _cancel_remaining(client_anthropic, still_pending, custom_id_map, stats, "canceled: spend cap reached")
                 return
+            if budget is not None:
+                record_spend(stats, model, budget)
+                over = budget.exceeded()
+                if over:
+                    stats.budget_stopped = budget.stop_message_spend(over)
+                    print(stats.budget_stopped, file=sys.stderr)
+                    if still_pending:
+                        _cancel_remaining(client_anthropic, still_pending, custom_id_map, stats, "canceled: budget reached")
+                    return
         pending = still_pending
         if not pending:
             break
@@ -1834,6 +1889,67 @@ def poll_batches(client_anthropic, client_supabase, pending, custom_id_map, revi
                     stats.api_errors += 1
             break
         time.sleep(poll_interval)
+
+
+def run_reviews(client_anthropic, client_supabase, reviews: list[ReviewInput], rows_by_id: dict[str, dict],
+                model: str, effort: str, stats: RunStats, execute: bool, budget=None,
+                max_cost: Optional[float] = None, poll_interval: int = POLL_INTERVAL_SECONDS,
+                resume_batches: Optional[list[str]] = None, sync: bool = False,
+                rereview: bool = False, redo: bool = False) -> Optional[str]:
+    """The paid part of a run on already-selected, already-built reviews:
+    resume (consume batches a previous run paid for; submit nothing), sync
+    calls, or batches with the pre-submit checks -- the run's --max-cost cap
+    and the per-regulation budget (budget.Budget; estimate_into_budget adds
+    this run's figure, and any regulation over it stops the run before any
+    paid call). Returns None when the run proceeded, else the refusal
+    message (nothing submitted). Used by main() and by the chained run
+    (run_chain.py), so there is one write path."""
+    reviews_by_id = {r.provision_id: r for r in reviews}
+    if resume_batches:
+        custom_id_map: dict[str, str] = {}
+        for review in reviews:
+            sz.make_custom_id(review.provision_id, custom_id_map)
+        for batch_id in resume_batches:
+            batch = client_anthropic.messages.batches.retrieve(batch_id)
+            if batch.processing_status != "ended":
+                print(f"  batch {batch_id} is still '{batch.processing_status}'; try again later.")
+                continue
+            stats.batch_ids.append(batch_id)
+            print(f"  resuming batch {batch_id} (submitting nothing)")
+            consume_batch(client_anthropic, client_supabase, batch_id, custom_id_map, reviews_by_id,
+                          rows_by_id, model, stats, execute=execute, rereview=rereview, redo=redo)
+        if budget is not None:
+            record_spend(stats, model, budget)
+        return None
+    if sync:
+        run_sync(client_anthropic, client_supabase, reviews, rows_by_id, model, effort, stats,
+                 execute=execute, rereview=rereview, redo=redo)
+        if budget is not None:
+            record_spend(stats, model, budget, batch=False)
+        return None
+    if max_cost is not None:
+        ceiling, method, est = estimate_run_cost(client_anthropic, reviews, model)
+        print(f"Estimated cost ({method} input, {expected_output_tokens(model)} output tokens per row): "
+              f"${est:,.2f} with cache hits on the system prompt (ceiling without any: ${ceiling:,.2f}); "
+              f"cap ${max_cost:,.2f}")
+        if est > max_cost:
+            msg = (f"refused: estimated ${est:,.2f} (ceiling ${ceiling:,.2f}) exceeds --max-cost ${max_cost:,.2f}; "
+                   f"nothing submitted")
+            print(f"Refusing to submit: {msg}.", file=sys.stderr)
+            return msg
+    if budget is not None:
+        estimate_into_budget(client_anthropic, reviews, model, budget)
+        over = budget.over_estimate()
+        if over:
+            stats.budget_stopped = budget.stop_message_estimate(over)
+            return stats.budget_stopped
+        print("Estimate within budget: " + ", ".join(
+            f"{reg} ${budget.estimated(reg):,.2f} of ${budget.usd_per_reg:,.2f}" for reg in sorted(budget.estimates)))
+    pending, custom_id_map = submit_batches(client_anthropic, reviews, model, effort, stats)
+    poll_batches(client_anthropic, client_supabase, pending, custom_id_map, reviews_by_id, rows_by_id,
+                 model, stats, execute=execute, poll_interval=poll_interval, max_cost=max_cost,
+                 rereview=rereview, redo=redo, budget=budget)
+    return None
 
 
 def run_sync(client_anthropic, client_supabase, reviews: list[ReviewInput], rows_by_id: dict[str, dict],
@@ -1852,7 +1968,7 @@ def run_sync(client_anthropic, client_supabase, reviews: list[ReviewInput], rows
             stats.api_errors += 1
             log_failure(review.provision_id, str(exc))
             continue
-        stats.add_usage(message.usage)
+        stats.add_usage(message.usage, sz.reg_key_of(review.provision_id))
         verdict = verdict_from_message(message, review)
         handle_verdict(client_supabase, rows_by_id[review.provision_id], review, verdict, model, stats, execute,
                        rereview=rereview, redo=redo)
@@ -1884,8 +2000,16 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--sync", action="store_true",
                         help="Synchronous Messages calls instead of the Batches API (2x price; small tests).")
     parser.add_argument("--max-cost", type=float, default=None, metavar="USD",
-                        help="Refuse to submit when the estimate exceeds this, and cancel the remaining "
-                             "batches once actual spend passes it.")
+                        help="A cap on the whole run: refuse to submit when the estimate exceeds this, and "
+                             "cancel the remaining batches once actual spend passes it. The standing budget "
+                             "per regulation (budget.py) applies as well, always.")
+    parser.add_argument("--approved-budget", type=float, default=None, metavar="USD",
+                        help="Owner-approved budget per regulation for THIS run, replacing the standing "
+                             f"${budget_module.STANDING_BUDGET_USD:.0f} rule (budget.py). Printed at the top of the report.")
+    parser.add_argument("--audit-population", default="hand", choices=list(AUDIT_POPULATIONS),
+                        help="With --audit: which approved rows to sample -- 'hand' (reviewed_by without the "
+                             "pipeline mark, the original audit), 'pipeline' (AI-reviewed rows: the monthly "
+                             "spot-check), 'all'.")
     parser.add_argument("--resume-batch", default=None, metavar="ID[,ID]",
                         help="Consume the results of batches a previous run submitted but did not finish "
                              "polling (the rows must still be pending and in scope). No new submission.")
@@ -1977,7 +2101,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"AUDIT: sampling {args.audit} approved rows (seed {args.seed}) whose reviewed_by does not "
               f"contain '{AUDIT_EXCLUDE_REVIEWED_BY}'. Nothing will be written to the database.")
         rows, audit_info = select_audit_sample(client_supabase, args.audit, args.seed,
-                                               reg=args.reg if args.reg and "," not in args.reg else None)
+                                               reg=args.reg if args.reg and "," not in args.reg else None,
+                                               population=args.audit_population)
         print(f"  {audit_info['eligible']:,} eligible rows; {len(rows):,} sampled across "
               f"{len(audit_info['allocation'])} regulations.")
     else:
@@ -2058,44 +2183,24 @@ def main(argv: Optional[list[str]] = None) -> int:
         snapshot_info = {"rpc": SNAPSHOT_RPC, "table": "archive.summary_review_snapshot_rereview",
                          "selected": len(rows), "added": added, "run_label": label}
         print(f"  {added:,} rows newly snapshotted ({len(rows) - added:,} were already in the snapshot).")
-    if args.resume_batch:
-        batch_ids = [b.strip() for b in args.resume_batch.split(",") if b.strip()]
-        custom_id_map: dict[str, str] = {}
-        for review in reviews:
-            sz.make_custom_id(review.provision_id, custom_id_map)
-        for batch_id in batch_ids:
-            batch = client_anthropic.messages.batches.retrieve(batch_id)
-            if batch.processing_status != "ended":
-                print(f"  batch {batch_id} is still '{batch.processing_status}'; try again later.")
-                continue
-            stats.batch_ids.append(batch_id)
-            consume_batch(client_anthropic, client_supabase, batch_id, custom_id_map, reviews_by_id,
-                          rows_by_id, args.model, stats, execute=write, rereview=rereview, redo=redo)
-    elif args.sync:
-        run_sync(client_anthropic, client_supabase, reviews, rows_by_id, args.model, args.effort, stats,
-                 execute=write, rereview=rereview, redo=redo)
-    else:
-        if args.max_cost is not None:
-            ceiling, method, est = estimate_run_cost(client_anthropic, reviews, args.model)
-            print(f"Estimated cost ({method} input, {expected_output_tokens(args.model)} output tokens per row): "
-                  f"${est:,.2f} with cache hits on the system prompt (ceiling without any: ${ceiling:,.2f}); "
-                  f"cap ${args.max_cost:,.2f}")
-            if est > args.max_cost:
-                print(f"Refusing to submit: estimated ${est:,.2f} (ceiling ${ceiling:,.2f}) exceeds --max-cost "
-                      f"${args.max_cost:,.2f}.", file=sys.stderr)
-                md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at,
-                                        audit=audit_info, rereview=rereview, snapshot=snapshot_info, redo=redo_since)
-                data["run"]["mode"] = f"refused: estimate ${est:,.2f} over --max-cost ${args.max_cost:,.2f}"
-                write_report(md, data)
-                return 2
-        pending, custom_id_map = submit_batches(client_anthropic, reviews, args.model, args.effort, stats)
-        poll_batches(client_anthropic, client_supabase, pending, custom_id_map, reviews_by_id, rows_by_id,
-                     args.model, stats, execute=write, poll_interval=args.poll_interval, max_cost=args.max_cost,
-                     rereview=rereview, redo=redo)
+    budget = budget_module.budget_from_args(args.approved_budget)
+    for line in budget.header_lines():
+        print(line)
+    resume = [b.strip() for b in args.resume_batch.split(",") if b.strip()] if args.resume_batch else None
+    refused = run_reviews(client_anthropic, client_supabase, reviews, rows_by_id, args.model, args.effort, stats,
+                          execute=write, budget=budget, max_cost=args.max_cost, poll_interval=args.poll_interval,
+                          resume_batches=resume, sync=bool(args.sync), rereview=rereview, redo=redo)
 
     md, data = build_report(stats, args.model, args.effort, execute=True, started_at=started_at,
-                            audit=audit_info, rereview=rereview, snapshot=snapshot_info, redo=redo_since)
+                            audit=audit_info, rereview=rereview, snapshot=snapshot_info, redo=redo_since,
+                            budget=budget)
+    if refused:
+        data["run"]["mode"] = refused
+        write_report(md, data)
+        print(refused, file=sys.stderr)
+        return 2
     write_report(md, data)
+    print("\n".join(budget.table_lines()))
     cost = stats.cost(args.model, batch=not args.sync)
     print("\n" + "=" * 72)
     print(f"Review run -- model={args.model} mode={'sync' if args.sync else 'batch'}"

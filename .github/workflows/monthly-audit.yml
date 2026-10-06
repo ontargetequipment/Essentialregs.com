@@ -1,0 +1,126 @@
+name: Monthly summary audit
+
+# On the 1st of each month: the reviewer (current prompt, full ancestor
+# context) in AUDIT mode over 100 random AI-reviewed summaries, read-only,
+# capped at $1. It never changes a summary. The report goes to
+# docs/imports/audits/<YYYY-MM>.md through a pull request, and an issue
+# "Monthly summary audit: <rate> would-correct" is opened when the
+# would-correct rate is above 10 percent.
+
+on:
+  schedule:
+    - cron: "23 14 1 * *"   # the 1st, 14:23 UTC
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: "Rows to sample (default 100)."
+        required: false
+        default: "100"
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest==9.1.1
+
+      - name: Unit tests
+        run: python -m pytest test_review.py -q
+
+      - name: Run the reviewer in audit mode (nothing written)
+        id: audit
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          MONTH="$(date -u +%Y-%m)"
+          SEED="$(date -u +%Y%m)"
+          N="${{ inputs.sample }}"; if [ -z "$N" ]; then N=100; fi
+          echo "month=$MONTH" >> "$GITHUB_OUTPUT"
+          python review.py --audit "$N" --audit-population pipeline --seed "$SEED" --max-cost 1 --execute
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json
+          d = json.load(open("out/review_report.json"))
+          c = d["counts"]
+          rate = (c["corrected"] / c["selected"]) if c["selected"] else 0.0
+          print(f"rate={rate:.4f}")
+          print(f"rate_pct={rate*100:.1f}")
+          print(f"selected={c['selected']}")
+          print(f"corrected={c['corrected']}")
+          print(f"cost={d['usage']['cost_usd_batch']}")
+          EOF
+
+      - name: Write the audit report into docs/imports/audits
+        run: |
+          MONTH="${{ steps.audit.outputs.month }}"
+          mkdir -p ../docs/imports/audits
+          {
+            echo "# Monthly summary audit, $MONTH (read-only)"
+            echo
+            echo "Reviewer (pipeline/review.py, audit mode, population: AI-reviewed rows) over ${{ steps.audit.outputs.selected }} random approved summaries, seed $(date -u +%Y%m), capped at \$1. **Would-correct rate: ${{ steps.audit.outputs.rate_pct }}%** (${{ steps.audit.outputs.corrected }} of ${{ steps.audit.outputs.selected }}); cost \$${{ steps.audit.outputs.cost }}. Nothing was written to the database. Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            cat out/review_report.md
+          } > "../docs/imports/audits/$MONTH.md"
+          head -c 60000 "../docs/imports/audits/$MONTH.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-audit
+          path: |
+            pipeline/out/review_report.md
+            pipeline/out/review_report.json
+            docs/imports/audits/*.md
+          retention-days: 400
+          if-no-files-found: warn
+
+      - name: Open a pull request with the report
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          MONTH="${{ steps.audit.outputs.month }}"
+          BRANCH="monthly-audit/$MONTH"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add docs/imports/audits
+          git commit -m "Monthly summary audit $MONTH: ${{ steps.audit.outputs.rate_pct }}% would-correct"
+          git push -u origin "$BRANCH" --force
+          gh pr create --base main --head "$BRANCH" \
+            --title "Monthly summary audit $MONTH: ${{ steps.audit.outputs.rate_pct }}% would-correct" \
+            --body "Read-only audit of ${{ steps.audit.outputs.selected }} AI-reviewed summaries; ${{ steps.audit.outputs.corrected }} the reviewer would correct (${{ steps.audit.outputs.rate_pct }}%). Nothing was changed. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            || echo "::warning::Could not open the pull request (does the repository allow Actions to create pull requests?). The report is on branch $BRANCH and in the monthly-audit artifact."
+
+      - name: Open an issue when the would-correct rate is above 10 percent
+        if: ${{ fromJSON(steps.audit.outputs.rate) > 0.10 }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const rate = '${{ steps.audit.outputs.rate_pct }}%';
+            const title = `Monthly summary audit: ${rate} would-correct`;
+            const body = [
+              `The ${{ steps.audit.outputs.month }} audit of ${{ steps.audit.outputs.selected }} random AI-reviewed summaries found ${{ steps.audit.outputs.corrected }} the reviewer would correct (${rate}), above the 10% line.`,
+              '',
+              'The report (every would-correct row with the reviewer\'s reasons) is in docs/imports/audits/${{ steps.audit.outputs.month }}.md on the audit pull request. Nothing was changed in the database.',
+              '',
+              `_Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}_`,
+            ].join('\n');
+            await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body });
