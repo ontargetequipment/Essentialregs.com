@@ -88,6 +88,23 @@ on:
         type: boolean
         required: false
         default: false
+      writer_proof:
+        description: "WRITER PROOF (ReviewBuiltIn item 3, read-only for the database): regenerate provisions the reviewer corrected in October 2026 with the OLD and the NEW writer instructions and score both with the reviewer in audit mode (pipeline/writer_proof.py). 'quote' = cost estimate only; 'execute' = paid calls, nothing written. Overrides every other input except max_cost."
+        type: choice
+        options: [none, quote, execute]
+        default: none
+      proof_groups:
+        description: "Writer proof: group:count per group (gp = every general permit)."
+        required: false
+        default: "gp:30,3:30,7:30,oooob:30,ecmc:30"
+      proof_seed:
+        description: "Writer proof: sample seed."
+        required: false
+        default: "20261006"
+      proof_arms:
+        description: "Writer proof: writers to run (old,new or one of them)."
+        required: false
+        default: "old,new"
 
 jobs:
   review:
@@ -111,7 +128,25 @@ jobs:
       - name: Unit tests
         run: python -m pytest test_review.py -q
 
+      - name: Writer proof (old vs new writer instructions; nothing written)
+        if: ${{ inputs.writer_proof != 'none' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          CAP="${{ inputs.max_cost }}"; if [ -z "$CAP" ]; then CAP=3; fi
+          ARGS=(--groups "${{ inputs.proof_groups }}" --seed "${{ inputs.proof_seed }}" --arms "${{ inputs.proof_arms }}" --max-cost "$CAP")
+          if [ "${{ inputs.writer_proof }}" = "execute" ]; then ARGS+=(--execute); else ARGS+=(--dry-run); fi
+          echo "Running: python writer_proof.py ${ARGS[*]}"
+          python writer_proof.py "${ARGS[@]}"
+          if [ -f out/writer_proof.md ]; then
+            head -c 60000 out/writer_proof.md >> "$GITHUB_STEP_SUMMARY"
+            echo "::group::writer_proof.md"; cat out/writer_proof.md; echo "::endgroup::"
+          fi
+
       - name: Run review
+        if: ${{ inputs.writer_proof == 'none' }}
         env:
           # The API key is passed to dry runs too: review.py only uses it there
           # for messages.count_tokens, a free endpoint, so the quote is exact.
@@ -167,6 +202,8 @@ jobs:
             pipeline/out/review_report.md
             pipeline/out/review_report.json
             pipeline/review_failed.jsonl
+            pipeline/out/writer_proof.md
+            pipeline/out/writer_proof.json
           retention-days: 90
           if-no-files-found: warn
 
@@ -174,5 +211,5 @@ jobs:
         # The full report above can be longer than the GitHub API returns for
         # a job log; the API keeps the end. This compact summary (counts,
         # actual cost, by regulation, failed rows) is the last thing printed.
-        if: always()
+        if: ${{ always() && inputs.writer_proof == 'none' }}
         run: python review_summary.py out/review_report.json
