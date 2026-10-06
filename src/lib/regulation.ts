@@ -10,6 +10,7 @@ import { renderReaderBody, type RenderedReader } from "@/lib/reader-render";
 // (so scripts/ and tests can import it without a Supabase client, `next/headers`
 // or `server-only`); it is re-exported here so callers keep one import path.
 export * from "@/lib/regulation-pure";
+import { teaserSummariesVisible } from "@/lib/regulation-pure";
 
 const PAGE_SIZE = 1000;
 
@@ -192,6 +193,14 @@ export type RegulationTeaser = {
   headings: TeaserProvision[];
   /** Up to TEASER_SUMMARY_LIMIT reviewed, non-empty summaries for the teaser. */
   summaries: TeaserProvision[];
+  /**
+   * Summaries of this regulation still waiting for the automated review
+   * (summary_status pending with a summary). While above 0 the review run
+   * has not finished and the teaser shows no summaries (owner decision,
+   * 5 Oct 2026: a regulation's summaries are not shown on public sample or
+   * preview pages until its review run has finished).
+   */
+  pendingSummaries: number;
 };
 
 /** Max plain-English summaries shown on a public /preview teaser page. */
@@ -220,7 +229,7 @@ export async function fetchRegulationTeaser(
   const scopedToReg = () =>
     supabase.from("provisions").select(TEASER_COLUMNS).eq("reg_key", regNumber);
 
-  const [rootResult, headingsResult, summariesResult] = await Promise.all([
+  const [rootResult, headingsResult, summariesResult, pendingResult] = await Promise.all([
     // The regulation's own top-level row (id contains "-top-REG-").
     scopedToReg().like("id", "%-top-REG-%").limit(1),
     // Top-level Part/Appendix headings only -- every such row's parent_id is
@@ -236,17 +245,54 @@ export async function fetchRegulationTeaser(
       .neq("ai_summary", "")
       .order("sort_order", { ascending: true })
       .limit(TEASER_SUMMARY_LIMIT),
+    // How many of this regulation's summaries are still pending the
+    // automated review: a count only, no columns.
+    supabase
+      .from("provisions")
+      .select("id", { count: "exact", head: true })
+      .eq("reg_key", regNumber)
+      .eq("summary_status", "pending")
+      .not("ai_summary", "is", null),
   ]);
 
   if (rootResult.error) throw new Error(rootResult.error.message);
   if (headingsResult.error) throw new Error(headingsResult.error.message);
   if (summariesResult.error) throw new Error(summariesResult.error.message);
+  if (pendingResult.error) throw new Error(pendingResult.error.message);
 
+  const pendingSummaries = pendingResult.count ?? 0;
   return {
     root: (rootResult.data?.[0] as TeaserProvision) ?? null,
     headings: (headingsResult.data ?? []) as TeaserProvision[],
-    summaries: (summariesResult.data ?? []) as TeaserProvision[],
+    summaries: teaserSummariesVisible(pendingSummaries)
+      ? ((summariesResult.data ?? []) as TeaserProvision[])
+      : [],
+    pendingSummaries,
   };
+}
+
+/**
+ * How many summaries of each regulation are still pending the automated
+ * review (summary_status pending with a summary), for the public sample
+ * page's gate (gatePublicSummaries). Service-role, count-only reads; no
+ * text columns.
+ */
+export async function fetchPendingSummaryCounts(regKeys: string[]): Promise<Map<string, number>> {
+  const supabase = createAdminClient();
+  const out = new Map<string, number>();
+  await Promise.all(
+    Array.from(new Set(regKeys)).map(async (key) => {
+      const { count, error } = await supabase
+        .from("provisions")
+        .select("id", { count: "exact", head: true })
+        .eq("reg_key", key)
+        .eq("summary_status", "pending")
+        .not("ai_summary", "is", null);
+      if (error) throw new Error(error.message);
+      out.set(key, count ?? 0);
+    })
+  );
+  return out;
 }
 
 /** Columns the public regulation index may read. Never add full_text here. */

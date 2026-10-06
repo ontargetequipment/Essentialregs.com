@@ -36,7 +36,7 @@ export default async function RegulationPreviewPage(
     notFound();
   }
 
-  const { root, headings, summaries } = await fetchRegulationTeaser(reg);
+  const { root, headings, summaries, pendingSummaries } = await fetchRegulationTeaser(reg);
   if (!root) {
     notFound();
   }
@@ -122,6 +122,11 @@ export default async function RegulationPreviewPage(
               );
             })}
           </div>
+        ) : pendingSummaries > 0 ? (
+          <p className="mt-4 text-sm text-muted">
+            This regulation&apos;s summaries are being checked by the automated
+            review — they appear here once the review has finished.
+          </p>
         ) : (
           <p className="mt-4 text-sm text-muted">
             Detailed section-by-section summaries are being added — check

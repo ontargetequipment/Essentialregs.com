@@ -1,0 +1,98 @@
+name: Summary guard
+
+# Daily guard on the review step (ReviewBuiltIn, owner decision 5 Oct 2026).
+# Runs scripts/corpus_qa.sql against production (read-only; the same file the
+# CI qa job runs) and reads its three summary checks:
+#   summary_pending_over_24h     (25)  expected 0, less the allow-list in the SQL
+#   approved_outside_pipeline    (21)  expected 0
+#   approved_without_review_date (19)  expected 0
+# When any is above 0 it opens the issue "Summary guard failed" with the
+# counts and ids (or updates the one already open); when all are 0 it does
+# nothing at all.
+
+on:
+  schedule:
+    - cron: "17 13 * * *"   # daily, 13:17 UTC (07:17 Mountain Daylight Time)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run the corpus QA checks
+        id: qa
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL is not set; the guard cannot run."
+            exit 1
+          fi
+          psql "$SUPABASE_DB_URL" -X -q -v ON_ERROR_STOP=1 --csv -f scripts/question-map-ids.sql -f scripts/corpus_qa.sql > qa.csv
+          python3 - <<'EOF'
+          import csv, json, os
+          rows = list(csv.DictReader(open("qa.csv", newline="")))
+          want = ("summary_pending_over_24h", "approved_outside_pipeline", "approved_without_review_date")
+          found = {r["check_name"]: r for r in rows if r.get("check_name") in want}
+          missing = [w for w in want if w not in found]
+          if missing:
+              raise SystemExit(f"checks missing from the QA output: {missing}")
+          lines, failed = [], False
+          for name in want:
+              r = found[name]
+              n = int(r["n"])
+              lines.append(f"- `{name}`: **{n}** ({r['verdict']})")
+              if n > 0:
+                  failed = True
+                  what = r.get("what_it_catches", "")
+                  for mark in ("Rows:", "Allow-listed"):
+                      i = what.find(mark)
+                      if i >= 0:
+                          lines.append(f"  - {what[i:i+1500]}")
+          body = "\n".join(lines)
+          open("guard_body.md", "w").write(body)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"failed={'true' if failed else 'false'}\n")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write("### Summary guard\n\n" + body + "\n")
+          print(body)
+          EOF
+
+      - name: Open or update the issue "Summary guard failed"
+        if: steps.qa.outputs.failed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = [
+              'One or more summary guard checks is above 0 (scripts/corpus_qa.sql, checks 19, 21 and 25).',
+              '',
+              fs.readFileSync('guard_body.md', 'utf8'),
+              '',
+              'What to do: a pending row means a chained run did not finish or the reviewer failed it twice -- re-run the Generate summaries workflow for the ids (it reviews what it writes) or add the id to pending_allowlist in scripts/corpus_qa.sql with its reason; an approved row outside the pipeline must be sent back to pending (never re-stamped by hand).',
+              '',
+              `_Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}_`,
+            ].join('\n');
+            const title = 'Summary guard failed';
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo, state: 'open', per_page: 100,
+            });
+            const existing = open.find(i => i.title === title && !i.pull_request);
+            if (existing) {
+              await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, body });
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number,
+                body: `Still failing on ${new Date().toISOString().slice(0, 10)}:\n\n${fs.readFileSync('guard_body.md', 'utf8')}` });
+            } else {
+              await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body });
+            }
+
+      - name: Fail the job so the run is flagged red
+        if: steps.qa.outputs.failed == 'true'
+        run: exit 1

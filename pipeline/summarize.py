@@ -56,10 +56,13 @@ import os
 import re
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import budget as budget_module  # noqa: E402
 
 PIPELINE_DIR = Path(__file__).resolve().parent
 FAILED_LOG_PATH = PIPELINE_DIR / "failed.jsonl"
@@ -67,8 +70,22 @@ FAILED_LOG_PATH = PIPELINE_DIR / "failed.jsonl"
 DB_PAGE_SIZE = 200          # rows fetched per Supabase page while scanning candidates
 META_PAGE_SIZE = 1000       # rows fetched per page when building the id->citation/parent map
 MIN_WORDS = 25              # tag-stripped word count below this = headings-only, skip
-MAX_PROMPT_WORDS = 6000     # cap on the provision's own text included in the prompt
-PARENT_TEXT_CHARS = 400     # chars of the immediate parent paragraph shown for scoping
+# The provision's own text is shown whole up to this many words. Was 6,000
+# until 6 Oct 2026, which left nine Statement-of-Basis rows (6,057 to 15,401
+# words) summarized and reviewed on a cut text; the longest row in the corpus
+# is 15,401 words (sec-31-K-I), so 16,000 shows every row whole. A 16,000-word
+# prompt costs about 3 cents to write and 2 cents to review at batch rates.
+MAX_PROMPT_WORDS = 16000
+# The context above the provision (ReviewBuiltIn, 6 Oct 2026): the writer gets
+# the same block the reviewer has had since PR #61 -- the own text of every
+# ancestor from the regulation root down to the parent, honestly cut -- in
+# place of the single 400-character parent excerpt it used to get
+# (legacy_writer.py keeps that form for the writer proof only).
+ANCESTOR_EXCERPT_CHARS = 1500   # per ancestor
+ANCESTOR_BLOCK_CHARS = 6000     # the whole block; over it the farthest ancestors shrink, then drop
+ANCESTOR_MIN_CHARS = 200
+CUT_MARKER = "[excerpt cut]"
+ANCESTOR_BLOCK_HEADING = "Text above this provision (every ancestor, root first; the last is the parent):"
 CHILD_TEXT_WORDS = 3000     # budget for the whole "Provisions inside this one" block; over it -> outline mode
 OUTLINE_TITLE_WORDS = 12    # outline mode: first N words of a descendant's text when it has no title
 MAX_TOKENS = 700            # 400 cut four wide ZZZZ table summaries mid-sentence (batch 4)
@@ -146,6 +163,20 @@ FALLBACK_RATE = {"in": 3.00, "out": 15.00}
 TAG_RE = re.compile(r"<[^>]+>")
 NBSP_RE = re.compile(r"&nbsp;")
 WS_RE = re.compile(r"\s+")
+SENTENCE_END_RE = re.compile(r"[.;:!?][\"')\]]?\s")
+
+# A heading-only row (under MIN_WORDS of its own text) that is named
+# explicitly (--ids / --ids-file) and has provisions inside it gets a short
+# overview instead of being skipped: the summary says what the section
+# covers and names its subsections, from the descendants' text, and the
+# reviewer checks it against that same text. Rows found by scanning are
+# still skipped, so the structural rows the corpus leaves unsummarized by
+# design stay that way.
+HEADING_OVERVIEW_LINE = (
+    "This provision is a heading with little text of its own. Write a short overview of "
+    "1-3 sentences that says what the section covers and names its subsections, using only "
+    "the provisions listed inside it."
+)
 
 DEFAULT_AUDIENCE = (
     "an EHS or compliance person at a Colorado oil & gas operator"
@@ -296,22 +327,97 @@ SYSTEM_PROMPT_TEMPLATE = (
     "coworker: who it applies to, what it requires or prohibits, and any "
     "key thresholds, dates, or numbers. Avoid legal jargon and formal "
     "throat-clearing like 'this provision' or 'this is a definitional "
-    "provision' -- just say what it means. Spell out an acronym the first "
-    "time you use it, but ONLY expand an acronym the way this regulation "
-    "itself defines it -- never from general knowledge or what the acronym "
-    "usually means elsewhere. Two you will see often in this regulation: "
-    "MFCE means midstream fuel combustion equipment; AIMM means approved "
-    "instrument monitoring method. \"The Division\" means the Colorado Air "
+    "provision' -- just say what it means. \"The Division\" means the Colorado Air "
     "Pollution Control Division (part of CDPHE), not any other agency (e.g. "
     "not COGCC) unless the text itself says otherwise.\n\n"
-    "Never state a date, deadline, number, threshold, percentage, or "
-    "geographic qualifier (e.g. a specific county) that is not literally "
-    "present in the text given to you -- not from context, not from what "
-    "the rest of the regulation usually says, not from general knowledge of "
-    "this regulation. If the text says a duty or deadline continues "
-    "'thereafter' or similar open-ended language, say that -- do not invent "
-    "an end date. Never assert a cross-reference, exception, or \"state-only\" "
-    "designation that is not explicitly stated in the text.\n\n"
+    "The text you are given is the only source. A second reviewer checks every "
+    "summary word by word against that text and corrects what it does not "
+    "support, so write only what the text says. The rules below each name an "
+    "error the reviewer found most often in earlier summaries. Follow every "
+    "one.\n\n"
+    "1. Parties. Name the party exactly as the text names it (\"the Director\", "
+    "\"the owner or operator\", \"the Commission\", \"the applicant\") and never "
+    "swap one for another or add an actor the text does not name. If the text "
+    "is passive (\"records shall be kept\"), keep it passive (\"records must be "
+    "kept\"), not \"the operator must keep records\". If the text names no "
+    "recipient, do not say who receives, approves or reviews. Example: the text "
+    "says \"the Division may require\"; do not write \"the Commission may "
+    "require\" or \"the operator may require\".\n\n"
+    "2. Duty or option. \"must\" and \"shall\" are duties; \"may\" is permission or "
+    "an option; \"should\" is a recommendation; \"may not\" is a prohibition. Keep "
+    "each one as the text has it. Never turn an option into a duty, a "
+    "recommendation into a requirement, or one of several alternatives into "
+    "the only way. Example: \"may comply by either A or B\" becomes \"can meet "
+    "this by doing A or B\", never \"must do A and B\" and never \"must do A\".\n\n"
+    "3. Numbers, dates, deadlines, units. Copy every number, date, deadline, "
+    "percentage, unit and threshold exactly as printed: no rounding, no "
+    "conversion, no computed date, no counting from a date the text does not "
+    "give. Do not add \"at least\", \"no more than\", \"within\", \"up to\" or \"every\" "
+    "unless the text uses that word. If a duty continues \"thereafter\" or has no "
+    "end, say so; never invent an end date. Example: \"36 inches below the "
+    "seabed\" is not \"at least 36 inches\"; \"prior to billing\" is not \"the year "
+    "before billing\". Never state a date, number, threshold or geographic "
+    "qualifier (a county, an area) that is not literally in the text given to "
+    "you -- not from context, not from what the regulation usually says.\n\n"
+    "4. Conditions and exceptions. Every \"if\", \"when\", \"unless\", \"except\", "
+    "\"provided that\", \"only\", \"as applicable\" and \"subject to\" that qualifies "
+    "the duty stays in the summary, read the right way round. A summary that "
+    "drops the condition states a wider duty than the text and is wrong. "
+    "Example: \"within 30 days of a request by the Division\" is not \"within 30 "
+    "days\"; \"exempt unless otherwise required by law\" keeps the \"unless\".\n\n"
+    "5. The text above the provision. The block \"Text above this provision\" "
+    "gives the own words of every ancestor from the regulation root down to "
+    "the parent. A limit an ancestor places on the duty -- who it applies to, "
+    "when, under what condition, which equipment -- binds this provision: "
+    "state it, in the ancestor's words. In a nested list the duty is often in "
+    "the grandparent (\"A revised APEN must be filed:\" / \"annually by April 30 "
+    "... as follows:\" / the item), and the item's summary must say what is "
+    "filed and by when. But do not fold a heading's list of topics, an "
+    "equipment list, an applicability date or a scope qualifier into a "
+    "sub-paragraph it does not govern: a paragraph under \"(c) storage vessel "
+    "affected facilities\" is about storage vessels only, even when the "
+    "section heading above also lists compressors and pumps. Where an excerpt "
+    "ends in [excerpt cut], do not guess at what was cut.\n\n"
+    "6. Scope. Make the summary neither wider nor narrower than the text. Do "
+    "not add \"all\", \"any\", \"every\", \"statewide\", \"only\", \"solely\" or "
+    "\"specifically\" where the text has no such word, and do not drop a "
+    "limiting word (\"applicable\", \"new\", \"existing\", \"subject to this "
+    "section\") the text has. Example: \"sources subject to this section\" is not "
+    "\"all sources\"; \"painting equipment or tools\" is not \"equipment\".\n\n"
+    "7. Lists. When the text says \"including\", \"including but not limited to\" "
+    "or \"such as\", the list is open: say \"including\" and never \"specifically\", "
+    "\"namely\" or \"the following\" as if it were complete. When the text gives "
+    "a complete list, name the items as a group and add none of your own.\n\n"
+    "8. Citations and cross-references. Cite a section, rule, paragraph, "
+    "table or form exactly as the text does, and never describe what a cited "
+    "section contains unless the text itself says so. Example: \"demonstrate "
+    "compliance by complying with § 60.5400a\" stays that; do not add \"the "
+    "leak detection standards in § 60.5400a\". Do not say a document is "
+    "\"incorporated by reference\", \"federal\", \"state-only\" or \"approved\" "
+    "unless the text says so.\n\n"
+    "9. Purpose and rationale. Do not add why the rule exists (\"to ensure\", "
+    "\"so that\", \"because\", \"designed to\") or what will happen next "
+    "(\"the Division will review\", \"is then approved\") unless the text states "
+    "it. If the text is silent on a point, the summary is silent on it.\n\n"
+    "10. Terms. Use the text's own term for a defined or technical thing "
+    "(\"routed pneumatic controller\", \"heavier exhaust smoke\", \"deemed "
+    "approved\"), and keep its meaning when you put it in plain words: "
+    "\"deemed approved\" may become \"treated as approved\", not \"approved\"; "
+    "\"heavier\" is not \"darker\". A plain-English paraphrase that keeps the "
+    "meaning is good; a different concept is an error.\n\n"
+    "Three things ARE allowed, because the reviewer accepts them. (a) A "
+    "correct expansion of an acronym or short name, when the regulation "
+    "defines it or it is the ordinary name of the cited program: \"volatile "
+    "organic compounds (VOC)\", \"Reasonably Available Control Technology (RACT)\", "
+    "\"Colorado Parks and Wildlife (CPW)\", \"a Title V operating permit (40 CFR "
+    "part 70 or 71)\". If you are not sure of an expansion, keep the acronym as "
+    "written. Two you will see often: MFCE means midstream fuel combustion "
+    "equipment; AIMM means approved instrument monitoring method. (b) An "
+    "example clearly marked as one (\"such as\", \"for example\") that is "
+    "consistent with the text and does not widen or narrow it -- but never an "
+    "example for a defined term the text defines without examples, and never "
+    "an item that is not on a list the text gives. (c) The correct spelling "
+    "of a word the official text misspells.\n\n"
     "If the text you are given appears to start mid-sentence or mid-clause "
     "(e.g. it opens with a lowercase word, a dangling clause, or a fragment "
     "that doesn't stand alone), do not guess at what the missing opening "
@@ -329,15 +435,6 @@ SYSTEM_PROMPT_TEMPLATE = (
     "Even so, keep to the usual 2-5 short sentences: when many provisions "
     "are listed, say what they require as a group and name the items, with "
     "the key thresholds, dates and numbers -- do not restate each one.\n\n"
-    "Scope the summary by the paragraph's OWN words plus its immediate "
-    "parent paragraph -- nothing wider. Never carry an equipment list, an "
-    "applicability date, or a scope qualifier down from the section heading "
-    "or the subpart title into a sub-paragraph. For example, a paragraph "
-    "under \"(c) storage vessel affected facilities\" is about storage "
-    "vessels only, even when the section heading above it also lists "
-    "compressors and pumps. The \"Under:\" lines and \"Parent paragraph "
-    "text:\" are there to tell you what this paragraph hangs off of, not to "
-    "be folded into it.\n\n"
     "In 40 CFR text ONLY (e.g. the OOOO subparts), the body that approves, "
     "receives, or is notified is \"the Administrator\" (the EPA "
     "Administrator) unless the text itself names someone else -- this does "
@@ -347,11 +444,6 @@ SYSTEM_PROMPT_TEMPLATE = (
     "federal CFR summary -- that term belongs to the Colorado regulations "
     "-- and never mention Colorado, CDPHE, or any state or state agency "
     "unless the text you were given mentions it.\n\n"
-    "Do not invent illustrative examples for a defined term -- if the text "
-    "defines something without examples, don't supply your own. Do not "
-    "expand an acronym unless the text in front of you expands it; leave "
-    "CEDRI, subpart letters, and anything else the text only abbreviates "
-    "exactly as written.\n\n"
     "eCFR equations are images and do not survive text extraction, so a "
     "provision may say something like \"calculated as follows:\" and then "
     "list only the variable definitions with no formula. When that happens, "
@@ -360,8 +452,8 @@ SYSTEM_PROMPT_TEMPLATE = (
     "recite an equation that isn't there.\n\n"
     "Never add requirements that are not in the text. If a section is "
     "purely a definition or administrative detail, say that plainly in one "
-    "sentence. No preamble, no markdown, no bullet lists -- output only the "
-    "summary."
+    "sentence. No preamble, no markdown (no **bold**, no headings, no list "
+    "markers), no bullet lists -- output only the summary."
 )
 
 # The one sentence in SYSTEM_PROMPT_TEMPLATE that names "the EPA
@@ -1375,11 +1467,13 @@ def system_prompt_for(provision_id: str) -> str:
 # --------------------------------------------------------------------------
 
 def make_supabase_client():
-    from supabase import create_client
+    """The database client every pipeline script uses: supabase-py behind
+    the reconnecting wrapper (dbclient.py), so a connection the host closes
+    after 10,000 requests is reopened and the request replayed instead of
+    killing the run."""
+    from dbclient import make_reconnecting_client
 
-    url = os.environ["SUPABASE_URL"]
-    key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    return create_client(url, key)
+    return make_reconnecting_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
 
 
 def fetch_meta(client, reg: Optional[str]) -> dict[str, dict]:
@@ -1583,6 +1677,14 @@ def write_summary(client, provision_id: str, summary: str, model: str,
         "ai_summary": summary,
         "summary_model": model,
         "summary_generated_at": datetime.now(timezone.utc).isoformat(),
+        # Every summary is written as pending: only pipeline/review.py can
+        # make it approved (ReviewBuiltIn, owner decision 5 Oct 2026). A
+        # first-time write is explicit about it rather than relying on the
+        # column default, so a row that was rejected and cleared also comes
+        # back as pending.
+        "summary_status": "pending",
+        "reviewed_by": None,
+        "reviewed_at": None,
     }
     if not regenerated:
         client.table("provisions").update(payload).eq("id", provision_id).execute()
@@ -1592,12 +1694,7 @@ def write_summary(client, provision_id: str, summary: str, model: str,
                 .select("ai_summary, summary_original")
                 .eq("id", provision_id).execute().data or [])
     old = existing[0] if existing else {}
-    payload.update({
-        "summary_original": old.get("summary_original") or old.get("ai_summary"),
-        "summary_status": "pending",
-        "reviewed_by": None,
-        "reviewed_at": None,
-    })
+    payload["summary_original"] = old.get("summary_original") or old.get("ai_summary")
     client.table("provisions").update(payload).eq("id", provision_id).execute()
     client.table("provision_changes").insert({
         "provision_id": provision_id,
@@ -1636,7 +1733,7 @@ def retry_with_line(client_anthropic, model: str, result: "PromptResult",
             {"role": "user", "content": line},
         ],
     )
-    stats.add_usage(message.usage)
+    stats.add_usage(message.usage, reg_key_of(getattr(result, "provision_id", "") or ""))
     return _message_text(message)
 
 
@@ -1692,12 +1789,12 @@ def guard_and_write(client_anthropic, client_supabase, provision_id: str, result
                 retry_without_hedging(client_anthropic, model, result, summary_text, stats))
         except Exception as exc:  # noqa: BLE001 -- treat like any other API failure
             stats.failed += 1
-            log_failure(provision_id, f"hedging retry error: {exc}")
+            log_failure(provision_id, f"hedging retry error: {exc}", stats)
             return
         if not summary_text or is_hedging(summary_text):
             stats.failed += 1
             stats.hedging_failed += 1
-            log_failure(provision_id, "hedging")
+            log_failure(provision_id, "hedging", stats)
             return
         # The hedging retry is a fresh answer; its own stop reason is not
         # tracked, so only the text test applies from here.
@@ -1710,14 +1807,14 @@ def guard_and_write(client_anthropic, client_supabase, provision_id: str, result
                                 LENGTH_RETRY_LINE, max_tokens=LENGTH_RETRY_MAX_TOKENS))
         except Exception as exc:  # noqa: BLE001 -- a cut-off answer is never written
             stats.failed += 1
-            log_failure(provision_id, f"cut_off retry error: {exc}")
+            log_failure(provision_id, f"cut_off retry error: {exc}", stats)
             return
         # Accept the retry only under the same whole-answer test; a second
         # cut-off (or a hedge) means no summary rather than half of one.
         if not shorter or not is_whole(shorter) or is_hedging(shorter):
             stats.failed += 1
             stats.cut_off += 1
-            log_failure(provision_id, "cut_off")
+            log_failure(provision_id, "cut_off", stats)
             return
         summary_text = shorter
     elif is_too_long(summary_text):
@@ -1741,6 +1838,7 @@ def guard_and_write(client_anthropic, client_supabase, provision_id: str, result
     write_summary(client_supabase, provision_id, summary_text, model,
                   regenerated=regenerated, descendant_count=result.descendant_count)
     stats.processed += 1
+    stats.written_ids.append(provision_id)
 
 
 def clear_summary_as_too_short(client, provision_id: str) -> None:
@@ -1766,6 +1864,72 @@ class PromptResult:
     descendant_count: int = 0     # descendants listed under "Provisions inside this one"
     descendant_word_count: int = 0  # words of descendant text actually included
     outline_mode: bool = False    # descendants shown as citation+title lines only
+    heading_overview: bool = False  # a heading-only row named explicitly: overview from its descendants
+    ancestors: dict = field(default_factory=dict)  # build_ancestor_block() info: shown, cut, omitted, ids
+    provision_id: str = ""        # the row the prompt was built for (cost attribution)
+
+
+def honest_cut(text: str, limit: int) -> tuple[str, bool]:
+    """`text` whole when it fits in `limit` characters; otherwise cut at
+    the last sentence end inside the limit (if one lies past 60% of it),
+    else at the last word boundary, and marked with CUT_MARKER. Returns
+    (excerpt, was_cut)."""
+    text = WS_RE.sub(" ", text or "").strip()
+    if len(text) <= limit:
+        return text, False
+    head = text[:limit]
+    cut_at = None
+    for m in SENTENCE_END_RE.finditer(head):
+        if m.end() >= limit * 0.6:
+            cut_at = m.end()
+    if cut_at is None:
+        space = head.rfind(" ")
+        cut_at = space if space > limit * 0.5 else limit
+    return head[:cut_at].rstrip() + " " + CUT_MARKER, True
+
+
+def build_ancestor_block(provision: dict, meta: dict) -> tuple[list[str], dict]:
+    """Lines for the "Text above this provision" block and an info dict
+    (shown, cut, omitted, ids). Every ancestor from the regulation root down
+    to the parent, root first, each as "[id] citation: own text", with
+    honest_cut at ANCESTOR_EXCERPT_CHARS. If the block passes
+    ANCESTOR_BLOCK_CHARS, the farthest ancestor is shrunk to
+    ANCESTOR_MIN_CHARS, then dropped (a line says how many were omitted),
+    and so on towards the parent, which is never trimmed below its own
+    allowance. Shared by the writer and the reviewer (review.py re-exports
+    it), so the two see the same context."""
+    root, chain = build_context(provision, meta)
+    nodes = ([root] if root else []) + list(chain)
+    entries: list[dict] = []
+    for node in nodes:
+        text = strip_html(node.get("full_text") or "") or (node.get("title") or "")
+        excerpt, cut = honest_cut(text, ANCESTOR_EXCERPT_CHARS)
+        entries.append({"id": node["id"], "citation": node.get("citation") or node["id"],
+                        "excerpt": excerpt, "cut": cut, "limit": ANCESTOR_EXCERPT_CHARS})
+    if not entries:
+        return [], {"shown": 0, "cut": False, "omitted": 0, "ids": []}
+    omitted = 0
+
+    def total() -> int:
+        return sum(len(e["excerpt"]) for e in entries)
+
+    while total() > ANCESTOR_BLOCK_CHARS and len(entries) > 1:
+        far = entries[0]
+        if far["limit"] > ANCESTOR_MIN_CHARS:
+            far["limit"] = ANCESTOR_MIN_CHARS
+            far["excerpt"], far["cut"] = honest_cut(far["excerpt"].removesuffix(CUT_MARKER), ANCESTOR_MIN_CHARS)
+            far["cut"] = far["cut"] or far["excerpt"].endswith(CUT_MARKER)
+        else:
+            entries.pop(0)
+            omitted += 1
+    lines = [ANCESTOR_BLOCK_HEADING]
+    if omitted:
+        lines.append(f"[{omitted} farther ancestor{'s' if omitted != 1 else ''} omitted for length]")
+    for e in entries:
+        lines.append(f"[{e['id']}] {e['citation']}: {e['excerpt']}")
+    info = {"shown": len(entries), "cut": omitted > 0 or any(e["cut"] for e in entries), "omitted": omitted,
+            "ids": [e["id"] for e in entries]}
+    return lines, info
 
 
 def _descendant_label(desc: dict) -> str:
@@ -1843,14 +2007,16 @@ def build_context(provision: dict, meta: dict[str, dict]) -> tuple[Optional[dict
 
 def build_prompt(provision: dict, meta: dict[str, dict],
                  children_index: Optional[dict[str, list[dict]]] = None,
-                 context_block: Optional[list[str]] = None) -> PromptResult:
+                 context_block: Optional[list[str]] = None,
+                 heading_overview: bool = False) -> PromptResult:
     """The user prompt for one row. `children_index` (build_children_index
     over `meta`) is what makes the "Provisions inside this one" block
     possible; when it is None it is built from `meta` on the fly, so a row
-    with children in `meta` always gets the block. `context_block`, when
-    given, replaces the parent-paragraph excerpt with the caller's own lines
-    (the reviewer passes the full ancestor chain, review.py); the summarizer
-    never passes it, so its prompt is unchanged."""
+    with children in `meta` always gets the block. The context above the
+    provision is build_ancestor_block() -- the same block for the writer and
+    the reviewer; `context_block` lets a caller substitute its own lines
+    (tests). `heading_overview` adds HEADING_OVERVIEW_LINE for a heading-only
+    row named explicitly."""
     root, chain = build_context(provision, meta)
     stripped = strip_html(provision["full_text"])
     words = stripped.split()
@@ -1866,26 +2032,21 @@ def build_prompt(provision: dict, meta: dict[str, dict],
         lines.append(f"Under: {node['citation']} — {node['title']}")
     lines.append(f"Provision: {provision['citation']} — {provision['title']}")
 
-    # The immediate parent's opening words, so the model can scope this
-    # paragraph against what it actually hangs off of rather than reaching
-    # up to the section heading. Only the nearest ancestor below the
-    # regulation root -- the root's own text is a document title, and its
-    # citation/title already appear on the "Regulation:" line above.
-    parent_excerpt = ""
-    if context_block is not None:
-        if context_block:
-            lines.append("")
-            lines.extend(context_block)
-    elif chain:
-        parent_stripped = strip_html(chain[-1].get("full_text") or "")
-        if parent_stripped:
-            parent_excerpt = parent_stripped[:PARENT_TEXT_CHARS]
-            if len(parent_stripped) > PARENT_TEXT_CHARS:
-                parent_excerpt += "…"
-    if parent_excerpt:
+    # The context above the provision: every ancestor's own text, root
+    # first, honestly cut (build_ancestor_block). Until 6 Oct 2026 the
+    # writer saw one 400-character parent excerpt and the reviewer the full
+    # chain; a limit stated two levels up was the most common thing the
+    # reviewer had to put back.
+    ancestors_info: dict = {"shown": 0, "cut": False, "omitted": 0, "ids": []}
+    if context_block is None:
+        context_block, ancestors_info = build_ancestor_block(provision, meta)
+    if context_block:
         lines.append("")
-        lines.append(f"Parent paragraph text ({chain[-1]['citation']}):")
-        lines.append(parent_excerpt)
+        lines.extend(context_block)
+
+    if heading_overview:
+        lines.append("")
+        lines.append(HEADING_OVERVIEW_LINE)
 
     lines.append("")
     lines.append("Provision text:")
@@ -1915,6 +2076,9 @@ def build_prompt(provision: dict, meta: dict[str, dict],
         descendant_count=len(descendants),
         descendant_word_count=desc_words,
         outline_mode=outline_mode,
+        heading_overview=heading_overview,
+        ancestors=ancestors_info,
+        provision_id=provision.get("id", ""),
     )
 
 
@@ -1954,16 +2118,32 @@ class RunStats:
     length_still_long: int = 0  # retries still over the limit (the shorter one is written)
     cut_off_retried: int = 0    # first answers cut off (max_tokens / no terminal punctuation), retried once
     cut_off: int = 0            # retries still cut off (logged with reason "cut_off", not written)
+    heading_overviews: int = 0  # heading-only rows named explicitly and summarized from their descendants
+    budget_stopped: Optional[str] = None  # the budget message when it stopped the run
+    written_ids: list = field(default_factory=list)   # every row this run wrote (pending)
+    failed_ids: list = field(default_factory=list)    # every row logged to failed.jsonl
+    batch_ids: list = field(default_factory=list)
+    usage_by_reg: dict = field(default_factory=dict)  # reg -> {"in": tokens, "out": tokens}
 
     def note_prompt(self, result: "PromptResult") -> None:
         if result.descendant_count:
             self.with_descendants += 1
         if result.outline_mode:
             self.outline_mode += 1
+        if result.heading_overview:
+            self.heading_overviews += 1
 
-    def add_usage(self, usage) -> None:
-        self.input_tokens += getattr(usage, "input_tokens", 0) or 0
-        self.output_tokens += getattr(usage, "output_tokens", 0) or 0
+    def add_usage(self, usage, reg: Optional[str] = None) -> None:
+        inp = getattr(usage, "input_tokens", 0) or 0
+        out = getattr(usage, "output_tokens", 0) or 0
+        self.input_tokens += inp
+        self.output_tokens += out
+        bucket = self.usage_by_reg.setdefault(reg or "?", {"in": 0, "out": 0})
+        bucket["in"] += inp
+        bucket["out"] += out
+
+    def cost_by_reg(self, model: str, batch: bool = True) -> dict[str, float]:
+        return {reg: estimate_cost(model, b["in"], b["out"], batch=batch) for reg, b in self.usage_by_reg.items()}
 
 
 def print_report(stats: RunStats, model: str, batch: bool, dry_run: bool) -> None:
@@ -1985,6 +2165,7 @@ def print_report(stats: RunStats, model: str, batch: bool, dry_run: bool) -> Non
     print(f"{'Length: still long after retry':38}{stats.length_still_long:>12,}")
     print(f"{'Cut off: retried once':38}{stats.cut_off_retried:>12,}")
     print(f"{'Cut off: still cut off (not written)':38}{stats.cut_off:>12,}")
+    print(f"{'Heading-only rows given an overview':38}{stats.heading_overviews:>12,}")
     print(f"{'Input tokens':38}{stats.input_tokens:>12,}")
     print(f"{'Output tokens':38}{stats.output_tokens:>12,}")
     print(f"{'Estimated cost (USD)':38}{'$' + format(cost, ',.4f'):>12}")
@@ -1997,7 +2178,9 @@ def print_report(stats: RunStats, model: str, batch: bool, dry_run: bool) -> Non
               f"re-selected while ai_summary is still NULL).")
 
 
-def log_failure(custom_id: str, reason: str) -> None:
+def log_failure(custom_id: str, reason: str, stats: Optional["RunStats"] = None) -> None:
+    if stats is not None and custom_id not in stats.failed_ids:
+        stats.failed_ids.append(custom_id)
     FAILED_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with FAILED_LOG_PATH.open("a", encoding="utf-8") as f:
         f.write(json.dumps({
@@ -2011,14 +2194,85 @@ def log_failure(custom_id: str, reason: str) -> None:
 # Anthropic calls
 # --------------------------------------------------------------------------
 
+def prompt_for_row(provision: dict, meta: dict, children_index: dict, explicit: bool) -> Optional[PromptResult]:
+    """build_prompt for one candidate, or None when the row is headings-only
+    and must be skipped. A headings-only row named explicitly (--ids,
+    --ids-file; `explicit`) that has provisions inside it is not skipped: it
+    gets the heading-overview prompt instead (HEADING_OVERVIEW_LINE)."""
+    result = build_prompt(provision, meta, children_index)
+    if result.body_word_count >= MIN_WORDS:
+        return result
+    if explicit and result.descendant_count > 0:
+        return build_prompt(provision, meta, children_index, heading_overview=True)
+    return None
+
+
+def estimate_request_tokens(result: PromptResult) -> int:
+    """Character-free estimate of one request's input tokens: words at
+    ~1.35 tokens each plus the system prompt and scaffolding; outline lines
+    at ~15 words each."""
+    prompt_words = result.prompt_word_count + result.descendant_word_count
+    if result.outline_mode:
+        prompt_words += result.descendant_count * 15
+    return int(prompt_words * 1.35) + 900
+
+
+EST_OUTPUT_TOKENS = 150        # a 2-5 sentence summary
+RETRY_ALLOWANCE = 1.10         # hedging / length retries re-send the prompt for ~10% of rows
+
+
+def count_request_tokens(client_anthropic, model: str, result: PromptResult) -> int:
+    """The free messages.count_tokens figure for one request, or the
+    character estimate when the endpoint is unavailable."""
+    try:
+        res = client_anthropic.messages.count_tokens(
+            model=model, system=result.system,
+            messages=[{"role": "user", "content": result.prompt}])
+        return int(res.input_tokens)
+    except Exception:  # noqa: BLE001 -- fall back to the estimate
+        return estimate_request_tokens(result)
+
+
+def estimate_into_budget(client_anthropic, model: str, prompts: dict[str, PromptResult], budget) -> None:
+    """Adds this run's summarize estimate to `budget`, per regulation:
+    input tokens counted with the free endpoint (6 workers) and
+    EST_OUTPUT_TOKENS of output per row, times RETRY_ALLOWANCE, at batch
+    rates."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    items = list(prompts.items())
+    if client_anthropic is not None and hasattr(getattr(client_anthropic, "messages", None), "count_tokens"):
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            counts = list(pool.map(lambda kv: count_request_tokens(client_anthropic, model, kv[1]), items))
+    else:
+        counts = [estimate_request_tokens(r) for _, r in items]
+    for (pid, _result), tokens in zip(items, counts):
+        usd = estimate_cost(model, tokens, EST_OUTPUT_TOKENS, batch=True) * RETRY_ALLOWANCE
+        budget.estimate(reg_key_of(pid) or "?", "summarize", usd)
+
+
+def record_spend(stats: RunStats, model: str, budget, batch: bool = True) -> None:
+    """Copies this run's per-regulation spend so far into `budget`."""
+    for reg, usd in stats.cost_by_reg(model, batch=batch).items():
+        budget.set_spent(reg, "summarize", usd)
+
+
 def run_sync(client_anthropic, client_supabase, rows: list[dict], meta: dict, model: str,
              stats: RunStats, dry_run: bool, regenerated: bool = False,
-             children_index: Optional[dict[str, list[dict]]] = None) -> None:
+             children_index: Optional[dict[str, list[dict]]] = None,
+             explicit_ids: bool = False, budget=None) -> None:
     if children_index is None:
         children_index = build_children_index(meta)
+    if dry_run and budget is not None:
+        prompts = {}
+        for provision in rows:
+            result = prompt_for_row(provision, meta, children_index, explicit_ids)
+            if result is not None:
+                prompts[provision["id"]] = result
+        estimate_into_budget(None, model, prompts, budget)
     for provision in rows:
-        result = build_prompt(provision, meta, children_index)
-        if result.body_word_count < MIN_WORDS:
+        result = prompt_for_row(provision, meta, children_index, explicit_ids)
+        if result is None:
             stats.skipped_short += 1
             if not dry_run:
                 clear_summary_as_too_short(client_supabase, provision["id"])
@@ -2031,14 +2285,9 @@ def run_sync(client_anthropic, client_supabase, rows: list[dict], meta: dict, mo
             print(f"[prompt words: {result.prompt_word_count}"
                   f"{' (truncated from ' + str(result.body_word_count) + ')' if result.truncated else ''}"
                   f"{'; descendants: ' + str(result.descendant_count) + (' (outline mode)' if result.outline_mode else ' (' + str(result.descendant_word_count) + ' words)') if result.descendant_count else ''}]\n")
-            # Words -> tokens at ~1.35, plus the system prompt and prompt
-            # scaffolding; outline lines are counted at ~15 words each.
-            prompt_words = result.prompt_word_count + result.descendant_word_count
-            if result.outline_mode:
-                prompt_words += result.descendant_count * 15
-            est_in = int(prompt_words * 1.35) + 900
+            est_in = estimate_request_tokens(result)
             stats.input_tokens += est_in
-            stats.output_tokens += 150
+            stats.output_tokens += EST_OUTPUT_TOKENS
             stats.processed += 1
             continue
 
@@ -2052,19 +2301,26 @@ def run_sync(client_anthropic, client_supabase, rows: list[dict], meta: dict, mo
             )
         except Exception as exc:  # noqa: BLE001 -- log and keep going
             stats.failed += 1
-            log_failure(provision["id"], str(exc))
+            log_failure(provision["id"], str(exc), stats)
             continue
 
         summary_text = _message_text(message)
-        stats.add_usage(message.usage)
+        stats.add_usage(message.usage, reg_key_of(provision["id"]))
         if not summary_text:
             stats.failed += 1
-            log_failure(provision["id"], "empty response")
+            log_failure(provision["id"], "empty response", stats)
             continue
 
         guard_and_write(client_anthropic, client_supabase, provision["id"], result,
                         summary_text, model, stats, regenerated,
                         stop_reason=_stop_reason(message))
+        if budget is not None:
+            record_spend(stats, model, budget, batch=False)
+            over = budget.exceeded()
+            if over:
+                stats.budget_stopped = budget.stop_message_spend(over)
+                print(stats.budget_stopped, file=sys.stderr)
+                return
 
 
 CUSTOM_ID_INVALID_RE = re.compile(r"[^a-zA-Z0-9_-]")
@@ -2112,11 +2368,25 @@ def make_custom_id(provision_id: str, used: dict[str, str]) -> str:
 
 def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, model: str,
               stats: RunStats, poll_interval: int, regenerated: bool = False,
-              children_index: Optional[dict[str, list[dict]]] = None) -> None:
+              children_index: Optional[dict[str, list[dict]]] = None,
+              explicit_ids: bool = False, budget=None,
+              resume_batches: Optional[list[str]] = None) -> None:
     """Batch mode is only ever invoked for real runs (main() routes --dry-run
     and --sync through run_sync instead), so every row here either gets
     submitted to the Anthropic Batches API or is skipped as headings-only
-    and cleared in the database."""
+    and cleared in the database.
+
+    `budget` (budget.Budget): before anything is submitted the run's
+    estimate is added per regulation and, if any regulation is over, nothing
+    is submitted (stats.budget_stopped carries the message). After every
+    consumed batch the actual spend is recorded; once a regulation passes
+    the budget the remaining batches are cancelled and their rows left as
+    they were (no summary, or the old one, still pending).
+
+    `resume_batches`: batch ids a previous run submitted but did not finish
+    consuming. Nothing is submitted; the results are consumed for the rows
+    still in scope (the prompts are rebuilt from the same rows so the
+    hedging/length guards can retry), and nothing is paid again."""
     batch_requests = []
     # custom_id (Batches API, ^[a-zA-Z0-9_-]{1,64}$) -> real provision id.
     # Provision ids can contain parentheses (e.g. citation-derived ids like
@@ -2131,8 +2401,8 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
         children_index = build_children_index(meta)
 
     for provision in rows:
-        result = build_prompt(provision, meta, children_index)
-        if result.body_word_count < MIN_WORDS:
+        result = prompt_for_row(provision, meta, children_index, explicit_ids)
+        if result is None:
             stats.skipped_short += 1
             clear_summary_as_too_short(client_supabase, provision["id"])
             continue
@@ -2153,6 +2423,31 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
     if not batch_requests:
         return
 
+    if resume_batches:
+        # A previous run paid for these; consume, never resubmit.
+        for batch_id in resume_batches:
+            batch = client_anthropic.messages.batches.retrieve(batch_id)
+            if batch.processing_status != "ended":
+                print(f"  batch {batch_id} is still '{batch.processing_status}'; try again later.")
+                continue
+            stats.batch_ids.append(batch_id)
+            print(f"  resuming batch {batch_id} (submitting nothing)")
+            _consume_batch_results(client_anthropic, client_supabase, batch_id, custom_id_map,
+                                   prompts, model, stats, regenerated)
+            if budget is not None:
+                record_spend(stats, model, budget)
+        return
+
+    if budget is not None:
+        estimate_into_budget(client_anthropic, model, prompts, budget)
+        over = budget.over_estimate()
+        if over:
+            stats.budget_stopped = budget.stop_message_estimate(over)
+            print(stats.budget_stopped, file=sys.stderr)
+            return
+        print("Estimate within budget: " + ", ".join(
+            f"{reg} ${budget.estimated(reg):,.2f} of ${budget.usd_per_reg:,.2f}" for reg in sorted(budget.estimates)))
+
     # Submit every chunk first, then poll them together. The Batches API
     # queues each batch independently, and the Phase 0 pilot showed even a
     # 4-request batch can wait ~75 minutes before it starts; draining the
@@ -2167,6 +2462,7 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
               f"({chunk_start + 1}-{chunk_start + len(chunk)} of {len(batch_requests)})...")
         batch = client_anthropic.messages.batches.create(requests=chunk)
         stats.batches_submitted += 1
+        stats.batch_ids.append(batch.id)
         print(f"  batch id: {batch.id} (processing_status starts as '{batch.processing_status}')")
         pending.append((batch, chunk))
     print(f"Polling {len(pending)} batch(es) every {poll_interval}s...")
@@ -2184,6 +2480,25 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
                   f"errored={counts.errored} canceled={counts.canceled} expired={counts.expired}")
             _consume_batch_results(client_anthropic, client_supabase, batch.id, custom_id_map,
                                    prompts, model, stats, regenerated)
+            if budget is not None:
+                record_spend(stats, model, budget)
+                over = budget.exceeded()
+                if over and still_pending:
+                    stats.budget_stopped = budget.stop_message_spend(over)
+                    print(stats.budget_stopped, file=sys.stderr)
+                    for other, other_chunk in still_pending:
+                        try:
+                            client_anthropic.messages.batches.cancel(other.id)
+                        except Exception as exc:  # noqa: BLE001
+                            print(f"  cancel failed for {other.id}: {exc}", file=sys.stderr)
+                        for req in other_chunk:
+                            provision_id = custom_id_map.get(req["custom_id"], req["custom_id"])
+                            log_failure(provision_id, "canceled: budget reached", stats)
+                            stats.failed += 1
+                    return
+                elif over:
+                    stats.budget_stopped = budget.stop_message_spend(over)
+                    print(stats.budget_stopped, file=sys.stderr)
         pending = still_pending
         if not pending:
             break
@@ -2193,7 +2508,7 @@ def run_batch(client_anthropic, client_supabase, rows: list[dict], meta: dict, m
                       f"{MAX_POLL_SECONDS}s -- leaving its rows for the next run.")
                 for req in chunk:
                     provision_id = custom_id_map.get(req["custom_id"], req["custom_id"])
-                    log_failure(provision_id, "batch poll timeout")
+                    log_failure(provision_id, "batch poll timeout", stats)
                     stats.failed += 1
             break
         time.sleep(poll_interval)
@@ -2212,10 +2527,10 @@ def _consume_batch_results(client_anthropic, client_supabase, batch_id: str,
         if outcome.type == "succeeded":
             message = outcome.message
             summary_text = _message_text(message)
-            stats.add_usage(message.usage)
+            stats.add_usage(message.usage, reg_key_of(provision_id))
             if not summary_text:
                 stats.failed += 1
-                log_failure(provision_id, "empty response")
+                log_failure(provision_id, "empty response", stats)
                 continue
             guard_and_write(client_anthropic, client_supabase, provision_id,
                             prompts[provision_id], summary_text, model, stats, regenerated,
@@ -2223,7 +2538,7 @@ def _consume_batch_results(client_anthropic, client_supabase, batch_id: str,
         else:
             stats.failed += 1
             error_detail = getattr(getattr(outcome, "error", None), "message", outcome.type)
-            log_failure(provision_id, f"{outcome.type}: {error_detail}")
+            log_failure(provision_id, f"{outcome.type}: {error_detail}", stats)
 
 
 # --------------------------------------------------------------------------
@@ -2304,6 +2619,17 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--poll-interval", type=int, default=POLL_INTERVAL_SECONDS,
         help="Seconds between batch status polls (batch mode only).",
+    )
+    parser.add_argument(
+        "--approved-budget", type=float, default=None, metavar="USD",
+        help="Owner-approved budget per regulation for THIS run, replacing the standing "
+             f"${budget_module.STANDING_BUDGET_USD:.0f} rule (budget.py). Printed at the top of the report.",
+    )
+    parser.add_argument(
+        "--resume-batch", default=None, metavar="ID[,ID]",
+        help="Consume the results of batches a previous run submitted but did not finish "
+             "writing (from its log). Submits nothing and pays nothing; combine with the "
+             "same selection flags as the original run.",
     )
     return parser.parse_args(argv)
 
@@ -2391,14 +2717,29 @@ def main(argv: Optional[list[str]] = None) -> int:
     # while leaving it marked approved.
     regenerated = bool(args.parents or ids)
     stats = RunStats()
+    budget = budget_module.budget_from_args(args.approved_budget)
+    for line in budget.header_lines():
+        print(line)
+    resume = [b.strip() for b in args.resume_batch.split(",") if b.strip()] if args.resume_batch else None
     if args.sync or args.dry_run:
         run_sync(client_anthropic, client_supabase, rows, meta, args.model, stats, args.dry_run,
-                 regenerated=regenerated, children_index=children_index)
+                 regenerated=regenerated, children_index=children_index, explicit_ids=bool(ids),
+                 budget=budget)
     else:
         run_batch(client_anthropic, client_supabase, rows, meta, args.model, stats,
-                  args.poll_interval, regenerated=regenerated, children_index=children_index)
+                  args.poll_interval, regenerated=regenerated, children_index=children_index,
+                  explicit_ids=bool(ids), budget=budget, resume_batches=resume)
 
     print_report(stats, args.model, batch=not (args.sync or args.dry_run), dry_run=args.dry_run)
+    print("\n".join(budget.table_lines()))
+    if args.dry_run:
+        over = budget.over_estimate()
+        if over:
+            print(budget.stop_message_estimate(over), file=sys.stderr)
+            return 2
+    if stats.budget_stopped:
+        print(stats.budget_stopped, file=sys.stderr)
+        return 2
     return 0
 
 

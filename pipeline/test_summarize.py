@@ -1928,7 +1928,11 @@ def test_write_back_not_regenerated_is_unchanged():
     write_summary(client, "x", "new text", "m")
     assert len(client.log) == 1
     payload = client.log[0][2]
-    assert set(payload) == {"ai_summary", "summary_model", "summary_generated_at"}
+    # ReviewBuiltIn (6 Oct 2026): every write is explicitly pending with the
+    # reviewer cleared; only review.py can make it approved.
+    assert set(payload) == {"ai_summary", "summary_model", "summary_generated_at",
+                            "summary_status", "reviewed_by", "reviewed_at"}
+    assert payload["summary_status"] == "pending" and payload["reviewed_by"] is None
 
 
 def _fake_anthropic(answers: list[str], calls: list[dict], stop_reason: str = "end_turn"):

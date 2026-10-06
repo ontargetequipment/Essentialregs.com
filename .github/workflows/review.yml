@@ -8,7 +8,9 @@ name: Review pending summaries
 # the report. Without `execute` it is a dry run: no paid call, no write, a cost
 # quote per model option. `rereview` selects the hand-approved rows instead
 # (snapshot first; fail -> pending). See pipeline/README.md, "Automated AI
-# review pass".
+# review pass". Since 6 Oct 2026 (ReviewBuiltIn) the review also runs
+# automatically inside the Generate summaries and Import workflows for the
+# rows they write; this workflow is for re-reviews, audits and redo runs.
 
 on:
   workflow_dispatch:
@@ -35,9 +37,18 @@ on:
         options: [low, medium, high]
         default: low
       max_cost:
-        description: "Spend cap in USD: refuse to submit above this estimate; cancel the remaining batches once actual spend passes it. Leave blank for no cap."
+        description: "Cap on the WHOLE run in USD: refuse to submit above this estimate; cancel the remaining batches once actual spend passes it. Leave blank for no run cap. The standing budget ($10 per regulation per run, pipeline/budget.py) applies as well, always."
         required: false
         default: ""
+      approved_budget:
+        description: "Owner-approved budget in USD per regulation for THIS run, replacing the standing $10 rule. Printed at the top of the report. Leave blank for the standing rule."
+        required: false
+        default: ""
+      audit_population:
+        description: "Audit mode: which approved rows to sample -- hand (reviewed_by without 'automated pipeline', the original audit), pipeline (AI-reviewed rows, what the monthly audit uses), all."
+        type: choice
+        options: [hand, pipeline, all]
+        default: hand
       audit_sample:
         description: "AUDIT MODE: review N random approved rows (reviewed_by not containing 'automated pipeline', spread across regulations) and write NOTHING to the database, only the report. Leave blank for the normal pending-row review."
         required: false
@@ -113,7 +124,8 @@ jobs:
           if [ -n "${{ inputs.ids }}" ]; then ARGS+=(--ids "${{ inputs.ids }}"); fi
           if [ -n "${{ inputs.limit }}" ]; then ARGS+=(--limit "${{ inputs.limit }}"); fi
           if [ -n "${{ inputs.max_cost }}" ]; then ARGS+=(--max-cost "${{ inputs.max_cost }}"); fi
-          if [ -n "${{ inputs.audit_sample }}" ]; then ARGS+=(--audit "${{ inputs.audit_sample }}" --seed "${{ inputs.seed }}"); fi
+          if [ -n "${{ inputs.audit_sample }}" ]; then ARGS+=(--audit "${{ inputs.audit_sample }}" --seed "${{ inputs.seed }}" --audit-population "${{ inputs.audit_population }}"); fi
+          if [ -n "${{ inputs.approved_budget }}" ]; then ARGS+=(--approved-budget "${{ inputs.approved_budget }}"); fi
           if [ -n "${{ inputs.audit_ids }}" ]; then ARGS+=(--audit-ids "${{ inputs.audit_ids }}"); fi
           if [ "${{ inputs.from_snapshot }}" = "true" ]; then ARGS+=(--from-snapshot); fi
           if [ -n "${{ inputs.redo_corrections_since }}" ]; then ARGS+=(--redo-corrections-since "${{ inputs.redo_corrections_since }}"); fi

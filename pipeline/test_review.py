@@ -416,10 +416,11 @@ def test_official_text_is_byte_identical_to_the_summarizer_prompt(db):
     block, _ = review.build_ancestor_block(row, meta)
     theirs = sz.build_prompt(row, meta, idx, context_block=block)
     assert ours.prompt == theirs.prompt
-    # the only difference from the summarizer's own prompt is the context block
+    # Since 6 Oct 2026 the writer's own prompt IS the reviewer's text: the
+    # same ancestor block, no separate parent excerpt anywhere.
     plain = sz.build_prompt(row, meta, idx)
-    assert plain.prompt.split("\nProvision text:")[1] == ours.prompt.split("\nProvision text:")[1]
-    assert "Parent paragraph text" in plain.prompt and "Parent paragraph text" not in ours.prompt
+    assert plain.prompt == ours.prompt
+    assert "Parent paragraph text" not in ours.prompt
     assert review.ANCESTOR_BLOCK_HEADING in ours.prompt and info["shown"] >= 1
     assert ours.descendant_count == theirs.descendant_count == 2
     assert ours.truncated == theirs.truncated
@@ -861,11 +862,22 @@ def test_markdown_only_correction_is_accepted():
     assert v.reasons_note == "stray Markdown markers removed"
 
 
-def test_markdown_only_correction_that_changes_anything_else_is_a_fail():
+def test_markdown_only_correction_that_also_changes_wording_is_an_ordinary_correction():
+    """Until 6 Oct 2026 this was a fail ("Markdown-only correction changed
+    more than the markers"), which kept sec-11-H-APPENDIX-A-2.15-C,
+    sec-21-A-II-E and sec-21-A-II-I pending twice. Now it is an ordinary
+    correction under the ordinary limits, with the wording change recorded
+    as a change of its own."""
     db = _md_db()
     r = _review_for(db, "sec-3-A-I-B-33")
     v = review.validate_verdict(_md_only("Modification means any change that increases emissions."), r)
-    assert v.verdict == "fail" and "more than the markers" in v.reason
+    assert v.verdict == "corrected"
+    assert v.corrected_summary == "Modification means any change that increases emissions."
+    assert v.changes[-1]["reason"] == review.MARKDOWN_PLUS_WORDING_REASON
+    assert v.changes[-1]["before"] == review.strip_markdown_markers(r.summary)
+    # the ordinary limits still apply: a rewrite is still a fail
+    long = " ".join(["Modification means any change that increases emissions and much more besides."] * 6)
+    assert review.validate_verdict(_md_only(long), r).verdict == "fail"
 
 
 def test_a_real_correction_may_also_drop_markdown():
@@ -1527,7 +1539,8 @@ def test_gp07_row_sees_the_whole_parent_including_upon_request():
     block = r.prompt.split(review.ANCESTOR_BLOCK_HEADING)[1].split("\nProvision text:")[0]
     assert "made available to the Division for inspection upon request" in block     # past PARENT_TEXT_CHARS (400)
     assert "not subject to Conditions I.B. or I.C. or I.D." in block
-    assert len(sz.strip_html(db.row("sec-gp07-II-B-1")["full_text"])) > sz.PARENT_TEXT_CHARS
+    import legacy_writer
+    assert len(sz.strip_html(db.row("sec-gp07-II-B-1")["full_text"])) > legacy_writer.LEGACY_PARENT_TEXT_CHARS
     assert review.CUT_MARKER not in block
 
 
@@ -1566,7 +1579,7 @@ def test_ancestor_block_trims_the_farthest_first_and_never_the_parent(monkeypatc
         if line.startswith("[sec-"):
             assert len(line) <= review.ANCESTOR_EXCERPT_CHARS + 120
     # total cap: 4 x 1,500 + root > 6,000 -> the farthest are shrunk to 200, then dropped; the parent keeps 1,500
-    monkeypatch.setattr(review, "ANCESTOR_BLOCK_CHARS", 2500)
+    monkeypatch.setattr(sz, "ANCESTOR_BLOCK_CHARS", 2500)   # the one copy lives in summarize.py
     lines, info = review.build_ancestor_block(row, meta)
     parent_line = next(l for l in lines if l.startswith("[sec-gp01-VIII-C-1-a]"))
     assert len(parent_line) > 1400 and parent_line.endswith(review.CUT_MARKER)
@@ -1751,3 +1764,102 @@ def test_redo_selection_pages_and_honours_until(monkeypatch):
     rows = review.select_redo_candidates(db, "2026-10-05T04:38:00Z", "2026-10-05T05:45:00Z")
     assert [r["id"] for r in rows] == ["sec-gp01-VIII-C-1-a-(ii)"]
     assert review.parse_args(["--redo-corrections-since", "a", "--redo-until", "b"]).redo_until == "b"
+
+
+# --------------------------------------------------------------------------
+# Prompt version 4 (6 Oct 2026, ReviewBuiltIn item 8c): a correct expansion
+# or standard name stays even when the provision itself does not define it.
+# Two production rows the v3 reviewer got wrong are the fixtures.
+# --------------------------------------------------------------------------
+
+def _expansion_rows():
+    return [
+        {"id": "sec-ecmc-top-REG-ecmc", "citation": "2 CCR 404-1", "title": "ECMC rules", "parent_id": None,
+         "full_text": "<p>Rules and regulations of the Energy and Carbon Management Commission</p>", "sort_order": 0,
+         "ai_summary": None, "summary_status": "pending", "summary_original": None, "summary_model": None},
+        {"id": "sec-ecmc-309", "citation": "Rule 309", "title": "Rule 309. Wildlife", "parent_id": "sec-ecmc-top-REG-ecmc",
+         "full_text": "<p>Rule 309. WILDLIFE RESOURCES</p>", "sort_order": 1,
+         "ai_summary": None, "summary_status": "pending", "summary_original": None, "summary_model": None},
+        {"id": "sec-ecmc-309-e-(6)", "citation": "309.e.(6)", "title": "", "parent_id": "sec-ecmc-309",
+         "full_text": "<p>CPW Consultation Outcomes.</p>", "sort_order": 2,
+         "ai_summary": None, "summary_status": "pending", "summary_original": None, "summary_model": None},
+        # Production row sec-ecmc-309-e-(6)-A, as corrected on 6 Oct 2026 by the
+        # v3 reviewer: "Comprehensive Area Plan" turned back into "CAP" although
+        # Rule 314 of the same regulation is titled Comprehensive Area Plans.
+        {"id": "sec-ecmc-309-e-(6)-A", "citation": "309.e.(6).A.", "title": "309.e.(6).A.", "parent_id": "sec-ecmc-309-e-(6)",
+         "full_text": "<p>If the Director agrees that the conditions of approval or denial as recommended by CPW are necessary and "
+                      "reasonable to Avoid, Minimize, or Mitigate Adverse Impacts to Wildlife Resources, the Director will "
+                      "incorporate CPW’s recommended conditions into the Director’s Recommendation on an Oil and Gas "
+                      "Development Plan, Form 2A, or CAP.</p>", "sort_order": 3,
+         "ai_summary": "If the Director agrees that conditions recommended by Colorado Parks and Wildlife (CPW) are necessary "
+                       "and reasonable to avoid, minimize, or mitigate adverse impacts to wildlife resources, the Director "
+                       "will include those conditions in the Director's Recommendation on an Oil and Gas Development Plan, "
+                       "Form 2A, or Comprehensive Area Plan.",
+         "summary_status": "pending", "summary_original": None, "summary_model": "claude-sonnet-4-5"},
+        {"id": "sec-oooob-top-REG-oooob", "citation": "40 CFR 60 Subpart OOOOb", "title": "OOOOb", "parent_id": None,
+         "full_text": "<p>Subpart OOOOb</p>", "sort_order": 10,
+         "ai_summary": None, "summary_status": "pending", "summary_original": None, "summary_model": None},
+        {"id": "sec-oooob-60.5360b", "citation": "§ 60.5360b", "title": "§ 60.5360b Am I subject to this subpart?",
+         "parent_id": "sec-oooob-top-REG-oooob", "full_text": "<p>Am I subject to this subpart?</p>", "sort_order": 11,
+         "ai_summary": None, "summary_status": "pending", "summary_original": None, "summary_model": None},
+        # Production row sec-oooob-60.5360b-(c): "Title V operating permit" was
+        # removed although 40 CFR parts 70 and 71 are the Title V permit programs.
+        {"id": "sec-oooob-60.5360b-(c)", "citation": "§ 60.5360b(c)", "title": "§ 60.5360b(c) Exemption",
+         "parent_id": "sec-oooob-60.5360b",
+         "full_text": "<p>Exemption. You are exempt from the obligation to obtain a permit under 40 CFR part 70 or 40 CFR part 71, "
+                      "provided you are not otherwise required by law to obtain a permit under 40 CFR 70.3(a) or 40 CFR 71.3(a). "
+                      "Notwithstanding the previous sentence, you must continue to comply with the provisions of this subpart.</p>",
+         "sort_order": 12,
+         "ai_summary": "You are exempt from having to get a federal Title V operating permit (under 40 CFR parts 70 or 71) "
+                       "unless some other law already requires you to get one under 40 CFR 70.3(a) or 71.3(a). Even if you're "
+                       "exempt from the permit, you still must comply with all the requirements in this subpart.",
+         "summary_status": "pending", "summary_original": None, "summary_model": "claude-sonnet-4-5"},
+    ]
+
+
+def test_prompt_version_4_keeps_correct_expansions_and_standard_names():
+    p = review.REVIEW_SYSTEM_PROMPT
+    assert "defined elsewhere in the same regulation or is the ordinary name of the cited program" in p
+    assert "Comprehensive Area Plan" in p and "CAP" in p and "Rule 314" in p
+    assert "Title V operating permit" in p and "40 CFR part 70 or part 71" in p
+    assert "That the provision's own text does not define the term is not a reason to remove it" in p
+    # and the Markdown-plus-wording rule
+    assert "it is then an ordinary correction" in p
+
+
+def test_fixture_cap_expansion_reverted_to_acronym_is_treated_as_pass():
+    """The exact change the v3 reviewer made on sec-ecmc-309-e-(6)-A, with
+    its exact reason: the validator now reads it as allowance 1 (a correct
+    expansion turned back into its acronym) and the verdict is pass."""
+    db = FakeSupabase(_expansion_rows())
+    r = _review_for(db, "sec-ecmc-309-e-(6)-A")
+    before = r.summary
+    after = before.replace("Comprehensive Area Plan", "CAP")
+    data = {"findings": [{"claim": "Comprehensive Area Plan", "problem": "the text says CAP"}],
+            "verdict": "corrected", "corrected_summary": after,
+            "changes": [{"before": "Comprehensive Area Plan", "after": "CAP",
+                         "reason": "The text only says \"CAP\" and does not define it, so the expansion is unsupported."}],
+            "fail_reason": ""}
+    v = review.validate_verdict(data, r)
+    assert v.verdict == "pass" and v.reason == review.ACRONYM_ONLY_REASON
+    assert review._is_expansion_to_acronym("Comprehensive Area Plan", "CAP")
+    assert review._is_expansion_to_acronym("Comprehensive Area Plan (CAP)", "CAP")
+    assert not review._is_expansion_to_acronym("Comprehensive Area Plan", "Oil and Gas Location")
+
+
+def test_fixture_title_v_name_is_in_the_prompt_and_a_wrong_expansion_still_corrects():
+    """sec-oooob-60.5360b-(c): the prompt names "Title V operating permit" for
+    a 40 CFR part 70/71 permit as a standard name to keep (the validator
+    cannot know program names; the rule is the prompt's). A reason that says
+    the expansion is WRONG still goes through as a correction."""
+    db = FakeSupabase(_expansion_rows())
+    r = _review_for(db, "sec-oooob-60.5360b-(c)")
+    assert "Title V operating permit" in review.REVIEW_SYSTEM_PROMPT
+    assert "40 CFR part 70 or 40 CFR part 71" in r.prompt
+    wrong = r.summary.replace("Title V", "Title IV")
+    data = {"findings": [], "verdict": "corrected", "corrected_summary": r.summary.replace("Title V operating permit", "permit"),
+            "changes": [{"before": "Title V operating permit", "after": "permit",
+                         "reason": "The expansion is wrong: parts 70 and 71 are not Title IV"}], "fail_reason": ""}
+    v = review.validate_verdict(data, r)
+    assert v.verdict == "corrected"
+    assert wrong != r.summary

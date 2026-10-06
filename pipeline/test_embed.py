@@ -485,7 +485,7 @@ def test_dry_run_estimate_never_needs_voyage_key(monkeypatch):
     class FakeClient:  # minimal stand-in for the supabase client
         pass
 
-    def fake_fetch(client, reg, limit):
+    def fake_fetch(client, reg, limit, ids=None):
         return [row(pid="sec-7-A-1"), row(pid="sec-7-A-2", text=" ".join(["tank"] * 3000))]
 
     monkeypatch.setattr(embed, "make_supabase_client", lambda: FakeClient())

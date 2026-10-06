@@ -1,10 +1,19 @@
 name: Generate summaries
 
+# The chained run (pipeline/run_chain.py): summarize -> review -> regenerate
+# what the reviewer failed, once, and review it again -> embed. One run,
+# three stages, one report. Every summary is written as pending and becomes
+# "AI reviewed" only when pipeline/review.py approves it in the same run
+# (owner decision, Brody, 5 Oct 2026). Standing budget: $10 per regulation
+# per run across all three stages (pipeline/budget.py); an estimate above it
+# stops the run before any paid call, and the only override is the
+# approved_budget input, printed at the top of the report.
+
 on:
   workflow_dispatch:
     inputs:
       reg:
-        description: "Regulation to process (e.g. 7, 3, 26, oooob). Leave blank for all."
+        description: "Regulation to process (e.g. 7, 3, 26, gp03, oooob). Leave blank for all."
         required: false
         default: ""
       limit:
@@ -12,32 +21,48 @@ on:
         required: false
         default: ""
       dry_run:
-        description: "Dry run: print prompts/estimates, call nothing, write nothing."
+        description: "Dry run: select the rows and print the estimate for all three stages against the budget. Calls nothing paid, writes nothing."
         type: boolean
         required: false
         default: false
       model:
-        description: "Anthropic model id."
+        description: "Writer model id."
         required: false
         default: "claude-sonnet-4-5"
+      review_model:
+        description: "Reviewer model id (a separate call from the writer)."
+        required: false
+        default: "claude-sonnet-5-5"
       force:
-        description: "Force: regenerate summaries even for rows that already have one."
+        description: "Force: regenerate summaries even for rows that already have one. Combine with reg."
         type: boolean
         required: false
         default: false
       parents:
-        description: "Parents (Phase 0): regenerate every row that already has a summary AND has child provisions, with the children's text in the prompt. Implies force; rows go back to pending review. Combine with reg/limit to scope."
+        description: "Parents (Phase 0): regenerate every row that already has a summary AND has child provisions. Implies force."
         type: boolean
         required: false
         default: false
       longer_than:
-        description: "With parents: only rows whose current summary is longer than this many characters (e.g. 900), to redo the ones that ran long. Leave blank for all parents."
+        description: "With parents: only rows whose current summary is longer than this many characters."
         required: false
         default: ""
       ids:
-        description: "Comma-separated exact provision ids to regenerate (e.g. from a review report). Overrides limit/force row selection; pair with reg for correct metadata scoping. Leave blank for normal reg/limit/force selection."
+        description: "Comma-separated exact provision ids to regenerate (always regenerated, reviewed and embedded)."
         required: false
         default: ""
+      approved_budget:
+        description: "Owner-approved budget in USD per regulation for THIS run, replacing the standing $10 rule. Leave blank for the standing rule."
+        required: false
+        default: ""
+      resume_batches:
+        description: "Resume a run that died after submitting: 'summarize=msgbatch_a;review=msgbatch_b' from its chain_state.json / log, with the same selection inputs. Consumes those batches and pays nothing again."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   summarize:
@@ -56,13 +81,19 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest==9.1.1
 
-      - name: Run summarizer
+      - name: Unit tests
+        run: python -m pytest test_run_chain.py test_review.py test_dbclient.py -q
+
+      - name: Run the chained run (summarize, review, embed)
+        id: chain
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CHAIN_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           ARGS=()
           if [ -n "${{ inputs.reg }}" ]; then ARGS+=(--reg "${{ inputs.reg }}"); fi
@@ -72,14 +103,68 @@ jobs:
           if [ "${{ inputs.parents }}" = "true" ]; then ARGS+=(--parents); fi
           if [ -n "${{ inputs.longer_than }}" ]; then ARGS+=(--longer-than "${{ inputs.longer_than }}"); fi
           if [ -n "${{ inputs.ids }}" ]; then ARGS+=(--ids "${{ inputs.ids }}"); fi
-          ARGS+=(--model "${{ inputs.model }}")
-          echo "Running: python summarize.py ${ARGS[*]}"
-          python summarize.py "${ARGS[@]}"
+          if [ -n "${{ inputs.approved_budget }}" ]; then ARGS+=(--approved-budget "${{ inputs.approved_budget }}"); fi
+          if [ -n "${{ inputs.resume_batches }}" ]; then ARGS+=(--resume-batches "${{ inputs.resume_batches }}"); fi
+          LABEL="${{ inputs.reg }}"
+          if [ -z "$LABEL" ]; then LABEL="all"; fi
+          ARGS+=(--model "${{ inputs.model }}" --review-model "${{ inputs.review_model }}")
+          ARGS+=(--label "$LABEL" --sample-dir "../docs/imports/$(date -u +%Y-%m-%d)")
+          echo "Running: python run_chain.py ${ARGS[*]}"
+          python run_chain.py "${ARGS[@]}"
 
-      - name: Upload failed rows (if any)
-        if: always() && hashFiles('pipeline/failed.jsonl') != ''
+      - name: Report to the job summary and the job log
+        if: always()
+        run: |
+          if [ -f out/chain_report.md ]; then
+            head -c 60000 out/chain_report.md >> "$GITHUB_STEP_SUMMARY"
+            echo "::group::chain_report.md"
+            cat out/chain_report.md
+            echo "::endgroup::"
+          else
+            echo "No report written (an earlier step failed)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          for f in failed.jsonl review_failed.jsonl embed_failed.jsonl; do
+            if [ -f "$f" ]; then echo "::group::$f"; cat "$f"; echo "::endgroup::"; fi
+          done
+
+      - name: Upload report, state and failures
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: failed-summaries
-          path: pipeline/failed.jsonl
-          retention-days: 30
+          name: chain-report
+          path: |
+            pipeline/out/chain_report.md
+            pipeline/out/chain_report.json
+            pipeline/out/chain_state.json
+            pipeline/failed.jsonl
+            pipeline/review_failed.jsonl
+            pipeline/embed_failed.jsonl
+            docs/imports/**/*_chain_sample_40.md
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Open a pull request with the spot-check sample
+        # The 40-row sample for the Cowork session lives in the repo under
+        # docs/imports/<date>/. A dry run or a run that wrote nothing has no
+        # sample and this step does nothing.
+        if: steps.chain.outcome == 'success' && inputs.dry_run != true
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add docs/imports
+          if git diff --cached --quiet; then
+            echo "No sample document to commit."
+            exit 0
+          fi
+          LABEL="${{ inputs.reg }}"; if [ -z "$LABEL" ]; then LABEL="all"; fi
+          BRANCH="chain-sample/${LABEL}-${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git commit -m "Chained run ${LABEL}: 40-row spot-check sample (run ${{ github.run_id }})"
+          git push -u origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "Chained run ${LABEL}: spot-check sample (run ${{ github.run_id }})" \
+            --body "The 40-row spot-check sample (20 pass, 20 corrected, seeded) from the chained run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}. For the Cowork session: check each live summary against the official text, then make the regulation public." \
+            || echo "::warning::Could not open the pull request (does the repository allow Actions to create pull requests?). The sample is in the chain-report artifact and on branch $BRANCH."
