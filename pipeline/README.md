@@ -698,8 +698,15 @@ listed corrected rows. Read only.
 **Resumability** is the summarizer's: approved rows drop out of the
 selection, so running again picks up exactly what the last run did not
 finish. A run that submitted batches but hit the 6-hour poll ceiling names
-the batch ids in its log; `--resume-batch <id>` consumes those results
-without submitting (and paying) again. After a run with corrections, re-embed
+the batch ids in its log; `--resume-batch <id>[,<id>...]` (workflow input
+**resume_batch**, combined with the same selection inputs as the original
+run) consumes those results without submitting (and paying) again. The same
+path recovers a run whose writer died mid-batch: the stage 2b re-review
+(6 Oct 2026, 11,917 rows) lost its database connection after 10,000 requests
+on one HTTP/2 connection (`httpx.RemoteProtocolError: ConnectionTerminated`)
+while writing batch 8 of 12; the resume run finished the remaining 4,520 rows
+from the already-paid batches. Reconnecting inside the write loop is on the
+ReviewBuiltIn list. After a run with corrections, re-embed
 the corrected rows (**Embed provisions**, `reg` scoped) so Ask and the related
 panel see the new text.
 
