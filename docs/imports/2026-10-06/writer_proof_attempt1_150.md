@@ -1,34 +1,7 @@
 # Writer proof, attempt 1 (read-only), 6 Oct 2026: old vs new writer instructions on 150 provisions the reviewer corrected in October
 
-Workflow run: https://github.com/ontargetequipment/Essentialregs.com/actions/runs/37471297852 (Review workflow, input writer_proof=execute). Nothing was written to the database.
-shell: /usr/bin/bash -e {0}
-env:
-  pythonLocation: /opt/hostedtoolcache/Python/3.11.16/x64
-  PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.16/x64/lib/pkgconfig
-  Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.16/x64
-  Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.16/x64
-  Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.16/x64
-  LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.16/x64/lib
-  ANTHROPIC_API_KEY: ***
-  SUPABASE_URL: ***
-  SUPABASE_SERVICE_ROLE_KEY: ***
-##[endgroup]
-Running: python writer_proof.py --groups gp:30,3:30,7:30,oooob:30,ecmc:30 --seed 20261006 --arms old,new --max-cost 3 --execute
-Fetching metadata (all regulations)...
-  eligible by group: {'3': 438, '7': 578, 'ecmc': 1122, 'gp': 347, 'oooob': 715}; selected 150
-  150 rows in the proof (0 left out: over the old cap, outline mode or headings-only)
-Estimate: writer $1.38 (300 requests) + reviewer $0.89 (300 requests, count_tokens) = $2.26; cap $3.00
-Submitting 300 writer requests...
-  submitted batch msgbatch_01FUEgK6G4xdNHMqb49kjCmf (300 requests)
-  writer done: 150 rows, $1.2761
-Submitting 300 reviewer requests...
-  submitted batch msgbatch_018rAPfj61axdcvcyjnapdfw (300 requests)
-  reviewer done: $0.8399
-old: reviewed 150, pass 76, corrected 74, fail 0, would-correct 49.3%
-new: reviewed 150, pass 111, corrected 39, fail 0, would-correct 26.0%
-Report: /home/runner/work/Essentialregs.com/Essentialregs.com/pipeline/out/writer_proof.md
-##[group]writer_proof.md
-# Writer proof -- old vs new writer instructions (read-only), 2026-10-06
+Workflow run: https://github.com/ontargetequipment/Essentialregs.com/actions/runs/37471297852 (Review workflow, input writer_proof=execute, prompt as of commit bf66b4c). Nothing was written to the database. The 100-row subset used for attempt 2 is the first 20 rows of each group below; on that subset the old writer's would-correct rate is 53.0% (53/100) and attempt 1's is 27.0% (27/100).
+
 
 - 150 provisions the reviewer corrected in October 2026 (seed 20261006; groups {'gp': 30, '3': 30, '7': 30, 'oooob': 30, 'ecmc': 30}; eligible {'3': 438, '7': 578, 'ecmc': 1122, 'gp': 347, 'oooob': 715}; 0 left out as over the old 6,000-word cap, outline mode or headings-only)
 - Writer `claude-sonnet-4-5` (temperature 0, batch); reviewer `claude-sonnet-5-5` (effort low, prompt version 7f111afa89, audit mode: nothing written)
@@ -1141,9 +1114,3 @@ Report: /home/runner/work/Essentialregs.com/Essentialregs.com/pipeline/out/write
   - reason: Text refers to the Operator's Financial Assurance provided pursuant to Rule 704.
 - **new** -> pass
   - summary: If the Commission finds in favor of a Surface Owner in a Financial Assurance hearing under Rule 503.g.(11), the Commission may order the Operator to conduct corrective or remedial action, provide a monetary award for unreasonable crop loss or land damage that cannot be remediated or corrected, or other appropriate relief. Any monetary award is not limited to the amount of the Operator's Financial Assurance provided under Rule 704.
-##[endgroup]
-##[group]Run if [ -f out/review_report.md ]; then
-[36;1mif [ -f out/review_report.md ]; then[0m
-[36;1m  head -c 60000 out/review_report.md >> "$GITHUB_STEP_SUMMARY"[0m
-[36;1m  echo "::group::review_report.md"[0m
-[36;1m  cat out/review_report.md[0m
