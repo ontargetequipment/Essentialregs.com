@@ -64,6 +64,49 @@ Still pending after step 2 (13 rows, all with a summary on the row, none shown a
 
 Stage 2b's first run (37410161694) submitted all 12 batches and died writing batch 8: the database host closes an HTTP/2 connection after 10,000 requests (`httpx.RemoteProtocolError: ConnectionTerminated`) and the write loop did not reconnect. All 12 batches were already paid for, so a `resume_batch` workflow input (PR #65, workflow only) consumed batches 8-12 without submitting anything (the log shows no "Submitting batch" line). For the ReviewBuiltIn work, not started: (1) reconnect inside the write loop when the connection is closed after 10,000 requests; (2) in about 2% of corrections the reviewer removes a correct acronym expansion the hand pass had added (accepted for now).
 
+## Review built in (ReviewBuiltIn), Oct 6 2026 (PR #67, branch `claude/review-built-in`)
+
+Owner decision (Brody, Oct 5 2026): review is part of how a regulation gets onto the site. No summary reaches a customer labelled "AI reviewed" without passing through the review step, and nobody has to ask for it. Until PR #67 the AI review was a separate job someone had to remember to run, which is why 19,000 summaries needed the October catch-up pass above.
+
+**Standing spending rule (Brody, Oct 5 2026).** The pipeline may spend up to **$10 per regulation per run** on summaries, review and embedding combined without asking. If the dry-run estimate for a regulation is above $10, the run makes no paid call and stops with a clear message asking for owner approval. Enforced in code: `pipeline/budget.py` holds the one constant (`STANDING_BUDGET_USD`), every stage adds its per-regulation estimate before the first paid call and records actual spend after every batch; the only override is the workflow input `approved_budget`, printed at the top of the run's report. `summarize.py`, `review.py`, `embed.py` and the chained run all enforce it.
+
+**What PR #67 built** (details in `pipeline/README.md`, "Review is built in"):
+
+1. **One run, three stages, one report** -- `pipeline/run_chain.py` behind the Generate summaries workflow: every summary written as pending, reviewed in the same run, the reviewer's fails regenerated once and reviewed again (a second fail stays pending and is listed at the top of the report), then embedded. It writes the 40-row spot-check sample (20 pass, 20 corrected, seeded, with the ancestor text the reviewer saw) to `docs/imports/<date>/` and opens a pull request with it. `resume_batches` consumes batches a dead run already paid for.
+2. **Imports trigger it** -- the Import workflow runs the chained run after every execute on every row whose letters or digits changed plus its ancestors; `skip_summaries` is the emergency opt-out. Link-markup-only changes do not trigger it (tested).
+3. **The writer, not just the checker** -- see the tally and the proof below; the writer now gets the reviewer's full ancestor chain (one copy of the code, `summarize.build_ancestor_block`, re-exported by `review.py`), the whole provision text up to 16,000 words (every row in the corpus; the longest is 15,401), and a rewritten system prompt with one rule and one example per error type.
+4. **Guards** in `scripts/corpus_qa.sql`: 25 `summary_pending_over_24h` (allow-list in the file, each row with its reason), 21 `approved_outside_pipeline` (replaces the looser check 21), 19 `approved_without_review_date`. CI's qa job runs them on every pull request; the daily **Summary guard** workflow opens the issue "Summary guard failed" with counts and ids when any is above 0 and does nothing when all are 0.
+5. **Monthly spot-check** -- the Monthly summary audit workflow (the 1st): 100 random AI-reviewed summaries, reviewer in audit mode, read-only, $1 cap, report to `docs/imports/audits/<YYYY-MM>.md` by pull request, issue "Monthly summary audit: <rate> would-correct" above 10%.
+6. **Only `review.py` approves.** Every code path that could set `summary_status` to approved or edited, and what was done: (a) `pipeline/review.py` `apply_verdict` / `_apply_redo` -- the one path, kept, guarded by status at write time; (b) `src/app/admin/review/actions.ts` `approveSummary` and `saveEditAndApprove` -- removed; the page now has "Send back to pending (AI re-review)", "Save edit as pending" and "Reject"; (c) `docs/imports/2026-09-19/batch4_02_approvals.sql` and `docs/site/sample_rows_2026-09-19.sql` -- historical hand SQL, kept as records, refused by the trigger if ever run; (d) no other script or SQL file writes an approval (the pipeline's `write_summary` writes pending explicitly). Migration `20261006090000` adds the trigger `provisions_summary_approval_only_by_pipeline`, which refuses approved/edited without "automated pipeline" in `reviewed_by` and a `reviewed_at`; `test_run_chain.py` scans the repository for any other writer.
+7. **Checklist** for a new regulation: import -> summarize, review and embed in one run (automatic, within $10) -> the Cowork session spot-checks the 40-row sample against the official text -> make the regulation public. A regulation's summaries are not shown on `/sample` or `/regulations/<reg>/preview` until its review run has finished (`teaserSummariesVisible`, `gatePublicSummaries`).
+8. **Carry-overs**: (a) `pipeline/dbclient.py` reconnects and replays a request when the host drops the connection (the 10,000-request HTTP/2 limit that killed stage 2b), tested with a mocked dropped connection; (b) every selection pages past 1,000 rows, tested with a capped fake client; (c) reviewer prompt v4 keeps a correct expansion or standard name defined elsewhere in the regulation or that is the ordinary name of the cited program (fixtures: sec-ecmc-309-e-(6)-A "Comprehensive Area Plan", sec-oooob-60.5360b-(c) "Title V operating permit"); new reviews only; (d) the 13 pending rows: the 16,000-word cap shows the long Statements of Basis whole, a Markdown-only correction that also changed wording is an ordinary correction, the rewrite row and the heading-only row (now an overview from its subsections) are regenerated with the new writer -- all re-run by the chained run after merge, and any row still pending goes on the allow-list with its reason.
+
+**Error-type tally** (the input to the writer rewrite). Every reason the pipeline reviewer gave for a correction in October 2026: 15,800 reasons over 8,692 corrected rows across 57 regulations (`provision_changes.note`, `summary_edited`, Oct 1-6; the stage redo's "restored" entries excluded), plus the 124 reasons in the Oct 5 read-only audit report. Keyword classification, one reason may hit several types:
+
+| error type | reasons (prod) | share | audit report (124) |
+|---|---:|---:|---:|
+| party named differently from the text (who acts, receives, approves) | 3,162 | 20.0% | 39 |
+| statement the text does not make (mechanics, consequences, "approved", "incorporated by reference") | 3,182 | 20.1% | 33 |
+| wrong term or a paraphrase that changed the meaning | 2,653 | 16.8% | 22 |
+| citation or cross-reference misread, or its contents described | 2,591 | 16.4% | 26 |
+| option presented as a duty (may / must / shall / should) | 2,308 | 14.6% | 31 |
+| dropped exception or condition | 1,811 | 11.5% | 17 |
+| a limit from a parent paragraph left out | 1,665 | 10.5% | 8 |
+| invented or wrong date, deadline or timing | 1,473 | 9.3% | 18 |
+| wrong number, threshold or unit | 1,274 | 8.1% | 12 |
+| scope wider than the text ("all", "any", "statewide") | 1,166 | 7.4% | 12 |
+| scope narrower than the text | 783 | 5.0% | 6 |
+| acronym expanded without support (mostly prompt v1 runs; v2+ allows correct ones) | 462 | 2.9% | 18 |
+| list presented as complete where the text says "includes but is not limited to" | 376 | 2.4% | 4 |
+| purpose or rationale the text does not state | 322 | 2.0% | 5 |
+| stray Markdown | 276 | 1.7% | 8 |
+| added "at least", "only", "any", "all" | 134 | 0.8% | 0 |
+| no keyword match | 2,378 | 15.1% | 8 |
+
+The new `SYSTEM_PROMPT_TEMPLATE` (summarize.py) has a numbered rule with a short example for each of the first ten types, keeps the three things the reviewer allows (correct acronym expansions or standard names, clearly marked examples that do not change scope, correct spelling where the source has a typo), and keeps the Phase 0 descendants, mid-sentence, 40 CFR Administrator and equations paragraphs. The old writer is kept verbatim in `pipeline/legacy_writer.py` for the proof only.
+
+**Writer proof** (read-only, Review workflow input `writer_proof`, `pipeline/writer_proof.py`): WRITER_PROOF_RESULTS
+
 ## Citation links (rules in force since Oct 4 2026, PRs #46, #47 and the citation follow-up)
 
 A citation of another regulation deep-links to the exact provision only when the importer can prove the target. The rules, in order:
