@@ -2468,6 +2468,11 @@ def test_document_root_prompt_lists_first_level_headings_only():
     assert "Part A" in result.prompt and "Part E" in result.prompt
     assert "asbestos asbestos" not in result.prompt and "mact mact" not in result.prompt
     assert not result.outline_mode and "applies to asbestos abatement projects" in result.prompt
+    # scanned (not named) the root is still skipped as headings-only
+    assert summarize.prompt_for_row(root, meta, idx, explicit=False) is None
+    # a heading below the root keeps the section overview and all its descendants
+    part = summarize.prompt_for_row(meta["sec-8-A"], meta, idx, explicit=True)
+    assert part is not None and summarize.HEADING_OVERVIEW_LINE in part.prompt and part.descendant_count == 1
 
 
 def test_document_root_shows_the_opening_of_each_heading_not_an_outline():
@@ -2489,12 +2494,7 @@ def test_document_root_shows_the_opening_of_each_heading_not_an_outline():
     # the reviewer's assembly is the same prompt
     from review import build_official_text
     text, _ = build_official_text(meta["sec-8-top-REG-8"], meta, idx)
-    assert text.prompt == result.prompt.replace("\n\n" + summarize.DOCUMENT_OVERVIEW_LINE, "")
-    # scanned (not named) the root is still skipped as headings-only
-    assert summarize.prompt_for_row(root, meta, idx, explicit=False) is None
-    # a heading below the root keeps the section overview and all its descendants
-    part = summarize.prompt_for_row(meta["sec-8-A"], meta, idx, explicit=True)
-    assert part is not None and summarize.HEADING_OVERVIEW_LINE in part.prompt and part.descendant_count == 1
+    assert text.prompt == result.prompt.replace("\n\n" + summarize.DOCUMENT_OVERVIEW_LINE, "")  # same assembly, minus the brief
 
 
 def test_build_descendants_max_depth():
