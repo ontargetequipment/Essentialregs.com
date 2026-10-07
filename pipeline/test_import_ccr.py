@@ -6035,7 +6035,9 @@ class Reg27FullParseTests(unittest.TestCase):
         self.assertEqual(dict(self.unresolved["other_reg"]), {})
         # Sprint 3: the dotted tokenizer runs everywhere, so the one dotted
         # "40 C.F.R. Part 60" mention is bucketed too.
-        self.assertEqual(set(self.unresolved["cfr"]), {"40 CFR Part 98", "40 CFR Part 98, Subpart A", "40 C.F.R. Part 60"})
+        # 7 Oct 2026: the comma-after-CFR form ("40 CFR, Part 98") is a citation too.
+        self.assertEqual(set(self.unresolved["cfr"]), {"40 CFR Part 98", "40 CFR Part 98, Subpart A", "40 C.F.R. Part 60",
+                                                       "40 CFR, Part 98", "40 CFR, Part 98, Subparts C"})
         for r in self.rows:
             for tgt in re.findall(r'data-target="([^"]+)"', r["full_text"]):
                 self.assertIn(tgt, self.by_id, (r["id"], tgt))
@@ -6569,7 +6571,8 @@ class RegAqsFullParseTests(unittest.TestCase):
                       self.by_id["sec-aqs-VIII-M"]["full_text"])
         self.assertEqual(sum(r["full_text"].count('href="/regulations/sip"') for r in self.rows), 7)
         # Sprint 3: the dotted "40 C.F.R. Part 50" mentions are bucketed too.
-        self.assertEqual(set(self.unresolved["cfr"]), {"40 CFR Part 93", "40 CFR Part 58", "40 C.F.R. Part 50"})
+        self.assertEqual(set(self.unresolved["cfr"]), {"40 CFR Part 93", "40 CFR Part 58", "40 C.F.R. Part 50",
+                                                       "40 CFR, Part 50", "40 CFR, Part 51", "40 CFR, Part 53"})
         self.assertEqual(set(self.unresolved["unparseable"]), {"V.a.1.", "III.E."})
 
     def test_no_repeated_paragraph_prefix_and_no_giant_rows(self):
@@ -7316,7 +7319,8 @@ class Batch6SmallFullParseTests(unittest.TestCase):
                                               "Adopted February 6, 2007", "Adopted October 18, 2012")):
             self.assertTrue(by_id[f"sec-18-II-{letter}"]["full_text"].startswith(f"<p>{opener}</p>"), letter)
         # Sprint 3: the six dotted "40 C.F.R. Part 72" mentions are bucketed too.
-        self.assertEqual(dict(unresolved["cfr"]), {"40 CFR Part 72": 1, "40 C.F.R. Part 72": 6})
+        # 7 Oct 2026: a lower-case "part" is the same citation.
+        self.assertEqual(dict(unresolved["cfr"]), {"40 CFR Part 72": 1, "40 C.F.R. Part 72": 6, "40 CFR part 72": 2, "40 C.F.R. part 72": 1})
         self.assertEqual(fixes, [])
 
     def test_sip(self):
@@ -7344,7 +7348,7 @@ class Batch6SmallFullParseTests(unittest.TestCase):
         self.assertIn("<p>c. A copy of all independent tests", by_id["sec-sip-VIII-B-5"]["full_text"])
         self.assertEqual(dict(unresolved["other_reg"]), {})
         self.assertEqual(set(unresolved["unparseable"]), {"C.2.", "D.2."})
-        self.assertEqual(dict(unresolved["cfr"]), {"40 CFR Part 58": 1})
+        self.assertEqual(dict(unresolved["cfr"]), {"40 CFR Part 58": 1, "40 CFR, Part 51": 3})
 
 
 _REG23_ANCHOR_RE = re.compile(r'<a class="xref-external-reg" href="/regulations/23">([^<]*)</a>')
@@ -8072,7 +8076,8 @@ class Reg19FullParseTests(unittest.TestCase):
         self.assertIn('data-target="sec-19-A-II-B-48">Section II.B.48.</span>', self.by_id["sec-19-A-I-B"]["full_text"])
         self.assertIn('data-target="sec-19-P-A">Part A</span>', self.by_id["sec-19-A-I-A"]["full_text"])
         self.assertEqual(set(self.unresolved["cfr"]),
-                         {"40 C.F.R. Part 745", "40 C.F.R. Part 745, Subpart E", "40 C.F.R. Part 745, Subpart Q"})
+                         {"40 C.F.R. Part 745", "40 C.F.R. Part 745, Subpart E", "40 C.F.R. Part 745, Subpart Q",
+                          "40 C.F.R., Part 745, Subpart Q"})
         self.assertEqual(dict(self.unresolved["other_reg"]), {})
         self.assertEqual(dict(self.unresolved["unparseable"]), {"II.B.48.b": 1})
 
@@ -9377,7 +9382,8 @@ class ProcEndToEndTests(unittest.TestCase):
         self.assertEqual(dict(self.unresolved["other_reg"]), {})
         self.assertEqual(sum(r["full_text"].count('href="/regulations/10"') for r in self.rows), 3)
         # Sprint 3: the dotted "40 C.F.R. Part 52, Subpart G" mentions are bucketed.
-        self.assertEqual(dict(self.unresolved["cfr"]), {"40 C.F.R. Part 52, Subpart G": 2})
+        self.assertEqual(dict(self.unresolved["cfr"]), {"40 C.F.R. Part 52, Subpart G": 2, "40 CFR, Part 51": 2,
+                                                        "40 CFR, part 93, subpart A": 1})
         # stale internal references to sections this edition no longer prints
         self.assertIn("V.F.13.", self.unresolved["unparseable"])
 
@@ -9797,8 +9803,10 @@ class Reg4FullParseTests(unittest.TestCase):
                          ["sec-4-C-XI-A", "sec-4-C-XI-B", "sec-4-C-XI-C"])
         self.assertEqual(dict(self.unresolved["other_reg"]), {})
         self.assertEqual(dict(self.unresolved["historical"]), {})
+        # 7 Oct 2026: "Part 60 Subpart AAA" with no comma, and "40 CFR, Part 60", are read whole.
         self.assertEqual(dict(self.unresolved["cfr"]),
-                         {"40 CFR Part 60": 10, "40 CFR Part 60, Subpart AAA": 6})
+                         {"40 CFR Part 60": 6, "40 CFR Part 60, Subpart AAA": 6, "40 CFR Part 60 Subpart AAA": 4,
+                          "40 CFR, Part 60, Subpart AAA": 1, "40 CFR, Part 60 Subpart AAA": 1})
         # the one genuine source typo: II.C.1. cites a Section I.A.8.5 that
         # the definitions list does not contain (it stops at I.A.8).
         self.assertEqual(dict(self.unresolved["unparseable"]), {"I.A.8.5": 1})
@@ -10136,7 +10144,7 @@ class Batch7SmallFullParseTests(unittest.TestCase):
                       by_id["sec-10-I"]["full_text"])
         # 40 CFR Part 93 is not in the corpus: plain text, bucketed as cfr
         self.assertEqual(dict(unresolved["cfr"]),
-                         {"40 CFR Part 93, Subpart A": 4, "40 CFR Part 93": 1})
+                         {"40 CFR Part 93, Subpart A": 4, "40 CFR Part 93": 1, "40 CFR, Part 93, Subpart A": 3})
         self.assertEqual(dict(unresolved["other_reg"]), {})
         self.assertEqual(dict(unresolved["unparseable"]), {})
         # "Part B" in the statements of basis names the regulation's own
@@ -11127,10 +11135,12 @@ class Reg31FullParseTests(unittest.TestCase):
         # drafting errors (Part C has no Section II.B.2.a.); III.B.9. now
         # resolves because the label fix restored the row it names.
         self.assertEqual(dict(self.unresolved["unparseable"]), {"II.B.2.a.": 1})
+        # 7 Oct 2026: the comma-after-CFR forms are read as citations too.
         self.assertEqual(dict(self.unresolved["cfr"]),
                          {"40 CFR Part 60": 19, "40 C.F.R. Part 60": 1, "40 CFR Part 60, Subpart Cf": 7,
-                          "40 CFR Part 60, Subparts Cf": 1,
-                          "40 CFR Part 63, Subpart AAAA": 2, "40 CFR Part 98, Subpart HH": 1,
+                          "40 CFR Part 60, Subparts Cf": 1, "40 CFR, Part 60, Subpart Cf": 2, "40 CFR, Part 60, Subpart XXX": 1,
+                          "40 CFR Part 63, Subpart AAAA": 2, "40 CFR, Part 63, Subpart AAAA": 2,
+                          "40 CFR Part 98, Subpart HH": 1, "40 CFR, Part 98, Subpart HH": 1,
                           "40 CFR Part 98, Subpart A": 1})
 
     def test_no_tables_and_no_furniture_leaks(self):
@@ -12162,3 +12172,177 @@ class CaptionWrapRegsTests(unittest.TestCase):
         self.assertIsNone(ic._caption_wrap_line(["Table 3 – x", "Process heater", "", "y"], 0, self._table()))
         self.assertIsNone(ic._caption_wrap_line(["Table 1 – ... on or before February", "1, 2016", "", "y"], 0, self._table()))
         self.assertIsNone(ic._caption_wrap_line(["Table 3 – x", "fired process heaters", "not blank"], 0, self._table()))
+
+
+class FederalSubpartLinkTests(XregBase):
+    """Acceptance item 2 (6-7 Oct 2026): every form the Colorado documents
+    use to cite 40 CFR Part 60 / 63 engine and oil-and-gas subparts links to
+    the corpus document when it is in the corpus, and to the section when a
+    § number is cited and resolves. A subpart that is not in the corpus (the
+    original OOOO; every Part 63 subpart but ZZZZ) is counted in the cfr
+    bucket and never linked -- including Regulation 8's Part 63 Subparts
+    IIII / JJJJ / OOOO, which share their codes with the Part 60 engine rules
+    (the map is part-aware now)."""
+
+    FED_IDS = {
+        "iiii": {"sec-iiii-top-REG-iiii", "sec-iiii-60.4201", "sec-iiii-60.4209", "sec-iiii-60.4209-(a)", "sec-iiii-60.4209-(b)"},
+        "jjjj": {"sec-jjjj-top-REG-jjjj", "sec-jjjj-60.4244", "sec-jjjj-60.4244-(a)"},
+        "zzzz": {"sec-zzzz-top-REG-zzzz", "sec-zzzz-63.6600", "sec-zzzz-63.6603", "sec-zzzz-63.6635"},
+        "ooooa": {"sec-ooooa-top-REG-ooooa", "sec-ooooa-60.5430a"},
+        "oooob": {"sec-oooob-top-REG-oooob", "sec-oooob-60.5386b", "sec-oooob-60.5386b-(c)"},
+        "6": {"sec-6-top-REG-6", "sec-6-P-A", "sec-6-A-SUBPART-IIII"},
+    }
+
+    def fed(self, text, reg="gp12", part="", corpus=None):
+        known = {f"sec-{reg}-top-REG-{reg}"}
+        return ic.link_citations(text, reg, known, self.corpus if corpus is None else corpus, part, "sec-x",
+                                 corpus_ids=self.FED_IDS)
+
+    def assertText(self, html, text):
+        self.assertEqual(ic.re.sub(r"<[^>]+>", "", html), text)
+
+    def test_gp12_xii_e_comma_after_cfr_links_zzzz_and_the_bare_closing_mention(self):
+        text = ("Natural gas-fired spark ignition engines registered under this general permit may be subject to "
+                "40 CFR, Part 63, Subpart ZZZZ - National Emission Standards for Hazardous Air Pollutants for "
+                "Reciprocating Internal Combustion Engines. 75 Fed. Reg. 51570 (Aug. 20, 2010). A copy of the complete "
+                "subpart is available on the EPA website - National Emission Standards for Hazardous Air Pollutants "
+                "– Subpart ZZZZ. Additional information can be found on the EPA guidance website.")
+        html, buckets = self.fed(text)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/zzzz">40 CFR, Part 63, Subpart ZZZZ</a> - National', html)
+        self.assertIn('Pollutants – <a class="xref-external-reg" href="/regulations/zzzz">Subpart ZZZZ</a>. Additional', html)
+        self.assertEqual(html.count("<a "), 2)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {})
+        self.assertText(html, text)
+
+    def test_part_60_forms_with_and_without_commas(self):
+        for text in ("40 CFR, Part 60, Subpart JJJJ—Standards of Performance", "40 CFR Part 60 Subpart JJJJ applies",
+                     "40 C.F.R., Part 60, Subpart JJJJ (July 1, 2023)", "40 CFR Part 60, Subpart JJJJ."):
+            html, buckets = self.fed(text, reg="7", part="B")
+            self.assertIn('href="/regulations/jjjj">40 C', html, text)
+            self.assertEqual(html.count("<a "), 1, text)
+            self.assertText(html, text)
+            self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {}, text)
+        # Lower-case "part"/"subpart" and a plain-prose "subparts that" are not citations of a code.
+        html, buckets = self.fed("see 40 CFR part 60, subpart OOOOb and the 40 CFR Part 60 subparts that apply", reg="7", part="B")
+        self.assertIn('href="/regulations/oooob">40 CFR part 60, subpart OOOOb</a>', html)
+        self.assertNotIn("subparts that</a>", html)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"40 CFR Part 60": 1})
+
+    def test_part_63_coating_subparts_are_not_the_engine_rules(self):
+        # Regulation 8 Part A's list (sec-8-E-III in production linked these to /regulations/iiii before 7 Oct 2026).
+        for code in ("IIII", "JJJJ", "OOOO"):
+            text = (f"Subpart {code} National Emission Standards for Hazardous Air Pollutants: Surface Coating, "
+                    f"40 C.F.R. Part 63, Subpart {code} (July 1, 2025).")
+            html, buckets = self.fed(text, reg="8", part="E")
+            self.assertNotIn("<a", html, code)
+            self.assertText(html, text)
+            self.assertEqual(buckets[ic.BUCKET_CFR][f"40 C.F.R. Part 63, Subpart {code}"], 1, code)
+        # The code list after a part is part-aware too; "Part 60, Subpart ZZZZ" does not exist.
+        html, buckets = self.fed("see 40 C.F.R. Part 63, JJJJ, IIII, and 40 CFR Part 60, Subpart ZZZZ", reg="8", part="E")
+        self.assertNotIn("<a", html)
+        self.assertEqual(buckets[ic.BUCKET_CFR]["40 CFR Part 63, JJJJ"], 1)
+        self.assertEqual(buckets[ic.BUCKET_CFR]["40 CFR Part 60, Subpart ZZZZ"], 1)
+        # Subpart X of Part NN: the part follows the code.
+        html, buckets = self.fed("Subpart ZZZZ of Part 63 and Subpart IIII of 40 CFR Part 60 and Subpart JJJJ of Part 63", reg="30", part="B")
+        self.assertIn('href="/regulations/zzzz">Subpart ZZZZ of Part 63</a>', html)
+        self.assertIn('href="/regulations/iiii">Subpart IIII of 40 CFR Part 60</a>', html)
+        self.assertIn("and Subpart JJJJ of Part 63", html)
+        self.assertEqual(html.count("<a "), 2)
+        self.assertEqual(buckets[ic.BUCKET_CFR]["Subpart JJJJ of Part 63"], 1)
+
+    def test_program_words_fix_the_part(self):
+        text = ("requirements of New Source Performance Standard (NSPS) Subpart JJJJ and Maximum Achievable Control "
+                "Technology (MACT) Subpart ZZZZ for the engine")
+        html, _ = self.fed(text, reg="gp02")
+        self.assertIn('(NSPS) <a class="xref-external-reg" href="/regulations/jjjj">Subpart JJJJ</a> and', html)
+        self.assertIn('(MACT) <a class="xref-external-reg" href="/regulations/zzzz">Subpart ZZZZ</a> for', html)
+        self.assertText(html, text)
+        html, buckets = self.fed("the NESHAP, Subpart ZZZZ (August 30, 2024) defers to the federal NSPS, Subpart JJJJ; "
+                                 "NSPS OOOOa, NSPS OOOO, NESHAP JJJJ and MACT ZZZZ may apply.", reg="30", part="C")
+        self.assertIn('NESHAP, <a class="xref-external-reg" href="/regulations/zzzz">Subpart ZZZZ</a> (August', html)
+        self.assertIn('NSPS, <a class="xref-external-reg" href="/regulations/jjjj">Subpart JJJJ</a>;', html)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/ooooa">NSPS OOOOa</a>', html)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/zzzz">MACT ZZZZ</a>', html)
+        self.assertIn("NSPS OOOO, NESHAP JJJJ and", html)
+        self.assertEqual(html.count("<a "), 4)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"NSPS OOOO": 1, "NESHAP JJJJ": 1})
+        # The whole phrase links when the program word is plain, as before.
+        html, _ = self.fed("Engines must meet NSPS Subpart IIII.", reg="gp06")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/iiii">NSPS Subpart IIII</a>.', html)
+
+    def test_bare_subpart_mentions(self):
+        # ZZZZ and the OOOOa/b/c family occur in one part only.
+        html, buckets = self.fed("40 C.F.R. §60.5430a (Subpart OOOOa). However, operators", reg="3", part="F")
+        self.assertIn('(<a class="xref-external-reg" href="/regulations/ooooa">Subpart OOOOa</a>)', html)
+        html, buckets = self.fed("Subpart OOOO, OOOOa, or OOOOb – Standards of Performance for Crude Oil", reg="gp05")
+        self.assertIn('Subpart OOOO, <a class="xref-external-reg" href="/regulations/ooooa">OOOOa</a>, or '
+                      '<a class="xref-external-reg" href="/regulations/oooob">OOOOb</a> – Standards', html)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"Subpart OOOO": 1})
+        # JJJJ / IIII only with the Part 60 context in the paragraph.
+        html, buckets = self.fed("pending NSPS Standard under Subpart JJJJ.", reg="7", part="C")
+        self.assertIn('under <a class="xref-external-reg" href="/regulations/jjjj">Subpart JJJJ</a>.', html)
+        html, buckets = self.fed("Subpart JJJJ sets paper and other web coating standards.", reg="8", part="E")
+        self.assertNotIn("<a", html)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"Subpart JJJJ": 1})
+        # A fuller form earlier in the sentence is not double-wrapped.
+        html, _ = self.fed("40 CFR Part 60, Subpart JJJJ. See Subpart JJJJ again.", reg="7", part="B")
+        self.assertEqual(html.count('href="/regulations/jjjj"'), 2)
+        self.assertNotIn("<a", ic.re.sub(r"<a [^>]+>[^<]*</a>", "", html))
+        # "Regulation Number 6, Part A, Subpart IIII" is Regulation 6's own adoption row.
+        html, _ = self.fed("requirements of Regulation Number 6, Part A, Subpart IIII, Standards of Performance", reg="gp06")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/6#sec-6-A-SUBPART-IIII">Subpart IIII</a>, Standards', html)
+
+    def test_section_numbers_link_to_the_corpus_subpart(self):
+        text = "prior to startup of the engine per Subpart IIII §60.4209(a). See 40 CFR 60.4201 and 60.4209(z)."
+        html, buckets = self.fed(text)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/iiii">Subpart IIII</a> '
+                      '<a class="xref-external-reg" href="/regulations/iiii#sec-iiii-60.4209-(a)">§60.4209(a)</a>.', html)
+        self.assertIn('40 CFR <a class="xref-external-reg" href="/regulations/iiii#sec-iiii-60.4201">60.4201</a>', html)
+        # A paragraph the index lacks falls back to its nearest existing ancestor.
+        self.assertIn('<a class="xref-external-reg" href="/regulations/iiii#sec-iiii-60.4209">60.4209(z)</a>', html)
+        self.assertText(html, text)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {})
+        text = ("Subpart ZZZZ, Sections 63.6600 through 63.6603, 63.6635 and 60.5386b(c) and 40 C.F.R. §60.5430a "
+                "and Section 60.4244 (August 30, 2024).")
+        html, buckets = self.fed(text, reg="30", part="B")
+        for href in ("/regulations/zzzz#sec-zzzz-63.6600", "/regulations/zzzz#sec-zzzz-63.6603", "/regulations/zzzz#sec-zzzz-63.6635",
+                     "/regulations/oooob#sec-oooob-60.5386b-(c)", "/regulations/ooooa#sec-ooooa-60.5430a", "/regulations/jjjj#sec-jjjj-60.4244"):
+            self.assertIn(f'href="{href}"', html, href)
+        self.assertText(html, text)
+        # Inside a corpus range but not in the index: counted. In the OOOO range with no
+        # suffix: the original subpart, counted. Outside every range: not a citation
+        # this importer knows; untouched and uncounted.
+        html, buckets = self.fed("see 60.4210, 60.5365, 40 CFR 63.1568 and Section 60.2550.", reg="6", part="B")
+        self.assertNotIn("<a", html)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"40 CFR 60.4210": 1, "40 CFR 60.5365": 1})
+        # Without a corpus id index no section link is made (like every deep link).
+        html, _ = ic.link_citations("per §60.4209(a).", "gp12", {"sec-gp12-top-REG-gp12"}, self.corpus, "", "sec-x", corpus_ids={})
+        self.assertNotIn("<a", html)
+
+    def test_a_subpart_not_in_the_corpus_is_counted_not_linked(self):
+        corpus = self.corpus - {"zzzz"}
+        text = "may be subject to 40 CFR, Part 63, Subpart ZZZZ - National Emission Standards – Subpart ZZZZ."
+        html, buckets = self.fed(text, corpus=corpus)
+        self.assertNotIn("<a", html)
+        self.assertText(html, text)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"40 CFR, Part 63, Subpart ZZZZ": 1, "Subpart ZZZZ": 1})
+        html, buckets = self.fed("Sections 63.6600 through 63.6603 of NESHAP ZZZZ", reg="30", part="B", corpus=corpus)
+        self.assertNotIn("<a", html)
+        self.assertEqual(buckets[ic.BUCKET_CFR]["40 CFR 63.6600"], 1)
+        self.assertEqual(buckets[ic.BUCKET_CFR]["NESHAP ZZZZ"], 1)
+
+    def test_part_aware_map_and_ranges(self):
+        self.assertEqual(ic._subpart_regkey("ZZZZ", part="63"), "zzzz")
+        self.assertIsNone(ic._subpart_regkey("ZZZZ", part="60"))
+        self.assertIsNone(ic._subpart_regkey("JJJJ", part="63"))
+        self.assertEqual(ic._subpart_regkey("JJJJ", program="NSPS"), "jjjj")
+        self.assertIsNone(ic._subpart_regkey("JJJJ", program="NESHAP"))
+        self.assertEqual(ic._subpart_regkey("zzzz"), "zzzz")
+        self.assertIsNone(ic._subpart_regkey("JJJJ"))
+        self.assertEqual(ic._subpart_regkey("JJJJ", context="the NSPS rule"), "jjjj")
+        self.assertIsNone(ic._subpart_regkey("OOOO", part="60"))
+        self.assertEqual(ic.cfr_section_regkey("60", "4209", None), "iiii")
+        self.assertEqual(ic.cfr_section_regkey("60", "5386", "b"), "oooob")
+        self.assertIsNone(ic.cfr_section_regkey("60", "5386", None))
+        self.assertIsNone(ic.cfr_section_regkey("63", "1568", None))
+        self.assertEqual(ic.cfr_section_regkey("63", "6675", None), "zzzz")

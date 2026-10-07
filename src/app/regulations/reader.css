@@ -192,10 +192,17 @@
   flex: 1;
   min-width: 0;
 }
+/* The reading column never scrolls the page sideways (6 Oct 2026 review,
+   526px: Regulation 8 VI.QQ's 73-character form blank and Regulation 7's
+   long URLs pushed the document 129px past the viewport). Any run with no
+   break opportunity may break anywhere; tables are the one exception below
+   (they scroll inside .doc-table-wrap instead). */
 .reg-reader #doc {
   max-width: 760px;
+  min-width: 0;
   margin: 0 auto;
   padding: 40px 48px 200px;
+  overflow-wrap: anywhere;
 }
 
 .reg-reader .reg-block {
@@ -212,7 +219,12 @@
   margin-bottom: 10px;
 }
 .reg-reader .reg-source-link {
-  display: inline-block;
+  /* Its own line, always: most roots store their title as bare text with no
+     block around it, so an inline link ran straight into the document title
+     once the line wrapped on a narrow screen. */
+  display: block;
+  width: fit-content;
+  max-width: 100%;
   font-size: 12.5px;
   color: var(--ink-soft);
   text-decoration: underline;
@@ -296,6 +308,7 @@
 
 .reg-reader .doc-table-wrap {
   margin: 14px 0 18px;
+  max-width: 100%;
   overflow-x: auto;
   font-family: var(--sans);
 }
@@ -310,6 +323,9 @@
 .reg-reader table.doc-table {
   border-collapse: collapse;
   width: 100%;
+  /* Wide tables keep their natural layout and scroll inside .doc-table-wrap
+     rather than breaking words inside cells. */
+  overflow-wrap: normal;
   font-size: 12.5px;
   line-height: 1.4;
   background: #fff;
@@ -610,6 +626,7 @@
   width: 100%;
   max-height: 80vh;
   overflow-y: auto;
+  overflow-wrap: anywhere;
   border-radius: 10px;
   box-shadow: 0 24px 60px rgba(10, 15, 12, 0.35);
   border: 1px solid var(--line);
@@ -719,6 +736,15 @@
 }
 .reg-reader #popup-body .summary-status {
   padding: 5px 10px 7px;
+}
+/* A whole-document preview (a citation that resolves only to a document,
+   RegulationReader.tsx previewOtherRegulation asDocument): the summary
+   overview is the body, or this one line when the document has none. */
+.reg-reader #popup-body .doc-preview-empty {
+  margin: 0 0 6px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--ink-soft);
 }
 .reg-reader #popup-footer {
   padding: 10px 20px 18px;

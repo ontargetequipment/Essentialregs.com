@@ -7,8 +7,10 @@ export const runtime = "nodejs";
 
 /**
  * GET /api/provision/<provision id>
- * Returns { id, reg_key, citation, html } -- one provision's sanitised text
- * for the reader's preview of a link into another regulation. Entitled
+ * Returns { id, reg_key, citation, title, html, summary } -- one provision's
+ * sanitised text, plus its summary overview and review badge, for the
+ * reader's preview of a link into another regulation (or of a whole
+ * document, through its root row). Entitled
  * visitors only (401 signed out, 403 without access), read through the
  * visitor's own RLS-bound client; the gate itself is loadProvisionPreview.
  */
@@ -26,7 +28,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         const supabase = await createClient();
         const { data, error } = await supabase
           .from("provisions")
-          .select("id, citation, full_text")
+          .select("id, citation, title, full_text, ai_summary, summary_status, reviewed_at")
           .eq("id", rowId)
           .maybeSingle();
         if (error) throw new Error(error.message);

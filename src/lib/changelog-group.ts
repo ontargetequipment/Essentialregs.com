@@ -3,7 +3,12 @@
  * regulation and change type -- see
  * supabase/migrations/20261003160524_changelog_public_rpc.sql) into one line
  * per regulation per day: "Regulation 7 — 1,496 provisions updated · 212
- * summaries AI reviewed". Pure, dependency-free; the rows carry counts only,
+ * summaries AI reviewed". Since migration 20261007010000 the function
+ * reports a summary rewritten and reviewed in the same run as one
+ * summary_rewritten_reviewed / summary_rewritten_corrected row (the review
+ * is not counted again), an unpaired rewrite as summary_rewritten_pending
+ * while it is pending, else summary_rewritten_reviewed_later. Pure,
+ * dependency-free; the rows carry counts only,
  * never a note or an id, so nothing here can leak the pipeline's working log.
  */
 
@@ -34,8 +39,18 @@ export type ChangelogLine = {
   reviewed: number;
   /** Of those, the ones corrected before approving. */
   corrected: number;
-  /** Summaries rewritten by the pipeline (back in the review queue). */
-  regenerated: number;
+  /**
+   * Summaries rewritten by the pipeline and AI reviewed in the same run
+   * (changelog_public() pairs the rewrite with the review that followed it
+   * within 24 hours and reports the pair once, 7 Oct 2026).
+   */
+  rewrittenReviewed: number;
+  /** Of those, the ones the reviewer corrected. */
+  rewrittenCorrected: number;
+  /** Summaries rewritten whose review came more than a day later (counted on its own day). */
+  rewrittenReviewedLater: number;
+  /** Summaries rewritten and still awaiting AI review now. */
+  rewrittenPending: number;
   /** ISO timestamp of the most recent row folded into the line. */
   latest: string;
 };
@@ -58,7 +73,10 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
         removed: 0,
         reviewed: 0,
         corrected: 0,
-        regenerated: 0,
+        rewrittenReviewed: 0,
+        rewrittenCorrected: 0,
+        rewrittenReviewedLater: 0,
+        rewrittenPending: 0,
         latest: row.latest,
       };
       lines.set(key, line);
@@ -81,8 +99,22 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
         line.reviewed += n;
         line.corrected += n;
         break;
+      case "summary_rewritten_reviewed":
+        line.rewrittenReviewed += n;
+        break;
+      case "summary_rewritten_corrected":
+        line.rewrittenReviewed += n;
+        line.rewrittenCorrected += n;
+        break;
+      case "summary_rewritten_reviewed_later":
+        line.rewrittenReviewedLater += n;
+        break;
+      case "summary_rewritten_pending":
       case "summary_regenerated":
-        line.regenerated += n;
+        // summary_regenerated is what changelog_public() returned before
+        // migration 20261007010000 split the rewrites by outcome; a page
+        // deployed ahead of it still reads the old shape as "awaiting".
+        line.rewrittenPending += n;
         break;
       default:
         // Unknown or internal change type: not a customer-facing event.
@@ -91,7 +123,9 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
     if (row.latest > line.latest) line.latest = row.latest;
   }
   return Array.from(lines.values())
-    .filter((l) => l.textUpdated + l.added + l.removed + l.reviewed + l.regenerated > 0)
+    .filter(
+      (l) => l.textUpdated + l.added + l.removed + l.reviewed + l.rewrittenReviewed + l.rewrittenReviewedLater + l.rewrittenPending > 0
+    )
     .sort((a, b) => (a.latest < b.latest ? 1 : a.latest > b.latest ? -1 : 0));
 }
 
@@ -118,6 +152,17 @@ export function describeLine(line: ChangelogLine): string[] {
     const reviewed = `${plural(line.reviewed, "summary", "summaries")} AI reviewed`;
     parts.push(line.corrected > 0 ? `${reviewed} (${COUNT.format(line.corrected)} corrected)` : reviewed);
   }
-  if (line.regenerated > 0) parts.push(`${plural(line.regenerated, "summary", "summaries")} rewritten, awaiting AI review`);
+  // A rewrite reviewed in the same run is one statement (6 Oct 2026 review:
+  // the same five GP03 summaries read as both "AI reviewed" and "awaiting
+  // AI review"). "Awaiting AI review" is only ever said of summaries that
+  // are pending now.
+  if (line.rewrittenReviewed > 0) {
+    const rewritten = `${plural(line.rewrittenReviewed, "summary", "summaries")} rewritten and AI reviewed`;
+    parts.push(line.rewrittenCorrected > 0 ? `${rewritten} (${COUNT.format(line.rewrittenCorrected)} corrected)` : rewritten);
+  }
+  if (line.rewrittenReviewedLater > 0) {
+    parts.push(`${plural(line.rewrittenReviewedLater, "summary", "summaries")} rewritten (AI reviewed later)`);
+  }
+  if (line.rewrittenPending > 0) parts.push(`${plural(line.rewrittenPending, "summary", "summaries")} rewritten, awaiting AI review`);
   return parts;
 }

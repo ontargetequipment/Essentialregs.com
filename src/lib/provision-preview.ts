@@ -1,5 +1,13 @@
 import { regKeyOf } from "@/lib/regulation-names";
-import { promoteHeadingParagraph, sanitizeHtml, withItemIdBadge } from "@/lib/regulation-pure";
+import {
+  promoteHeadingParagraph,
+  sanitizeHtml,
+  summaryOverview,
+  summaryParagraphs,
+  summaryStatusBadge,
+  withItemIdBadge,
+} from "@/lib/regulation-pure";
+import type { SummaryBadgeKind } from "@/lib/snippet";
 import { PROVISION_ID } from "@/lib/types";
 
 /**
@@ -22,19 +30,40 @@ import { PROVISION_ID } from "@/lib/types";
  * predicate above drifted.
  *
  * The body is only what the popup needs: the id, its regulation key, the
- * citation and the text -- sanitised, and badged the way the reader's own
- * rows are (promoteHeadingParagraph + withItemIdBadge). No summary, no
- * metadata.
+ * citation, the title, the text -- sanitised, and badged the way the
+ * reader's own rows are (promoteHeadingParagraph + withItemIdBadge) -- and,
+ * since 7 Oct 2026, the plain-English summary cut to its overview with its
+ * review-status badge (the preview of a WHOLE document, a link to
+ * /regulations/<key> with no provision in its hash, shows a document's
+ * title, citation, effective date and the overview of its top-level
+ * summary). No reviewer name, no other metadata.
  */
 export type ProvisionPreview = {
   id: string;
   reg_key: string;
   citation: string;
+  /** The row's title as stored (for a root row, the document's title). */
+  title: string;
   /** Sanitised HTML of the provision's own text. */
   html: string;
+  /**
+   * The row's plain-English summary: its first two sentences (summaryOverview,
+   * the same cut the reader panel makes; the first paragraph when it has no
+   * more than two) and the review-status badge the reader shows. null when
+   * the row has no summary or the summary is rejected (withheld everywhere).
+   */
+  summary: { overview: string; badge: { kind: SummaryBadgeKind; label: string } | null } | null;
 };
 
-export type PreviewRow = { id: string; citation: string; full_text: string };
+export type PreviewRow = {
+  id: string;
+  citation: string;
+  title?: string | null;
+  full_text: string;
+  ai_summary?: string | null;
+  summary_status?: string | null;
+  reviewed_at?: string | null;
+};
 
 export type PreviewDeps = {
   /** getAccessStatus(): who is signed in and whether they may read the corpus. */
@@ -53,6 +82,16 @@ export function validPreviewId(id: string): string | null {
   return id;
 }
 
+/** The summary part of the payload: the overview and the badge, or null (no summary, or rejected). Pure. */
+export function previewSummary(row: Pick<PreviewRow, "ai_summary" | "summary_status" | "reviewed_at">): ProvisionPreview["summary"] {
+  if (row.summary_status === "rejected") return null;
+  const paragraphs = summaryParagraphs(row.ai_summary ?? "");
+  if (!paragraphs.length) return null;
+  const overview = summaryOverview(paragraphs)?.overview ?? paragraphs[0];
+  const badge = summaryStatusBadge({ summary_status: row.summary_status ?? null, reviewed_at: row.reviewed_at ?? null });
+  return { overview, badge: badge ? { kind: badge.kind, label: badge.label } : null };
+}
+
 export async function loadProvisionPreview(rawId: string, deps: PreviewDeps): Promise<PreviewResult> {
   const id = validPreviewId(rawId);
   if (!id) return { status: 400, body: { error: "Invalid id." } };
@@ -67,7 +106,9 @@ export async function loadProvisionPreview(rawId: string, deps: PreviewDeps): Pr
       id: row.id,
       reg_key: regKeyOf(row.id) ?? "",
       citation: row.citation,
+      title: row.title ?? "",
       html: withItemIdBadge(promoteHeadingParagraph(sanitizeHtml(row.full_text)), row.citation),
+      summary: previewSummary(row),
     },
   };
 }

@@ -40,6 +40,15 @@ DEFAULT_REGS = ["gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", 
 _TAG_RE = re.compile(r"<[^>]+>")
 _SPAN_RE = re.compile(r'<span class="xref" data-target="([^"]*)">(.*?)</span>', re.S)
 _ANCHOR_RE = re.compile(r'<a class="xref-external-reg"[^>]*href="(/regulations/[^"]*)"[^>]*>(.*?)</a>', re.S)
+# The federal subparts in the corpus (acceptance item 2, 7 Oct 2026): links
+# to their documents ("/regulations/zzzz") and sections ("/regulations/iiii#sec-iiii-60.4209-(a)").
+FEDERAL_KEYS = ("iiii", "jjjj", "zzzz", "ooooa", "oooob", "ooooc")
+_FED_HREF_RE = re.compile(r"^/regulations/(" + "|".join(FEDERAL_KEYS) + r")(#.*)?$")
+# cfr-bucket entries that name one of the engine / oil-and-gas codes or a
+# section in their ranges: "skipped" when the subpart is not in the corpus
+# (the original OOOO, a Part 63 coating subpart), "unresolved" when it is
+# but the cited section is not in the index.
+_FED_BUCKET_RE = re.compile(r"\b(OOOO[abc]?|JJJJ|IIII|ZZZZ)\b|\b6[03]\.\d{4}[a-c]?\b")
 
 
 def source_basename(reg: str) -> str:
@@ -120,6 +129,7 @@ def main() -> None:
     old_dir = Path(args.old_dir)
 
     per_reg: dict[str, dict] = {}
+    fed_rows: list[dict] = []  # per-regulation federal subpart link counts (acceptance item 2)
     all_examples: list[tuple[str, str, str, str, str]] = []  # (reg, id, kind, old, new)
     unresolved_all: list[tuple[str, str, str, str, str, int]] = []  # (reg, source id, cited, kind, target, count)
     text_mismatch: list[tuple[str, str]] = []
@@ -171,7 +181,36 @@ def main() -> None:
         for key, cnt in _buckets[ic.BUCKET_CROSS_REG].items():
             src, cited, kind, target = key.split("\t")
             unresolved_all.append((reg, src, cited, kind, target, cnt))
-        print(f"reg {reg}: {len(changed)}/{len(new_rows)} rows changed, kinds {dict(kinds)}", file=sys.stderr)
+
+        # Federal subpart links: documents and sections, old -> new, per target, plus
+        # the cfr-bucket entries about those subparts (skipped / unresolved).
+        def fed_counts(rows):
+            docs, secs = Counter(), Counter()
+            for r in rows.values():
+                for m in _ANCHOR_RE.finditer(r["full_text"] or ""):
+                    fm = _FED_HREF_RE.match(m.group(1))
+                    if fm:
+                        (secs if fm.group(2) else docs)[fm.group(1)] += 1
+            return docs, secs
+        o_docs, o_secs = fed_counts(old_rows)
+        n_docs, n_secs = fed_counts(new_rows)
+        fed_rows_changed = sum(
+            1 for i in changed
+            if any(_FED_HREF_RE.match(a) for a, _ in _ANCHOR_RE.findall(new_rows[i]["full_text"] or ""))
+            or any(_FED_HREF_RE.match(a) for a, _ in _ANCHOR_RE.findall(old_rows[i]["full_text"] or "")))
+        skipped, unresolved = Counter(), Counter()
+        for key, cnt in _buckets[ic.BUCKET_CFR].items():
+            if not _FED_BUCKET_RE.search(key):
+                continue
+            sm = re.search(r"\b(6[03])\.(\d{4})([a-c])?\b", key)
+            if sm and ic.cfr_section_regkey(sm.group(1), sm.group(2), sm.group(3)) in ic.CORPUS_REGS:
+                unresolved[key] += cnt
+            else:
+                skipped[key] += cnt
+        fed_rows.append(dict(reg=reg, rows_changed=fed_rows_changed, o_docs=o_docs, n_docs=n_docs, o_secs=o_secs, n_secs=n_secs,
+                             skipped=skipped, unresolved=unresolved))
+        print(f"reg {reg}: {len(changed)}/{len(new_rows)} rows changed, kinds {dict(kinds)}, "
+              f"federal links {sum(o_docs.values()) + sum(o_secs.values())} -> {sum(n_docs.values()) + sum(n_secs.values())}", file=sys.stderr)
 
     # ---- report ---------------------------------------------------------
     L: list[str] = []
@@ -230,6 +269,28 @@ def main() -> None:
             L.append(f"| {reg} | {len(n)} | {len(ch)} | {deep_n} | {rem} | {add} | {len(mism)} |")
             other_tot.update(rows=len(n), changed=len(ch), deep=deep_n, mism=len(mism), rem=rem, add=add)
         L.append(f"| **total** | {other_tot['rows']} | {other_tot['changed']} | {other_tot['deep']} | {other_tot['rem']} | {other_tot['add']} | {other_tot['mism']} |\n")
+
+    L.append("## Federal subpart links (acceptance item 2, 7 Oct 2026)\n")
+    L.append("Links to the corpus's 40 CFR Part 60 / 63 subpart documents and their sections, per citing regulation, "
+             "OLD -> NEW. *skipped* = citations of a subpart that is not in the corpus (the original Subpart OOOO; a Part "
+             "63 subpart other than ZZZZ, including Regulation 8's coating-rule Subparts IIII / JJJJ / OOOO, which the old "
+             "code linked to the Part 60 engine rules), counted in the cfr bucket and left as text; *unresolved* = a section "
+             "number inside a corpus subpart's range that the corpus index does not hold (linked to nothing). Only regulations "
+             "with at least one such link or count are listed.\n")
+    L.append("| reg | rows whose federal links changed | document links old -> new | section links old -> new | new links by target | skipped (not in corpus) | unresolved |")
+    L.append("|---|---|---|---|---|---|---|")
+    ftot = Counter()
+    for d in fed_rows:
+        od, nd, os_, ns = sum(d["o_docs"].values()), sum(d["n_docs"].values()), sum(d["o_secs"].values()), sum(d["n_secs"].values())
+        sk, un = sum(d["skipped"].values()), sum(d["unresolved"].values())
+        if not (od or nd or os_ or ns or sk or un):
+            continue
+        by_target = ", ".join(f"{k} {d['n_docs'][k] + d['n_secs'][k]}" for k in FEDERAL_KEYS if d["n_docs"][k] + d["n_secs"][k])
+        sk_s = "; ".join(f"{k} ×{c}" for k, c in d["skipped"].most_common(8)) + (" …" if len(d["skipped"]) > 8 else "")
+        un_s = "; ".join(f"{k} ×{c}" for k, c in d["unresolved"].most_common(8)) + (" …" if len(d["unresolved"]) > 8 else "")
+        L.append(f"| {d['reg']} | {d['rows_changed']} | {od} -> {nd} | {os_} -> {ns} | {by_target} | {sk} {('(' + sk_s + ')') if sk else ''} | {un} {('(' + un_s + ')') if un else ''} |")
+        ftot.update(od=od, nd=nd, os=os_, ns=ns, sk=sk, un=un, rows=d["rows_changed"])
+    L.append(f"| **total** | {ftot['rows']} | {ftot['od']} -> {ftot['nd']} | {ftot['os']} -> {ftot['ns']} |  | {ftot['sk']} | {ftot['un']} |\n")
 
     L.append("## Same-document links the new code removes (mis-bound tails)\n")
     L.append("A `<span class=\"xref\" data-target=...>` (a link to the CITING document's own provision) that the old parse "

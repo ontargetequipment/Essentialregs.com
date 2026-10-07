@@ -7,7 +7,7 @@
  * in the client bundle.
  */
 import type { ReaderModel, ReaderRow } from "@/lib/reader-client";
-import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
+import { regKeyOf, regulationDisplayName, rootIdOf } from "@/lib/regulation-names";
 import { SOURCE_DATES, type SourceDate } from "@/lib/source-dates.generated";
 import { PROVISION_ID } from "@/lib/types";
 
@@ -153,6 +153,44 @@ export function hashTargetOf(href: string | null | undefined): string | null {
     /* keep the raw text; validProvisionId decides */
   }
   return validProvisionId(raw);
+}
+
+/**
+ * The regulation key of a link to a WHOLE document -- "/regulations/8",
+ * "/regulations/gp12", with or without a query string, and no hash naming a
+ * provision (hashTargetOf decides those). The importer writes such a link
+ * for a citation that resolves only to a document ("Regulation Number 8" in
+ * GP12 XII.E); the reader previews the document through its root row
+ * (documentRootOf) instead of leaving the page. Lower-cased, letters and
+ * digits only; null for anything else (another path, a provision hash,
+ * junk).
+ */
+const DOCUMENT_HREF = /^\/regulations\/([A-Za-z0-9]{1,20})(?:\?[^#]*)?$/;
+export function documentKeyOf(href: string | null | undefined): string | null {
+  const m = href ? DOCUMENT_HREF.exec(href) : null;
+  return m ? m[1].toLowerCase() : null;
+}
+
+/** The root row's id of a whole-document link ("/regulations/8" -> "sec-8-top-REG-8"), or null when the link is not one. */
+export function documentRootOf(href: string | null | undefined): string | null {
+  const key = documentKeyOf(href);
+  return key ? rootIdOf(key) : null;
+}
+
+/**
+ * The date line of a whole-document preview, from the manifest through the
+ * generated table: "Effective 07/15/2026" for a rule, "Issued 05/28/2026"
+ * for a general permit, "Current as of 09/10/2026" for an eCFR subpart. null
+ * for a document whose date we do not hold.
+ */
+export function documentDateLine(key: string | null | undefined, dates: Readonly<Record<string, SourceDate>> = SOURCE_DATES): string | null {
+  if (!key) return null;
+  const d = dates[key.toLowerCase()];
+  if (!d) return null;
+  const date = formatUsDate(d.date);
+  if (d.kind === "issued") return `Issued ${date}`;
+  if (d.kind === "as_of") return `Current as of ${date}`;
+  return `Effective ${date}`;
 }
 
 /**

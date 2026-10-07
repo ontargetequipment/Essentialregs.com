@@ -10,6 +10,8 @@ import {
 } from "@/lib/reader-client";
 import {
   citedParamOf,
+  documentDateLine,
+  documentRootOf,
   documentShortName,
   foreignOriginOf,
   hashTargetOf,
@@ -26,6 +28,7 @@ import {
   versionNote,
 } from "@/lib/reader-nav";
 import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
+import { summaryBadgeClass, type SummaryBadgeKind } from "@/lib/snippet";
 import { readRecentVisits, recentListHtml, recordRecentVisit } from "@/lib/reader-client";
 import type { SearchRow } from "@/lib/snippet";
 
@@ -57,8 +60,14 @@ type ReaderHistoryState = { readerAnchor?: string; readerReturnFrom?: string } |
 /** The popup footer link's default text; a cross-regulation preview swaps it for "Open in <name> →". */
 const GOTO_LABEL = "Go to full section →";
 
-/** The fields of /api/provision/<id> the preview uses. */
-type ProvisionPreviewPayload = { id: string; citation: string; html: string };
+/** The fields of /api/provision/<id> the preview uses (src/lib/provision-preview.ts). */
+type ProvisionPreviewPayload = {
+  id: string;
+  citation: string;
+  title?: string;
+  html: string;
+  summary?: { overview: string; badge: { kind: SummaryBadgeKind; label: string } | null } | null;
+};
 
 /**
  * Viewport y of "the top of the reading pane": just under the sticky site
@@ -78,9 +87,11 @@ function decodeHash(raw: string): string {
 
 /**
  * Client-side behavior for the regulation reader: mobile sidebar toggle,
- * click-a-cross-reference-to-preview-it popups, the jump/search box, and
- * every "go to a provision" path (goToProvision below), with the return
- * trail those leave behind.
+ * click-a-cross-reference-to-preview-it popups (a provision of this
+ * regulation, a provision of another regulation through /api/provision,
+ * or a whole other document through its root row), the jump/search box,
+ * and every "go to a provision" path (goToProvision below), with the
+ * return trail those leave behind.
  *
  * This mirrors the vanilla-JS reader script from the source document almost
  * line for line — deliberately. The sidebar and main document are rendered
@@ -283,7 +294,8 @@ export function RegulationReader() {
       targetId: string,
       origin: string | null,
       cited: string | null = null,
-      printedEffective: string | null = null
+      printedEffective: string | null = null,
+      asDocument = false
     ) {
       const seq = ++previewSeq;
       previewAbort?.abort();
@@ -307,26 +319,60 @@ export function RegulationReader() {
       popupSlug = null;
       popupOrigin = null;
       popupRemote = true;
-      popupTitle.textContent = data.citation || targetId;
       if (popupEyebrowEl) popupEyebrowEl.textContent = name;
-      // Under the title: a renumbered definition citation (the importer put
-      // the printed section in the href's ?cited=) gets one line saying so;
-      // a citing document older than the cited regulation's current text
-      // gets the version line (the dates come from the manifest through
-      // source-dates.generated.ts, never from this file).
-      const renumbered = cited ? renumberedNote(documentShortName(pageKey), cited, data.citation, name) : null;
-      setPopupNote(renumbered, versionNote(pageKey, key, printedEffective, renumbered !== null));
       const wrap = document.createElement("div");
       wrap.className = "item";
-      wrap.innerHTML = data.html; // sanitised server-side (provision-preview.ts)
+      if (asDocument) {
+        // A whole document (its root row): the document's title, its
+        // citation and the date we hold it as of (the manifest, through
+        // source-dates.generated.ts), then the two-sentence overview of its
+        // top-level summary with the review badge, exactly as the reader's
+        // own panel would cut it (provision-preview.ts). The root's text is
+        // its title again, so it is not repeated.
+        popupTitle.textContent = data.title || data.citation || name;
+        const citation = data.citation && data.citation !== name && data.citation !== data.title ? data.citation : null;
+        setPopupNote(citation, documentDateLine(key));
+        wrap.innerHTML = documentPreviewHtml(data);
+      } else {
+        popupTitle.textContent = data.citation || targetId;
+        // Under the title: a renumbered definition citation (the importer put
+        // the printed section in the href's ?cited=) gets one line saying so;
+        // a citing document older than the cited regulation's current text
+        // gets the version line (the dates come from the manifest through
+        // source-dates.generated.ts, never from this file).
+        const renumbered = cited ? renumberedNote(documentShortName(pageKey), cited, data.citation, name) : null;
+        setPopupNote(renumbered, versionNote(pageKey, key, printedEffective, renumbered !== null));
+        wrap.innerHTML = data.html; // sanitised server-side (provision-preview.ts)
+      }
       popupBody.innerHTML = "";
       popupBody.appendChild(wrap);
       if (popupTextLabel) popupTextLabel.hidden = true;
       if (popupGoto) {
         popupGoto.setAttribute("href", regulationHref(targetId, origin, cited));
-        popupGoto.textContent = `Open in ${name} →`;
+        popupGoto.textContent = asDocument ? `Open ${documentShortName(key)} →` : `Open in ${name} →`;
       }
       backdrop.classList.add("show");
+    }
+
+    /**
+     * The body of a whole-document preview: the summary overview under the
+     * reader's own panel markup (open, so it reads at once) with the
+     * review-status badge, or one line saying the document has no summary
+     * yet. Every string is escaped here; nothing from the payload is
+     * inserted as markup.
+     */
+    function documentPreviewHtml(data: ProvisionPreviewPayload): string {
+      const summary = data.summary;
+      if (!summary || !summary.overview) {
+        return `<p class="doc-preview-empty">This document has no plain-English summary yet. Open it to read its provisions.</p>`;
+      }
+      const badge = summary.badge
+        ? `<p class="summary-badge ${summaryBadgeClass(summary.badge.kind)}">${escapeHtml(summary.badge.label)}</p>`
+        : "";
+      return (
+        `<details class="summary-panel" open><summary>Plain-English summary</summary>` +
+        `<div class="summary-body">${badge}<p class="summary-overview">${escapeHtml(summary.overview)}</p></div></details>`
+      );
     }
 
     function currentProvisionId(): string | null {
@@ -439,11 +485,17 @@ export function RegulationReader() {
       if (external) {
         // Plain navigation, untouched: the replay of a failed preview, a
         // modified or non-primary click (new tab / window / download), a
-        // link that opens elsewhere or with no provision in its hash, a
-        // target that is on this very page, or a click something else
-        // already handled.
+        // link that opens elsewhere, a link that is neither a provision nor
+        // a whole document of the corpus, a target that is on this very
+        // page (this regulation's own root included), or a click something
+        // else already handled.
         if (replayed === external) return;
-        const targetId = hashTargetOf(external.getAttribute("href"));
+        const href = external.getAttribute("href");
+        const sectionId = hashTargetOf(href);
+        // "/regulations/8" with no provision in its hash: the whole document,
+        // previewed through its root row (documentRootOf).
+        const documentId = sectionId ? null : documentRootOf(href);
+        const targetId = sectionId ?? documentId;
         if (
           !targetId ||
           model.byId.has(targetId) ||
@@ -463,8 +515,9 @@ export function RegulationReader() {
           () => fallBackToNavigation(external),
           targetId,
           originOf(external),
-          citedParamOf(external.getAttribute("href")),
-          printedEffectiveDate(textAfterLink(external))
+          sectionId ? citedParamOf(href) : null,
+          sectionId ? printedEffectiveDate(textAfterLink(external)) : null,
+          !sectionId
         );
         return;
       }

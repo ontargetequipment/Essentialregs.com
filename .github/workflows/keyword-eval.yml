@@ -1,0 +1,63 @@
+name: Keyword eval
+
+# The keyword-search acceptance rows (the outside reviewer's table, 6 Oct
+# 2026: src/lib/keyword-eval.ts) run against production's search_provisions()
+# by scripts/keyword-eval.ts, the way the Ask eval gates Ask: every pull
+# request to main, and by hand with extra queries to print the top 10 for.
+# Make the "Keyword eval" check required in the branch protection.
+#
+# Footprint: seven to ten RPC calls with the service role, read-only (no
+# search_queries rows). The script exits non-zero when a row outside
+# KEYWORD_KNOWN_FAILURES fails; the top 5 of every row is printed either way.
+#
+# Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (two of the three the Ask
+# eval uses; no Voyage key: keyword search embeds nothing).
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      queries:
+        description: "Extra queries to print the top 10 for, separated by ' | '."
+        required: false
+        default: ""
+
+concurrency:
+  group: keyword-eval-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  keyword_eval:
+    name: Keyword eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the eval
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          QUERIES: ${{ inputs.queries }}
+        run: |
+          ARGS=()
+          if [ -n "$QUERIES" ]; then
+            IFS='|' read -ra QS <<< "$QUERIES"
+            for q in "${QS[@]}"; do
+              q="$(echo "$q" | sed 's/^ *//;s/ *$//')"
+              [ -n "$q" ] && ARGS+=(--q "$q")
+            done
+          fi
+          npx tsx scripts/keyword-eval.ts "${ARGS[@]}"

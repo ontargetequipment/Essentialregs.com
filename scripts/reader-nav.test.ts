@@ -20,6 +20,11 @@
  *   - a hashed link into another regulation previews through the gated
  *     /api/provision route ("Open in Regulation 7" carries ?from=) and falls
  *     back to plain navigation whenever it cannot (or must not) preview;
+ *   - a link to a WHOLE document ("/regulations/8", no provision in the
+ *     hash -- the reviewer's GP12 XII.E "Regulation Number 8") previews the
+ *     document through its root row: title, citation, the date we hold it
+ *     as of, the two-sentence overview of its top-level summary, and
+ *     "Open Regulation 8 →" carrying ?from= (6-7 Oct 2026);
  *   - a reader opened with ?from=<provision of another regulation> shows a
  *     link back to it and strips `from` from the URL;
  *   - a renumbered definition citation (?cited=<printed section> in the
@@ -44,6 +49,9 @@ import {
   capLabels,
   citationLabelFromId,
   citedParamOf,
+  documentDateLine,
+  documentKeyOf,
+  documentRootOf,
   documentShortName,
   foreignOriginOf,
   formatUsDate,
@@ -86,7 +94,8 @@ const rows: Provision[] = [
     "sec-3-A-II-B-5",
     "II.B.5.",
     "sec-3-A-II-B",
-    '<p>See <a class="xref-external-reg" href="/regulations/7#sec-7-B-I-B-33">Section I.B.33</a> of Regulation 7 and ' +
+    '<p>See <a class="xref-external-reg" href="/regulations/7#sec-7-B-I-B-33">Section I.B.33</a> of ' +
+      '<a class="xref-external-reg" href="/regulations/7">Regulation Number 7</a> and ' +
       '<a class="xref-external-reg" href="/regulations/gp12">General Permit 12</a>. Well production facilities as defined in ' +
       '<a class="xref-external-reg" href="/regulations/7?cited=I.B.33#sec-7-B-I-B-34">Section I.B.33</a> are covered.</p>'
   ),
@@ -397,6 +406,32 @@ test("cross-regulation helpers (pure)", () => {
     assert.equal(validCitedSection(bad), null, bad);
   }
   assert.equal(validCitedSection("I.B.33."), "I.B.33");
+  // Whole-document links: the key, the root id, the date line.
+  assert.equal(documentKeyOf("/regulations/8"), "8");
+  assert.equal(documentKeyOf("/regulations/GP12"), "gp12");
+  assert.equal(documentKeyOf("/regulations/oooob?x=1"), "oooob");
+  assert.equal(documentKeyOf("/regulations/7#sec-7-B-I-B-33"), null, "a provision link is not a document link");
+  assert.equal(documentKeyOf("/regulations/7#"), null);
+  assert.equal(documentKeyOf("/regulations/"), null);
+  assert.equal(documentKeyOf("/regulations/8/preview"), null);
+  assert.equal(documentKeyOf("https://example.com/regulations/8"), null);
+  assert.equal(documentKeyOf("/regs/sec-8-top-REG-8"), null);
+  assert.equal(documentKeyOf("/regulations/" + "x".repeat(30)), null);
+  assert.equal(documentKeyOf(null), null);
+  assert.equal(documentRootOf("/regulations/8"), "sec-8-top-REG-8");
+  assert.equal(documentRootOf("/regulations/7#sec-7-B-I-B-33"), null);
+  const dateTable = {
+    "8": { kind: "effective" as const, date: "2025-12-15" },
+    gp12: { kind: "issued" as const, date: "2026-05-28" },
+    oooob: { kind: "as_of" as const, date: "2026-09-10" },
+  };
+  assert.equal(documentDateLine("8", dateTable), "Effective 12/15/2025");
+  assert.equal(documentDateLine("GP12", dateTable), "Issued 05/28/2026");
+  assert.equal(documentDateLine("oooob", dateTable), "Current as of 09/10/2026");
+  assert.equal(documentDateLine("zz", dateTable), null);
+  assert.equal(documentDateLine(null, dateTable), null);
+  assert.equal(documentDateLine("8"), `Effective ${formatUsDate(SOURCE_DATES["8"].date)}`, "the real table");
+
   assert.equal(documentShortName("gp12"), "GP12");
   assert.equal(documentShortName("7"), "Regulation 7");
   assert.equal(documentShortName(null), "");
@@ -800,17 +835,126 @@ test("cross-regulation preview through /api/provision", async (t) => {
     });
   }
 
-  await t.test("a link with no hash is not intercepted", async () => {
-    const f = stubFetch(async () => okJson(PREVIEW));
+  await t.test("a link to a whole document previews the document: title, citation, date, summary overview, Open <document> →", async () => {
+    const DOC = {
+      id: "sec-gp12-top-REG-gp12",
+      reg_key: "gp12",
+      citation: "APCD General Permit GP12",
+      title: "GENERAL PERMIT 12 (GP12) — Well Production Facilities — GP12 Issuance 1, May 28, 2026",
+      html: "GENERAL PERMIT 12 (GP12) — Well Production Facilities — GP12 Issuance 1, May 28, 2026",
+      summary: {
+        overview: "GP12 is the general permit for well production facilities. It replaced GP09 and GP10 for new registrations.",
+        badge: { kind: "reviewed", label: "AI reviewed · Oct 5, 2026" },
+      },
+    };
+    const f = stubFetch(async () => okJson(DOC));
     seen.length = 0;
     try {
       const ev = await click(noHash());
+      assert.deepEqual(f.calls, ["/api/provision/sec-gp12-top-REG-gp12"], "the document's root row");
+      assert.equal(ev.defaultPrevented, true);
+      assert.equal(isShown(), true);
+      assert.equal($("#popup-eyebrow").textContent, "APCD General Permit GP12");
+      assert.equal($("#popup-title").textContent, DOC.title);
+      // The citation line is the display name here, so it is not repeated.
+      assert.equal(($("#popup-note") as HTMLElement).hidden, true);
+      const dateLine = $("#popup-version-note") as HTMLElement;
+      assert.equal(dateLine.hidden, false);
+      assert.equal(dateLine.textContent, `Issued ${formatUsDate(SOURCE_DATES.gp12.date)}`);
+      // The overview under the reader's own panel markup, open, with the badge.
+      const panel = $("#popup-body details.summary-panel") as HTMLDetailsElement;
+      assert.equal(panel.open, true);
+      assert.equal($("#popup-body .summary-badge").textContent, "AI reviewed · Oct 5, 2026");
+      assert.ok($("#popup-body .summary-badge").classList.contains("is-reviewed"));
+      assert.equal($("#popup-body .summary-overview").textContent, DOC.summary.overview);
+      assert.doesNotMatch($("#popup-body").textContent ?? "", /GENERAL PERMIT 12/, "the root's text is its title again: not repeated");
+      assert.equal(($("#popup-text-label") as HTMLElement).hidden, true);
+      const open = $("#popup-goto");
+      assert.equal(open.textContent, "Open GP12 →");
+      assert.equal(open.getAttribute("href"), "/regulations/gp12?from=sec-3-A-II-B-5#sec-gp12-top-REG-gp12");
+      const goto = await click(open);
+      assert.equal(goto.defaultPrevented, false, "a real link to the document");
+    } finally {
+      f.restore();
+    }
+  });
+
+  await t.test("a document with no summary yet says so; the citation shows when it is not the display name", async () => {
+    await click($("#popup-close"));
+    const docLink = $('#doc > [id="sec-3-A-II-B-5"] a.xref-external-reg[href="/regulations/7"]');
+    const f = stubFetch(async () =>
+      okJson({
+        id: "sec-7-top-REG-7",
+        reg_key: "7",
+        citation: "Code of Colorado Regulations · Regulation Number 7",
+        title: "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9",
+        html: "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9",
+        summary: null,
+      })
+    );
+    try {
+      await click(docLink);
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-top-REG-7"]);
+      assert.equal(isShown(), true);
+      assert.equal($("#popup-eyebrow").textContent, "Regulation 7");
+      assert.equal($("#popup-title").textContent, "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9");
+      assert.equal(($("#popup-note") as HTMLElement).hidden, false);
+      assert.equal($("#popup-note").textContent, "Code of Colorado Regulations · Regulation Number 7");
+      assert.equal($("#popup-version-note").textContent, `Effective ${formatUsDate(SOURCE_DATES["7"].date)}`);
+      assert.equal(document.querySelector("#popup-body details.summary-panel"), null);
+      assert.match($("#popup-body .doc-preview-empty").textContent ?? "", /no plain-English summary yet/);
+      assert.equal($("#popup-goto").textContent, "Open Regulation 7 →");
+      assert.equal($("#popup-goto").getAttribute("href"), "/regulations/7?from=sec-3-A-II-B-5#sec-7-top-REG-7");
+    } finally {
+      f.restore();
+    }
+    // A provision preview afterwards is back to normal: no date line.
+    await click($("#popup-close"));
+    const f2 = stubFetch(async () => okJson(PREVIEW));
+    try {
+      await click(link());
+      assert.equal($("#popup-title").textContent, "I.B.33.");
+      assert.equal(($("#popup-version-note") as HTMLElement).hidden, true);
+      assert.equal($("#popup-goto").textContent, "Open in Regulation 7 →");
+    } finally {
+      f2.restore();
+    }
+    await click($("#popup-close"));
+  });
+
+  await t.test("a document link that cannot be previewed falls back to plain navigation", async () => {
+    const f = stubFetch(async () => ({ ok: false, status: 404, json: async () => ({}) }));
+    seen.length = 0;
+    messages.length = 0;
+    try {
+      await click(noHash());
+      assert.equal(f.calls.length, 1);
+      assert.equal(isShown(), false);
+      const mine = seen.filter((s) => s.target === noHash());
+      assert.deepEqual(mine.map((s) => s.prevented), [true, false]);
+      assert.ok(messages.some((m) => /navigation/i.test(m)));
+    } finally {
+      f.restore();
+    }
+  });
+
+  await t.test("a link to this regulation's own document is not intercepted", async () => {
+    // A self-mention links to the page's own root; it is on the page.
+    const self = document.createElement("a");
+    self.className = "xref-external-reg";
+    self.setAttribute("href", "/regulations/3");
+    self.textContent = "Regulation Number 3";
+    $('#doc > [id="sec-3-A-II-B-5"] p').appendChild(self);
+    const f = stubFetch(async () => okJson(PREVIEW));
+    seen.length = 0;
+    try {
+      const ev = await click(self);
       assert.equal(f.calls.length, 0);
       assert.equal(ev.defaultPrevented, false);
       assert.equal(isShown(), false);
-      assert.deepEqual(seen.map((s) => s.prevented), [false]);
     } finally {
       f.restore();
+      self.remove();
     }
   });
 
