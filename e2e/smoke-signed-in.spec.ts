@@ -371,7 +371,8 @@ test.describe("signed in", () => {
     await expect(page.getByText("Ask is part of the subscription")).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: "Is GP01 required?" })).toHaveCount(1);
     await expect(page.getByText("GP01 is not automatically required", { exact: false })).toHaveCount(1);
-    await expect(page.getByText("decided under Regulation 3", { exact: false })).toHaveCount(1);
+    // The note's Regulation 3 sentence and the premise map's factors line both say it.
+    expect(await page.getByText("decided under Regulation 3", { exact: false }).count()).toBeGreaterThan(0);
     await expect(page.getByRole("link", { name: "GP01 VIII.D.3" })).toHaveAttribute("href", "/regulations/gp01#sec-gp01-VIII-D-3");
     await expect(page.getByRole("link", { name: "Regulation 3 Part A II.A.1" })).toHaveAttribute("href", "/regulations/3#sec-3-A-II-A-1");
     await expect(page.getByText("Mapped question: Storage tanks and tank batteries")).toHaveCount(0);
