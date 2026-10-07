@@ -91,10 +91,13 @@ test.describe("signed in", () => {
     expect(res?.status()).toBe(200);
     expect(await page.locator("#doc .item").count()).toBeGreaterThan(100);
 
-    // First visible cross-reference whose target is on this page.
+    // First visible cross-reference whose target is on this page. A link
+    // inside a closed <details> (a summary panel's child list) reports a
+    // degenerate rect in Chrome but cannot be clicked: skipped.
     const slug = await page.evaluate(() => {
       for (const el of Array.from(document.querySelectorAll("#doc .xref"))) {
         const target = el.getAttribute("data-target");
+        if (el.closest("details:not([open])")) continue;
         if (target && document.getElementById(target) && el.getClientRects().length > 0) {
           el.setAttribute("data-smoke-xref", "");
           return target;

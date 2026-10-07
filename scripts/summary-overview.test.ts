@@ -60,12 +60,17 @@ test("summaryOverview: about 50 words (review 4, 7 Oct 2026) -- the second sente
   const a = summaryOverview([`${w(20)}. ${w(25, "B")}. ${w(5, "C")}.`]);
   assert.equal(a?.overview, `${w(20)}. ${w(25, "B")}.`);
   assert.deepEqual(a?.rest, [`${w(5, "C")}.`]);
-  // 20 + 40 = 60 words: the first sentence alone, the second behind the expander.
-  const b = summaryOverview([`${w(20)}. ${w(40, "B")}. ${w(5, "C")}.`]);
-  assert.deepEqual(b, { overview: `${w(20)}.`, rest: [`${w(40, "B")}. ${w(5, "C")}.`], cut: false });
-  // A two-sentence summary over the budget now gets an expander too (1,339 parents had one or two long sentences and no expander).
+  // 20 + 45 = 65 words: the first sentence alone, the second behind the expander.
+  const b = summaryOverview([`${w(20)}. ${w(45, "B")}. ${w(5, "C")}.`]);
+  assert.deepEqual(b, { overview: `${w(20)}.`, rest: [`${w(45, "B")}. ${w(5, "C")}.`], cut: false });
+  // 20 + 38 = 58 words: both, within the 60-word slack ("about 50"): the Regulation 7 document overview is 57.
+  const both = summaryOverview([`${w(20)}. ${w(38, "B")}. ${w(5, "C")}.`]);
+  assert.equal(both?.overview, `${w(20)}. ${w(38, "B")}.`);
+  // A two-sentence summary over the slack now gets an expander too (1,339 parents had one or two long sentences and no expander).
   const c = summaryOverview([`${w(30)}. ${w(35, "B")}.`]);
   assert.deepEqual(c, { overview: `${w(30)}.`, rest: [`${w(35, "B")}.`], cut: false });
+  // Two sentences of 57 words together: whole, no expander.
+  assert.equal(summaryOverview([`${w(20)}. ${w(37, "B")}.`]), null);
   // A single sentence of 55 words is shown whole (within the 60-word slack), no expander.
   assert.equal(summaryOverview([`${w(55)}.`]), null);
   assert.equal(wordCount(" a  b\nc "), 3);

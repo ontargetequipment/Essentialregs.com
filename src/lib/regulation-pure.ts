@@ -1026,7 +1026,8 @@ export function cutSentence(sentence: string, maxWords = OVERVIEW_MAX_WORDS): st
  * OVERVIEW_MAX_WORDS words (review 4, 7 Oct 2026: GP12 I.A's first two
  * sentences ran to 89 words). The first sentence is kept whole up to
  * OVERVIEW_SENTENCE_SLACK words and cut at a clause boundary past that
- * (`cut` true); the second sentence joins only when both fit the budget.
+ * (`cut` true); the second sentence joins only when both fit within the
+ * same slack.
  * `rest` is what the expander shows: the sentences after the overview, in
  * their paragraphs, or the whole summary when the first sentence was cut.
  * Null when the whole summary already fits (no expander needed).
@@ -1045,8 +1046,10 @@ export function summaryOverview(
   if (wordCount(first) > OVERVIEW_SENTENCE_SLACK) {
     return { overview: cutSentence(first, maxWords), rest: paragraphs.map((p) => p.trim()).filter(Boolean), cut: true };
   }
+  // The second sentence joins when the two stay within the slack (a 57-word
+  // two-sentence document overview is "about 50"; a 19 + 70 one is not).
   let take = 1;
-  if (n >= 2 && total >= 2 && wordCount(first) + wordCount(flat[1]) <= maxWords) take = 2;
+  if (n >= 2 && total >= 2 && wordCount(first) + wordCount(flat[1]) <= OVERVIEW_SENTENCE_SLACK) take = 2;
   if (take === total) return null;
   const head: string[] = [];
   const rest: string[] = [];
