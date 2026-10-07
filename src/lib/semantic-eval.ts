@@ -1,3 +1,4 @@
+import { detectFacets, matchQuestionMap } from "@/lib/question-maps";
 import { isClosedPermit } from "@/lib/regulation-pure";
 
 /**
@@ -21,8 +22,12 @@ import { isClosedPermit } from "@/lib/regulation-pure";
  * shown order comes from layoutAsk() (src/lib/question-maps.ts): the map's
  * canonical rows under their groups, then the retrieval hits, minus what a
  * stated facet left out. Retrieval checks (`expect`, `forbid`, `checks`)
- * still score the raw hits. The two reviewer rows carry their new checks;
- * three rows are new (the 30th to 32nd). Score: 32/32.
+ * score the hits as the page lists them: in retrieval order, minus the rows
+ * a stated fact left out (`omittedIds`); a question that states no fact is
+ * scored on the raw hits. Added 7 Oct 2026 after the chained run's rewrite
+ * of GP06 III.E.1 ranked it third for the natural-gas compressor question,
+ * a row the page does not show for that question. The two reviewer rows
+ * carry their new checks; three rows are new (the 30th to 32nd). Score: 32/32.
  *
  * Original description: Each is a question a Colorado oil & gas compliance person would
  * actually type, with the provision(s) that should appear in the top 5,
@@ -89,8 +94,12 @@ export type ShownCheck =
   /** each id is shown and belongs to a permit the site badges "Closed to new registrations" */
   | { closedBadge: string[] };
 
-/** What the page shows for a question, for the `note`, `title` and `shown` checks (layoutAsk()). */
-export type ShownContext = { ids: string[]; noteKey: string | null; title: string | null };
+/**
+ * What the page shows for a question, for the `note`, `title` and `shown`
+ * checks (layoutAsk()). `omittedIds` are the hits a stated fact left out:
+ * the retrieval checks skip them, as the page does.
+ */
+export type ShownContext = { ids: string[]; noteKey: string | null; title: string | null; omittedIds?: string[] };
 
 /**
  * Questions that fail today and are allowed to: scripts/ask-eval.ts exits
@@ -137,20 +146,35 @@ export type EvalResult = {
   failures: string[];
 };
 
-/** How many rows the question needs fetched: the widest of its windows. */
+/**
+ * Rows fetched per window when the question states a facet: the stated-fact
+ * filter drops the other value's rows before scoring, so the window has to
+ * stay full afterwards (the natural-gas compressor question had four diesel
+ * rows in its raw top five).
+ */
+export const FACET_FETCH_FACTOR = 3;
+
+/** Whether the raw question states a facet value of the map it routes to (detectFacets). */
+export function statesFacet(q: string): boolean {
+  return Object.keys(detectFacets(q, matchQuestionMap(q))).length > 0;
+}
+
+/** How many rows the question needs fetched: the widest of its windows, times FACET_FETCH_FACTOR when it states a facet. */
 export function rowsNeeded(e: EvalQuestion): number {
   const top = e.topN ?? DEFAULT_TOP_N;
   let n = Math.max(top, e.forbidTopN ?? top);
   for (const c of e.checks ?? []) n = Math.max(n, c.topN ?? top);
-  return n;
+  return statesFacet(e.q) ? n * FACET_FETCH_FACTOR : n;
 }
 
 /**
  * Scores one question's hits (in rank order) against its expectations.
  * `mapKey` is the key of the question map the question routed to (null for
- * none); it is only looked at when the question sets `map`. Pure, so it can
- * be tested without a database; /admin/semantic-eval and scripts/ask-eval.ts
- * call it with the live RPC output and matchQuestionMap(q).
+ * none); it is only looked at when the question sets `map`. `shown` is the
+ * page's layout; its `omittedIds` (the hits a stated fact left out) are
+ * skipped by the retrieval checks, so the windows count the hits the page
+ * lists. Pure, so it can be tested without a database; /admin/semantic-eval
+ * and scripts/ask-eval.ts call it with the live RPC output and layoutAsk(q).
  */
 export function evaluateQuestion(e: EvalQuestion, hits: EvalHit[], mapKey: string | null = null, shown?: ShownContext): EvalResult {
   const top = e.topN ?? DEFAULT_TOP_N;
@@ -191,19 +215,25 @@ export function evaluateQuestion(e: EvalQuestion, hits: EvalHit[], mapKey: strin
     }
   }
 
-  const idx = hits.slice(0, top).findIndex((h) => startsWithAny(h, e.expect));
+  // The hits the page lists: a stated fact's omissions are not shown, so
+  // they are not scored either.
+  const omitted = new Set(shown?.omittedIds ?? []);
+  const scored = omitted.size > 0 ? hits.filter((h) => !omitted.has(h.id)) : hits;
+  const filtered = scored.length < hits.length ? " (after the stated-fact filter)" : "";
+
+  const idx = scored.slice(0, top).findIndex((h) => startsWithAny(h, e.expect));
   const matchRank = idx >= 0 ? idx + 1 : null;
-  if (matchRank == null) failures.push(`none of ${e.expect.join(", ")} in the top ${top}`);
+  if (matchRank == null) failures.push(`none of ${e.expect.join(", ")} in the top ${top}${filtered}`);
 
   if (e.forbid && e.forbid.length > 0) {
     const n = e.forbidTopN ?? top;
-    const bad = hits.slice(0, n).filter((h) => startsWithAny(h, e.forbid ?? []));
-    if (bad.length > 0) failures.push(`forbidden in the top ${n}: ${bad.map((h) => h.id).join(", ")}`);
+    const bad = scored.slice(0, n).filter((h) => startsWithAny(h, e.forbid ?? []));
+    if (bad.length > 0) failures.push(`forbidden in the top ${n}${filtered}: ${bad.map((h) => h.id).join(", ")}`);
   }
 
   for (const c of e.checks ?? []) {
     const n = c.topN ?? top;
-    const window = hits.slice(0, n);
+    const window = scored.slice(0, n);
     if ("any" in c) {
       if (!window.some((h) => startsWithAny(h, c.any))) failures.push(`none of ${c.any.join(", ")} in the top ${n}`);
     } else if ("none" in c) {
@@ -290,7 +320,7 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     q: "What are the emission standards for a new natural gas fired compressor engine?",
     expect: ["sec-26-A", "sec-26-B-I", "sec-26-B-II", "sec-jjjj"],
     map: "engines",
-    note: "Reg 26 engines (Part A/B) or the Subpart JJJJ document it cites (its copy under Reg 26 Part C was removed 4 Oct 2026); routes to the engines question map",
+    note: "Reg 26 engines (Part A/B) or the Subpart JJJJ document it cites (its copy under Reg 26 Part C was removed 4 Oct 2026); routes to the engines question map. The fuel is stated, so the diesel rows (GP06, Subpart IIII) the page leaves out are not scored: after the 7 Oct 2026 rewrite, GP06 III.E.1 ranks third among the raw hits",
   },
   {
     q: "What controls are required for a glycol dehydrator?",

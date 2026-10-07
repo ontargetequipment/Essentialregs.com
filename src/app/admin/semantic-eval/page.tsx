@@ -69,7 +69,12 @@ export default async function SemanticEvalPage() {
         // that set `premise`, `title` or `shown` (review 4, 7 Oct 2026).
         const layout = layoutAsk(e.q, hits);
         const mapKey = layout.map?.key ?? null;
-        const result = evaluateQuestion(e, hits, mapKey, { ids: layout.shownIds, noteKey: layout.note?.key ?? null, title: layout.summary?.title ?? null });
+        const result = evaluateQuestion(e, hits, mapKey, {
+          ids: layout.shownIds,
+          noteKey: layout.note?.key ?? null,
+          title: layout.summary?.title ?? null,
+          omittedIds: layout.summary?.omittedIds ?? [],
+        });
         return { q: e.q, note: e.note, expect: e.expect, hits, window, mapKey, known: KNOWN_FAILURES.includes(e.q), ...result };
       })
     );
