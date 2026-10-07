@@ -2467,6 +2467,29 @@ def test_document_root_prompt_lists_first_level_headings_only():
     assert result.descendant_count == 2                      # Part A and Part E, not their sections
     assert "Part A" in result.prompt and "Part E" in result.prompt
     assert "asbestos asbestos" not in result.prompt and "mact mact" not in result.prompt
+    assert not result.outline_mode and "applies to asbestos abatement projects" in result.prompt
+
+
+def test_document_root_shows_the_opening_of_each_heading_not_an_outline():
+    # Regulation 8's Parts carry long bodies: as whole descendants they ran
+    # past CHILD_TEXT_WORDS and the block fell back to titles only, which the
+    # reviewer could not verify a summary against. A root shows each
+    # first-level heading's opening, honestly cut, in full mode.
+    meta = _document_meta()
+    long_part = "<p>Part A applies to asbestos abatement projects. " + " ".join(["detail"] * 4000) + "</p>"
+    meta["sec-8-A"]["full_text"] = long_part
+    meta["sec-8-E"]["full_text"] = "<p>Part E applies to major sources. " + " ".join(["more"] * 4000) + "</p>"
+    idx = summarize.build_children_index(meta)
+    result = summarize.prompt_for_row(meta["sec-8-top-REG-8"], meta, idx, explicit=True)
+    assert result is not None and not result.outline_mode
+    assert "Part A applies to asbestos abatement projects." in result.prompt
+    assert "Part E applies to major sources." in result.prompt
+    assert summarize.CUT_MARKER in result.prompt
+    assert result.descendant_word_count < 400
+    # the reviewer's assembly is the same prompt
+    from review import build_official_text
+    text, _ = build_official_text(meta["sec-8-top-REG-8"], meta, idx)
+    assert text.prompt == result.prompt.replace("\n\n" + summarize.DOCUMENT_OVERVIEW_LINE, "")
     # scanned (not named) the root is still skipped as headings-only
     assert summarize.prompt_for_row(root, meta, idx, explicit=False) is None
     # a heading below the root keeps the section overview and all its descendants

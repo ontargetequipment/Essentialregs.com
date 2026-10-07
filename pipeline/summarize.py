@@ -189,11 +189,19 @@ HEADING_OVERVIEW_LINE = (
 # (7 Oct 2026: 55 of 57 roots had no summary).
 DOCUMENT_OVERVIEW_LINE = (
     "This provision is the top of the whole document; its text is the title and the "
-    "parts or sections listed inside it are the document's first-level headings. Write "
-    "2-3 sentences that say what the document as a whole covers and who it applies to, "
+    "parts or sections listed inside it are the document's first-level headings, each "
+    "with the opening of its own text. Write 2-3 sentences that say what the document "
+    "as a whole covers and, where the title or those openings say so, who it applies to, "
     "using only the title, the text above and the headings listed. Do not list every "
-    "heading; name the subject matter and the regulated parties."
+    "heading; name the subject matter and, when stated, the regulated parties."
 )
+# A root's first-level headings are shown with the opening of each one's own
+# text, honestly cut at ROOT_CHILD_CHARS, rather than the whole bodies (which
+# for Regulation 8 run past CHILD_TEXT_WORDS and flipped the block to a
+# titles-only outline: the reviewer then failed the root twice because the
+# summary's applicability statements "depend on the missing bodies", 7 Oct
+# 2026). Nine Parts at 900 characters stay well inside the full-mode budget.
+ROOT_CHILD_CHARS = 900
 
 DEFAULT_AUDIENCE = (
     "an EHS or compliance person at a Colorado oil & gas operator"
@@ -2114,6 +2122,9 @@ def build_prompt(provision: dict, meta: dict[str, dict],
     # together with the items it introduces instead of as a dangling
     # sentence. Full bodies up to CHILD_TEXT_WORDS, an outline past that.
     descendants = build_descendants(provision, meta, children_index, max_depth=1 if is_root else None)
+    if is_root:
+        for d in descendants:
+            d["text"], _cut = honest_cut(d["text"], ROOT_CHILD_CHARS)
     desc_lines, desc_words, outline_mode = build_descendants_block(descendants)
     if desc_lines:
         lines.append("")
