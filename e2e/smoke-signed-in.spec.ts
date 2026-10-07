@@ -79,14 +79,25 @@ test.describe("signed in", () => {
   });
 
   test("the /regulations/7 reader renders provisions and a cross-reference popup opens", async ({ page }) => {
+    // Browser-side errors are collected so a failure here says why the
+    // reader did not take the click (a script error, a missing element),
+    // not just that it did not.
+    const browserErrors: string[] = [];
+    page.on("pageerror", (e) => browserErrors.push(`pageerror: ${String(e)}`));
+    page.on("console", (m) => {
+      if (m.type() === "error") browserErrors.push(`console: ${m.text()}`);
+    });
     const res = await page.goto("/regulations/7");
     expect(res?.status()).toBe(200);
     expect(await page.locator("#doc .item").count()).toBeGreaterThan(100);
 
-    // First visible cross-reference whose target is on this page.
+    // First visible cross-reference whose target is on this page. A link
+    // inside a closed <details> (a summary panel's child list) reports a
+    // degenerate rect in Chrome but cannot be clicked: skipped.
     const slug = await page.evaluate(() => {
       for (const el of Array.from(document.querySelectorAll("#doc .xref"))) {
         const target = el.getAttribute("data-target");
+        if (el.closest("details:not([open])")) continue;
         if (target && document.getElementById(target) && el.getClientRects().length > 0) {
           el.setAttribute("data-smoke-xref", "");
           return target;
@@ -97,10 +108,27 @@ test.describe("signed in", () => {
     expect(slug, "no in-page cross-reference found in Regulation 7").not.toBeNull();
 
     // The click handler is attached after hydration; retry until it takes.
-    await expect(async () => {
-      await page.locator("[data-smoke-xref]").click();
-      await expect(page.locator("#backdrop")).toHaveClass(/\bshow\b/, { timeout: 2_000 });
-    }).toPass({ timeout: 30_000 });
+    try {
+      await expect(async () => {
+        await page.locator("[data-smoke-xref]").click();
+        await expect(page.locator("#backdrop")).toHaveClass(/\bshow\b/, { timeout: 2_000 });
+      }).toPass({ timeout: 30_000 });
+    } catch (e) {
+      const state = await page.evaluate(() => {
+        const x = document.querySelector("[data-smoke-xref]");
+        const row = x?.closest("#doc > [id]");
+        return {
+          xref: x?.outerHTML.slice(0, 300) ?? null,
+          target: x?.getAttribute("data-target") ?? null,
+          inRow: row?.id ?? null,
+          backdrop: document.getElementById("backdrop") !== null,
+          readerRootChildren: document.getElementById("reader-root")?.children.length ?? -1,
+          docRows: document.querySelectorAll("#doc > [id]").length,
+          htmlBytes: document.documentElement.outerHTML.length,
+        };
+      });
+      throw new Error(`${String(e)}\nreader state: ${JSON.stringify(state)}\nbrowser errors: ${browserErrors.join(" | ") || "none"}`);
+    }
     // The eyebrow is the regulation's display name, then the target's
     // ancestor labels ("Regulation 7 · Part B · I. · I.D."), never the id.
     await expect(page.locator("#popup-eyebrow")).toHaveText(/^Regulation 7( · .+)?$/);

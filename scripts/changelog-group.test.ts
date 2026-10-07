@@ -168,3 +168,68 @@ test("counts arrive as strings from PostgREST bigint and still add up", () => {
 test("no rows, no lines", () => {
   assert.deepEqual(foldChangelog([]), []);
 });
+
+// ---- the three sections (review 4, 7 Oct 2026) ---------------------------------
+
+import {
+  CHANGELOG_SECTIONS,
+  SUMMARY_QUALITY_EXPLANATION,
+  describeSection,
+  sectionLines,
+  sectionTotal,
+  summaryDayTotal,
+} from "../src/lib/changelog-group";
+
+test("three sections: regulatory first and open, links second, summary quality last and collapsed", () => {
+  assert.deepEqual(CHANGELOG_SECTIONS.map((s) => [s.key, s.title, s.collapsed]), [
+    ["regulatory", "Regulatory changes", false],
+    ["links", "Links and sources", false],
+    ["summaries", "Summary quality", true],
+  ]);
+  assert.match(SUMMARY_QUALITY_EXPLANATION, /^An automated second pass compares each plain-English summary with the official text\./);
+  assert.match(SUMMARY_QUALITY_EXPLANATION, /The official text is never changed by this\.$/);
+});
+
+test("a line is split by section with the same words, and lands only in the sections it has counts for", () => {
+  const lines = foldChangelog([
+    { day: "2026-10-06", reg_key: "gp08", change_type: "text_updated", provision_count: 3, latest: "2026-10-07T01:36:03Z" },
+    { day: "2026-10-06", reg_key: "gp08", change_type: "links_updated", provision_count: 1, latest: "2026-10-07T01:36:03Z" },
+    { day: "2026-10-06", reg_key: "gp08", change_type: "summary_approved", provision_count: 4, latest: "2026-10-07T01:36:03Z" },
+    { day: "2026-10-06", reg_key: "gp08", change_type: "summary_edited", provision_count: 1, latest: "2026-10-07T01:36:03Z" },
+    { day: "2026-10-06", reg_key: "7", change_type: "links_updated", provision_count: 22, latest: "2026-10-07T01:39:30Z" },
+    { day: "2026-10-05", reg_key: "3", change_type: "summary_rewritten_pending", provision_count: 2, latest: "2026-10-05T01:00:00Z" },
+    { day: "2026-10-05", reg_key: null, change_type: "removed", provision_count: 20, latest: "2026-10-05T02:00:00Z" },
+  ]);
+  const gp08 = lines.find((l) => l.regKey === "gp08")!;
+  assert.deepEqual(describeSection(gp08, "regulatory"), ["3 provisions updated"]);
+  assert.deepEqual(describeSection(gp08, "links"), ["links added or updated in 1 provision"]);
+  assert.deepEqual(describeSection(gp08, "summaries"), ["5 summaries AI reviewed (1 corrected)"]);
+  assert.deepEqual(describeLine(gp08), [...describeSection(gp08, "regulatory"), ...describeSection(gp08, "links"), ...describeSection(gp08, "summaries")]);
+  assert.deepEqual(sectionLines(lines, "regulatory").map((l) => [l.dateKey, l.regKey]), [["2026-10-06", "gp08"], ["2026-10-05", null]]);
+  assert.deepEqual(sectionLines(lines, "links").map((l) => [l.dateKey, l.regKey]), [["2026-10-06", "7"], ["2026-10-06", "gp08"]]);
+  assert.deepEqual(sectionLines(lines, "summaries").map((l) => [l.dateKey, l.regKey]), [["2026-10-06", "gp08"], ["2026-10-05", "3"]]);
+  assert.equal(sectionTotal(gp08, "regulatory"), 3);
+  assert.equal(sectionTotal(gp08, "summaries"), 5);
+  const removed = lines.find((l) => l.regKey === null)!;
+  assert.deepEqual(describeSection(removed, "regulatory"), ["20 provisions removed"]);
+  assert.deepEqual(describeSection(removed, "summaries"), []);
+});
+
+test("the summary section's one-line total per day sums the day's regulations in the changelog's own words", () => {
+  const lines = foldChangelog([
+    { day: "2026-10-06", reg_key: "gp08", change_type: "summary_approved", provision_count: 200, latest: "2026-10-06T03:00:00Z" },
+    { day: "2026-10-06", reg_key: "gp08", change_type: "summary_edited", provision_count: 12, latest: "2026-10-06T03:00:00Z" },
+    { day: "2026-10-06", reg_key: "gp03", change_type: "summary_rewritten_reviewed", provision_count: 4, latest: "2026-10-06T15:01:16Z" },
+    { day: "2026-10-06", reg_key: "gp03", change_type: "summary_rewritten_corrected", provision_count: 1, latest: "2026-10-06T15:01:16Z" },
+    { day: "2026-10-06", reg_key: "7", change_type: "summary_rewritten_pending", provision_count: 2, latest: "2026-10-06T01:00:00Z" },
+    { day: "2026-10-06", reg_key: "7", change_type: "summary_rewritten_reviewed_later", provision_count: 1, latest: "2026-10-06T01:00:00Z" },
+  ]);
+  assert.equal(
+    summaryDayTotal(lines),
+    "212 summaries AI reviewed (12 corrected) · 5 summaries rewritten and AI reviewed (1 corrected) · 1 summary rewritten (AI reviewed later) · 2 summaries rewritten, awaiting AI review"
+  );
+  // Every logged review a correction: the total says so, like the line does.
+  const [all] = foldChangelog([{ day: "2026-10-07", reg_key: "3", change_type: "summary_edited", provision_count: 98, latest: "2026-10-07T01:00:00Z" }]);
+  assert.equal(summaryDayTotal([all]), "98 summaries corrected on AI review");
+  assert.doesNotMatch(summaryDayTotal(lines), /(?<!AI )reviewed/);
+});

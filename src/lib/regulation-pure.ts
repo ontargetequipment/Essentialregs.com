@@ -873,12 +873,13 @@ export function summaryPanelHtml(
   if (!paragraphs.length) return "";
   // A parent's summary (Sprint 3, Oct 2026): the Phase 0 regeneration wrote
   // parent summaries with every child in view, and they run to three
-  // hundred words. In the reader a provision that has children and a
-  // summary longer than two sentences shows the first two sentences as its
-  // overview, the rest behind "Show full summary", and under that a list of
-  // its direct children. Cards keep the whole first paragraph (they never
-  // pass `children`). The badge stays above the overview, visible with the
-  // panel collapsed either way.
+  // hundred words. In the reader a provision that has children shows at
+  // most two sentences and about 50 words as its overview (summaryOverview;
+  // review 4, 7 Oct 2026), the rest behind "Show full summary" (the whole
+  // summary when the first sentence had to be cut), and under that a list
+  // of its direct children. Cards keep the whole first paragraph (they
+  // never pass `children`). The badge stays above the overview, visible
+  // with the panel collapsed either way.
   const overview = children && children.length ? summaryOverview(paragraphs) : null;
   const body = overview
     ? `<p class="summary-overview">${escapeHtml(overview.overview)}</p>` +
@@ -988,24 +989,77 @@ export function splitSentences(text: string): string[] {
   return out;
 }
 
+/** The collapsed overview's word budget (review 4, 7 Oct 2026: "about 50 words"). */
+export const OVERVIEW_MAX_WORDS = 50;
+/** A first sentence up to this long is shown whole rather than cut mid-sentence. */
+export const OVERVIEW_SENTENCE_SLACK = 60;
+/** A cut first sentence keeps at least this many words. */
+export const OVERVIEW_MIN_WORDS = 20;
+
+export function wordCount(text: string): number {
+  const t = text.trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+
 /**
- * The first `n` sentences of a summary as its overview and the rest as
- * paragraphs (the original paragraph breaks kept), or null when the summary
- * has `n` sentences or fewer and needs no expander.
+ * Cuts a sentence longer than OVERVIEW_SENTENCE_SLACK at the last clause
+ * boundary (a comma, semicolon, colon or dash) that keeps at most
+ * OVERVIEW_MAX_WORDS and at least OVERVIEW_MIN_WORDS words; with no such
+ * boundary, at the word limit. An ellipsis marks the cut.
  */
-export function summaryOverview(paragraphs: string[], n = 2): { overview: string; rest: string[] } | null {
+export function cutSentence(sentence: string, maxWords = OVERVIEW_MAX_WORDS): string {
+  const words = sentence.trim().split(/\s+/);
+  if (words.length <= maxWords) return sentence.trim();
+  let cutAt = -1;
+  for (let i = Math.min(maxWords, words.length) - 1; i >= OVERVIEW_MIN_WORDS - 1; i--) {
+    if (/[,;:]$|[-\u2013\u2014]$/.test(words[i]) || /^[-\u2013\u2014]+$/.test(words[i + 1] ?? "")) {
+      cutAt = i;
+      break;
+    }
+  }
+  const kept = cutAt >= 0 ? words.slice(0, cutAt + 1) : words.slice(0, maxWords);
+  return kept.join(" ").replace(/[,;:\s\-\u2013\u2014]+$/, "") + "\u2026";
+}
+
+/**
+ * The collapsed overview of a summary: at most `n` sentences and about
+ * OVERVIEW_MAX_WORDS words (review 4, 7 Oct 2026: GP12 I.A's first two
+ * sentences ran to 89 words). The first sentence is kept whole up to
+ * OVERVIEW_SENTENCE_SLACK words and cut at a clause boundary past that
+ * (`cut` true); the second sentence joins only when both fit within the
+ * same slack.
+ * `rest` is what the expander shows: the sentences after the overview, in
+ * their paragraphs, or the whole summary when the first sentence was cut.
+ * Null when the whole summary already fits (no expander needed).
+ */
+export function summaryOverview(
+  paragraphs: string[],
+  n = 2,
+  maxWords = OVERVIEW_MAX_WORDS
+): { overview: string; rest: string[]; cut: boolean } | null {
   const sentences = paragraphs.map(splitSentences);
-  const total = sentences.reduce((acc, s) => acc + s.length, 0);
-  if (total <= n) return null;
+  const flat = sentences.flat();
+  const total = flat.length;
+  if (total === 0) return null;
+  if (total <= n && wordCount(flat.join(" ")) <= maxWords) return null;
+  const first = flat[0];
+  if (wordCount(first) > OVERVIEW_SENTENCE_SLACK) {
+    return { overview: cutSentence(first, maxWords), rest: paragraphs.map((p) => p.trim()).filter(Boolean), cut: true };
+  }
+  // The second sentence joins when the two stay within the slack (a 57-word
+  // two-sentence document overview is "about 50"; a 19 + 70 one is not).
+  let take = 1;
+  if (n >= 2 && total >= 2 && wordCount(first) + wordCount(flat[1]) <= OVERVIEW_SENTENCE_SLACK) take = 2;
+  if (take === total) return null;
   const head: string[] = [];
   const rest: string[] = [];
   for (const para of sentences) {
-    const take = Math.max(0, Math.min(para.length, n - head.length));
-    head.push(...para.slice(0, take));
-    const left = para.slice(take);
+    const k = Math.max(0, Math.min(para.length, take - head.length));
+    head.push(...para.slice(0, k));
+    const left = para.slice(k);
     if (left.length) rest.push(left.join(" "));
   }
-  return { overview: head.join(" "), rest };
+  return { overview: head.join(" "), rest, cut: false };
 }
 
 /**

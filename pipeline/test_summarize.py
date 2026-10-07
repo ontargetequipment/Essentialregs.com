@@ -763,6 +763,15 @@ def test_reg7_and_oooob_prompts_have_no_batch_c_specific_text():
 
 
 # --------------------------------------------------------------------------
+def test_writer_opens_with_a_short_overview_rule():
+    # Review 4 (7 Oct 2026): the reader shows at most two sentences and
+    # about 50 words of a parent's summary until it is expanded, so the
+    # writer is told to open that way (the same figure as OVERVIEW_MAX_WORDS
+    # in src/lib/regulation-pure.ts).
+    assert "Open with one or two sentences of no more than 50 words together" in SYSTEM_PROMPT_TEMPLATE
+    assert "the reader sees only that opening until they expand the summary" in SYSTEM_PROMPT_TEMPLATE
+
+
 # Audience hook (REG_AUDIENCE / DEFAULT_AUDIENCE / SYSTEM_PROMPT_TEMPLATE)
 # --------------------------------------------------------------------------
 

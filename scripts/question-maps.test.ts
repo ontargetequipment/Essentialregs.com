@@ -21,11 +21,12 @@ import {
   QUESTION_MAPS,
   groupForHit,
   groupHits,
+  layoutAsk,
   matchQuestionMap,
   summariseGroups,
   type GroupableHit,
 } from "../src/lib/question-maps";
-import { EVAL_QUESTIONS, KNOWN_FAILURES, evaluateQuestion, type EvalQuestion } from "../src/lib/semantic-eval";
+import { EVAL_QUESTIONS, FACET_FETCH_FACTOR, KNOWN_FAILURES, evaluateQuestion, rowsNeeded, statesFacet, type EvalQuestion } from "../src/lib/semantic-eval";
 import { QUESTION_MAP_IDS_SQL, renderQuestionMapIdsSql } from "./question-map-ids";
 
 // ---- routing ---------------------------------------------------------------
@@ -503,6 +504,60 @@ test("evaluateQuestion: map null fails when any map matched; absent map is never
   const unchecked: EvalQuestion = { q: "x", expect: ["sec-7-"], note: "" };
   assert.equal(evaluateQuestion(unchecked, hits, "engines").pass, true);
   assert.equal(evaluateQuestion(unchecked, hits).pass, true);
+});
+
+test("evaluateQuestion: the hits a stated fact left out are not scored (7 Oct 2026, GP06 III.E.1 third for the natural-gas compressor question)", () => {
+  const q = EVAL_QUESTIONS.find((e) => e.q === "What are the emission standards for a new natural gas fired compressor engine?")!;
+  // The raw top five the Ask eval saw after the chained run's rewrite: four
+  // diesel rows and GP12 XII.E; the Regulation 26 row sits sixth.
+  const raw = [
+    hit("sec-iiii-60.4205", "iiii", "federal"),
+    hit("sec-iiii-60.4204", "iiii", "federal"),
+    hit("sec-gp06-III-E-1", "gp06", "state"),
+    hit("sec-iiii-TABLE-4", "iiii", "federal"),
+    hit("sec-gp12-XII-E", "gp12", "state"),
+    hit("sec-26-B-I-D-6-a-(i)", "26", "state"),
+    hit("sec-jjjj-60.4233", "jjjj", "federal"),
+  ];
+  const layout = layoutAsk(q.q, raw);
+  assert.equal(layout.map?.key, "engines");
+  // (canonical omissions are listed before the hits', so compare as a set)
+  assert.deepEqual(layout.summary?.omittedIds.filter((id) => raw.some((h) => h.id === id)).sort(), ["sec-gp06-III-E-1", "sec-iiii-60.4204", "sec-iiii-60.4205", "sec-iiii-TABLE-4"]);
+  const shown = { ids: layout.shownIds, noteKey: null, title: layout.summary?.title ?? null, omittedIds: layout.summary?.omittedIds ?? [] };
+  // Scored as the page lists them: GP12 XII.E first, Regulation 26 second.
+  assert.deepEqual(evaluateQuestion(q, raw, "engines", shown), { pass: true, matchRank: 2, failures: [] });
+  // Without the omissions the raw top five has no Regulation 26 or JJJJ row.
+  const rawScore = evaluateQuestion(q, raw, "engines", { ...shown, omittedIds: [] });
+  assert.equal(rawScore.pass, false);
+  assert.match(rawScore.failures.join("\n"), /none of sec-26-A, sec-26-B-I, sec-26-B-II, sec-jjjj in the top 5$/m);
+  // The failure line says the filter was applied when it was.
+  const still = evaluateQuestion(q, raw.slice(0, 5), "engines", shown);
+  assert.match(still.failures.join("\n"), /in the top 5 \(after the stated-fact filter\)/);
+  // A forbid window is counted the same way: a GP02 hit (a reg key the
+  // natural-gas value owns) in the raw top 3 is left out for a diesel
+  // question, so it is not forbidden either.
+  const diesel: EvalQuestion = { q: "What applies to a diesel engine?", expect: ["sec-gp06-"], forbid: ["sec-gp02-"], forbidTopN: 3, note: "" };
+  const dieselHits = [hit("sec-gp02-II-A-1", "gp02", "state"), hit("sec-gp06-I-A", "gp06", "state")];
+  const dieselLayout = layoutAsk(diesel.q, dieselHits);
+  assert.equal(evaluateQuestion(diesel, dieselHits, "engines", { ids: dieselLayout.shownIds, noteKey: null, title: null, omittedIds: dieselLayout.summary?.omittedIds ?? [] }).pass, true);
+  assert.equal(evaluateQuestion(diesel, dieselHits, "engines").pass, false);
+});
+
+test("rowsNeeded fetches FACET_FETCH_FACTOR times the window when the question states a facet", () => {
+  assert.equal(FACET_FETCH_FACTOR, 3);
+  assert.equal(statesFacet("What are the emission standards for a new natural gas fired compressor engine?"), true);
+  assert.equal(statesFacet("What applies to a diesel engine?"), true);
+  assert.equal(statesFacet("What rules apply to a produced water storage tank at a well site?"), true);
+  // Both fuels, or no map facet: not stated.
+  assert.equal(statesFacet("natural gas or diesel engine"), false);
+  assert.equal(statesFacet("When do I have to file an APEN for a new source and what is the threshold?"), false);
+  assert.equal(statesFacet("x"), false);
+  const compressor = EVAL_QUESTIONS.find((e) => e.q === "What are the emission standards for a new natural gas fired compressor engine?")!;
+  assert.equal(rowsNeeded(compressor), 15);
+  const engine = EVAL_QUESTIONS.find((e) => e.q === "What regulations apply to a natural gas-fired engine?")!;
+  assert.equal(rowsNeeded(engine), 30);
+  const apen = EVAL_QUESTIONS.find((e) => e.q === "When do I have to file an APEN for a new source and what is the threshold?")!;
+  assert.equal(rowsNeeded(apen), 5);
 });
 
 test("the twenty-one map-checked eval questions route as pinned (32 questions), and KNOWN_FAILURES is empty", () => {

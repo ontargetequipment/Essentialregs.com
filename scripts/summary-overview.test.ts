@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { renderReaderBody } from "../src/lib/reader-render";
-import { splitSentences, summaryOverview, summaryPanelHtml } from "../src/lib/regulation-pure";
+import { OVERVIEW_MAX_WORDS, cutSentence, splitSentences, summaryOverview, summaryPanelHtml, wordCount } from "../src/lib/regulation-pure";
 import type { Provision } from "../src/lib/types";
 
 test("splitSentences: ends at . ! ? before a capital, not after abbreviations or list markers", () => {
@@ -47,8 +47,57 @@ test("splitSentences: ends at . ! ? before a capital, not after abbreviations or
 test("summaryOverview: two sentences up front, the rest kept in their paragraphs; null when there is nothing to fold", () => {
   assert.equal(summaryOverview(["One. Two."]), null);
   assert.equal(summaryOverview(["One.", "Two."]), null);
-  assert.deepEqual(summaryOverview(["One. Two. Three.", "Four. Five."]), { overview: "One. Two.", rest: ["Three.", "Four. Five."] });
-  assert.deepEqual(summaryOverview(["One.", "Two. Three."]), { overview: "One. Two.", rest: ["Three."] });
+  assert.deepEqual(summaryOverview(["One. Two. Three.", "Four. Five."]), { overview: "One. Two.", rest: ["Three.", "Four. Five."], cut: false });
+  assert.deepEqual(summaryOverview(["One.", "Two. Three."]), { overview: "One. Two.", rest: ["Three."], cut: false });
+});
+
+// Capitalised so splitSentences sees a sentence start after each period.
+const w = (n: number, word = "Word") => Array.from({ length: n }, (_, i) => `${word}${i + 1}`).join(" ");
+
+test("summaryOverview: about 50 words (review 4, 7 Oct 2026) -- the second sentence joins only when both fit", () => {
+  assert.equal(OVERVIEW_MAX_WORDS, 50);
+  // 20 + 25 = 45 words: both sentences.
+  const a = summaryOverview([`${w(20)}. ${w(25, "B")}. ${w(5, "C")}.`]);
+  assert.equal(a?.overview, `${w(20)}. ${w(25, "B")}.`);
+  assert.deepEqual(a?.rest, [`${w(5, "C")}.`]);
+  // 20 + 45 = 65 words: the first sentence alone, the second behind the expander.
+  const b = summaryOverview([`${w(20)}. ${w(45, "B")}. ${w(5, "C")}.`]);
+  assert.deepEqual(b, { overview: `${w(20)}.`, rest: [`${w(45, "B")}. ${w(5, "C")}.`], cut: false });
+  // 20 + 38 = 58 words: both, within the 60-word slack ("about 50"): the Regulation 7 document overview is 57.
+  const both = summaryOverview([`${w(20)}. ${w(38, "B")}. ${w(5, "C")}.`]);
+  assert.equal(both?.overview, `${w(20)}. ${w(38, "B")}.`);
+  // A two-sentence summary over the slack now gets an expander too (1,339 parents had one or two long sentences and no expander).
+  const c = summaryOverview([`${w(30)}. ${w(35, "B")}.`]);
+  assert.deepEqual(c, { overview: `${w(30)}.`, rest: [`${w(35, "B")}.`], cut: false });
+  // Two sentences of 57 words together: whole, no expander.
+  assert.equal(summaryOverview([`${w(20)}. ${w(37, "B")}.`]), null);
+  // A single sentence of 55 words is shown whole (within the 60-word slack), no expander.
+  assert.equal(summaryOverview([`${w(55)}.`]), null);
+  assert.equal(wordCount(" a  b\nc "), 3);
+});
+
+test("summaryOverview: a first sentence past 60 words is cut at a clause boundary with an ellipsis, and the expander shows the whole summary", () => {
+  const first = `${w(30)}, ${w(18, "B")}; ${w(25, "C")} end.`; // 73 words; boundaries after word 30 (",") and 48 (";")
+  const r = summaryOverview([`${first} Second one.`, "Third para."]);
+  assert.equal(r?.cut, true);
+  assert.equal(r?.overview, `${w(30)}, ${w(18, "B")}\u2026`);
+  assert.equal(wordCount(r!.overview), 48);
+  assert.deepEqual(r?.rest, [`${first} Second one.`, "Third para."]);
+  // No boundary inside the window: cut at the word limit.
+  const plain = summaryOverview([`${w(70)}.`]);
+  assert.equal(plain?.overview, `${w(50)}\u2026`);
+  assert.equal(plain?.cut, true);
+  // A boundary before the 20-word minimum is ignored.
+  const early = summaryOverview([`${w(10)}, ${w(60, "B")}.`]);
+  assert.equal(wordCount(early!.overview), 50);
+  assert.equal(cutSentence("short one.", 50), "short one.");
+  // GP12 I.A (the reviewer's example): 19-word first sentence, 70-word second -> the first sentence alone.
+  const gp12 = summaryOverview([
+    "The permit may be used only for oil and gas well production facilities as defined in Regulation Number 7, Part B. Equipment covered is limited to natural gas-fired and diesel-fired reciprocating internal combustion engines; storage tanks for condensate, crude oil, intermediate hydrocarbon liquids, or produced water (with design capacity ≤10,000 barrels per vessel for the first three types); hydrocarbon liquid loading operations; gas venting from separators; fugitive component leak emissions; and Division-approved air pollution control equipment used to reduce emissions below the limits in Section III. The permit also covers routine or predictable emissions.",
+  ]);
+  assert.equal(gp12?.overview, "The permit may be used only for oil and gas well production facilities as defined in Regulation Number 7, Part B.");
+  assert.equal(gp12?.cut, false);
+  assert.ok(wordCount(gp12!.overview) <= 50);
 });
 
 const long = {

@@ -142,7 +142,7 @@ async function main(): Promise<void> {
 
   // --- Eval ---------------------------------------------------------------
   const expanded = EVAL_QUESTIONS.map((e) => expandAcronyms(e.q));
-  const rows: { q: string; pass: boolean; known: boolean; matchRank: number | null; failures: string[]; ids: string[]; top: number | null }[] = [];
+  const rows: { q: string; pass: boolean; known: boolean; matchRank: number | null; failures: string[]; ids: string[]; omittedIds: string[]; top: number | null }[] = [];
   for (let i = 0; i < EVAL_QUESTIONS.length; i++) {
     const e = EVAL_QUESTIONS[i];
     const hits = await hybrid(supabase, {
@@ -158,12 +158,14 @@ async function main(): Promise<void> {
     // looked at by questions that set `map`, the shown order by those that
     // set `premise`, `title` or `shown`.
     const layout = layoutAsk(e.q, hits);
+    const omittedIds = layout.summary?.omittedIds ?? [];
     const r = evaluateQuestion(e, hits, layout.map?.key ?? null, {
       ids: layout.shownIds,
       noteKey: layout.note?.key ?? null,
       title: layout.summary?.title ?? null,
+      omittedIds,
     });
-    rows.push({ q: e.q, pass: r.pass, known: KNOWN_FAILURES.includes(e.q), matchRank: r.matchRank, failures: r.failures, ids: hits.map((h) => h.id), top: hits[0]?.score ?? null });
+    rows.push({ q: e.q, pass: r.pass, known: KNOWN_FAILURES.includes(e.q), matchRank: r.matchRank, failures: r.failures, ids: hits.map((h) => h.id), omittedIds, top: hits[0]?.score ?? null });
   }
   const passed = rows.filter((r) => r.pass).length;
   const mapChecked = EVAL_QUESTIONS.filter((e) => e.map !== undefined).length;
@@ -177,7 +179,14 @@ async function main(): Promise<void> {
   const failed = rows.filter((r) => !r.pass);
   if (failed.length) {
     out.push("", "Failed:");
-    for (const r of failed) out.push(`- **${r.q}**${r.known ? " (known failure)" : ""} — ${r.failures.join("; ")}; top: ${r.ids.slice(0, 5).join(", ")}`);
+    for (const r of failed) {
+      const left = new Set(r.omittedIds);
+      const scored = r.ids.filter((id) => !left.has(id));
+      out.push(
+        `- **${r.q}**${r.known ? " (known failure)" : ""} — ${r.failures.join("; ")}; top: ${scored.slice(0, 5).join(", ")}` +
+          (left.size ? ` (left out by the stated fact: ${r.omittedIds.join(", ")})` : "")
+      );
+    }
   }
   const unexpected = failed.filter((r) => !r.known);
   out.push(
