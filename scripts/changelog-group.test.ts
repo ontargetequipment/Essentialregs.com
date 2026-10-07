@@ -14,14 +14,14 @@ test("one line per regulation per day, newest first, change types folded in", ()
     { day: "2026-09-14", reg_key: "7", change_type: "text_updated", provision_count: 1496, latest: "2026-09-14T02:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "summary_approved", provision_count: 200, latest: "2026-09-14T03:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "summary_edited", provision_count: 12, latest: "2026-09-14T01:00:00Z" },
-    { day: "2026-09-16", reg_key: "3", change_type: "summary_regenerated", provision_count: 40, latest: "2026-09-16T01:00:00Z" },
+    { day: "2026-09-16", reg_key: "3", change_type: "summary_rewritten_pending", provision_count: 40, latest: "2026-09-16T01:00:00Z" },
     // a cascade-deleted provision has no regulation: grouped under null
     { day: "2026-09-16", reg_key: null, change_type: "text_updated", provision_count: 2, latest: "2026-09-16T03:00:00Z" },
     // the one change type with no customer wording is dropped, not shown raw
     { day: "2026-09-19", reg_key: "7", change_type: "summary_rejected", provision_count: 1, latest: "2026-09-19T01:00:00Z" },
   ]);
   assert.deepEqual(
-    lines.map((l) => [l.dateKey, l.regKey, l.textUpdated, l.reviewed, l.corrected, l.regenerated, l.latest]),
+    lines.map((l) => [l.dateKey, l.regKey, l.textUpdated, l.reviewed, l.corrected, l.rewrittenPending, l.latest]),
     [
       ["2026-09-16", null, 2, 0, 0, 0, "2026-09-16T03:00:00Z"],
       ["2026-09-16", "3", 0, 0, 0, 40, "2026-09-16T01:00:00Z"],
@@ -36,7 +36,7 @@ test("wording: text first, then summaries; corrected shown inside reviewed", () 
     { day: "2026-09-14", reg_key: "7", change_type: "summary_approved", provision_count: 200, latest: "2026-09-14T03:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "summary_edited", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "added", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
-    { day: "2026-09-14", reg_key: "7", change_type: "summary_regenerated", provision_count: 3, latest: "2026-09-14T01:00:00Z" },
+    { day: "2026-09-14", reg_key: "7", change_type: "summary_rewritten_pending", provision_count: 3, latest: "2026-09-14T01:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "removed", provision_count: 2, latest: "2026-09-14T01:00:00Z" },
   ]);
   assert.deepEqual(describeLine(reg7), [
@@ -46,6 +46,44 @@ test("wording: text first, then summaries; corrected shown inside reviewed", () 
     "201 summaries AI reviewed (1 corrected)",
     "3 summaries rewritten, awaiting AI review",
   ]);
+});
+
+test("a rewrite reviewed in the same run is one statement (GP03, 6 Oct 2026)", () => {
+  // Production before migration 20261007010000: changelog_public() returned
+  // summary_regenerated 5, summary_approved 4 and summary_edited 1 for GP03
+  // on 2026-10-06 (the chained run rewrote five summaries at 14:54 and
+  // reviewed them at 15:01), and the page read "5 summaries AI reviewed (1
+  // corrected) · 5 summaries rewritten, awaiting AI review" -- the same five
+  // summaries twice, and "awaiting" for summaries that were not. The
+  // function now pairs them; the page says it once.
+  const [gp03] = foldChangelog([
+    { day: "2026-10-06", reg_key: "gp03", change_type: "summary_rewritten_reviewed", provision_count: 4, latest: "2026-10-06T15:01:16Z" },
+    { day: "2026-10-06", reg_key: "gp03", change_type: "summary_rewritten_corrected", provision_count: 1, latest: "2026-10-06T15:01:16Z" },
+  ]);
+  assert.deepEqual(describeLine(gp03), ["5 summaries rewritten and AI reviewed (1 corrected)"]);
+
+  // Rewrites with no review within a day: pending ones say so; one reviewed
+  // days later is not "awaiting" (its review is counted on its own day).
+  const [mixed] = foldChangelog([
+    { day: "2026-10-02", reg_key: "7", change_type: "summary_rewritten_reviewed_later", provision_count: 1, latest: "2026-10-03T03:49:43Z" },
+    { day: "2026-10-02", reg_key: "7", change_type: "summary_rewritten_pending", provision_count: 2, latest: "2026-10-03T03:49:43Z" },
+    { day: "2026-10-02", reg_key: "7", change_type: "summary_approved", provision_count: 3, latest: "2026-10-03T03:49:43Z" },
+  ]);
+  assert.deepEqual(describeLine(mixed), [
+    "3 summaries AI reviewed",
+    "1 summary rewritten (AI reviewed later)",
+    "2 summaries rewritten, awaiting AI review",
+  ]);
+  // No corrected count when every paired review passed.
+  const [plain] = foldChangelog([
+    { day: "2026-10-06", reg_key: "1", change_type: "summary_rewritten_reviewed", provision_count: 1, latest: "2026-10-06T15:01:04Z" },
+  ]);
+  assert.deepEqual(describeLine(plain), ["1 summary rewritten and AI reviewed"]);
+  // The pre-migration shape still folds, as pending.
+  const [legacy] = foldChangelog([
+    { day: "2026-09-16", reg_key: "3", change_type: "summary_regenerated", provision_count: 40, latest: "2026-09-16T01:00:00Z" },
+  ]);
+  assert.deepEqual(describeLine(legacy), ["40 summaries rewritten, awaiting AI review"]);
 });
 
 test("the removal of Regulation 26's Subpart JJJJ copy reads as one plain line (4 Oct 2026)", () => {
@@ -65,7 +103,10 @@ test("no changelog phrase says a summary was 'reviewed' without 'AI' (owner deci
     { day: "2026-09-14", reg_key: "7", change_type: "removed", provision_count: 1, latest: "2026-09-14T02:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "summary_approved", provision_count: 1, latest: "2026-09-14T03:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "summary_edited", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
-    { day: "2026-09-14", reg_key: "7", change_type: "summary_regenerated", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
+    { day: "2026-09-14", reg_key: "7", change_type: "summary_rewritten_pending", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
+    { day: "2026-09-14", reg_key: "7", change_type: "summary_rewritten_reviewed", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
+    { day: "2026-09-14", reg_key: "7", change_type: "summary_rewritten_corrected", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
+    { day: "2026-09-14", reg_key: "7", change_type: "summary_rewritten_reviewed_later", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
   ]);
   for (const phrase of lines.flatMap(describeLine)) {
     // "reviewed"/"review" only ever directly after "AI".

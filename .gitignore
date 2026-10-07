@@ -70,3 +70,6 @@ Claude outputs/
 pipeline/review_failed.jsonl
 pipeline/out/review_report.md
 pipeline/out/review_report.json
+
+# Acceptance screenshots written by e2e/smoke-signed-in.spec.ts (uploaded by CI)
+/e2e-screenshots/

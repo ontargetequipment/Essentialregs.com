@@ -8,7 +8,7 @@
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { loadProvisionPreview, validPreviewId, type PreviewDeps, type PreviewRow } from "../src/lib/provision-preview";
+import { loadProvisionPreview, previewSummary, validPreviewId, type PreviewDeps, type PreviewRow } from "../src/lib/provision-preview";
 
 const ROW: PreviewRow = {
   id: "sec-7-B-I-B-33",
@@ -83,16 +83,18 @@ test("an entitled visitor asking for a row RLS hides or that does not exist gets
   assert.deepEqual(calls.fetch, ["sec-7-B-I-B-99"]);
 });
 
-test("an entitled visitor gets only id, reg_key, citation and sanitised, badged html", async () => {
+test("an entitled visitor gets only id, reg_key, citation, title, sanitised badged html and the summary overview", async () => {
   const { d, calls } = deps();
   const res = await loadProvisionPreview("sec-7-B-I-B-33", d);
   assert.equal(res.status, 200);
   assert.deepEqual(calls.fetch, ["sec-7-B-I-B-33"]);
   const body = res.body as Record<string, unknown>;
-  assert.deepEqual(Object.keys(body).sort(), ["citation", "html", "id", "reg_key"]);
+  assert.deepEqual(Object.keys(body).sort(), ["citation", "html", "id", "reg_key", "summary", "title"]);
   assert.equal(body.id, "sec-7-B-I-B-33");
   assert.equal(body.reg_key, "7");
   assert.equal(body.citation, "I.B.33.");
+  assert.equal(body.title, "", "no title column in the row: empty, never undefined");
+  assert.equal(body.summary, null, "no summary on the row");
   const html = String(body.html);
   assert.match(html, /Opacity shall not exceed/);
   assert.match(html, /data-target="sec-7-B-I-B-34"/, "cross-reference spans survive");
@@ -106,4 +108,37 @@ test("a parenthesised id is accepted (more than half the corpus has parens)", as
   assert.equal(res.status, 200);
   assert.deepEqual(calls.fetch, ["sec-gp12-I-A-8-d-(i)"]);
   assert.equal((res.body as { reg_key: string }).reg_key, "gp12");
+});
+
+test("a whole-document preview carries the root's title and the two-sentence overview of its summary (7 Oct 2026)", async () => {
+  const root: PreviewRow = {
+    id: "sec-8-top-REG-8",
+    citation: "Code of Colorado Regulations · Regulation Number 8",
+    title: "CONTROL OF HAZARDOUS AIR POLLUTANTS 5 CCR 1001-10",
+    full_text: "CONTROL OF HAZARDOUS AIR POLLUTANTS 5 CCR 1001-10",
+    ai_summary: "Regulation 8 sets Colorado's hazardous air pollutant rules. It adopts the federal NESHAPs by reference. It also covers asbestos abatement.\n\nPart D covers lead.",
+    summary_status: "approved",
+    reviewed_at: "2026-10-05T04:45:29.910Z",
+  };
+  const { d } = deps({ row: root });
+  const res = await loadProvisionPreview("sec-8-top-REG-8", d);
+  assert.equal(res.status, 200);
+  const body = res.body as Record<string, unknown>;
+  assert.equal(body.title, "CONTROL OF HAZARDOUS AIR POLLUTANTS 5 CCR 1001-10");
+  assert.deepEqual(body.summary, {
+    overview: "Regulation 8 sets Colorado's hazardous air pollutant rules. It adopts the federal NESHAPs by reference.",
+    badge: { kind: "reviewed", label: "AI reviewed · Oct 5, 2026" },
+  });
+  // No reviewer, no other metadata.
+  assert.doesNotMatch(JSON.stringify(body), /reviewed_by|summary_original|Claude/);
+
+  // Two sentences or fewer: the first paragraph whole. Pending: the pending badge. Markdown stripped.
+  assert.deepEqual(previewSummary({ ai_summary: "**One.** Two.", summary_status: "pending", reviewed_at: null }), {
+    overview: "One. Two.",
+    badge: { kind: "pending", label: "AI-generated · not yet reviewed" },
+  });
+  // Rejected or absent: null.
+  assert.equal(previewSummary({ ai_summary: "One. Two. Three.", summary_status: "rejected", reviewed_at: null }), null);
+  assert.equal(previewSummary({ ai_summary: null, summary_status: "pending", reviewed_at: null }), null);
+  assert.equal(previewSummary({ ai_summary: "   ", summary_status: "approved", reviewed_at: null }), null);
 });

@@ -4,10 +4,25 @@
  * never pays, never writes anything -- and SMOKE_SCOPE is not "anonymous"
  * (production deployments run the anonymous group only).
  */
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, test, withProtectionBypass } from "./fixtures";
+import type { Page, TestInfo } from "@playwright/test";
+
+/**
+ * Where the acceptance screenshots go (6 Oct 2026 review items 1 and 5):
+ * attached to the report and written to e2e-screenshots/ (git-ignored), which
+ * ci.yml uploads as the "smoke-screenshots" artifact whether or not the run
+ * passed, so a before/after can be read off a run without re-running it.
+ */
+const SHOTS_DIR = path.join(process.cwd(), "e2e-screenshots");
+async function shot(page: Page, testInfo: TestInfo, name: string): Promise<void> {
+  mkdirSync(SHOTS_DIR, { recursive: true });
+  const file = path.join(SHOTS_DIR, `${name}.png`);
+  await page.screenshot({ path: file });
+  await testInfo.attach(name, { path: file, contentType: "image/png" });
+}
 
 /** The four is_public rows; a signed-in search must find something else. */
 const PUBLIC_IDS = ["sec-7-B-I-D-3-a-(i)", "sec-gp02-II-A-2", "sec-ecmc-604-a-(1)", "sec-cp-I-G-90"];
@@ -111,6 +126,125 @@ test.describe("signed in", () => {
     }
     await expect(page.locator("#return-trail")).toBeHidden();
   });
+
+  test("a citation of a whole document previews it and opens it with a way back (GP12 XII.E → Regulation 8)", async ({ page }, testInfo) => {
+    // Acceptance row "Click a citation in GP12 XII.E" (6 Oct 2026): the
+    // importer links "Regulation Number 8" to /regulations/8 with no
+    // provision in the hash; the reader must preview the document in place
+    // (title, citation, effective date, the overview of its top-level
+    // summary) with a separate "Open Regulation 8 →" that carries from=, and
+    // Regulation 8 must then show the way back. Checked at a desktop width
+    // and at a phone width (390px), where the same click path applies.
+    test.setTimeout(180_000);
+    for (const [width, label] of [
+      [1280, "desktop"],
+      [390, "phone"],
+    ] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      // The second pass starts on this very URL (the back link landed here),
+      // so the navigation is a same-document hash change and goto() returns
+      // no response; only a real navigation has a status to check.
+      const res = await page.goto("/regulations/gp12#sec-gp12-XII-E");
+      if (res) expect(res.status()).toBe(200);
+      const link = page.locator('#doc [id="sec-gp12-XII-E"] a.xref-external-reg[href="/regulations/8"]');
+      await expect(link).toHaveCount(1);
+      // The click handler is attached after hydration; retry until it takes.
+      await expect(async () => {
+        await link.click();
+        await expect(page.locator("#backdrop")).toHaveClass(/\bshow\b/, { timeout: 3_000 });
+      }).toPass({ timeout: 30_000 });
+      await expect(page).toHaveURL(/\/regulations\/gp12/, { timeout: 1_000 });
+      await expect(page.locator("#popup-eyebrow")).toHaveText("Regulation 8");
+      await expect(page.locator("#popup-title")).not.toBeEmpty();
+      await expect(page.locator("#popup-note")).toContainText("Regulation Number 8");
+      await expect(page.locator("#popup-version-note")).toHaveText(/^Effective \d{2}\/\d{2}\/\d{4}$/);
+      // The body is the summary overview or the one honest line.
+      const body = page.locator("#popup-body");
+      await expect(body.locator(".summary-overview, .doc-preview-empty")).toHaveCount(1);
+      if ((await body.locator(".summary-overview").count()) === 1) {
+        await expect(body.locator(".summary-badge")).toHaveText(/^(AI reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/);
+      }
+      const open = page.locator("#popup-goto");
+      await expect(open).toHaveText("Open Regulation 8 →");
+      await expect(open).toHaveAttribute("href", "/regulations/8?from=sec-gp12-XII-E#sec-8-top-REG-8");
+      await shot(page, testInfo, `item1-${label}-preview`);
+
+      await open.click();
+      await page.waitForURL((url) => url.pathname === "/regulations/8", { timeout: 60_000 });
+      await expect(page.locator("#doc .item").first()).toBeAttached();
+      // from= is consumed into the return bar and stripped from the URL.
+      await expect(page).not.toHaveURL(/from=/);
+      await expect(page.locator("#return-trail")).toBeVisible();
+      const back = page.locator("#return-trail-ext");
+      await expect(back).toHaveText("← Back to GP12 · XII.E");
+      await expect(back).toHaveAttribute("href", "/regulations/gp12#sec-gp12-XII-E");
+      await shot(page, testInfo, `item1-${label}-back-bar`);
+      await back.click();
+      await page.waitForURL((url) => url.pathname === "/regulations/gp12" && url.hash === "#sec-gp12-XII-E", { timeout: 60_000 });
+      await expect(page.locator('#doc [id="sec-gp12-XII-E"]')).toBeInViewport({ timeout: 15_000 });
+    }
+  });
+
+  for (const reg of ["7", "8", "gp12"]) {
+    test(`/regulations/${reg} does not scroll sideways at 390 and 526 px`, async ({ page }, testInfo) => {
+      // 6 Oct 2026 review: at 526px /regulations/8 was 129px wider than the
+      // viewport (a 73-character form blank in VI.QQ) and the "View official
+      // source" link ran into the title; /regulations/7 (long URLs) scrolled
+      // too. No horizontal page scroll at either width; wide tables scroll
+      // inside their own container; the source link sits on its own line
+      // above the title.
+      test.setTimeout(240_000);
+      for (const width of [390, 526]) {
+        await page.setViewportSize({ width, height: 844 });
+        const res = await page.goto(`/regulations/${reg}`);
+        expect(res?.status()).toBe(200);
+        expect(await page.locator("#doc .item").count()).toBeGreaterThan(10);
+        // Let the browser-built furniture (contains boxes) land before measuring.
+        await expect(page.locator("#doc ul.contains").first()).toBeAttached({ timeout: 30_000 });
+        const m = await page.evaluate(() => {
+          const de = document.documentElement;
+          const link = document.querySelector("#doc .reg-source-link");
+          let linkBottom: number | null = null;
+          let textTop: number | null = null;
+          if (link) {
+            linkBottom = link.getBoundingClientRect().bottom;
+            for (let n = link.nextSibling; n; n = n.nextSibling) {
+              if (n.nodeType === 3 && (n.nodeValue ?? "").trim()) {
+                const range = document.createRange();
+                range.selectNodeContents(n);
+                textTop = range.getClientRects()[0]?.top ?? null;
+                break;
+              }
+              if (n.nodeType === 1) {
+                textTop = (n as Element).getBoundingClientRect().top;
+                break;
+              }
+            }
+          }
+          const wraps = Array.from(document.querySelectorAll<HTMLElement>("#doc .doc-table-wrap"));
+          const wideTables = wraps.filter((w) => w.scrollWidth > w.clientWidth + 1).length;
+          const tableOverflowsPage = wraps.filter((w) => w.getBoundingClientRect().right > de.clientWidth + 1).length;
+          return {
+            scrollWidth: de.scrollWidth,
+            clientWidth: de.clientWidth,
+            bodyScrollWidth: document.body.scrollWidth,
+            linkBottom,
+            textTop,
+            tables: wraps.length,
+            wideTables,
+            tableOverflowsPage,
+          };
+        });
+        expect(m.scrollWidth, `${reg} at ${width}px: ${JSON.stringify(m)}`).toBeLessThanOrEqual(m.clientWidth);
+        expect(m.bodyScrollWidth, `${reg} at ${width}px: ${JSON.stringify(m)}`).toBeLessThanOrEqual(m.clientWidth);
+        expect(m.tableOverflowsPage, `${reg} at ${width}px: a table container reaches past the viewport`).toBe(0);
+        if (m.linkBottom !== null && m.textTop !== null) {
+          expect(m.textTop, `${reg} at ${width}px: the title starts under the source link`).toBeGreaterThanOrEqual(m.linkBottom - 1);
+        }
+        await shot(page, testInfo, `item5-${reg}-${width}`);
+      }
+    });
+  }
 
   test("the /regulations/gp01 reader labels every summary with its review status", async ({ page }) => {
     // Trust badge (owner decision, 29 Sep 2026): every summary panel opens

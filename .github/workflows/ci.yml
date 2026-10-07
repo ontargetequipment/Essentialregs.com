@@ -166,6 +166,19 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+      - name: Upload acceptance screenshots
+        # The document-preview and narrow-screen checks in
+        # e2e/smoke-signed-in.spec.ts write their screenshots to
+        # e2e-screenshots/ (6 Oct 2026 review, items 1 and 5); kept on every
+        # run so a before/after can be read off the run page.
+        if: always() && steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshots
+          path: e2e-screenshots/
+          retention-days: 14
+          if-no-files-found: ignore
+
   qa:
     name: qa
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.qa)

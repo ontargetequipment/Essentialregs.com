@@ -464,6 +464,31 @@ links to the part root), and the first section of a list carries the
   provision (`trimmed`, `part_root`, `reg_root`, unresolved) is listed in the
   `unresolved_cross_reg` section of the `diff` report with its source
   provision id and the citation as printed.
+- **Federal subpart citations** (acceptance item 2, 7 Oct 2026). Every form
+  the Colorado documents use to cite the corpus's 40 CFR Part 60 / 63
+  subparts links to the corpus document, and to the section when a § number
+  is cited and resolves: "40 CFR Part 60, Subpart JJJJ", "40 CFR, Part 63,
+  Subpart ZZZZ" (GP12's comma after CFR), "40 C.F.R., Part 63, ...",
+  "Part 60 Subpart JJJJ" (no comma), "NSPS OOOOa", "NSPS Subpart IIII",
+  "(NSPS) Subpart JJJJ" and "NSPS, Subpart JJJJ" (the "Subpart <code>" span is
+  linked), "Subpart ZZZZ of Part 63", a bare "Subpart ZZZZ" / "(Subpart
+  OOOOa)" / "Subpart OOOO, OOOOa, or OOOOb" (each code on its own), and
+  "§60.4209(a)" / "Section 60.4244" / "60.5386b(c)" / "Sections 63.6600
+  through 63.6603" (`CFR_SECTION_RANGES`: the exact paragraph when the index
+  has it, else its nearest existing ancestor). The map is PART-AWARE
+  (`CFR_PART_SUBPART_TO_REGKEY`, `_subpart_regkey`): 40 CFR Part 63 has its
+  own Subparts IIII, JJJJ and OOOO (coating rules), which Regulation 8 Part A
+  lists, so "40 C.F.R. Part 63, Subpart IIII" is NOT the engine rule and
+  stays plain text (it was linked to it until the re-import after 7 Oct 2026);
+  NSPS means Part 60, NESHAP / MACT mean Part 63 ("NESHAP JJJJ" stays text);
+  a bare JJJJ / IIII links only when the paragraph shows Part 60 or NSPS, a
+  bare ZZZZ / OOOOa / OOOOb / OOOOc always (they occur in one part only).
+  "Regulation Number 6, Part A, Subpart IIII" deep-links to Regulation 6's
+  own adoption row. The original Subpart OOOO and every subpart not in the
+  corpus are counted in the diff report's `cfr` bucket and never linked.
+  `pipeline/link_change_report.py` has a "Federal subpart links" table (per
+  regulation: document and section links old -> new, skipped, unresolved);
+  the 7 Oct 2026 run is `pipeline/out/acceptance_federal_subpart_links.md`.
 - **Preview a re-import's link changes** without touching the database:
   `python pipeline/link_change_report.py --old-dir <dir of parses made by the
   old code> --out pipeline/out/sprint2_link_changes.md` (the importer has no
