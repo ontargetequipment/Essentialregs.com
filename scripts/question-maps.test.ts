@@ -56,7 +56,8 @@ test("the storage-tanks map: its eval questions, GP08, a tank battery APEN quest
   assert.equal(matchQuestionMap("produced water tanks at a disposal well")?.key, "storage-tanks");
   // GP01 routes here through its acronym expansion ("condensate storage tank
   // batteries") and, since maps batch 3, its own trigger.
-  assert.equal(matchQuestionMap("When is a GP01 required?")?.key, "storage-tanks");
+  // Review 4 (7 Oct 2026): a "is GP01 required" question takes the GP01 premise map first.
+  assert.equal(matchQuestionMap("When is a GP01 required?")?.key, "premise-gp01");
   assert.equal(matchQuestionMap("GP01 requirements")?.key, "storage-tanks");
   assert.equal(matchQuestionMap("gp 1 tank battery")?.key, "storage-tanks");
   // A bare "tank" does not route: a tank truck at a bulk plant is Regulation 24.
@@ -184,7 +185,8 @@ test("the enforcement map routes its two eval questions, the APEN penalty questi
   assert.equal(matchQuestionMap("violation"), null);
   // Equipment first: an LDAR enforcement question stays on the ldar map; GP02 stays engines.
   assert.equal(matchQuestionMap("LDAR enforcement")?.key, "ldar");
-  assert.equal(matchQuestionMap("Do I need a GP02 permit for my engine?")?.key, "engines");
+  assert.equal(matchQuestionMap("Do I need a GP02 permit for my engine?")?.key, "premise-gp02"); // a premise question since review 4
+  assert.equal(matchQuestionMap("GP02 permit conditions for my engine?")?.key, "engines");
 });
 
 test("maps batch 4: the enforcement map's 21 rows in four groups, in display order, CP III.A among the first Colorado rows", () => {
@@ -204,9 +206,11 @@ test("maps batch 4: the enforcement map's 21 rows in four groups, in display ord
   assert.equal(enforcement.provisions.filter((p) => p.group === "Federal PHMSA").length, 7);
   assert.ok(enforcement.provisions.every((p) => p.group !== "ECMC rules" || p.id.startsWith("sec-ecmc-")));
   assert.ok(enforcement.provisions.every((p) => p.group !== "Federal PHMSA" || /^sec-p19\d-/.test(p.id)));
-  // The two new groups sit after Federal NESHAP and before Definitions.
-  assert.deepEqual(MAP_GROUP_ORDER.slice(4), ["Federal NESHAP", "ECMC rules", "Federal PHMSA", "Definitions"]);
-  assert.equal(MAP_GROUP_ORDER.length, 8);
+  // The two batch-4 groups sit after Federal NESHAP and before Definitions;
+  // the two premise groups (review 4, 7 Oct 2026) open the order.
+  assert.deepEqual(MAP_GROUP_ORDER.slice(6), ["Federal NESHAP", "ECMC rules", "Federal PHMSA", "Definitions"]);
+  assert.deepEqual(MAP_GROUP_ORDER.slice(0, 3), ["Permit applicability", "Colorado permitting and APEN", "Alternatives if the permit does not fit"]);
+  assert.equal(MAP_GROUP_ORDER.length, 10);
 });
 
 test("maps batch 3: row counts, groups in display order, GP01 first among the tanks permits, the shared rows", () => {
@@ -306,7 +310,8 @@ test("maps batch 2: row counts, groups in display order, the two empty Federal N
 });
 
 /** MAP_GROUP_ORDER without the two groups maps batch 4 added: the groups an air map can fill. */
-const AIR_GROUPS = MAP_GROUP_ORDER.filter((g) => g !== "ECMC rules" && g !== "Federal PHMSA");
+const PREMISE_GROUPS = ["Permit applicability", "Alternatives if the permit does not fit"];
+const AIR_GROUPS = MAP_GROUP_ORDER.filter((g) => g !== "ECMC rules" && g !== "Federal PHMSA" && !PREMISE_GROUPS.includes(g));
 
 // ---- groupForHit -----------------------------------------------------------
 
@@ -500,10 +505,10 @@ test("evaluateQuestion: map null fails when any map matched; absent map is never
   assert.equal(evaluateQuestion(unchecked, hits).pass, true);
 });
 
-test("the eighteen map-checked eval questions route as pinned (29 questions), and KNOWN_FAILURES is empty", () => {
-  assert.equal(EVAL_QUESTIONS.length, 29);
+test("the twenty-one map-checked eval questions route as pinned (32 questions), and KNOWN_FAILURES is empty", () => {
+  assert.equal(EVAL_QUESTIONS.length, 32);
   const pinned = EVAL_QUESTIONS.filter((e) => e.map !== undefined);
-  assert.equal(pinned.length, 18);
+  assert.equal(pinned.length, 21);
   assert.deepEqual(
     pinned.map((e) => [e.q, e.map]),
     [
@@ -522,9 +527,12 @@ test("the eighteen map-checked eval questions route as pinned (29 questions), an
       ["What are the requirements for loading gasoline into a tank truck at a bulk plant?", null],
       ["Which general permits can an oil and gas well production facility register under?", "general-permits"],
       ["What is the maximum civil penalty per day for violating an AQCC regulation?", "enforcement"],
-      ["When is a GP01 required?", "storage-tanks"],
+      ["When is a GP01 required?", "premise-gp01"],
       ["What regulations apply to a natural gas-fired engine?", "engines"],
       ["What Colorado and federal requirements could apply to storage vessels?", "storage-tanks"],
+      ["Do I need a GP12?", "premise-gp12"],
+      ["What applies to a diesel engine?", "engines"],
+      ["What rules apply to a produced water storage tank at a well site?", "storage-tanks"],
     ]
   );
   // The general-permits question and the new per-day-maximum question (the 29th) close the original block, before the reviewer questions.
@@ -538,6 +546,8 @@ test("the eighteen map-checked eval questions route as pinned (29 questions), an
   // Every map has at least one eval question pinned to it (maps batch 4: enforcement included).
   assert.ok(QUESTION_MAPS.some((m) => m.key === "enforcement"));
   for (const m of QUESTION_MAPS) assert.ok(pinned.some((e) => e.map === m.key), `${m.key}: no eval question pinned`);
+  // The one storage-tanks premise question moved to its premise map; the tanks map keeps three pinned questions.
+  assert.equal(pinned.filter((e) => e.map === "storage-tanks").length, 3);
   for (const e of pinned) assert.equal(matchQuestionMap(e.q)?.key ?? null, e.map, e.q);
   // Maps batch 4 closed the one known failure: the gate is 29/29.
   assert.deepEqual(KNOWN_FAILURES, []);

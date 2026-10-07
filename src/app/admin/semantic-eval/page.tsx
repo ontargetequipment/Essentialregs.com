@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { embedQueries, hrefForHit, regLabel, type SemanticHit } from "@/lib/semantic";
 import { expandAcronyms, keywordQuery } from "@/lib/acronyms";
-import { matchQuestionMap } from "@/lib/question-maps";
+import { layoutAsk } from "@/lib/question-maps";
 import { DEFAULT_TOP_N, EVAL_QUESTIONS, KNOWN_FAILURES, evaluateQuestion, rowsNeeded } from "@/lib/semantic-eval";
 
 export const metadata = { title: "Ask acceptance test" };
@@ -64,9 +64,12 @@ export default async function SemanticEvalPage() {
         });
         if (error) throw new Error(`${e.q}: ${error.message}`);
         const hits = (data ?? []) as SemanticHit[];
-        // Same pure routing call the Ask page makes; checked only by questions that set `map`.
-        const mapKey = matchQuestionMap(e.q)?.key ?? null;
-        const result = evaluateQuestion(e, hits, mapKey);
+        // Same pure routing and layout calls the Ask page makes; the map key
+        // is checked by questions that set `map`, the shown order by those
+        // that set `premise`, `title` or `shown` (review 4, 7 Oct 2026).
+        const layout = layoutAsk(e.q, hits);
+        const mapKey = layout.map?.key ?? null;
+        const result = evaluateQuestion(e, hits, mapKey, { ids: layout.shownIds, noteKey: layout.note?.key ?? null, title: layout.summary?.title ?? null });
         return { q: e.q, note: e.note, expect: e.expect, hits, window, mapKey, known: KNOWN_FAILURES.includes(e.q), ...result };
       })
     );

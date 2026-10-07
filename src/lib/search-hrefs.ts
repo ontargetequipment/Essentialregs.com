@@ -19,14 +19,20 @@ export function keywordHref(q: string, includeBasis: boolean): string {
   return qs ? `/search?${qs}` : "/search";
 }
 
-/** Ask-tab URL keeping the jurisdiction / regulation chips, ?basis=1 only when it is on, and ?flat=1 only when the visitor asked for the flat list. */
-export function askHref(q: string, includeBasis: boolean, jurisdiction: string | null = null, reg = "", flat = false): string {
+/**
+ * Ask-tab URL keeping the jurisdiction / regulation chips, ?basis=1 only
+ * when it is on, ?flat=1 only when the visitor asked for the flat list, and
+ * ?facets=all only when they asked to see the rows a stated fact left out
+ * (the "Show them" link, 7 Oct 2026).
+ */
+export function askHref(q: string, includeBasis: boolean, jurisdiction: string | null = null, reg = "", flat = false, allFacets = false): string {
   const params = new URLSearchParams({ mode: "ask" });
   if (q) params.set("q", q);
   if (jurisdiction) params.set("j", jurisdiction);
   if (reg) params.set("reg", reg);
   if (includeBasis) params.set("basis", "1");
   if (flat) params.set("flat", "1");
+  if (allFacets) params.set("facets", "all");
   return `/search?${params.toString()}`;
 }
 

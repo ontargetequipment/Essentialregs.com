@@ -1,5 +1,5 @@
 /**
- * Ask acceptance report from outside the app: the same 28 questions and
+ * Ask acceptance report from outside the app: the same questions and
  * pass rules as /admin/semantic-eval (src/lib/semantic-eval.ts), the same
  * acronym expansion and keyword query (src/lib/acronyms.ts), the same
  * question-map routing (src/lib/question-maps.ts, pure), the same
@@ -25,7 +25,7 @@
 import { appendFileSync } from "node:fs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expandAcronyms, keywordQuery } from "../src/lib/acronyms";
-import { matchQuestionMap } from "../src/lib/question-maps";
+import { layoutAsk } from "../src/lib/question-maps";
 import { EVAL_QUESTIONS, KNOWN_FAILURES, evaluateQuestion, rowsNeeded, type EvalHit } from "../src/lib/semantic-eval";
 
 // Mirrors EMBED_MODEL / EMBED_DIMS in src/lib/semantic.ts, which cannot be
@@ -37,11 +37,14 @@ const DEFAULT_ASK = [
   "When is a GP01 required?",
   "What regulations apply to a natural gas-fired engine?",
   "What Colorado and federal requirements could apply to storage vessels?",
+  "Do I need a GP12?",
+  "What applies to a diesel engine?",
+  "What rules apply to a produced water storage tank at a well site?",
 ];
 /** Ids to flag by name when they appear in an Ask top 10 (the engine question). */
 const WATCH = ["sec-jjjj-60.4230", "sec-zzzz-63.6585"];
 
-type Hit = EvalHit & { citation: string; title: string; reg_key: string | null; score: number | null; keyword_hit?: boolean };
+type Hit = EvalHit & { citation: string; title: string; reg_key: string | null; jurisdiction_level: string; score: number | null; keyword_hit?: boolean };
 
 function env(name: string, fallback?: string): string {
   const v = process.env[name] ?? (fallback ? process.env[fallback] : undefined);
@@ -124,9 +127,17 @@ async function main(): Promise<void> {
     const seen = WATCH.filter((w) => hits.some((h) => h.id === w || h.id.startsWith(`${w}-`)));
     out.push("", `watched: ${seen.length ? seen.join(", ") : `none of ${WATCH.join(", ")}`}`);
     // The page's routing is pure, so the same call tells us which map the
-    // Ask tab would lay these hits out under.
-    const map = matchQuestionMap(askQuestions[i]);
-    out.push(`question map: ${map ? `${map.key} (${map.name})` : "none"}`, "");
+    // Ask tab would lay these hits out under, with the premise note, the
+    // stated facets and what they left out (review 4, 7 Oct 2026).
+    const layout = layoutAsk(askQuestions[i], hits);
+    const map = layout.map;
+    out.push(`question map: ${map ? `${map.key} (${map.name})` : "none"}`);
+    if (layout.summary) {
+      out.push(`shown as: ${layout.summary.title}${layout.note ? `; premise note: ${layout.note.key}` : ""}${layout.summary.stated.length ? `; stated: ${layout.summary.stated.join(", ")}` : ""}`);
+      for (const o of layout.summary.omitted) out.push(`not shown because you said ${o.said}: ${o.omitted} (${layout.summary.omittedIds.join(", ") || "none among the hits"})`);
+      out.push(`first shown: ${layout.shownIds.slice(0, 5).join(", ")}`);
+    }
+    out.push("");
   }
 
   // --- Eval ---------------------------------------------------------------
@@ -143,8 +154,15 @@ async function main(): Promise<void> {
       include_basis: e.includeBasis ?? false,
       keyword_query: keywordQuery(e.q) || null,
     }, e.q);
-    // Same routing call the page makes (pure); only looked at by questions that set `map`.
-    const r = evaluateQuestion(e, hits, matchQuestionMap(e.q)?.key ?? null);
+    // Same routing and layout calls the page makes (pure); the map key is
+    // looked at by questions that set `map`, the shown order by those that
+    // set `premise`, `title` or `shown`.
+    const layout = layoutAsk(e.q, hits);
+    const r = evaluateQuestion(e, hits, layout.map?.key ?? null, {
+      ids: layout.shownIds,
+      noteKey: layout.note?.key ?? null,
+      title: layout.summary?.title ?? null,
+    });
     rows.push({ q: e.q, pass: r.pass, known: KNOWN_FAILURES.includes(e.q), matchRank: r.matchRank, failures: r.failures, ids: hits.map((h) => h.id), top: hits[0]?.score ?? null });
   }
   const passed = rows.filter((r) => r.pass).length;

@@ -1,4 +1,5 @@
 import { expandAcronyms } from "@/lib/acronyms";
+import { matchPremiseNote, premiseNoteForMapKey, type PremiseNote } from "@/lib/premise-notes";
 
 /**
  * Question maps (Ask Track B, 1 Oct 2026).
@@ -25,7 +26,9 @@ import { expandAcronyms } from "@/lib/acronyms";
  */
 
 export type MapGroup =
+  | "Permit applicability"
   | "Colorado permitting and APEN"
+  | "Alternatives if the permit does not fit"
   | "General Permit options"
   | "Colorado standards"
   | "Federal NSPS"
@@ -35,12 +38,20 @@ export type MapGroup =
   | "Definitions";
 
 /**
- * The eight groups in display order. The first six were air-centric on
- * purpose for the first maps; "ECMC rules" and "Federal PHMSA" (maps batch
- * 4, 2 Oct 2026) sit after the federal air groups and before Definitions.
+ * The groups in display order. The first six of the original eight were
+ * air-centric on purpose for the first maps; "ECMC rules" and "Federal
+ * PHMSA" (maps batch 4, 2 Oct 2026) sit after the federal air groups and
+ * before Definitions. "Permit applicability" and "Alternatives if the
+ * permit does not fit" (premise notes, 7 Oct 2026) are used only by the
+ * premise maps (src/lib/premise-notes.ts): the named permit's own Section I
+ * rows lead, the Regulation 3 rows follow, then the alternatives, then
+ * whatever retrieval found. groupForHit() never routes a hit into either,
+ * so the ordinary maps are unchanged.
  */
 export const MAP_GROUP_ORDER: MapGroup[] = [
+  "Permit applicability",
   "Colorado permitting and APEN",
+  "Alternatives if the permit does not fit",
   "General Permit options",
   "Colorado standards",
   "Federal NSPS",
@@ -84,11 +95,93 @@ export const MAX_HITS_PER_GROUP = 3;
 /** Retrieval hits shown under "Other matches". */
 export const MAX_OTHER_HITS = 5;
 
+/**
+ * Facets (review 4, item 2, 7 Oct 2026): a fact the visitor can state in
+ * the question that a map branches on. The reviewer asked about a "natural
+ * gas-fired engine" and the engines map showed GP06, the diesel permit.
+ * When the question states one value of a facet the map carries, the rows
+ * tagged with another value are left out, the map is titled for the stated
+ * value and one line under the results names what was left out and why.
+ * When the question states nothing (or two values), the map behaves as
+ * before. Only maps that already branch on the fact carry the facet.
+ */
+export type FacetName = "fuel" | "contents";
+
+export type FacetValue = {
+  /** The value as stored on rows and used in URLs: "natural gas", "diesel", "produced water". */
+  value: string;
+  /** How the omitted line names the stated fact: "you said natural gas". */
+  said: string;
+  /** Patterns on the raw question (never the acronym-expanded one) that state this value. */
+  patterns: RegExp[];
+  /** The noun phrase of this value's rows in the omitted line: "diesel engine provisions (GP06, Subpart IIII)". */
+  omitted: string;
+  /** Retrieval hits from these reg keys belong to this value only (dropped when another value is stated). */
+  regKeys: string[];
+};
+
+export type Facet = { name: FacetName; label: string; values: FacetValue[] };
+
+export const FACETS: Record<FacetName, Facet> = {
+  fuel: {
+    name: "fuel",
+    label: "engine fuel",
+    values: [
+      {
+        value: "natural gas",
+        said: "natural gas",
+        patterns: [/\bnatural[- ]gas\b/i, /\bgas[- ]fired\b/i, /\bspark[- ]ignition\b/i, /\b(?:rich|lean)[- ]burn\b/i, /\bsi\s+(?:rice|engines?)\b/i],
+        omitted: "natural gas-fired engine provisions (GP02, Subpart JJJJ)",
+        regKeys: ["gp02", "jjjj"],
+      },
+      {
+        value: "diesel",
+        said: "diesel",
+        patterns: [/\bdiesel\b/i, /\bcompression[- ]ignition\b/i, /\bci\s+(?:rice|engines?)\b/i],
+        omitted: "diesel engine provisions (GP06, Subpart IIII)",
+        regKeys: ["gp06", "iiii"],
+      },
+    ],
+  },
+  contents: {
+    name: "contents",
+    label: "what the tank stores",
+    values: [
+      {
+        value: "condensate",
+        said: "condensate",
+        patterns: [/\bcondensate\b/i],
+        omitted: "condensate-only provisions (GP01, the condensate storage tank definition)",
+        regKeys: ["gp01"],
+      },
+      {
+        value: "crude oil",
+        said: "crude oil",
+        patterns: [/\bcrude(?:[- ]oil)?\b/i],
+        omitted: "crude oil provisions",
+        regKeys: [],
+      },
+      {
+        value: "produced water",
+        said: "produced water",
+        patterns: [/\bproduced[- ]water\b/i],
+        omitted: "produced water provisions (GP05)",
+        regKeys: ["gp05"],
+      },
+    ],
+  },
+};
+
+/** The facet values a row applies to; a facet the row does not name applies to every value. */
+export type FacetTags = Partial<Record<FacetName, string[]>>;
+
 export type MapProvision = {
   id: string;
   group: MapGroup;
   /** One line, shown as "Why it's here: …" on the card. */
   why: string;
+  /** The facet values this row is specific to (absent: every value). */
+  facets?: FacetTags;
 };
 
 export type QuestionMap = {
@@ -100,7 +193,80 @@ export type QuestionMap = {
   factors: string;
   /** Canonical rows, in display order. Every id must exist in provisions (corpus_qa.sql check 20). */
   provisions: MapProvision[];
+  /** The facets this map branches on, with the title to use when the question states one value. */
+  facets?: Partial<Record<FacetName, { titles: Record<string, string> }>>;
+  /**
+   * A premise map (src/lib/premise-notes.ts): retrieval hits from this
+   * permit go under "Permit applicability" beside its canonical rows
+   * rather than under "General Permit options".
+   */
+  permitRegKey?: string;
 };
+
+/** The facet values a question states, per facet of the matched map: exactly one value, or the facet is absent. */
+export type StatedFacets = Partial<Record<FacetName, FacetValue>>;
+
+/**
+ * The facet values the raw question states among the facets `map` carries.
+ * A facet is stated when exactly one of its values matches (a question
+ * naming both fuels states neither). Runs on the raw question: acronym
+ * expansion adds "natural gas fired" after GP02 and "condensate" after
+ * GP01, which the visitor never said.
+ */
+export function detectFacets(rawQuestion: string, map: QuestionMap | null): StatedFacets {
+  const out: StatedFacets = {};
+  if (!map?.facets) return out;
+  for (const name of Object.keys(map.facets) as FacetName[]) {
+    const matched = FACETS[name].values.filter((v) => v.patterns.some((p) => p.test(rawQuestion)));
+    if (matched.length === 1) out[name] = matched[0];
+  }
+  return out;
+}
+
+/** Whether a canonical row applies under the stated facets (a row tagged with another value does not). */
+export function rowMatchesFacets(row: MapProvision, stated: StatedFacets): boolean {
+  for (const name of Object.keys(stated) as FacetName[]) {
+    const tags = row.facets?.[name];
+    const value = stated[name]?.value;
+    if (tags && value && !tags.includes(value)) return false;
+  }
+  return true;
+}
+
+/** Whether a retrieval hit applies under the stated facets (a hit from a reg key another value owns does not). */
+export function hitMatchesFacets(hit: Pick<GroupableHit, "reg_key">, stated: StatedFacets): boolean {
+  const key = (hit.reg_key ?? "").toLowerCase();
+  for (const name of Object.keys(stated) as FacetName[]) {
+    const value = stated[name]?.value;
+    for (const v of FACETS[name].values) {
+      if (v.value !== value && v.regKeys.includes(key)) return false;
+    }
+  }
+  return true;
+}
+
+/** The map's title for the stated facets ("Natural gas-fired engines"), or its name. */
+export function mapTitle(map: QuestionMap, stated: StatedFacets): string {
+  for (const name of Object.keys(stated) as FacetName[]) {
+    const title = map.facets?.[name]?.titles[stated[name]!.value];
+    if (title) return title;
+  }
+  return map.name;
+}
+
+/** One omitted line per stated facet: what was left out and why. */
+export type OmittedLine = { facet: FacetName; said: string; omitted: string };
+
+export function omittedLines(map: QuestionMap, stated: StatedFacets): OmittedLine[] {
+  const out: OmittedLine[] = [];
+  for (const name of Object.keys(stated) as FacetName[]) {
+    if (!map.facets?.[name]) continue;
+    const value = stated[name]!;
+    const others = FACETS[name].values.filter((v) => v.value !== value.value).map((v) => v.omitted);
+    out.push({ facet: name, said: value.said, omitted: others.join("; ") });
+  }
+  return out;
+}
 
 /**
  * Matched first-match-wins in this order. The equipment maps come before the
@@ -150,6 +316,10 @@ export const QUESTION_MAPS: QuestionMap[] = [
   {
     key: "engines",
     name: "Natural gas-fired and diesel engines",
+    // Review 4, item 2 (7 Oct 2026): the map branches on fuel. A question
+    // that says "natural gas" hides the diesel rows (GP06, Subpart IIII) and
+    // vice versa; the omitted line names them.
+    facets: { fuel: { titles: { "natural gas": "Natural gas-fired engines", diesel: "Diesel engines" } } },
     // Not "compressor" alone: a centrifugal / reciprocating compressor
     // question is a different map.
     triggers: [/\b(?:engines?|rice|gen-?sets?|generators?|reciprocating|jjjj|iiii|zzzz|gp\s?0?2|gp\s?0?6|gp\s?12|gp\s?0?9|gp\s?10)\b/i],
@@ -163,35 +333,49 @@ export const QUESTION_MAPS: QuestionMap[] = [
       { id: "sec-3-B-II-D-1-c", group: "Colorado permitting and APEN", why: "Construction-permit exemption for engines: drilling rigs, emergency generators ≤ 250 hr/yr, < 5 tpy uncontrolled or < 50 hp" },
       // General Permit options
       { id: "sec-gp12-I-A", group: "General Permit options", why: "GP12 — oil and gas well production facilities; natural gas-fired (I.A.1) and diesel (I.A.2) engines; replaced GP09/GP10 for new applicants" },
-      { id: "sec-gp02-I-A", group: "General Permit options", why: "GP02 — natural gas-fired RICE at an oil and gas stationary source" },
-      { id: "sec-gp06-I-A", group: "General Permit options", why: "GP06 — diesel fuel-fired reciprocating internal combustion engines" },
-      { id: "sec-gp09-I-A", group: "General Permit options", why: "GP09 — closed to new registrations July 15, 2026; existing registrations remain active" },
-      { id: "sec-gp10-I-A", group: "General Permit options", why: "GP10 — closed to new registrations July 15, 2026; existing registrations remain active" },
+      { id: "sec-gp02-I-A", group: "General Permit options", why: "GP02 — natural gas-fired RICE at an oil and gas stationary source", facets: { fuel: ["natural gas"] } },
+      { id: "sec-gp06-I-A", group: "General Permit options", why: "GP06 — diesel fuel-fired reciprocating internal combustion engines", facets: { fuel: ["diesel"] } },
+      { id: "sec-gp09-I-A", group: "General Permit options", why: "GP09 — closed to new registrations July 15, 2026; existing registrations remain active", facets: { fuel: ["natural gas"] } },
+      { id: "sec-gp10-I-A", group: "General Permit options", why: "GP10 — closed to new registrations July 15, 2026; existing registrations remain active", facets: { fuel: ["natural gas"] } },
       // Colorado standards
-      { id: "sec-26-B-I-D", group: "Colorado standards", why: "Reg 26 Part B I.D — natural gas-fired RICE: new, modified and relocated (I.D.3), existing (I.D.4), additional requirements (I.D.5, I.D.6)" },
+      { id: "sec-26-B-I-D", group: "Colorado standards", why: "Reg 26 Part B I.D — natural gas-fired RICE: new, modified and relocated (I.D.3), existing (I.D.4), additional requirements (I.D.5, I.D.6)", facets: { fuel: ["natural gas"] } },
       { id: "sec-26-B-I", group: "Colorado standards", why: "Reg 26 Part B I — control technology requirements for new and existing engines (I.A, I.B) and their exemptions (I.C)" },
       { id: "sec-26-B-II", group: "Colorado standards", why: "Reg 26 Part B II — stationary and portable combustion equipment in the 8-hour Ozone Control Area or Northern Weld County" },
       // Federal NSPS. Regulation 26 cites Subpart JJJJ (Part B I.D.5.d, I.D.6.c,
       // III.A.1, III.B.1) and links to this document; the copy of JJJJ it used
       // to carry under Part C (sec-26-C-FEDJJJJ) was removed on 4 Oct 2026.
-      { id: "sec-jjjj-top-REG-jjjj", group: "Federal NSPS", why: "40 CFR Part 60 Subpart JJJJ — the federal standard for spark-ignition engines that Regulation 26 incorporates by reference" },
-      { id: "sec-jjjj-60.4230", group: "Federal NSPS", why: "Subpart JJJJ applicability — spark-ignition (natural gas) engines, by manufacture date and horsepower" },
-      { id: "sec-jjjj-60.4233", group: "Federal NSPS", why: "Subpart JJJJ emission standards for owners and operators" },
-      { id: "sec-iiii-60.4200", group: "Federal NSPS", why: "Subpart IIII applicability — compression-ignition (diesel) engines" },
-      { id: "sec-iiii-60.4204", group: "Federal NSPS", why: "Subpart IIII standards — non-emergency engines" },
-      { id: "sec-iiii-60.4205", group: "Federal NSPS", why: "Subpart IIII standards — emergency engines" },
+      { id: "sec-jjjj-top-REG-jjjj", group: "Federal NSPS", why: "40 CFR Part 60 Subpart JJJJ — the federal standard for spark-ignition engines that Regulation 26 incorporates by reference", facets: { fuel: ["natural gas"] } },
+      { id: "sec-jjjj-60.4230", group: "Federal NSPS", why: "Subpart JJJJ applicability — spark-ignition (natural gas) engines, by manufacture date and horsepower", facets: { fuel: ["natural gas"] } },
+      { id: "sec-jjjj-60.4233", group: "Federal NSPS", why: "Subpart JJJJ emission standards for owners and operators", facets: { fuel: ["natural gas"] } },
+      { id: "sec-iiii-60.4200", group: "Federal NSPS", why: "Subpart IIII applicability — compression-ignition (diesel) engines", facets: { fuel: ["diesel"] } },
+      { id: "sec-iiii-60.4204", group: "Federal NSPS", why: "Subpart IIII standards — non-emergency engines", facets: { fuel: ["diesel"] } },
+      { id: "sec-iiii-60.4205", group: "Federal NSPS", why: "Subpart IIII standards — emergency engines", facets: { fuel: ["diesel"] } },
       // Federal NESHAP
       { id: "sec-zzzz-63.6585", group: "Federal NESHAP", why: "Subpart ZZZZ applicability — stationary RICE at major and area sources of HAP" },
       { id: "sec-zzzz-63.6590", group: "Federal NESHAP", why: "Subpart ZZZZ — which engines are covered and which are exempt or deferred" },
       { id: "sec-zzzz-63.6595", group: "Federal NESHAP", why: "Subpart ZZZZ compliance dates" },
       // Definitions
-      { id: "sec-jjjj-60.4248", group: "Definitions", why: "Subpart JJJJ definitions (emergency engine, rich/lean burn, maximum engine power, …)" },
+      { id: "sec-jjjj-60.4248", group: "Definitions", why: "Subpart JJJJ definitions (emergency engine, rich/lean burn, maximum engine power, …)", facets: { fuel: ["natural gas"] } },
       { id: "sec-3-A-I-B-36", group: "Definitions", why: "Regulation 3 definition of a non-road engine" },
     ],
   },
   {
     key: "storage-tanks",
     name: "Storage tanks and tank batteries",
+    // Review 4, item 2 (7 Oct 2026): the map branches on what the tank
+    // stores. GP01 and the condensate storage tank definition are
+    // condensate-only, GP05 is produced water only, GP07 loads condensate
+    // and crude oil; GP08, GP12 and the Regulation 7 and NSPS rows cover
+    // every listed liquid and stay.
+    facets: {
+      contents: {
+        titles: {
+          condensate: "Condensate storage tanks and tank batteries",
+          "crude oil": "Crude oil storage tanks",
+          "produced water": "Produced water storage tanks and tank batteries",
+        },
+      },
+    },
     // Not a bare "tank": a tank truck at a bulk plant is Regulation 24, not
     // this map. GP01 (condensate storage tank batteries) already routes here
     // through its acronym expansion, as GP02 routes to engines through its
@@ -208,11 +392,11 @@ export const QUESTION_MAPS: QuestionMap[] = [
       { id: "sec-3-A-II-D-1-fff", group: "Colorado permitting and APEN", why: "APEN exemption for storage tanks under 400,000 gallons per year storing listed liquids" },
       { id: "sec-3-B-II-D", group: "Colorado permitting and APEN", why: "Construction permit exemptions — a permit exemption does not remove the APEN requirement" },
       // General Permit options
-      { id: "sec-gp01-I-A", group: "General Permit options", why: "GP01 — condensate storage tank batteries" },
+      { id: "sec-gp01-I-A", group: "General Permit options", why: "GP01 — condensate storage tank batteries", facets: { contents: ["condensate"] } },
       { id: "sec-gp08-I-B", group: "General Permit options", why: "GP08 — oil and gas industry storage tanks (condensate, crude oil, intermediate hydrocarbon liquids, produced water)" },
-      { id: "sec-gp05-I-A", group: "General Permit options", why: "GP05 — produced water storage tank batteries" },
+      { id: "sec-gp05-I-A", group: "General Permit options", why: "GP05 — produced water storage tank batteries", facets: { contents: ["produced water"] } },
       { id: "sec-gp12-I-A-3", group: "General Permit options", why: "GP12 — storage tanks at well production facilities, as one of the covered source types" },
-      { id: "sec-gp07-I-A", group: "General Permit options", why: "GP07 — hydrocarbon liquid loadout from tanks" },
+      { id: "sec-gp07-I-A", group: "General Permit options", why: "GP07 — hydrocarbon liquid loadout from tanks", facets: { contents: ["condensate", "crude oil"] } },
       // Colorado standards
       { id: "sec-7-B-I-D", group: "Colorado standards", why: "Reg 7 Part B I.D — storage tank emission controls (I.D.3 control strategy)" },
       { id: "sec-7-B-I-E", group: "Colorado standards", why: "Reg 7 Part B I.E — monitoring of storage tanks and their air pollution control equipment" },
@@ -229,7 +413,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
       // Federal NESHAP: none. 40 CFR 63 Subpart HH is not in the corpus (see the note above QUESTION_MAPS).
       // Definitions
       { id: "sec-7-B-I-B-30", group: "Definitions", why: "Reg 7 Part B I.B — 'Storage tank'" },
-      { id: "sec-7-B-I-B-9", group: "Definitions", why: "Reg 7 Part B I.B — 'Condensate storage tank'" },
+      { id: "sec-7-B-I-B-9", group: "Definitions", why: "Reg 7 Part B I.B — 'Condensate storage tank'", facets: { contents: ["condensate"] } },
       { id: "sec-7-B-II-A-43", group: "Definitions", why: "Reg 7 Part B II.A — 'Storage tank' (Section II)" },
       { id: "sec-7-B-I-B-34", group: "Definitions", why: "Reg 7 Part B I.B — 'Well production facility'" },
       { id: "sec-oooob-60.5430b", group: "Definitions", why: "OOOOb definitions (storage vessel, tank battery, potential for VOC emissions)" },
@@ -466,14 +650,27 @@ export const QUESTION_MAPS: QuestionMap[] = [
  * null. Expands acronyms itself (so "GP02 limits" routes on the spelled-out
  * "reciprocating internal combustion engines"); passing an already-expanded
  * string is harmless, expansion only adds words.
+ *
+ * A premise note (src/lib/premise-notes.ts) is consulted first: "When is a
+ * GP01 required?" takes the GP01 premise map, not the storage-tank map.
  */
 export function matchQuestionMap(question: string): QuestionMap | null {
+  const note = matchPremiseNote(question);
+  if (note) return note.map;
   const expanded = expandAcronyms(question);
   for (const map of QUESTION_MAPS) {
     if (map.triggers.some((t) => t.test(expanded))) return map;
   }
   return null;
 }
+
+/** The premise note behind a matched map, or null for an ordinary map. */
+export function premiseNoteOf(map: QuestionMap | null): PremiseNote | null {
+  return premiseNoteForMapKey(map?.key);
+}
+
+export { matchPremiseNote };
+export type { PremiseNote };
 
 /** The fields of a hit groupForHit() reads (a subset of SemanticHit). */
 export type GroupableHit = {
@@ -527,6 +724,8 @@ export type GroupedHits<T extends GroupableHit> = {
   groups: { group: MapGroup; canonical: MapProvision[]; hits: T[] }[];
   /** Hits groupForHit() put in no group, at most MAX_OTHER_HITS, in retrieval order. */
   other: T[];
+  /** Rows (canonical or retrieved) left out because the question stated another facet value. */
+  omittedIds: string[];
 };
 
 /**
@@ -541,15 +740,28 @@ export type GroupedHits<T extends GroupableHit> = {
  * retrieval hits, each run in MAP_GROUP_ORDER (3 Oct 2026): a stray
  * Regulation 3 hit on the enforcement map used to open "Colorado permitting
  * and APEN" above the groups that answer the question.
+ *
+ * `stated` (7 Oct 2026) drops the canonical rows tagged with another value
+ * of a stated facet and the retrieval hits from a reg key another value
+ * owns; their ids come back in `omittedIds` so the page can say what was
+ * left out. A premise map's own permit (`permitRegKey`) collects its
+ * retrieval hits under "Permit applicability".
  */
-export function groupHits<T extends GroupableHit>(map: QuestionMap, hits: T[], canonicalIds?: Set<string>): GroupedHits<T> {
-  const canonical = canonicalIds ? map.provisions.filter((p) => canonicalIds.has(p.id)) : map.provisions;
+export function groupHits<T extends GroupableHit>(map: QuestionMap, hits: T[], canonicalIds?: Set<string>, stated: StatedFacets = {}): GroupedHits<T> {
+  const fetched = canonicalIds ? map.provisions.filter((p) => canonicalIds.has(p.id)) : map.provisions;
+  const canonical = fetched.filter((p) => rowMatchesFacets(p, stated));
+  const omittedIds = fetched.filter((p) => !rowMatchesFacets(p, stated)).map((p) => p.id);
   const canonicalSet = new Set(map.provisions.map((p) => p.id));
   const byGroup = new Map<MapGroup, T[]>();
   const other: T[] = [];
   for (const hit of hits) {
     if (canonicalSet.has(hit.id)) continue;
-    const g = groupForHit(hit);
+    if (!hitMatchesFacets(hit, stated)) {
+      omittedIds.push(hit.id);
+      continue;
+    }
+    const g: MapGroup | "Other" =
+      map.permitRegKey && (hit.reg_key ?? "").toLowerCase() === map.permitRegKey ? "Permit applicability" : groupForHit(hit);
     if (g === "Other") {
       if (other.length < MAX_OTHER_HITS) other.push(hit);
       continue;
@@ -566,22 +778,66 @@ export function groupHits<T extends GroupableHit>(map: QuestionMap, hits: T[], c
     if (rows.length === 0 && extra.length === 0) continue;
     (rows.length > 0 ? withCanonical : hitsOnly).push({ group, canonical: rows, hits: extra });
   }
-  return { groups: [...withCanonical, ...hitsOnly], other };
+  return { groups: [...withCanonical, ...hitsOnly], other, omittedIds };
 }
 
 /** The `map` field of /api/search/semantic: the matched map and its groups as id lists. */
 export type QuestionMapSummary = {
   key: string;
   name: string;
+  /** The title the page shows: the map's name, or its title for a stated facet value. */
+  title: string;
   factors: string;
   groups: { group: MapGroup | "Other"; provisions: string[] }[];
+  /** The premise note shown above the results, when the question matched one. */
+  note: { key: string; title: string; sentences: { text: string; cites: string[] }[] } | null;
+  /** The facet values the question stated, as "facet=value". */
+  stated: string[];
+  /** One line per stated facet naming what was left out and why. */
+  omitted: OmittedLine[];
+  /** The ids left out. */
+  omittedIds: string[];
 };
 
-export function summariseGroups<T extends GroupableHit>(map: QuestionMap, grouped: GroupedHits<T>): QuestionMapSummary {
+export function summariseGroups<T extends GroupableHit>(map: QuestionMap, grouped: GroupedHits<T>, stated: StatedFacets = {}): QuestionMapSummary {
   const groups: QuestionMapSummary["groups"] = grouped.groups.map((g) => ({
     group: g.group,
     provisions: [...g.canonical.map((p) => p.id), ...g.hits.map((h) => h.id)],
   }));
   if (grouped.other.length > 0) groups.push({ group: "Other", provisions: grouped.other.map((h) => h.id) });
-  return { key: map.key, name: map.name, factors: map.factors, groups };
+  const note = premiseNoteOf(map);
+  return {
+    key: map.key,
+    name: map.name,
+    title: mapTitle(map, stated),
+    factors: map.factors,
+    groups,
+    note: note ? { key: note.key, title: note.title, sentences: note.sentences } : null,
+    stated: (Object.keys(stated) as FacetName[]).map((n) => `${n}=${stated[n]!.value}`),
+    omitted: omittedLines(map, stated),
+    omittedIds: grouped.omittedIds,
+  };
+}
+
+/**
+ * Everything the Ask page decides from the question and the retrieval hits
+ * alone, in one call: the map, the premise note, the stated facets, the
+ * grouped layout and the ids in the order shown. The eval scores `shownIds`
+ * (what the visitor sees), the API route returns the summary, the page
+ * renders the pieces. `canonicalIds` is what the caller could fetch;
+ * `allFacets` is the "Show them" link (?facets=all), which turns the
+ * stated-fact filter off.
+ */
+export function layoutAsk<T extends GroupableHit>(
+  rawQuestion: string,
+  hits: T[],
+  canonicalIds?: Set<string>,
+  allFacets = false
+): { map: QuestionMap | null; note: PremiseNote | null; stated: StatedFacets; grouped: GroupedHits<T> | null; summary: QuestionMapSummary | null; shownIds: string[] } {
+  const map = matchQuestionMap(rawQuestion);
+  if (!map) return { map: null, note: null, stated: {}, grouped: null, summary: null, shownIds: hits.map((h) => h.id) };
+  const stated = allFacets ? {} : detectFacets(rawQuestion, map);
+  const grouped = groupHits(map, hits, canonicalIds, stated);
+  const summary = summariseGroups(map, grouped, stated);
+  return { map, note: premiseNoteOf(map), stated, grouped, summary, shownIds: summary.groups.flatMap((g) => g.provisions) };
 }

@@ -310,12 +310,23 @@ test.describe("signed in", () => {
     // routes to the engines map (src/lib/question-maps.ts), so the page
     // shows the "Mapped question" line, the factors sentence and one h2 per
     // non-empty group, in MAP_GROUP_ORDER, with "Other matches" last if any.
+    // Review 4 (7 Oct 2026): the question states the fuel, so the map is
+    // titled "Natural gas-fired engines", the diesel rows (GP06, Subpart
+    // IIII) are left out and one line under the results says so, with a
+    // "Show them" link (?facets=all) that brings the whole map back.
     const q = "What regulations apply to a natural gas-fired engine?";
     const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
     expect(res?.status()).toBe(200);
     await expect(page.getByText("Ask is part of the subscription")).toHaveCount(0);
-    await expect(page.getByText("Mapped question: Natural gas-fired and diesel engines")).toHaveCount(1);
+    await expect(page.getByText("Mapped question: Natural gas-fired engines")).toHaveCount(1);
     await expect(page.getByText(/What applies depends on the fuel/)).toHaveCount(1);
+    await expect(page.getByText("Not shown because you said natural gas:", { exact: false })).toHaveCount(1);
+    await expect(page.getByText("diesel engine provisions (GP06, Subpart IIII)", { exact: false })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: "Show them" })).toHaveAttribute("href", /[?&]facets=all/);
+    expect(await page.locator('a[href*="/regulations/gp06"]').count()).toBe(0);
+    expect(await page.locator('a[href*="/regulations/iiii"]').count()).toBe(0);
+    expect(await page.locator('a[href*="/regulations/jjjj"]').count()).toBeGreaterThan(0);
+    expect(await page.locator('a[href*="/regulations/gp09"]').count()).toBeGreaterThan(0);
     const groups = ["Colorado permitting and APEN", "General Permit options", "Colorado standards", "Federal NSPS", "Federal NESHAP", "Definitions"];
     const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
     expect(headings.length).toBeGreaterThan(0);
@@ -330,6 +341,14 @@ test.describe("signed in", () => {
     expect(await page.locator("ol > li > a").count()).toBeGreaterThan(0);
     await expect(page.getByRole("link", { name: "Show as a flat list" })).toHaveAttribute("href", /[?&]flat=1/);
 
+    // "Show them": the whole map, titled for both fuels, GP06 back, no omitted line.
+    const all = await page.goto("/search?mode=ask&facets=all&q=" + encodeURIComponent(q));
+    expect(all?.status()).toBe(200);
+    await expect(page.getByText("Mapped question: Natural gas-fired and diesel engines")).toHaveCount(1);
+    await expect(page.getByText("Not shown because you said", { exact: false })).toHaveCount(0);
+    expect(await page.locator('a[href*="/regulations/gp06"]').count()).toBeGreaterThan(0);
+    await expect(page.getByRole("link", { name: "Back to the filtered view" })).toHaveCount(1);
+
     // The flat list: the retrieval order as before, no groups, a way back.
     const flat = await page.goto("/search?mode=ask&flat=1&q=" + encodeURIComponent(q));
     expect(flat?.status()).toBe(200);
@@ -338,6 +357,31 @@ test.describe("signed in", () => {
     await expect(page.getByText(/^\d+ provisions? most about/)).toHaveCount(1);
     await expect(page.getByText("Why it's here:", { exact: false })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Show grouped" })).toHaveCount(1);
+  });
+
+  test("the GP01 premise question shows the note above the results, the permit's applicability first and Regulation 3 after it", async ({ page }) => {
+    // Review 4 (7 Oct 2026): "When is a GP01 required?" matches the premise
+    // note (src/lib/premise-notes.ts): a fixed, cited note above the
+    // results, the GP01 Section I rows first, the Regulation 3 permit and
+    // APEN requirement rows second, the alternatives third; the storage-tank
+    // map no longer leads.
+    const q = "When is a GP01 required?";
+    const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
+    expect(res?.status()).toBe(200);
+    await expect(page.getByText("Ask is part of the subscription")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: "Is GP01 required?" })).toHaveCount(1);
+    await expect(page.getByText("GP01 is not automatically required", { exact: false })).toHaveCount(1);
+    // The note's Regulation 3 sentence and the premise map's factors line both say it.
+    expect(await page.getByText("decided under Regulation 3", { exact: false }).count()).toBeGreaterThan(0);
+    // exact: a result card below carries the same words in its accessible name.
+    await expect(page.getByRole("link", { name: "GP01 VIII.D.3", exact: true })).toHaveAttribute("href", "/regulations/gp01#sec-gp01-VIII-D-3");
+    await expect(page.getByRole("link", { name: "Regulation 3 Part A II.A.1", exact: true })).toHaveAttribute("href", "/regulations/3#sec-3-A-II-A-1");
+    await expect(page.getByText("Mapped question: Storage tanks and tank batteries")).toHaveCount(0);
+    const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
+    expect(headings.slice(0, 4)).toEqual(["Is GP01 required?", "Permit applicability", "Colorado permitting and APEN", "Alternatives if the permit does not fit"]);
+    const first = page.locator("ol > li > a").first();
+    await expect(first).toHaveAttribute("href", "/regulations/gp01#sec-gp01-I-A");
+    expect(await page.locator('a[href="/regulations/3#sec-3-B-II-A-1"]').count()).toBeGreaterThan(0);
   });
 
   test("the civil-penalties question renders grouped with no weak-match notice and a canonical group first", async ({ page }) => {

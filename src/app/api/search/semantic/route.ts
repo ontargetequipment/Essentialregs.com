@@ -5,7 +5,7 @@ import {
   semanticSearch,
   type Jurisdiction,
 } from "@/lib/semantic";
-import { groupHits, summariseGroups } from "@/lib/question-maps";
+import { layoutAsk } from "@/lib/question-maps";
 
 export const runtime = "nodejs";
 
@@ -20,7 +20,7 @@ const STATUS: Record<SemanticError["code"], number> = {
 
 /**
  * POST /api/search/semantic
- * Body: { q: string, regs?: string[], jurisdiction?: "state" | "federal", count?: number, includeBasis?: boolean }
+ * Body: { q: string, regs?: string[], jurisdiction?: "state" | "federal", count?: number, includeBasis?: boolean, allFacets?: boolean }
  * Returns: { hits: SemanticHit[], map: QuestionMapSummary | null }
  *
  * Same behaviour as the Ask mode on /search, as JSON. Subscriber-only,
@@ -28,11 +28,15 @@ const STATUS: Record<SemanticError["code"], number> = {
  * retrieval list exactly as the RPC ranked it; `map` (Ask Track B) is the
  * question map the question routed to, with its groups as id lists in the
  * order the page shows them (canonical rows first, then the hits grouped
- * under them), or null when no map matched. The eval reads hits; the map
- * check reads map.key.
+ * under them), or null when no map matched. Since 7 Oct 2026 the map also
+ * carries the premise note (`note`), the facet values the question stated
+ * (`stated`), the title for them and the omitted line (`omitted`,
+ * `omittedIds`); `allFacets: true` turns the stated-fact filter off, like
+ * the page's "Show them" link. The eval reads hits; the map check reads
+ * map.key.
  */
 export async function POST(req: Request) {
-  let body: { q?: unknown; regs?: unknown; jurisdiction?: unknown; count?: unknown; includeBasis?: unknown };
+  let body: { q?: unknown; regs?: unknown; jurisdiction?: unknown; count?: unknown; includeBasis?: unknown; allFacets?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -49,10 +53,13 @@ export async function POST(req: Request) {
   // Statements of Basis are hidden unless the caller sends includeBasis: true,
   // matching the Ask tab. Default changed from shown to hidden on 2026-09-30.
   const includeBasis = body.includeBasis === true;
+  const allFacets = body.allFacets === true;
 
   try {
-    const { hits, map } = await semanticSearch(q, { regFilter: regs, jurisdiction, count, includeBasis });
-    return NextResponse.json({ hits, map: map ? summariseGroups(map, groupHits(map, hits)) : null });
+    const { hits } = await semanticSearch(q, { regFilter: regs, jurisdiction, count, includeBasis });
+    // The same pure layout the page and the eval use (semanticSearch's own
+    // map is the same matchQuestionMap() result; layoutAsk re-derives it).
+    return NextResponse.json({ hits, map: layoutAsk(q, hits, undefined, allFacets).summary });
   } catch (e) {
     if (e instanceof SemanticError) {
       if (e.code === "config" || e.code === "db" || e.code === "upstream") console.error("ask:", e.message);
