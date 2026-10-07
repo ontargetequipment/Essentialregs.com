@@ -86,6 +86,47 @@ test("a rewrite reviewed in the same run is one statement (GP03, 6 Oct 2026)", (
   assert.deepEqual(describeLine(legacy), ["40 summaries rewritten, awaiting AI review"]);
 });
 
+test("a markup-only re-import is 'links added or updated', not 'provisions updated' (7 Oct 2026)", () => {
+  // Regulation 7's markup-only re-import after PR #69 logged 22 rows; the
+  // trigger now logs them as links_updated (migration 20261007040000) and
+  // the page must not call them official-text updates.
+  const [reg7] = foldChangelog([
+    { day: "2026-10-06", reg_key: "7", change_type: "links_updated", provision_count: 22, latest: "2026-10-07T01:39:30Z" },
+  ]);
+  assert.equal(reg7.linksUpdated, 22);
+  assert.deepEqual(describeLine(reg7), ["links added or updated in 22 provisions"]);
+  const [one] = foldChangelog([
+    { day: "2026-10-06", reg_key: "gp08", change_type: "links_updated", provision_count: 1, latest: "2026-10-07T01:36:03Z" },
+    { day: "2026-10-06", reg_key: "gp08", change_type: "text_updated", provision_count: 3, latest: "2026-10-07T01:36:03Z" },
+  ]);
+  assert.deepEqual(describeLine(one), ["3 provisions updated", "links added or updated in 1 provision"]);
+});
+
+test("when every logged review was a correction the line says so, not 'AI reviewed (N corrected)' (7 Oct 2026)", () => {
+  // Passes are not logged as changes (pipeline/README.md: a pass writes no
+  // provision_changes row), so "98 summaries AI reviewed (98 corrected)"
+  // read as if every reviewed summary was wrong.
+  const [all] = foldChangelog([
+    { day: "2026-10-05", reg_key: "21", change_type: "summary_edited", provision_count: 98, latest: "2026-10-05T03:58:00Z" },
+  ]);
+  assert.deepEqual(describeLine(all), ["98 summaries corrected on AI review"]);
+  const [single] = foldChangelog([
+    { day: "2026-10-05", reg_key: "p196", change_type: "summary_edited", provision_count: 1, latest: "2026-10-05T03:55:27Z" },
+  ]);
+  assert.deepEqual(describeLine(single), ["1 summary corrected on AI review"]);
+  // A mix still shows the corrected count inside the reviewed count.
+  const [mix] = foldChangelog([
+    { day: "2026-10-05", reg_key: "3", change_type: "summary_approved", provision_count: 3, latest: "2026-10-05T04:56:53Z" },
+    { day: "2026-10-05", reg_key: "3", change_type: "summary_edited", provision_count: 97, latest: "2026-10-05T04:56:53Z" },
+  ]);
+  assert.deepEqual(describeLine(mix), ["100 summaries AI reviewed (97 corrected)"]);
+  // Same rule for rewrites reviewed in the same run.
+  const [rewrites] = foldChangelog([
+    { day: "2026-10-06", reg_key: "11", change_type: "summary_rewritten_corrected", provision_count: 1, latest: "2026-10-06T15:01:05Z" },
+  ]);
+  assert.deepEqual(describeLine(rewrites), ["1 summary rewritten and corrected on AI review"]);
+});
+
 test("the removal of Regulation 26's Subpart JJJJ copy reads as one plain line (4 Oct 2026)", () => {
   // The migration logs one 'removed' row per removed provision against the
   // surviving Part C root; changelog_public() counts them by row.
@@ -99,6 +140,7 @@ test("the removal of Regulation 26's Subpart JJJJ copy reads as one plain line (
 test("no changelog phrase says a summary was 'reviewed' without 'AI' (owner decision, 4 Oct 2026)", () => {
   const lines = foldChangelog([
     { day: "2026-09-14", reg_key: "7", change_type: "text_updated", provision_count: 5, latest: "2026-09-14T02:00:00Z" },
+    { day: "2026-09-14", reg_key: "7", change_type: "links_updated", provision_count: 2, latest: "2026-09-14T02:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "added", provision_count: 1, latest: "2026-09-14T02:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "removed", provision_count: 1, latest: "2026-09-14T02:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "summary_approved", provision_count: 1, latest: "2026-09-14T03:00:00Z" },

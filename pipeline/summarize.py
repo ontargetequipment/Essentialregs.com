@@ -179,6 +179,22 @@ HEADING_OVERVIEW_LINE = (
     "the provisions listed inside it."
 )
 
+# The top of a document (a regulation, permit or subpart root: no parent)
+# named explicitly gets a document overview instead: two or three sentences
+# on what the whole document covers and who it applies to, written and
+# reviewed against the root's own text and its first-level headings only
+# (build_prompt lists depth-1 descendants for a root; listing every
+# provision of Regulation 7 or the ECMC rules would be thousands of outline
+# lines for no gain). This is what the reader's document preview shows
+# (7 Oct 2026: 55 of 57 roots had no summary).
+DOCUMENT_OVERVIEW_LINE = (
+    "This provision is the top of the whole document; its text is the title and the "
+    "parts or sections listed inside it are the document's first-level headings. Write "
+    "2-3 sentences that say what the document as a whole covers and who it applies to, "
+    "using only the title, the text above and the headings listed. Do not list every "
+    "heading; name the subject matter and the regulated parties."
+)
+
 DEFAULT_AUDIENCE = (
     "an EHS or compliance person at a Colorado oil & gas operator"
 )
@@ -1545,16 +1561,21 @@ def build_children_index(meta: dict[str, dict]) -> dict[str, list[dict]]:
 
 
 def build_descendants(provision: dict, meta: dict[str, dict],
-                      children_index: Optional[dict[str, list[dict]]] = None) -> list[dict]:
+                      children_index: Optional[dict[str, list[dict]]] = None,
+                      max_depth: Optional[int] = None) -> list[dict]:
     """Every descendant of `provision`, depth-first in reading order, as
     dicts with id, citation, title, text (tag-stripped full_text) and depth
-    (1 = direct child). Cycles and ids missing from `meta` are skipped."""
+    (1 = direct child). Cycles and ids missing from `meta` are skipped.
+    `max_depth` stops the walk (1 = direct children only, the rule for a
+    document root)."""
     if children_index is None:
         children_index = build_children_index(meta)
     out: list[dict] = []
     seen: set[str] = {provision["id"]}
 
     def walk(parent_id: str, depth: int) -> None:
+        if max_depth is not None and depth > max_depth:
+            return
         for child in children_index.get(parent_id, []):
             if child["id"] in seen:
                 continue
@@ -1715,6 +1736,13 @@ def write_summary(client, provision_id: str, summary: str, model: str,
                 .select("ai_summary, summary_original")
                 .eq("id", provision_id).execute().data or [])
     old = existing[0] if existing else {}
+    if not (old.get("ai_summary") or "").strip() and not old.get("summary_original"):
+        # Named explicitly but never summarized (the document roots, 7 Oct
+        # 2026): a first write, not a rewrite. Nothing to preserve and no
+        # 'summary_regenerated' row, which the public changelog would word
+        # as "rewritten".
+        client.table("provisions").update(payload).eq("id", provision_id).execute()
+        return
     payload["summary_original"] = old.get("summary_original") or old.get("ai_summary")
     client.table("provisions").update(payload).eq("id", provision_id).execute()
     client.table("provision_changes").insert({
@@ -2065,9 +2093,12 @@ def build_prompt(provision: dict, meta: dict[str, dict],
         lines.append("")
         lines.extend(context_block)
 
+    # A document root (no parent) is written and reviewed against its
+    # first-level headings only; see DOCUMENT_OVERVIEW_LINE.
+    is_root = not provision.get("parent_id")
     if heading_overview:
         lines.append("")
-        lines.append(HEADING_OVERVIEW_LINE)
+        lines.append(DOCUMENT_OVERVIEW_LINE if is_root else HEADING_OVERVIEW_LINE)
 
     lines.append("")
     lines.append("Provision text:")
@@ -2082,7 +2113,7 @@ def build_prompt(provision: dict, meta: dict[str, dict],
     # chapeau ("must comply with one of the following:") is summarized
     # together with the items it introduces instead of as a dangling
     # sentence. Full bodies up to CHILD_TEXT_WORDS, an outline past that.
-    descendants = build_descendants(provision, meta, children_index)
+    descendants = build_descendants(provision, meta, children_index, max_depth=1 if is_root else None)
     desc_lines, desc_words, outline_mode = build_descendants_block(descendants)
     if desc_lines:
         lines.append("")

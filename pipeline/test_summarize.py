@@ -2433,3 +2433,63 @@ def test_sync_calls_send_temperature_through_extra_body(monkeypatch, tmp_path):
     for call in calls:
         assert "temperature" not in call
         assert call["extra_body"] == {"temperature": summarize.TEMPERATURE}
+
+
+# --------------------------------------------------------------------------
+# Document roots (7 Oct 2026): an overview from the title and the first-level
+# headings, never from every provision in the document.
+# --------------------------------------------------------------------------
+
+def _document_meta():
+    rows = [
+        {"id": "sec-8-top-REG-8", "citation": "Regulation Number 8", "title": "CONTROL OF HAZARDOUS AIR POLLUTANTS 5 CCR 1001-10",
+         "parent_id": None, "full_text": "<p>Regulation Number 8 Control of Hazardous Air Pollutants 5 CCR 1001-10</p>", "sort_order": 0, "ai_summary": None},
+        {"id": "sec-8-A", "citation": "Part A", "title": "Control of Asbestos", "parent_id": "sec-8-top-REG-8",
+         "full_text": "<p>Part A applies to asbestos abatement projects.</p>", "sort_order": 1, "ai_summary": None},
+        {"id": "sec-8-A-I", "citation": "I.", "title": "Applicability", "parent_id": "sec-8-A",
+         "full_text": "<p>" + " ".join(["asbestos"] * 60) + "</p>", "sort_order": 2, "ai_summary": None},
+        {"id": "sec-8-E", "citation": "Part E", "title": "Maximum Achievable Control Technology", "parent_id": "sec-8-top-REG-8",
+         "full_text": "<p>Part E incorporates the federal MACT standards.</p>", "sort_order": 3, "ai_summary": None},
+        {"id": "sec-8-E-III", "citation": "III.", "title": "Federal MACT", "parent_id": "sec-8-E",
+         "full_text": "<p>" + " ".join(["mact"] * 60) + "</p>", "sort_order": 4, "ai_summary": None},
+    ]
+    return {r["id"]: r for r in rows}
+
+
+def test_document_root_prompt_lists_first_level_headings_only():
+    meta = _document_meta()
+    idx = summarize.build_children_index(meta)
+    root = meta["sec-8-top-REG-8"]
+    result = summarize.prompt_for_row(root, meta, idx, explicit=True)
+    assert result is not None and result.heading_overview
+    assert summarize.DOCUMENT_OVERVIEW_LINE in result.prompt
+    assert summarize.HEADING_OVERVIEW_LINE not in result.prompt
+    assert result.descendant_count == 2                      # Part A and Part E, not their sections
+    assert "Part A" in result.prompt and "Part E" in result.prompt
+    assert "asbestos asbestos" not in result.prompt and "mact mact" not in result.prompt
+    # scanned (not named) the root is still skipped as headings-only
+    assert summarize.prompt_for_row(root, meta, idx, explicit=False) is None
+    # a heading below the root keeps the section overview and all its descendants
+    part = summarize.prompt_for_row(meta["sec-8-A"], meta, idx, explicit=True)
+    assert part is not None and summarize.HEADING_OVERVIEW_LINE in part.prompt and part.descendant_count == 1
+
+
+def test_build_descendants_max_depth():
+    meta = _document_meta()
+    all_rows = summarize.build_descendants(meta["sec-8-top-REG-8"], meta)
+    first = summarize.build_descendants(meta["sec-8-top-REG-8"], meta, max_depth=1)
+    assert [d["id"] for d in all_rows] == ["sec-8-A", "sec-8-A-I", "sec-8-E", "sec-8-E-III"]
+    assert [d["id"] for d in first] == ["sec-8-A", "sec-8-E"]
+
+
+def test_write_back_first_summary_named_explicitly_is_not_a_rewrite():
+    # A root that never had a summary, written by an --ids run: no
+    # summary_original, no 'summary_regenerated' row (the changelog would
+    # call it "rewritten").
+    client = _StubClient({"ai_summary": None, "summary_original": None})
+    write_summary(client, "sec-8-top-REG-8", "Regulation 8 covers ...", "m", regenerated=True, descendant_count=5)
+    assert len(client.log) == 1
+    table, op, payload = client.log[0]
+    assert (table, op) == ("provisions", "update")
+    assert "summary_original" not in payload
+    assert payload["summary_status"] == "pending"
