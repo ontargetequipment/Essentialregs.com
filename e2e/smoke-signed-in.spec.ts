@@ -141,8 +141,11 @@ test.describe("signed in", () => {
       [390, "phone"],
     ] as const) {
       await page.setViewportSize({ width, height: 900 });
+      // The second pass starts on this very URL (the back link landed here),
+      // so the navigation is a same-document hash change and goto() returns
+      // no response; only a real navigation has a status to check.
       const res = await page.goto("/regulations/gp12#sec-gp12-XII-E");
-      expect(res?.status()).toBe(200);
+      if (res) expect(res.status()).toBe(200);
       const link = page.locator('#doc [id="sec-gp12-XII-E"] a.xref-external-reg[href="/regulations/8"]');
       await expect(link).toHaveCount(1);
       // The click handler is attached after hydration; retry until it takes.
