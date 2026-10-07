@@ -13609,9 +13609,12 @@ def build_delete_statement(ids: list[str]) -> str:
 
 
 def build_provision_change_insert(ancestor_id: str, note: str) -> str:
-    # change_type is DB-constrained to
-    # ('summary_approved','summary_edited','summary_rejected','text_updated',
-    # 'added') -- there is no 'provision_removed' value, so a removal note is
+    # change_type is DB-constrained (summary_approved, summary_edited,
+    # summary_rejected, text_updated, added, summary_regenerated, removed and,
+    # since 20261007040000, links_updated -- the trigger
+    # log_provision_text_updated writes text_updated or links_updated itself
+    # on every full_text change, by whether the visible letters and digits
+    # changed). There is no 'provision_removed' value, so a removal note is
     # logged as 'text_updated' against the surviving ancestor (this is what
     # was actually run for the Reg 7 re-import -- see
     # pipeline/out/apply_reg7/finish.sql).

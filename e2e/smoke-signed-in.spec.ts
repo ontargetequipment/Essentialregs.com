@@ -158,12 +158,14 @@ test.describe("signed in", () => {
       await expect(page.locator("#popup-title")).not.toBeEmpty();
       await expect(page.locator("#popup-note")).toContainText("Regulation Number 8");
       await expect(page.locator("#popup-version-note")).toHaveText(/^Effective \d{2}\/\d{2}\/\d{4}$/);
-      // The body is the summary overview or the one honest line.
+      // The body is the overview of Regulation 8's top-level summary (every
+      // document root carries an AI-reviewed summary since 7 Oct 2026), with
+      // its review badge.
       const body = page.locator("#popup-body");
-      await expect(body.locator(".summary-overview, .doc-preview-empty")).toHaveCount(1);
-      if ((await body.locator(".summary-overview").count()) === 1) {
-        await expect(body.locator(".summary-badge")).toHaveText(/^(AI reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/);
-      }
+      await expect(body.locator(".summary-overview")).toHaveCount(1);
+      await expect(body.locator(".summary-overview")).not.toBeEmpty();
+      await expect(body.locator(".doc-preview-empty")).toHaveCount(0);
+      await expect(body.locator(".summary-badge")).toHaveText(/^AI reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?$/);
       const open = page.locator("#popup-goto");
       await expect(open).toHaveText("Open Regulation 8 →");
       await expect(open).toHaveAttribute("href", "/regulations/8?from=sec-gp12-XII-E#sec-8-top-REG-8");

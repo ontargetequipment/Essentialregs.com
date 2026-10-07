@@ -110,13 +110,43 @@ import budget as budget_module  # noqa: E402
 TAG_RE = re.compile(r"<[^>]+>")
 NBSP_RE = re.compile(r"&nbsp;")
 WS_RE = re.compile(r"\s+")
+# The importer's link markup: a cross-regulation anchor, a same-document
+# xref span, the [sic] marker span. Unwrapped (tags removed, inner text
+# kept, no space added) before the generic tag rule below, so that linking
+# an existing citation leaves the embedded text, and its hash, unchanged.
+LINK_MARKUP_RE = re.compile(
+    r'<(a|span)\s+class="(?:xref-external-reg|xref|er-sic)"[^>]*>(.*?)</\1>', re.S)
 
 
 # --------------------------------------------------------------------------
-# Text helpers (kept in sync with summarize.py)
+# Text helpers
 # --------------------------------------------------------------------------
 
 def strip_html(html: Optional[str]) -> str:
+    """The text that is embedded and hashed. Link markup is unwrapped in
+    place; every other tag becomes a space (a table cell, a paragraph, an
+    equation part), then whitespace is collapsed.
+
+    Until 7 Oct 2026 every tag became a space, so a markup-only re-import
+    (a citation wrapped in an anchor flush against punctuation:
+    "(Subpart ZZZZ)" -> "(<a ...>Subpart ZZZZ</a>)") changed the stripped
+    text from "(Subpart ZZZZ)" to "( Subpart ZZZZ )", the hash with it, and
+    the row was re-embedded for a change no reader could see. Under this
+    rule the stripped text is the same before and after such an import.
+    Stored hashes written under the old rule were rewritten in place by
+    `embed.py --rehash` (no Voyage call); `strip_html_legacy` is the old
+    rule, kept so --rehash can prove a stored hash is the old rule's hash
+    of the current text and nothing else before touching it. summarize.py
+    has its own strip (prompt text, not hashed); the two are independent."""
+    text = LINK_MARKUP_RE.sub(r"\2", html or "")
+    text = TAG_RE.sub(" ", text)
+    text = NBSP_RE.sub(" ", text)
+    text = WS_RE.sub(" ", text).strip()
+    return text
+
+
+def strip_html_legacy(html: Optional[str]) -> str:
+    """The rule before 7 Oct 2026 (every tag a space). Only --rehash uses it."""
     text = TAG_RE.sub(" ", html or "")
     text = NBSP_RE.sub(" ", text)
     text = WS_RE.sub(" ", text).strip()
@@ -182,9 +212,11 @@ def split_body(body: str, max_chars: int = MAX_CHUNK_CHARS,
     return pieces
 
 
-def build_header(provision: dict, parent: Optional[dict]) -> str:
+def build_header(provision: dict, parent: Optional[dict], strip=strip_html) -> str:
     """Citation/title plus the reg key and the parent's opening words —
-    included in every chunk so a mid-document chunk still knows what it is."""
+    included in every chunk so a mid-document chunk still knows what it is.
+    `strip` is the tag-stripping rule (strip_html; --rehash also builds the
+    legacy text with strip_html_legacy)."""
     lines = []
     reg = reg_key_of(provision["id"])
     juris = provision.get("jurisdiction_level") or ""
@@ -193,7 +225,7 @@ def build_header(provision: dict, parent: Optional[dict]) -> str:
         scope += f" regulation {reg.upper() if reg.startswith('oooo') else reg}"
     lines.append(f"{scope}: {provision.get('citation') or ''} — {provision.get('title') or ''}".strip())
     if parent:
-        parent_text = strip_html(parent.get("full_text"))[:PARENT_TEXT_CHARS]
+        parent_text = strip(parent.get("full_text"))[:PARENT_TEXT_CHARS]
         if parent_text:
             lines.append(f"Under {parent.get('citation') or ''}: {parent_text}")
     return "\n".join(lines)
@@ -226,16 +258,17 @@ def summary_exceeds_cap(summary: str, limit: int = SUMMARY_EMBED_CHARS) -> bool:
     return len((summary or "").strip()) > limit
 
 
-def build_chunks(provision: dict, parent: Optional[dict], model: str) -> list[Chunk]:
+def build_chunks(provision: dict, parent: Optional[dict], model: str, strip=strip_html) -> list[Chunk]:
     """Chunk 0: header + capped summary + the first text piece; then one chunk
     per further text piece; then, only when the summary runs past the cap, a
-    final chunk of the citation/title header and the whole summary."""
-    header = build_header(provision, parent)
+    final chunk of the citation/title header and the whole summary. `strip`
+    is the tag-stripping rule (see build_header)."""
+    header = build_header(provision, parent, strip)
     full_summary = (provision.get("ai_summary") or "").strip()
     if provision.get("summary_status") == "rejected":
         full_summary = ""
     summary = cap_summary(full_summary)
-    body = strip_html(provision.get("full_text"))
+    body = strip(provision.get("full_text"))
 
     pieces = split_body(body) if body else [""]
     chunks: list[Chunk] = []
@@ -248,7 +281,7 @@ def build_chunks(provision: dict, parent: Optional[dict], model: str) -> list[Ch
         text = "\n".join(parts)
         chunks.append(Chunk(provision["id"], i, text, content_hash(text, model)))
     if summary_exceeds_cap(full_summary):
-        text = "\n".join([build_header(provision, None), f"Summary: {full_summary}"])
+        text = "\n".join([build_header(provision, None, strip), f"Summary: {full_summary}"])
         chunks.append(Chunk(provision["id"], len(chunks), text, content_hash(text, model)))
     return chunks
 
@@ -627,12 +660,102 @@ def plan_work(provisions: list[dict], parents: dict[str, dict], existing: dict[t
     return todo, counts
 
 
+@dataclass
+class RehashPlan:
+    """What --rehash found: `updates` are stored hashes that are the legacy
+    rule's hash of the current text and differ under the current rule
+    (rewritten in place, no Voyage call); `current` chunks already carry the
+    current rule's hash; `stale` chunks match neither (the text or summary
+    changed since the row was embedded, or it was never embedded) and are
+    left for a normal embed run to pick up."""
+    updates: list[tuple[str, int, str, str]] = field(default_factory=list)  # (provision_id, chunk_index, old, new)
+    current: int = 0
+    stale: list[tuple[str, int]] = field(default_factory=list)
+
+
+def plan_rehash(provisions: list[dict], parents: dict[str, dict], existing: dict[tuple[str, int], str],
+                model: str) -> RehashPlan:
+    plan = RehashPlan()
+    for p in provisions:
+        parent = parents.get(p.get("parent_id") or "")
+        new_chunks = build_chunks(p, parent, model)
+        old_chunks = build_chunks(p, parent, model, strip=strip_html_legacy)
+        for i, c in enumerate(new_chunks):
+            stored = existing.get((c.provision_id, c.chunk_index))
+            if stored == c.text_hash:
+                plan.current += 1
+            elif i < len(old_chunks) and stored == old_chunks[i].text_hash:
+                plan.updates.append((c.provision_id, c.chunk_index, stored, c.text_hash))
+            else:
+                plan.stale.append((c.provision_id, c.chunk_index))
+    return plan
+
+
+REHASH_BATCH = 500
+
+
+def apply_rehash(client, updates: list[tuple[str, int, str, str]]) -> int:
+    """Rewrites the stored hashes through provision_embeddings_rehash()
+    (migration 20261007040000): one UPDATE per batch, matched on the old
+    hash too, so a row re-embedded between the plan and the write is left
+    alone. Returns the number of rows the database reports as updated."""
+    written = 0
+    for i in range(0, len(updates), REHASH_BATCH):
+        batch = [{"provision_id": pid, "chunk_index": idx, "old_hash": old, "new_hash": new}
+                 for pid, idx, old, new in updates[i:i + REHASH_BATCH]]
+        res = client.rpc("provision_embeddings_rehash", {"changes": batch}).execute()
+        written += int(res.data or 0)
+        print(f"  rehashed {min(i + REHASH_BATCH, len(updates)):,}/{len(updates):,} chunks")
+    return written
+
+
+def run_rehash(args: argparse.Namespace, client) -> int:
+    """`--rehash`: bring stored chunk hashes from the legacy strip rule to
+    the current one without embedding anything. Prints what a following
+    `--dry-run` will find. Exit 0 when no stale chunk remains."""
+    model = args.model
+    print(f"Rehash{f' for reg {args.reg}' if args.reg else ' (whole corpus)'}"
+          f"{f' (limit {args.limit})' if args.limit else ''}: legacy strip rule -> current rule, no API calls...")
+    provisions = fetch_provisions(client, args.reg, args.limit)
+    print(f"  {len(provisions):,} rows.")
+    parents = fetch_parents(client, (p.get("parent_id") for p in provisions))
+    existing = fetch_existing_hashes(client, [p["id"] for p in provisions], args.reg)
+    print(f"  {len(existing):,} existing embedding chunks found for these rows.")
+    plan = plan_rehash(provisions, parents, existing, model)
+    print(f"  chunks already on the current rule: {plan.current:,}")
+    print(f"  chunks to rehash in place (legacy hash of the current text): {len(plan.updates):,}")
+    print(f"  chunks matching neither (left for a normal embed run): {len(plan.stale):,}")
+    for pid, idx in plan.stale[:20]:
+        print(f"    stale: {pid} chunk {idx}")
+    if args.dry_run:
+        print("DRY RUN: nothing written.")
+    elif plan.updates:
+        written = apply_rehash(client, plan.updates)
+        print(f"  {written:,} stored hashes rewritten.")
+        if written != len(plan.updates):
+            print(f"  WARNING: planned {len(plan.updates):,}, database updated {written:,} "
+                  "(rows re-embedded meanwhile keep their new hash).")
+    else:
+        print("Nothing to rehash.")
+    print("=" * 62)
+    print(f"{'Rehash -- model=' + model:62}")
+    print(f"{'Provisions in scope':40}{len(provisions):>12,}")
+    print(f"{'Chunks already current':40}{plan.current:>12,}")
+    print(f"{'Chunks rehashed in place':40}{len(plan.updates):>12,}")
+    print(f"{'Chunks stale (need an embed run)':40}{len(plan.stale):>12,}")
+    print("=" * 62)
+    return 0 if not plan.stale else 1
+
+
 def run(args: argparse.Namespace, client=None, stats: Optional[RunStats] = None) -> int:
     """`client` and `stats` are injected by the chained run (run_chain.py),
     which embeds exactly the rows it wrote with the run's own budget."""
     model = args.model
     stats = stats if stats is not None else RunStats()
     client = client if client is not None else make_supabase_client()
+
+    if getattr(args, "rehash", False):
+        return run_rehash(args, client)
 
     if args.neighbors_only:
         print("Recomputing related-provision neighbours for the whole corpus (no API calls)...")
@@ -763,9 +886,15 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--start-after", default=None, metavar="PROVISION_ID",
                         help="With --neighbors-only: skip ids up to and including this one "
                              "(the 'last=' id from a failed run's log) instead of starting over.")
+    parser.add_argument("--rehash", action="store_true",
+                        help="Rewrite stored chunk hashes from the legacy strip rule (every tag a space) "
+                             "to the current one in place, without embedding anything; with --dry-run, "
+                             "only count. Honours --reg and --limit.")
     args = parser.parse_args(argv)
     if args.start_after is not None and not args.neighbors_only:
         parser.error("--start-after only applies to --neighbors-only")
+    if args.rehash and (args.neighbors_only or args.force or args.ids):
+        parser.error("--rehash cannot be combined with --neighbors-only, --force or --ids")
     return args
 
 
@@ -779,7 +908,7 @@ def require_env(names: list[str]) -> None:
 def main(argv: Optional[list[str]] = None) -> int:
     args = parse_args(argv)
     required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
-    if not (args.dry_run or args.neighbors_only):
+    if not (args.dry_run or args.neighbors_only or args.rehash):
         required.append("VOYAGE_API_KEY")
     require_env(required)
     return run(args)
