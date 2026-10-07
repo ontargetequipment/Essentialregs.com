@@ -909,6 +909,22 @@ citation/title line and the full summary. Each chunk is content-hashed with
 the model name, so a re-run only re-embeds rows whose text or embedded
 summary changed (or everything, with `--force`).
 
+The tag stripping that produces the embedded text unwraps the importer's
+link markup in place (`<a class="xref-external-reg">`, `<span class="xref">`,
+the `[sic]` marker span: tags removed, inner text kept, no space added) and
+turns every other tag into a space. Until 7 Oct 2026 every tag became a
+space, so a markup-only re-import (a citation newly wrapped in an anchor
+flush against punctuation) changed the stripped text, the hash with it, and
+the row was re-embedded for a change no reader could see (22 provisions
+across seven regulations after PR #69). A link-only import now makes no
+Voyage call. The stored hashes written under the old rule were rewritten in
+place by `embed.py --rehash` (the **Embed provisions** workflow's `rehash`
+input) through `provision_embeddings_rehash()` (migration
+`20261007040000`): it proves a stored hash is the old rule's hash of the
+current text before touching it, writes nothing else, and reports any chunk
+matching neither rule as stale for a normal embed run. `--rehash --dry-run`
+only counts.
+
 The 600-character summary cap (`SUMMARY_EMBED_CHARS`, `cap_summary`) dates
 from the Phase 0 parent regeneration (Oct 2026): parent summaries written
 with the children in view run to 1,000-3,000 characters, and embedding the
@@ -929,7 +945,7 @@ existing `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`. Never commit the key.
 ## Running it
 
 **Embed provisions** workflow (Actions tab), inputs: `reg`, `limit`, `dry_run`,
-`force`, `neighbors_only`, `start_after`. Always dry-run first — it prints the chunk count,
+`force`, `neighbors_only`, `start_after`, `rehash`. Always dry-run first — it prints the chunk count,
 token estimate and cost, and calls nothing:
 
 ```
@@ -938,6 +954,8 @@ python pipeline/embed.py --reg 7                 # embed Reg 7 (changed rows onl
 python pipeline/embed.py                         # whole corpus, resumable
 python pipeline/embed.py --neighbors-only        # rebuild related panel, no API calls
 python pipeline/embed.py --neighbors-only --start-after sec-gp09-IX-B   # resume a rebuild that died
+python pipeline/embed.py --rehash --dry-run      # count stored hashes still on the pre-7-Oct strip rule
+python pipeline/embed.py --rehash                # rewrite them in place, no Voyage call
 ```
 
 The **Import regulation** workflow has an `embed` checkbox that runs

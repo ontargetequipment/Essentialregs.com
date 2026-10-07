@@ -42,9 +42,10 @@ export default async function ChangelogPage() {
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
           What&apos;s changed in the regulation corpus: official text updated
-          from the agency source, provisions added or removed, and
-          plain-English summaries AI reviewed, corrected, or rewritten. Each
-          regulation&apos;s page shows the date its text was last verified.
+          from the agency source, provisions added or removed, links between
+          provisions added or updated, and plain-English summaries AI
+          reviewed, corrected, or rewritten. Each regulation&apos;s page shows
+          the date its text was last verified.
         </p>
 
         {groups.length === 0 && (

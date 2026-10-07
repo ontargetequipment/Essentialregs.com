@@ -496,3 +496,94 @@ def test_dry_run_estimate_never_needs_voyage_key(monkeypatch):
                         lambda *a, **k: calls.setdefault("voyage", True) and (_ for _ in ()).throw(AssertionError("Voyage called in dry run")))
     rc = embed.main(["--dry-run", "--reg", "7"])
     assert rc == 0 and "voyage" not in calls
+
+
+# --- strip rule: link markup never changes the embedded text (7 Oct 2026) --
+
+def test_link_markup_is_unwrapped_without_a_space():
+    plain = "<p>Engines may be subject to 40 CFR Part 63, Subpart ZZZZ (Subpart ZZZZ). See Section II.C.1.</p>"
+    linked = ('<p>Engines may be subject to 40 CFR Part 63, <a class="xref-external-reg" href="/regulations/zzzz">'
+              'Subpart ZZZZ</a> (<a class="xref-external-reg" href="/regulations/zzzz">Subpart ZZZZ</a>). '
+              'See <span class="xref" data-target="sec-7-B-II-C-1">Section II.C.1</span>.</p>')
+    assert strip_html(linked) == strip_html(plain)
+    # the legacy rule put a space where each tag was, so the two differed
+    assert embed.strip_html_legacy(linked) != embed.strip_html_legacy(plain)
+    assert "( Subpart" in embed.strip_html_legacy(linked)
+
+
+def test_sic_marker_span_is_unwrapped_and_other_tags_still_separate():
+    html = ('<p>Break<span class="er-sic" title="Printed this way."> [sic]</span> specific fuel</p>'
+            '<table><tr><td>NO<sub>X</sub></td><td>g/hp-hr</td></tr></table>')
+    text = strip_html(html)
+    assert "Break [sic] specific fuel" in text
+    assert "NO X g/hp-hr" in text          # cells and sub/sup still separated by a space
+
+
+def test_markup_only_change_keeps_the_hash_and_plan_skips_it():
+    before = row(text="<p>Owners shall comply with Subpart ZZZZ of Part 63, Section II.C.1.</p>")
+    after = row(text=('<p>Owners shall comply with <a class="xref-external-reg" href="/regulations/zzzz">'
+                      'Subpart ZZZZ</a> of Part 63, <span class="xref" data-target="x">Section II.C.1</span>.</p>'))
+    [c_before] = build_chunks(before, None, MODEL)
+    [c_after] = build_chunks(after, None, MODEL)
+    assert c_before.text_hash == c_after.text_hash
+    todo, _ = plan_work([after], {}, {(c_before.provision_id, 0): c_before.text_hash}, MODEL,
+                        force=False, stats=RunStats())
+    assert todo == []
+
+
+def test_parent_link_markup_does_not_change_the_child_hash():
+    parent_plain = {"id": "sec-7-B-I", "citation": "I.", "full_text": "<p>Part B applies to Regulation 7 sources.</p>"}
+    parent_linked = {"id": "sec-7-B-I", "citation": "I.",
+                     "full_text": '<p>Part B applies to <a class="xref-external-reg" href="/regulations/7">Regulation 7</a> sources.</p>'}
+    child = row()
+    assert build_chunks(child, parent_plain, MODEL)[0].text_hash == build_chunks(child, parent_linked, MODEL)[0].text_hash
+
+
+# --- --rehash planning ---------------------------------------------------
+
+def test_plan_rehash_classifies_legacy_current_and_stale():
+    linked = row(pid="sec-7-A-1", text='<p>See (<a class="xref-external-reg" href="/regulations/8">Regulation 8</a>).</p>')
+    plain = row(pid="sec-7-A-2", text="<p>No links here.</p>")
+    changed = row(pid="sec-7-A-3", text="<p>Text that changed since it was embedded.</p>")
+    never = row(pid="sec-7-A-4")
+    legacy_hash = build_chunks(linked, None, MODEL, strip=embed.strip_html_legacy)[0].text_hash
+    new_hash = build_chunks(linked, None, MODEL)[0].text_hash
+    assert legacy_hash != new_hash
+    plain_hash = build_chunks(plain, None, MODEL)[0].text_hash
+    assert build_chunks(plain, None, MODEL, strip=embed.strip_html_legacy)[0].text_hash == plain_hash
+    existing = {("sec-7-A-1", 0): legacy_hash, ("sec-7-A-2", 0): plain_hash, ("sec-7-A-3", 0): "something-else"}
+    plan = embed.plan_rehash([linked, plain, changed, never], {}, existing, MODEL)
+    assert plan.updates == [("sec-7-A-1", 0, legacy_hash, new_hash)]
+    assert plan.current == 1
+    assert plan.stale == [("sec-7-A-3", 0), ("sec-7-A-4", 0)]
+    # after the rewrite, a normal plan finds nothing to embed for the linked row
+    todo, _ = plan_work([linked, plain], {}, {("sec-7-A-1", 0): new_hash, ("sec-7-A-2", 0): plain_hash}, MODEL,
+                        force=False, stats=RunStats())
+    assert todo == []
+
+
+def test_apply_rehash_batches_through_the_rpc_and_matches_on_the_old_hash(monkeypatch):
+    monkeypatch.setattr(embed, "REHASH_BATCH", 2)
+    calls: list[dict] = []
+
+    class R:
+        def __init__(self, data): self.data = data
+        def execute(self): return self
+
+    class C:
+        def rpc(self, name, params):
+            assert name == "provision_embeddings_rehash"
+            calls.append(params)
+            return R(len(params["changes"]))
+
+    n = embed.apply_rehash(C(), [("a", 0, "o1", "n1"), ("b", 1, "o2", "n2"), ("c", 0, "o3", "n3")])
+    assert n == 3
+    assert [len(c["changes"]) for c in calls] == [2, 1]
+    assert calls[0]["changes"][0] == {"provision_id": "a", "chunk_index": 0, "old_hash": "o1", "new_hash": "n1"}
+
+
+def test_rehash_needs_no_voyage_key_and_excludes_force(monkeypatch):
+    args = embed.parse_args(["--rehash", "--dry-run"])
+    assert args.rehash and args.dry_run
+    with pytest.raises(SystemExit):
+        embed.parse_args(["--rehash", "--force"])
