@@ -28,6 +28,13 @@ export type ChangelogLine = {
   regKey: string | null;
   /** Importer rows: provisions whose official text changed. */
   textUpdated: number;
+  /**
+   * Provisions whose full_text changed without a change to the visible
+   * letters and digits: cross-reference links added or retargeted by a
+   * markup-only re-import (change_type 'links_updated', 7 Oct 2026). Not
+   * an official-text change.
+   */
+  linksUpdated: number;
   /** Provisions added to the corpus. */
   added: number;
   /**
@@ -69,6 +76,7 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
         dateKey: row.day,
         regKey: row.reg_key,
         textUpdated: 0,
+        linksUpdated: 0,
         added: 0,
         removed: 0,
         reviewed: 0,
@@ -85,6 +93,9 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
     switch (row.change_type) {
       case "text_updated":
         line.textUpdated += n;
+        break;
+      case "links_updated":
+        line.linksUpdated += n;
         break;
       case "added":
         line.added += n;
@@ -124,7 +135,9 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
   }
   return Array.from(lines.values())
     .filter(
-      (l) => l.textUpdated + l.added + l.removed + l.reviewed + l.rewrittenReviewed + l.rewrittenReviewedLater + l.rewrittenPending > 0
+      (l) =>
+        l.textUpdated + l.linksUpdated + l.added + l.removed + l.reviewed + l.rewrittenReviewed + l.rewrittenReviewedLater + l.rewrittenPending >
+        0
     )
     .sort((a, b) => (a.latest < b.latest ? 1 : a.latest > b.latest ? -1 : 0));
 }
@@ -148,17 +161,28 @@ export function describeLine(line: ChangelogLine): string[] {
   if (line.textUpdated > 0) parts.push(`${plural(line.textUpdated, "provision", "provisions")} updated`);
   if (line.added > 0) parts.push(`${plural(line.added, "provision", "provisions")} added`);
   if (line.removed > 0) parts.push(`${plural(line.removed, "provision", "provisions")} removed`);
+  // A markup-only re-import changes links, not official text (7 Oct 2026:
+  // "22 provisions updated" for Regulation 7 under an intro that promised
+  // agency-source text changes).
+  if (line.linksUpdated > 0) parts.push(`links added or updated in ${plural(line.linksUpdated, "provision", "provisions")}`);
+  // Passes are not logged as changes, so a day on which every logged
+  // review was a correction must not read as "98 AI reviewed (98
+  // corrected)", which says every reviewed summary was wrong (7 Oct 2026).
   if (line.reviewed > 0) {
-    const reviewed = `${plural(line.reviewed, "summary", "summaries")} AI reviewed`;
-    parts.push(line.corrected > 0 ? `${reviewed} (${COUNT.format(line.corrected)} corrected)` : reviewed);
+    const n = plural(line.reviewed, "summary", "summaries");
+    if (line.corrected >= line.reviewed) parts.push(`${n} corrected on AI review`);
+    else if (line.corrected > 0) parts.push(`${n} AI reviewed (${COUNT.format(line.corrected)} corrected)`);
+    else parts.push(`${n} AI reviewed`);
   }
   // A rewrite reviewed in the same run is one statement (6 Oct 2026 review:
   // the same five GP03 summaries read as both "AI reviewed" and "awaiting
   // AI review"). "Awaiting AI review" is only ever said of summaries that
   // are pending now.
   if (line.rewrittenReviewed > 0) {
-    const rewritten = `${plural(line.rewrittenReviewed, "summary", "summaries")} rewritten and AI reviewed`;
-    parts.push(line.rewrittenCorrected > 0 ? `${rewritten} (${COUNT.format(line.rewrittenCorrected)} corrected)` : rewritten);
+    const n = plural(line.rewrittenReviewed, "summary", "summaries");
+    if (line.rewrittenCorrected >= line.rewrittenReviewed) parts.push(`${n} rewritten and corrected on AI review`);
+    else if (line.rewrittenCorrected > 0) parts.push(`${n} rewritten and AI reviewed (${COUNT.format(line.rewrittenCorrected)} corrected)`);
+    else parts.push(`${n} rewritten and AI reviewed`);
   }
   if (line.rewrittenReviewedLater > 0) {
     parts.push(`${plural(line.rewrittenReviewedLater, "summary", "summaries")} rewritten (AI reviewed later)`);

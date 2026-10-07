@@ -26,6 +26,11 @@ on:
         type: boolean
         required: false
         default: false
+      rehash:
+        description: "Rehash: rewrite stored chunk hashes from the legacy strip rule to the current one in place (no Voyage calls, nothing re-embedded). Combine with dry_run to only count."
+        type: boolean
+        required: false
+        default: false
       start_after:
         description: "With neighbors_only: resume after this provision id (the 'last=' id in a failed run's log). Leave blank to start over."
         required: false
@@ -72,6 +77,7 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS+=(--dry-run --show 3); fi
           if [ "${{ inputs.force }}" = "true" ]; then ARGS+=(--force); fi
           if [ "${{ inputs.neighbors_only }}" = "true" ]; then ARGS+=(--neighbors-only); fi
+          if [ "${{ inputs.rehash }}" = "true" ]; then ARGS+=(--rehash); fi
           if [ -n "${{ inputs.start_after }}" ]; then ARGS+=(--start-after "${{ inputs.start_after }}"); fi
           if [ -n "${{ inputs.approved_budget }}" ]; then ARGS+=(--approved-budget "${{ inputs.approved_budget }}"); fi
           echo "Running: python embed.py ${ARGS[*]}"
