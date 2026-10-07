@@ -5551,11 +5551,16 @@ _CITATION_TOKEN = (
 CITATION_RE = re.compile(_CITATION_TOKEN)
 
 # A run of one or more citations following "Section(s)", joined by comma,
-# "and", "or", "through", or an en-dash/hyphen range — e.g. "I.A.3., I.A.4.,
-# and I.A.5." / "I.D.3.b.(x) through I.D.3.b.(xii)" / "I.D.3.b.(x) – (xii)".
+# "and", "or", "through", "&" (escaped "&amp;" by the time the linker runs,
+# see escape_html_text), or an en-dash/hyphen range — e.g. "I.A.3., I.A.4.,
+# and I.A.5." / "I.D.3.b.(x) through I.D.3.b.(xii)" / "I.D.3.b.(x) – (xii)" /
+# "II.A.1. &amp; II.A.4." / "II.B. And II.C.5." (GP12 V.C and V.I.2, review 4,
+# 7 Oct 2026: the words match in any case and "&" is a separator, so the
+# second citation of such a pair is linked instead of left as plain text).
 # Each citation found inside the matched list gets its own span (see
 # `_emit_section_list`); the separators themselves are never linked.
-_LIST_SEP = r"(?:\s*,\s*(?:and\s+|or\s+|through\s+)?|\s+and\s+|\s+or\s+|\s+through\s+|\s*[–—-]\s*)"
+_LIST_WORD = r"(?i:and/or|and|or|through|&amp;|&)"
+_LIST_SEP = r"(?:\s*,\s*(?:" + _LIST_WORD + r"\s+)?|\s+" + _LIST_WORD + r"\s+|\s*[–—-]\s*)"
 _CITATION_LIST = r"(?:" + _CITATION_TOKEN + r"(?:" + _LIST_SEP + _CITATION_TOKEN + r")*)"
 
 # Bare "Section(s) <list>" (no leading "Part"/"Regulation Number").
@@ -6739,7 +6744,8 @@ _XREG_GP_CLAUSE_RE = re.compile(r"(?P<kwd>Sections?|Conditions?)\s+(?P<ld>" + _C
 # "...Section III.E.; Part C, Section IV.", "Part A, Section II.C and Part B,
 # Section III.E."). Only separators: any other word ends the tail.
 _XREG_LEAD_RE = re.compile(r",\s*|\s+")
-_XREG_SEP_RE = re.compile(r"\s*,\s*(?:and/or\s+|and\s+|or\s+)?|\s*;\s*|\s+(?:and/or|and|or)\s+")
+# "&" / "&amp;" and any-case "And" join clauses too (review 4, 7 Oct 2026).
+_XREG_SEP_RE = re.compile(r"\s*,\s*(?:(?i:and/or|and|or|&amp;|&)\s+)?|\s*;\s*|\s+(?i:and/or|and|or|&amp;|&)\s+")
 # Used when the scan starts right after a clause the caller already matched
 # (a regulation outside the corpus): what may follow is a separator.
 _XREG_AFTER_CLAUSE_RE = re.compile(_XREG_SEP_RE.pattern + r"|\s*[;.]\s*|\s+")

@@ -1,8 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ChangelogCountRow } from "@/lib/changelog-group";
 
-export type { ChangelogCountRow, ChangelogLine } from "@/lib/changelog-group";
-export { describeLine, foldChangelog } from "@/lib/changelog-group";
+export type { ChangelogCountRow, ChangelogLine, ChangelogSection } from "@/lib/changelog-group";
+export {
+  CHANGELOG_SECTIONS,
+  SUMMARY_QUALITY_EXPLANATION,
+  describeLine,
+  describeSection,
+  foldChangelog,
+  sectionLines,
+  summaryDayTotal,
+} from "@/lib/changelog-group";
 
 /**
  * Today's date in America/Denver as "YYYY-MM-DD" — used to stamp

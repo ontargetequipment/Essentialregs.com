@@ -190,3 +190,99 @@ export function describeLine(line: ChangelogLine): string[] {
   if (line.rewrittenPending > 0) parts.push(`${plural(line.rewrittenPending, "summary", "summaries")} rewritten, awaiting AI review`);
   return parts;
 }
+
+/**
+ * The three sections of /changelog (review 4, 7 Oct 2026): what changed in
+ * the official text, shown first and open; the links and sources; and the
+ * summary work, collapsed to one line per day. A line can appear in more
+ * than one section (a regulation re-imported and reviewed the same day).
+ */
+export type ChangelogSection = "regulatory" | "links" | "summaries";
+
+export const CHANGELOG_SECTIONS: { key: ChangelogSection; title: string; collapsed: boolean }[] = [
+  { key: "regulatory", title: "Regulatory changes", collapsed: false },
+  { key: "links", title: "Links and sources", collapsed: false },
+  { key: "summaries", title: "Summary quality", collapsed: true },
+];
+
+/**
+ * The explanation under the "Summary quality" heading. Every statement
+ * holds for pipeline/review.py: the pass compares the summary with the
+ * official text it was written from, "corrected" is its summary_edited
+ * verdict, the reasons it gives are mostly wording-precision ones (the
+ * October 2026 tally in docs/CEO_PHASE_PLAN.md), some are factual, and it
+ * never writes to full_text.
+ */
+export const SUMMARY_QUALITY_EXPLANATION =
+  "An automated second pass compares each plain-English summary with the official text. \u201cCorrected\u201d means that pass changed the summary. Most corrections make the summary match the rule\u2019s wording more exactly, such as who must act, a condition, or a list that is not exhaustive. Some fix a factual error, such as a deadline or a dropped exception. The official text is never changed by this.";
+
+/** The counts of a line that belong to a section. */
+export function sectionTotal(line: ChangelogLine, section: ChangelogSection): number {
+  switch (section) {
+    case "regulatory":
+      return line.textUpdated + line.added + line.removed;
+    case "links":
+      return line.linksUpdated;
+    case "summaries":
+      return line.reviewed + line.rewrittenReviewed + line.rewrittenReviewedLater + line.rewrittenPending;
+  }
+}
+
+/** The lines that have something to say in a section, in their original (newest first) order. */
+export function sectionLines(lines: ChangelogLine[], section: ChangelogSection): ChangelogLine[] {
+  return lines.filter((l) => sectionTotal(l, section) > 0);
+}
+
+/**
+ * The phrases of one line for one section only: the same words
+ * describeLine() uses, split by section so a line read under "Regulatory
+ * changes" never mentions its summaries.
+ */
+export function describeSection(line: ChangelogLine, section: ChangelogSection): string[] {
+  const all = describeLine(line);
+  const isLinks = (p: string) => p.startsWith("links added or updated");
+  const isSummary = (p: string) => /\bsummar(?:y|ies)\b/.test(p);
+  switch (section) {
+    case "regulatory":
+      return all.filter((p) => !isLinks(p) && !isSummary(p));
+    case "links":
+      return all.filter(isLinks);
+    case "summaries":
+      return all.filter(isSummary);
+  }
+}
+
+/**
+ * The one line a day gets under "Summary quality" while collapsed:
+ * "212 summaries AI reviewed (12 corrected) · 5 rewritten and AI reviewed ·
+ * 2 awaiting AI review", summed over the day's regulations.
+ */
+export function summaryDayTotal(lines: ChangelogLine[]): string {
+  const t = { reviewed: 0, corrected: 0, rewrittenReviewed: 0, rewrittenCorrected: 0, later: 0, pending: 0 };
+  for (const l of lines) {
+    t.reviewed += l.reviewed;
+    t.corrected += l.corrected;
+    t.rewrittenReviewed += l.rewrittenReviewed;
+    t.rewrittenCorrected += l.rewrittenCorrected;
+    t.later += l.rewrittenReviewedLater;
+    t.pending += l.rewrittenPending;
+  }
+  const parts: string[] = [];
+  if (t.reviewed > 0) {
+    const n = plural(t.reviewed, "summary", "summaries");
+    parts.push(t.corrected >= t.reviewed ? `${n} corrected on AI review` : t.corrected > 0 ? `${n} AI reviewed (${COUNT.format(t.corrected)} corrected)` : `${n} AI reviewed`);
+  }
+  if (t.rewrittenReviewed > 0) {
+    const n = plural(t.rewrittenReviewed, "summary", "summaries");
+    parts.push(
+      t.rewrittenCorrected >= t.rewrittenReviewed
+        ? `${n} rewritten and corrected on AI review`
+        : t.rewrittenCorrected > 0
+          ? `${n} rewritten and AI reviewed (${COUNT.format(t.rewrittenCorrected)} corrected)`
+          : `${n} rewritten and AI reviewed`
+    );
+  }
+  if (t.later > 0) parts.push(`${plural(t.later, "summary", "summaries")} rewritten (AI reviewed later)`);
+  if (t.pending > 0) parts.push(`${plural(t.pending, "summary", "summaries")} rewritten, awaiting AI review`);
+  return parts.join(" \u00b7 ");
+}

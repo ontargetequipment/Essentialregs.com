@@ -147,11 +147,14 @@ export type SummaryBadgeKind = "reviewed" | "pending";
  * regulation's thousands of panels would otherwise be shipped twice, the
  * way the source link once was. "AI reviewed" is defined on the Disclaimer
  * page, section "What 'AI reviewed' means" (/disclaimer#what-reviewed-means);
- * the wording is the owner's (4 Oct 2026).
+ * the wording is the owner's (4 Oct 2026); review 4 (7 Oct 2026) made the
+ * reviewed tooltip say outright that the pass is automated AI and not a
+ * person, and name the Disclaimer section, so the badge leads to the
+ * explanation from the reader, the search cards and the Ask cards alike.
  */
 export const SUMMARY_BADGE_TITLES: Record<SummaryBadgeKind, string> = {
   reviewed:
-    "Checked against the official text by an automated second review. The official text controls; see the Disclaimer page.",
+    "Checked against the official text by a separate automated AI pass, not by a person. The official text controls; see the Disclaimer page, \u201cWhat AI reviewed means\u201d.",
   pending: "Generated from the official text and not yet checked. Read the official text.",
 };
 
