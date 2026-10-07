@@ -21,7 +21,7 @@ import { renderDocHtml } from "../src/lib/reader-render";
 import type { Provision } from "../src/lib/types";
 
 const REVIEWED_TITLE =
-  "Checked against the official text by an automated second review. The official text controls; see the Disclaimer page.";
+  "Checked against the official text by a separate automated AI pass, not by a person. The official text controls; see the Disclaimer page, \u201cWhat AI reviewed means\u201d.";
 const PENDING_TITLE = "Generated from the official text and not yet checked. Read the official text.";
 
 test("approved or edited: 'AI reviewed · <date>' with reviewed_at as MMM d, yyyy", () => {
@@ -61,7 +61,10 @@ test("no badge, in any state, opens with the bare word 'Reviewed' (owner decisio
       assert.doesNotMatch(badge.title, /^Reviewed\b/);
       assert.ok(badge.label.startsWith("AI reviewed") || badge.label.startsWith("AI-generated"), badge.label);
       // The tooltip never claims a person looked, and never names a reviewer.
-      assert.doesNotMatch(badge.title, /human|person|founder|reviewed by/i);
+      // Saying outright that it was NOT a person (review 4, 7 Oct 2026) is
+      // the one allowed mention.
+      assert.doesNotMatch(badge.title.replace(/not by a person/i, ""), /human|person|founder|reviewed by/i);
+      if (badge.kind === "reviewed") assert.match(badge.title, /automated AI pass, not by a person/);
     }
   }
   assert.ok(seen > 0);

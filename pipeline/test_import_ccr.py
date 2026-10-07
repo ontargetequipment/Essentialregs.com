@@ -11290,6 +11290,51 @@ class CrossRegDeepLinkTests(XregBase):
         out, _ = self.link("Regulation No. 3, Part B, Section III.E.")
         self.assertIn(_xl("3", "Regulation No. 3"), out)
 
+    def test_ampersand_joins_a_list_gp12_v_c(self):
+        # GP12 V.C (review 4, 7 Oct 2026): "(Regulation Number 1, Sections
+        # II.A.1. &amp; II.A.4.)" linked II.A.1. and left II.A.4. as text.
+        out, buckets = self.link("(Regulation Number 1, Sections II.A.1. &amp; II.A.4.)")
+        self.assertEqual(
+            out,
+            "(" + _xl("1", "Regulation Number 1") + ", " + _xl("1", "Sections II.A.1.", "sec-1-II-A-1")
+            + " &amp; " + _xl("1", "II.A.4.", "sec-1-II-A-4") + ")",
+        )
+        self.assertEqual(dict(buckets[ic.BUCKET_CROSS_REG]), {})
+        # The visible text (with the escaped ampersand) is untouched.
+        self.assertEqual(re.sub(r"<[^>]+>", "", out), "(Regulation Number 1, Sections II.A.1. &amp; II.A.4.)")
+
+    def test_capitalised_and_joins_a_list_gp12_v_i_2(self):
+        # GP12 V.I.2: "Regulation Number 7, Part B, Sections II.B. And II.C.5."
+        out, _ = self.link("per Regulation Number 7, Part B, Sections II.B. And II.C.5., including deadlines.")
+        self.assertIn(_xl("7", "Sections II.B.", "sec-7-B-II-B") + " And " + _xl("7", "II.C.5.", "sec-7-B-II-C-5") + ", including", out)
+        # "or", "OR" and "through" behave the same; "and" inside a word never splits.
+        out, _ = self.link("Regulation Number 7, Part B, Sections II.B. OR II.C.5.")
+        self.assertIn(_xl("7", "II.C.5.", "sec-7-B-II-C-5"), out)
+
+    def test_part_change_inside_one_sentence_gp12_v_f(self):
+        # GP12 V.F cites Part B then Part D of Regulation 7 in one sentence.
+        # Part D does not exist in the corpus's Regulation 7, so that section
+        # stays plain text and is recorded, never linked to a guessed part.
+        text = ("per Regulation Number 7, Part B, Section V.B. Each year operators must keep records per "
+                "Regulation Number 7, Part D, Section V.C. for inclusion.")
+        out, buckets = self.link(text)
+        self.assertIn(_xl("7", "Section V.B.", "sec-7-B-V-B"), out)
+        self.assertIn(", Part D, Section V.C. for inclusion", out)
+        self.assertTrue(any("no_such_part" in k for k in buckets[ic.BUCKET_CROSS_REG]), dict(buckets[ic.BUCKET_CROSS_REG]))
+        # A part that does exist is followed within the sentence: both clauses link.
+        out, _ = self.link("per Regulation Number 7, Part B, Section V.B. and Part B, Section II.B., as amended")
+        self.assertIn(_xl("7", "Section V.B.", "sec-7-B-V-B") + " and Part B, " + _xl("7", "Section II.B.", "sec-7-B-II-B"), out)
+        # Several citations after one regulation name, with a change of Part, joined by "&amp;".
+        out, _ = self.link("Regulation Number 7, Part B, Sections V.B. &amp; II.B. and Part B, Section II.C.5.")
+        self.assertIn(_xl("7", "Sections V.B.", "sec-7-B-V-B") + " &amp; " + _xl("7", "II.B.", "sec-7-B-II-B"), out)
+        self.assertIn(_xl("7", "Section II.C.5.", "sec-7-B-II-C-5"), out)
+
+    def test_same_regulation_list_joined_by_ampersand_or_capitalised_and(self):
+        # The same-regulation list linker shares the separator rule.
+        known = {"sec-gp12-top-REG-gp12", "sec-gp12-V-B", "sec-gp12-V-C", "sec-gp12-II-B"}
+        out, _ = ic.link_citations("see Conditions V.B. &amp; V.C. And II.B. above", "gp12", known, self.corpus, "", "sec-gp12-x", corpus_ids={})
+        self.assertIn('<span class="xref" data-target="sec-gp12-V-B">Conditions V.B.</span> &amp; <span class="xref" data-target="sec-gp12-V-C">V.C.</span> And <span class="xref" data-target="sec-gp12-II-B">II.B.</span>', out)
+
     def test_visible_text_is_never_changed(self):
         text = "see Regulation Number 7, Part B, Sections I.B.33,  II.A.46 and XXV.A. and GP02 Condition II.B.3 for details."
         out, _ = self.link(text)
@@ -11380,12 +11425,13 @@ class TrailingSectionNeverBindsLocallyTests(XregBase):
         self.assertEqual(
             out,
             _xl("7", "Regulation Number 7") + ", Part B, " + _xl("7", "Section II.B", "sec-7-B-II-B") + " and "
-            # this sample index has no Part B Section II.C, so it trims to II
-            + _xl("7", "Section II.C.", "sec-7-B-II"),
+            # the sample index carries Part B Section II.C since review 4 (7 Oct 2026): an exact hit
+            + _xl("7", "Section II.C.", "sec-7-B-II-C"),
         )
+        # Both cites are exact hits now, so nothing is recorded as trimmed.
         self.assertEqual(
             dict(buckets[ic.BUCKET_CROSS_REG]),
-            {"sec-gp01-II-D-1\tRegulation Number 7, Part B, II.C.\ttrimmed\tsec-7-B-II": 1},
+            {},
         )
 
     def test_old_behaviour_bound_it_to_this_documents_own_id(self):
