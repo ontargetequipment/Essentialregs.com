@@ -373,8 +373,9 @@ test.describe("signed in", () => {
     await expect(page.getByText("GP01 is not automatically required", { exact: false })).toHaveCount(1);
     // The note's Regulation 3 sentence and the premise map's factors line both say it.
     expect(await page.getByText("decided under Regulation 3", { exact: false }).count()).toBeGreaterThan(0);
-    await expect(page.getByRole("link", { name: "GP01 VIII.D.3" })).toHaveAttribute("href", "/regulations/gp01#sec-gp01-VIII-D-3");
-    await expect(page.getByRole("link", { name: "Regulation 3 Part A II.A.1" })).toHaveAttribute("href", "/regulations/3#sec-3-A-II-A-1");
+    // exact: a result card below carries the same words in its accessible name.
+    await expect(page.getByRole("link", { name: "GP01 VIII.D.3", exact: true })).toHaveAttribute("href", "/regulations/gp01#sec-gp01-VIII-D-3");
+    await expect(page.getByRole("link", { name: "Regulation 3 Part A II.A.1", exact: true })).toHaveAttribute("href", "/regulations/3#sec-3-A-II-A-1");
     await expect(page.getByText("Mapped question: Storage tanks and tank batteries")).toHaveCount(0);
     const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
     expect(headings.slice(0, 4)).toEqual(["Is GP01 required?", "Permit applicability", "Colorado permitting and APEN", "Alternatives if the permit does not fit"]);
