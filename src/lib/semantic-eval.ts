@@ -1,3 +1,5 @@
+import { isClosedPermit } from "@/lib/regulation-pure";
+
 /**
  * Acceptance questions for Ask search (Phase 3/5 of the semantic-search
  * plan). Since Ask Track B (1 Oct 2026) the set is also the pull-request
@@ -11,6 +13,16 @@
  * since maps batch 4 (2 Oct 2026) the enforcement map: the civil-penalties
  * question and one new question, the 29th. Score since maps batch 4:
  * 29/29, no known failure.
+ *
+ * Review 4 (7 Oct 2026) added checks scored on what the page SHOWS
+ * (`shown`, `premise`, `title`): the premise notes for "When is a GP01
+ * required?" and "Do I need a GP12?", the natural gas / diesel facet of the
+ * engines map and the produced-water facet of the storage-tanks map. The
+ * shown order comes from layoutAsk() (src/lib/question-maps.ts): the map's
+ * canonical rows under their groups, then the retrieval hits, minus what a
+ * stated facet left out. Retrieval checks (`expect`, `forbid`, `checks`)
+ * still score the raw hits. The two reviewer rows carry their new checks;
+ * three rows are new (the 30th to 32nd). Score: 32/32.
  *
  * Original description: Each is a question a Colorado oil & gas compliance person would
  * actually type, with the provision(s) that should appear in the top 5,
@@ -53,7 +65,32 @@ export type EvalQuestion = {
    * map.key). null: no map may match. Absent: routing is not checked.
    */
   map?: string | null;
+  /**
+   * Premise note (src/lib/premise-notes.ts). A string: matchPremiseNote(q)
+   * must return the note with that key. null: no note may match. Absent:
+   * not checked.
+   */
+  premise?: string | null;
+  /** The title the page shows for the map ("Natural gas-fired engines" once the fuel is stated). */
+  title?: string;
+  /** Conditions on the ids the page shows, in page order (layoutAsk().shownIds). */
+  shown?: ShownCheck[];
 };
+
+/**
+ * One condition on the shown order. `topN` counts shown rows from the top;
+ * absent means the whole shown list.
+ */
+export type ShownCheck =
+  /** at least one shown id starts with one of the prefixes, within the first topN */
+  | { any: string[]; topN?: number }
+  /** no shown id starts with one of the prefixes */
+  | { none: string[] }
+  /** each id is shown and belongs to a permit the site badges "Closed to new registrations" */
+  | { closedBadge: string[] };
+
+/** What the page shows for a question, for the `note`, `title` and `shown` checks (layoutAsk()). */
+export type ShownContext = { ids: string[]; noteKey: string | null; title: string | null };
 
 /**
  * Questions that fail today and are allowed to: scripts/ask-eval.ts exits
@@ -115,7 +152,7 @@ export function rowsNeeded(e: EvalQuestion): number {
  * be tested without a database; /admin/semantic-eval and scripts/ask-eval.ts
  * call it with the live RPC output and matchQuestionMap(q).
  */
-export function evaluateQuestion(e: EvalQuestion, hits: EvalHit[], mapKey: string | null = null): EvalResult {
+export function evaluateQuestion(e: EvalQuestion, hits: EvalHit[], mapKey: string | null = null, shown?: ShownContext): EvalResult {
   const top = e.topN ?? DEFAULT_TOP_N;
   const startsWithAny = (h: EvalHit, prefixes: string[]) => prefixes.some((p) => h.id.startsWith(p));
   const failures: string[] = [];
@@ -124,6 +161,34 @@ export function evaluateQuestion(e: EvalQuestion, hits: EvalHit[], mapKey: strin
     failures.push(
       e.map === null ? `routed to question map "${mapKey}"; expected none` : `routed to ${mapKey === null ? "no question map" : `question map "${mapKey}"`}; expected "${e.map}"`
     );
+  }
+
+  // The shown-order checks (review 4, 7 Oct 2026). A question that sets any
+  // of them needs the page's layout; a caller that passes none fails them
+  // rather than skipping them.
+  if (e.premise !== undefined || e.title !== undefined || (e.shown && e.shown.length > 0)) {
+    if (!shown) {
+      failures.push("no shown order given (layoutAsk) for the note / title / shown checks");
+    } else {
+      if (e.premise !== undefined && shown.noteKey !== e.premise) {
+        failures.push(e.premise === null ? `premise note "${shown.noteKey}" shown; expected none` : `premise note ${shown.noteKey === null ? "missing" : `"${shown.noteKey}"`}; expected "${e.premise}"`);
+      }
+      if (e.title !== undefined && shown.title !== e.title) failures.push(`map titled "${shown.title}"; expected "${e.title}"`);
+      for (const c of e.shown ?? []) {
+        if ("any" in c) {
+          const window = c.topN ? shown.ids.slice(0, c.topN) : shown.ids;
+          if (!window.some((id) => c.any.some((p) => id.startsWith(p)))) failures.push(`none of ${c.any.join(", ")} shown${c.topN ? ` in the first ${c.topN}` : ""}`);
+        } else if ("none" in c) {
+          const bad = shown.ids.filter((id) => c.none.some((p) => id.startsWith(p)));
+          if (bad.length > 0) failures.push(`shown but should not be: ${bad.join(", ")}`);
+        } else if ("closedBadge" in c) {
+          for (const id of c.closedBadge) {
+            if (!shown.ids.includes(id)) failures.push(`${id} not shown`);
+            else if (!isClosedPermit(id.match(/^sec-([^-]+)-/)?.[1] ?? null)) failures.push(`${id} is shown without the closed-permit badge`);
+          }
+        }
+      }
+    }
   }
 
   const idx = hits.slice(0, top).findIndex((h) => startsWithAny(h, e.expect));
@@ -307,8 +372,13 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     q: "When is a GP01 required?",
     expect: ["sec-gp01-I-A", "sec-gp01-I-E"],
     forbid: ["sec-gp03-", "sec-gp10-"],
-    map: "storage-tanks",
-    note: "GP01 I.A / I.E applicability lead; no GP03 (dust permit, word-only match) or closed GP10 row in the top 5 (20260930003557, 20260930003325); routes to the storage-tanks question map (maps batch 3)",
+    map: "premise-gp01",
+    premise: "gp01-required",
+    shown: [
+      { any: ["sec-gp01-I-A"], topN: 3 },
+      { any: ["sec-3-A-II-A-1", "sec-3-B-II-A-1", "sec-3-B-I-A"] },
+    ],
+    note: "GP01 I.A / I.E applicability lead; no GP03 (dust permit, word-only match) or closed GP10 row in the top 5 (20260930003557, 20260930003325). Review 4 (7 Oct 2026): the GP01 premise note is present, GP01 I.A is in the first three shown rows, a Regulation 3 permit or APEN requirement provision is shown, and the question takes the GP01 premise map, not the storage-tank map",
   },
   {
     q: "What regulations apply to a natural gas-fired engine?",
@@ -318,7 +388,17 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     forbidTopN: 3,
     checks: [{ any: ["sec-gp12-"] }, { any: ["sec-26-"] }],
     map: "engines",
-    note: "GP12 and Reg 26 both in the top 10; the closed GP09 / GP10 never in the top 3 (20260930003325); routes to the engines question map",
+    title: "Natural gas-fired engines",
+    shown: [
+      { none: ["sec-gp06-", "sec-iiii-"] },
+      { any: ["sec-3-"] },
+      { any: ["sec-gp12-"] },
+      { any: ["sec-26-"] },
+      { any: ["sec-jjjj-"] },
+      { any: ["sec-zzzz-"] },
+      { closedBadge: ["sec-gp09-I-A", "sec-gp10-I-A"] },
+    ],
+    note: "GP12 and Reg 26 both in the top 10; the closed GP09 / GP10 never in the top 3 (20260930003325); routes to the engines question map. Review 4 (7 Oct 2026): the fuel is stated, so no GP06 and no Subpart IIII provision is shown; Regulation 3, GP12, Regulation 26, JJJJ and ZZZZ still shown; GP09 and GP10 still shown and badged closed; the map is titled for the stated fuel",
   },
   {
     q: "What Colorado and federal requirements could apply to storage vessels?",
@@ -331,5 +411,33 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     ],
     map: "storage-tanks",
     note: "A storage-tank general permit (GP08 / GP05) and an OOOOa/OOOOb storage-vessel section in the top 10; no Statement of Basis in the top 5; at least 3 federal rows in the top 10 (20260930002750, 20260930003040); routes to the storage-tanks question map (maps batch 2) — the retrieval checks are unchanged",
+  },
+  // ---- Review 4 (7 Oct 2026): premise notes and stated-fact filters, scored on the shown order ----
+  {
+    q: "Do I need a GP12?",
+    expect: ["sec-gp12-"],
+    topN: 10,
+    map: "premise-gp12",
+    premise: "gp12-required",
+    shown: [{ any: ["sec-gp12-I-A"], topN: 3 }, { any: ["sec-3-A-II-A-1", "sec-3-B-II-A-1", "sec-3-B-I-A"] }],
+    note: "the GP12 premise note is present; GP12 I.A in the first three shown rows; a Regulation 3 permit or APEN requirement provision is shown",
+  },
+  {
+    q: "What applies to a diesel engine?",
+    expect: ["sec-gp06-", "sec-iiii-", "sec-gp12-", "sec-26-", "sec-3-"],
+    topN: 10,
+    map: "engines",
+    title: "Diesel engines",
+    shown: [{ any: ["sec-gp06-"] }, { any: ["sec-iiii-"] }, { none: ["sec-jjjj-"] }],
+    note: "diesel stated: GP06 and Subpart IIII shown, no Subpart JJJJ provision shown; the map titled for diesel",
+  },
+  {
+    q: "What rules apply to a produced water storage tank at a well site?",
+    expect: ["sec-7-B-I-D", "sec-7-B-II-C", "sec-gp05-", "sec-gp08-", "sec-gp12-", "sec-oooob-", "sec-ooooa-", "sec-ooooc-"],
+    topN: 10,
+    map: "storage-tanks",
+    title: "Produced water storage tanks and tank batteries",
+    shown: [{ any: ["sec-gp05-I-A"] }, { any: ["sec-gp08-I-B"] }, { none: ["sec-gp01-", "sec-gp07-", "sec-7-B-I-B-9"] }],
+    note: "the contents are stated: GP05 and GP08 shown, GP01 (condensate), GP07 (hydrocarbon liquid loadout) and the condensate storage tank definition left out, the map titled for produced water",
   },
 ];

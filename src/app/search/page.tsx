@@ -32,7 +32,17 @@ import {
   type Jurisdiction,
   type SemanticHit,
 } from "@/lib/semantic";
-import { OTHER_GROUP, groupHits, type QuestionMap } from "@/lib/question-maps";
+import {
+  OTHER_GROUP,
+  detectFacets,
+  groupHits,
+  mapTitle,
+  omittedLines,
+  premiseNoteOf,
+  type QuestionMap,
+  type StatedFacets,
+} from "@/lib/question-maps";
+import { citeLabel, citeRegKey } from "@/lib/premise-notes";
 
 export const metadata = {
   title: "Search",
@@ -291,6 +301,10 @@ export default async function SearchPage(props: PageProps<"/search">) {
   // ?flat=1 shows the retrieval list as before (the "Show as a flat list"
   // link). Ignored when no map matched.
   const flat = first(params.flat) === "1";
+  // Review 4 (7 Oct 2026): a fact stated in the question (the engine's
+  // fuel, what the tank stores) hides the map rows for the other values;
+  // ?facets=all (the "Show them" link under the results) shows them again.
+  const allFacets = first(params.facets) === "all";
 
   const supabase = await createClient();
   const {
@@ -403,7 +417,10 @@ export default async function SearchPage(props: PageProps<"/search">) {
     ...askHits.map((h) => ({ ...h, retrieved: true })),
     ...Array.from(mapRows.values()).filter((r) => !r.retrieved),
   ];
-  const grouped = askMap && mapRows.size > 0 ? groupHits(askMap, askHits, new Set(mapRows.keys())) : null;
+  const stated: StatedFacets = askMap && !allFacets ? detectFacets(q, askMap) : {};
+  const grouped = askMap && mapRows.size > 0 ? groupHits(askMap, askHits, new Set(mapRows.keys()), stated) : null;
+  const premise = premiseNoteOf(askMap);
+  const omitted = askMap ? omittedLines(askMap, stated) : [];
 
   // The review state of every hit's summary, for the badge beside it
   // (summaryStatusBadge; owner decision, 29 Sep 2026). Neither RPC returns
@@ -745,12 +762,46 @@ export default async function SearchPage(props: PageProps<"/search">) {
 
       {mode === "ask" && grouped && askMap && (
         <>
+          {/* Premise note (review 4, 7 Oct 2026): a fixed, curated text
+              above the results when the question matches a known
+              misconception pattern ("When is a GP01 required?"). Every
+              sentence carries the provisions that support it; nothing in
+              it is generated at query time or reads as a determination. */}
+          {premise && (
+            <aside className="mt-8 rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950" aria-labelledby="premise-note-title">
+              <p className={PROVENANCE_LABEL_CLASS}>Before the results</p>
+              <h2 id="premise-note-title" className="mt-1 font-serif text-lg font-bold tracking-tight text-ink">
+                {premise.title}
+              </h2>
+              <ol className="mt-2 flex flex-col gap-2 leading-relaxed">
+                {premise.sentences.map((sentence, i) => (
+                  <li key={i}>
+                    {sentence.text}{" "}
+                    <span className="whitespace-nowrap text-xs text-muted">
+                      {sentence.cites.map((id, j) => (
+                        <span key={id}>
+                          {j > 0 && ", "}
+                          <Link href={readerHrefFor({ id, reg_key: citeRegKey(id) })} className="underline hover:text-accent">
+                            {citeLabel(id)}
+                          </Link>
+                        </span>
+                      ))}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 text-xs text-muted">
+                This note is written from the provisions linked beside each sentence and is the same for everyone who asks;
+                it is not a determination for your facility. Read the linked text and check the official source.
+              </p>
+            </aside>
+          )}
           {/* Ask Track B: the question routed to a question map. The map's
               canonical rows lead each group; the retrieval hits follow,
               grouped by regulation; the rest go under "Other matches". */}
           <p className="mt-8 text-sm">
             <span className="font-mono text-eyebrow uppercase text-tag">Mapped question:</span>{" "}
-            <span className="font-semibold text-ink">{askMap.name}</span>
+            <span className="font-semibold text-ink">{mapTitle(askMap, stated)}</span>
           </p>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">{askMap.factors}</p>
           <p className="mt-1 text-xs text-muted">
@@ -799,6 +850,25 @@ export default async function SearchPage(props: PageProps<"/search">) {
                 ))}
               </ol>
             </section>
+          )}
+          {/* What a stated fact left out, and the way back (review 4, 7 Oct
+              2026): "Not shown because you said natural gas: diesel engine
+              provisions (GP06, Subpart IIII). Show them". */}
+          {omitted.map((o) => (
+            <p key={o.facet} className="mt-6 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink-soft">
+              <span className="font-medium text-ink">Not shown because you said {o.said}:</span> {o.omitted}.{" "}
+              <Link href={askHref(q, includeBasis, jurisdiction, regFilter, false, true)} className="font-medium underline">
+                Show them
+              </Link>
+            </p>
+          ))}
+          {allFacets && askMap.facets && (
+            <p className="mt-6 text-xs text-muted">
+              Showing every row of the map, including the ones for facts your question did not state.{" "}
+              <Link href={askHref(q, includeBasis, jurisdiction, regFilter)} className="font-medium underline">
+                Back to the filtered view
+              </Link>
+            </p>
           )}
           <p className="mt-6 text-xs text-muted">
             The groups are a map of where the rules for this question live; the provisions inside them are the

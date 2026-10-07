@@ -14,7 +14,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CLOSED_PERMIT_BADGE, CLOSED_PERMIT_REG_KEYS, isClosedPermit } from "../src/lib/regulation-pure";
-import { matchQuestionMap } from "../src/lib/question-maps";
+import { layoutAsk } from "../src/lib/question-maps";
 import { EVAL_QUESTIONS, evaluateQuestion, rowsNeeded, type EvalQuestion } from "../src/lib/semantic-eval";
 
 test("closed permits are exactly gp09 and gp10 (same literal as corpus_qa.sql check 18)", () => {
@@ -128,8 +128,8 @@ test("noBasis and minFederal checks", () => {
   assert.match(twoFederal.failures.join("\\n"), /2 federal rows in the top 10; need 3/);
 });
 
-test("the list carries the original 24 questions unchanged, the maps batch 3 and 4 questions, then the three reviewer questions", () => {
-  assert.equal(EVAL_QUESTIONS.length, 29);
+test("the list carries the original 24 questions unchanged, the maps batch 3 and 4 questions, then the three reviewer questions and the three review-4 rows", () => {
+  assert.equal(EVAL_QUESTIONS.length, 32);
   const plain = EVAL_QUESTIONS.slice(0, 26);
   for (const e of plain) {
     assert.equal(e.topN, undefined, e.q);
@@ -142,14 +142,20 @@ test("the list carries the original 24 questions unchanged, the maps batch 3 and
       "When is a GP01 required?",
       "What regulations apply to a natural gas-fired engine?",
       "What Colorado and federal requirements could apply to storage vessels?",
+      "Do I need a GP12?",
+      "What applies to a diesel engine?",
+      "What rules apply to a produced water storage tank at a well site?",
     ]
   );
   // the measured 30 Sep production top 10 for each passes its own question
-  // (since maps batch 3 the GP01 question also pins the storage-tanks map, so
-  // the routed key is passed the way scripts/ask-eval.ts passes it)
+  // (since review 4 the GP01 question pins the GP01 premise map and checks
+  // the shown order, so the layout is passed the way scripts/ask-eval.ts
+  // passes it)
   const gp01: EvalQuestion = EVAL_QUESTIONS[26];
+  const hits = [hit("sec-gp01-I"), hit("sec-gp01-I-E"), hit("sec-gp01-I-A-1"), hit("sec-gp01-IX"), hit("sec-gp01-top-REG-gp01")];
+  const layout = layoutAsk(gp01.q, hits.map((h) => ({ ...h, reg_key: "gp01", jurisdiction_level: "state", title: "" })));
   assert.equal(
-    evaluateQuestion(gp01, [hit("sec-gp01-I"), hit("sec-gp01-I-E"), hit("sec-gp01-I-A-1"), hit("sec-gp01-IX"), hit("sec-gp01-top-REG-gp01")], matchQuestionMap(gp01.q)?.key ?? null).pass,
+    evaluateQuestion(gp01, hits, layout.map?.key ?? null, { ids: layout.shownIds, noteKey: layout.note?.key ?? null, title: layout.summary?.title ?? null }).pass,
     true
   );
 });

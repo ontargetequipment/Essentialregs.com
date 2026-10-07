@@ -204,10 +204,12 @@ export async function semanticSearch(
   }
   const hits = (data ?? []) as SemanticHit[];
 
-  // Question map (Ask Track B): routed on the expanded question, after
-  // retrieval, never fed back into it. Logged beside the expansion so the
-  // owner can see which questions took a map.
-  const map = matchQuestionMap(expanded);
+  // Question map (Ask Track B): routed after retrieval, never fed back into
+  // it. matchQuestionMap() expands the question itself; it is given the raw
+  // one so a premise note (src/lib/premise-notes.ts) sees what was typed.
+  // Logged beside the expansion so the owner can see which questions took
+  // a map.
+  const map = matchQuestionMap(q);
 
   // Log (best effort; never fails the search).
   const { error: logErr } = await admin.from("search_queries").insert({
