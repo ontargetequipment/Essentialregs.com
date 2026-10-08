@@ -28,6 +28,8 @@ import { isClosedPermit } from "@/lib/regulation-pure";
  * of GP06 III.E.1 ranked it third for the natural-gas compressor question,
  * a row the page does not show for that question. The two reviewer rows
  * carry their new checks; three rows are new (the 30th to 32nd). Score: 32/32.
+ * The five topic notes (7 Oct 2026) add the 33rd to 37th rows, each with
+ * its premise key and shown checks. Score: 37/37.
  *
  * Original description: Each is a question a Colorado oil & gas compliance person would
  * actually type, with the provision(s) that should appear in the top 5,
@@ -469,5 +471,51 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     title: "Produced water storage tanks and tank batteries",
     shown: [{ any: ["sec-gp05-I-A"] }, { any: ["sec-gp08-I-B"] }, { none: ["sec-gp01-", "sec-gp07-", "sec-7-B-I-B-9"] }],
     note: "the contents are stated: GP05 and GP08 shown, GP01 (condensate), GP07 (hydrocarbon liquid loadout) and the condensate storage tank definition left out, the map titled for produced water",
+  },
+  // ---- The five topic notes (7 Oct 2026, shipped on the owner's instruction): note present, its cited rows shown first ----
+  {
+    q: "Do I need an APEN for every emission point at my site?",
+    expect: ["sec-3-A-II-D", "sec-3-A-II-A", "sec-3-B-II-D"],
+    topN: 10,
+    map: "premise-apen-every-point",
+    premise: "apen-every-point",
+    shown: [{ any: ["sec-3-A-II-A-1"], topN: 3 }, { any: ["sec-3-A-II-D-1-a"] }, { any: ["sec-3-A-II-D-1-fff"] }],
+    note: "the APEN note: Regulation 3 Part A II.A.1 leads, the emission-rate and storage-tank exemptions are shown; retrieval finds the APEN exemptions in the top 10",
+  },
+  {
+    q: "Does my well site need a Title V operating permit?",
+    expect: ["sec-3-C-", "sec-3-A-I-B", "sec-gp12-I-E"],
+    topN: 10,
+    map: "premise-title-v-well-site",
+    premise: "title-v-well-site",
+    shown: [{ any: ["sec-3-C-II-A-1"], topN: 3 }, { any: ["sec-gp12-I-E"] }],
+    note: "the Title V note: Regulation 3 Part C II.A.1 leads, the general permits' minor-source condition shown; retrieval finds a Part C row, the major-source definition or GP12 I.E in the top 10",
+  },
+  {
+    q: "If my tank battery is exempt from a construction permit, does Regulation 7 still apply?",
+    expect: ["sec-3-B-II-D", "sec-3-A-II-D", "sec-7-B-I-A", "sec-7-B-II-C", "sec-7-B-I-D"],
+    topN: 10,
+    map: "premise-exempt-still-regulated",
+    premise: "exempt-still-regulated",
+    shown: [{ any: ["sec-3-B-II-D"], topN: 5 }, { any: ["sec-7-B-I-A"] }],
+    note: "the exemption note: the Part B II.D sentence (a permit exemption does not affect other regulations) and Regulation 7 Part B I.A shown; retrieval finds an exemption row or a Regulation 7 Part B applicability or tank row in the top 10",
+  },
+  {
+    q: "Does OOOOb apply to an existing well drilled before 2022?",
+    expect: ["sec-oooob-60.5365b", "sec-ooooc-60.5360c", "sec-oooob-60.5370b"],
+    topN: 10,
+    map: "premise-oooob-existing-well",
+    premise: "oooob-existing-well",
+    shown: [{ any: ["sec-oooob-60.5365b"], topN: 1 }, { any: ["sec-oooob-60.5365b-(a)-(1)"] }, { any: ["sec-ooooc-60.5360c"] }],
+    note: "the OOOOb note: § 60.5365b first, the well modification rule and OOOOc's emission guidelines shown; retrieval finds the applicability, compliance-date or OOOOc purpose row in the top 10",
+  },
+  {
+    q: "Can I register a diesel engine under GP02?",
+    expect: ["sec-gp02-I-A", "sec-gp06-I-A", "sec-gp12-I-A"],
+    topN: 10,
+    map: "premise-gp02-diesel",
+    premise: "gp02-diesel",
+    shown: [{ any: ["sec-gp02-I-A"], topN: 1 }, { any: ["sec-gp06-I-A"], topN: 3 }, { any: ["sec-gp12-I-A-2"] }],
+    note: "the GP02 diesel note (tried before the 'Is GP02 required?' note): GP02 I.A first, GP06 I.A in the first three, GP12 I.A.2 shown; retrieval finds a GP02, GP06 or GP12 applicability row in the top 10",
   },
 ];

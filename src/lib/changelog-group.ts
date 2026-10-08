@@ -42,6 +42,28 @@ export type ChangelogLine = {
    * logged against the surviving parent, one row per removed provision.
    */
   removed: number;
+  /**
+   * Imports that found the source document's version or effective date
+   * changed (change_type 'source_version_changed', 7 Oct 2026): one row per
+   * import, logged against the regulation root. With text_updated, added
+   * and removed these are the only regulatory changes (owner decision,
+   * 7 Oct 2026): the importer re-labels a run's text changes as
+   * transcription_corrected unless it also logged one of these.
+   */
+  sourceVersionChanged: number;
+  /**
+   * Provisions whose text we corrected to match the official source
+   * (change_type 'transcription_corrected'): [sic] markers, equations,
+   * extraction errors, the September re-imports over our earlier copy, and
+   * rows our copy had that the official text does not. Not an agency change.
+   */
+  transcriptionCorrected: number;
+  /**
+   * Provisions removed because they duplicated a document the corpus holds
+   * elsewhere (change_type 'duplicate_removed': Regulation 26's copy of
+   * Subpart JJJJ, 4 Oct 2026). Not an agency removal.
+   */
+  duplicateRemoved: number;
   /** Summaries the AI second pass approved as-is or corrected. */
   reviewed: number;
   /** Of those, the ones corrected before approving. */
@@ -79,6 +101,9 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
         linksUpdated: 0,
         added: 0,
         removed: 0,
+        sourceVersionChanged: 0,
+        transcriptionCorrected: 0,
+        duplicateRemoved: 0,
         reviewed: 0,
         corrected: 0,
         rewrittenReviewed: 0,
@@ -102,6 +127,15 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
         break;
       case "removed":
         line.removed += n;
+        break;
+      case "source_version_changed":
+        line.sourceVersionChanged += n;
+        break;
+      case "transcription_corrected":
+        line.transcriptionCorrected += n;
+        break;
+      case "duplicate_removed":
+        line.duplicateRemoved += n;
         break;
       case "summary_approved":
         line.reviewed += n;
@@ -136,7 +170,17 @@ export function foldChangelog(rows: ChangelogCountRow[]): ChangelogLine[] {
   return Array.from(lines.values())
     .filter(
       (l) =>
-        l.textUpdated + l.linksUpdated + l.added + l.removed + l.reviewed + l.rewrittenReviewed + l.rewrittenReviewedLater + l.rewrittenPending >
+        l.textUpdated +
+          l.linksUpdated +
+          l.added +
+          l.removed +
+          l.sourceVersionChanged +
+          l.transcriptionCorrected +
+          l.duplicateRemoved +
+          l.reviewed +
+          l.rewrittenReviewed +
+          l.rewrittenReviewedLater +
+          l.rewrittenPending >
         0
     )
     .sort((a, b) => (a.latest < b.latest ? 1 : a.latest > b.latest ? -1 : 0));
@@ -158,6 +202,9 @@ function plural(n: number, one: string, many: string): string {
  */
 export function describeLine(line: ChangelogLine): string[] {
   const parts: string[] = [];
+  // Regulatory changes: only what came from the agency (7 Oct 2026). The
+  // version line comes first; the provision counts of the same import follow.
+  if (line.sourceVersionChanged > 0) parts.push("official text updated to the agency's new version");
   if (line.textUpdated > 0) parts.push(`${plural(line.textUpdated, "provision", "provisions")} updated`);
   if (line.added > 0) parts.push(`${plural(line.added, "provision", "provisions")} added`);
   if (line.removed > 0) parts.push(`${plural(line.removed, "provision", "provisions")} removed`);
@@ -165,6 +212,12 @@ export function describeLine(line: ChangelogLine): string[] {
   // "22 provisions updated" for Regulation 7 under an intro that promised
   // agency-source text changes).
   if (line.linksUpdated > 0) parts.push(`links added or updated in ${plural(line.linksUpdated, "provision", "provisions")}`);
+  // Our own corrections (7 Oct 2026): never "provisions updated", which
+  // reads as an agency change.
+  if (line.transcriptionCorrected > 0) parts.push(`corrections to our copy of the text in ${plural(line.transcriptionCorrected, "provision", "provisions")}`);
+  if (line.duplicateRemoved > 0) {
+    parts.push(`${plural(line.duplicateRemoved, "provision", "provisions")} removed that duplicated another document in the corpus`);
+  }
   // Passes are not logged as changes, so a day on which every logged
   // review was a correction must not read as "98 AI reviewed (98
   // corrected)", which says every reviewed summary was wrong (7 Oct 2026).
@@ -193,17 +246,30 @@ export function describeLine(line: ChangelogLine): string[] {
 
 /**
  * The three sections of /changelog (review 4, 7 Oct 2026): what changed in
- * the official text, shown first and open; the links and sources; and the
- * summary work, collapsed to one line per day. A line can appear in more
- * than one section (a regulation re-imported and reviewed the same day).
+ * the official text, shown first and open; the links, sources and
+ * corrections to our own copy of the text (7 Oct 2026, second review of
+ * the page); and the summary work, collapsed to one line per day. A line
+ * can appear in more than one section (a regulation re-imported and
+ * reviewed the same day).
  */
 export type ChangelogSection = "regulatory" | "links" | "summaries";
 
 export const CHANGELOG_SECTIONS: { key: ChangelogSection; title: string; collapsed: boolean }[] = [
   { key: "regulatory", title: "Regulatory changes", collapsed: false },
-  { key: "links", title: "Links and sources", collapsed: false },
+  { key: "links", title: "Links, sources and transcription", collapsed: false },
   { key: "summaries", title: "Summary quality", collapsed: true },
 ];
+
+/**
+ * The one line "Regulatory changes" shows when no agency change is recorded
+ * (the normal state: every text change so far was ours). `sinceLabel` is
+ * the earliest day the changelog covers, already formatted
+ * ("September 14, 2026"), or null when nothing is recorded at all.
+ */
+export function regulatoryEmptyLine(sinceLabel: string | null): string {
+  const since = sinceLabel ? ` since ${sinceLabel}` : "";
+  return `No agency rule changes recorded${since}. Each regulation's page shows its current version and effective date.`;
+}
 
 /**
  * The explanation under the "Summary quality" heading. Every statement
@@ -220,9 +286,9 @@ export const SUMMARY_QUALITY_EXPLANATION =
 export function sectionTotal(line: ChangelogLine, section: ChangelogSection): number {
   switch (section) {
     case "regulatory":
-      return line.textUpdated + line.added + line.removed;
+      return line.textUpdated + line.added + line.removed + line.sourceVersionChanged;
     case "links":
-      return line.linksUpdated;
+      return line.linksUpdated + line.transcriptionCorrected + line.duplicateRemoved;
     case "summaries":
       return line.reviewed + line.rewrittenReviewed + line.rewrittenReviewedLater + line.rewrittenPending;
   }
@@ -240,7 +306,8 @@ export function sectionLines(lines: ChangelogLine[], section: ChangelogSection):
  */
 export function describeSection(line: ChangelogLine, section: ChangelogSection): string[] {
   const all = describeLine(line);
-  const isLinks = (p: string) => p.startsWith("links added or updated");
+  const isLinks = (p: string) =>
+    p.startsWith("links added or updated") || p.startsWith("corrections to our copy") || p.includes("duplicated another document");
   const isSummary = (p: string) => /\bsummar(?:y|ies)\b/.test(p);
   switch (section) {
     case "regulatory":
@@ -285,4 +352,72 @@ export function summaryDayTotal(lines: ChangelogLine[]): string {
   if (t.later > 0) parts.push(`${plural(t.later, "summary", "summaries")} rewritten (AI reviewed later)`);
   if (t.pending > 0) parts.push(`${plural(t.pending, "summary", "summaries")} rewritten, awaiting AI review`);
   return parts.join(" \u00b7 ");
+}
+
+/**
+ * What fetchChangelog() hands the page (src/lib/changelog.ts): the count
+ * rows and where they came from. `error` is set when neither the stored
+ * snapshot nor the live function answered; the page still renders.
+ */
+export type ChangelogResult = {
+  rows: ChangelogCountRow[];
+  /** When the rows were computed (the snapshot's computed_at), or null. */
+  computedAt: string | null;
+  /** "snapshot": the stored counts; "live": the aggregate (snapshot never written); "memory": the last good result this server saw; "none": nothing. */
+  source: "snapshot" | "live" | "memory" | "none";
+  error: string | null;
+};
+
+export type ChangelogDayGroup = { key: string; label: string; lines: ChangelogLine[] };
+
+export type ChangelogSectionView = {
+  key: ChangelogSection;
+  title: string;
+  collapsed: boolean;
+  groups: ChangelogDayGroup[];
+  /** The one line shown when the section has no groups. */
+  emptyLine: string;
+};
+
+export type ChangelogView = {
+  /** Set when the counts could not be loaded at all: the page says so and shows the sections empty. */
+  notice: string | null;
+  /** The earliest day recorded, as a key, or null. */
+  firstDay: string | null;
+  sections: ChangelogSectionView[];
+};
+
+export const CHANGELOG_UNAVAILABLE_NOTICE =
+  "The changelog could not be loaded right now. The regulations and their summaries are unaffected; try again in a few minutes.";
+
+/** The lines of a section grouped by day, newest first (the lines arrive newest first). */
+export function groupByDay(lines: ChangelogLine[], label: (dateKey: string) => string): ChangelogDayGroup[] {
+  const groups: ChangelogDayGroup[] = [];
+  for (const line of lines) {
+    const existing = groups.find((g) => g.key === line.dateKey);
+    if (existing) existing.lines.push(line);
+    else groups.push({ key: line.dateKey, label: label(line.dateKey), lines: [line] });
+  }
+  return groups;
+}
+
+/**
+ * The page's model from a fetch result. Pure: the page passes its date
+ * formatter in. With an error and no rows the notice is set and every
+ * section renders its empty line; with rows the regulatory section's empty
+ * line names the earliest recorded day.
+ */
+export function buildChangelogView(result: ChangelogResult, label: (dateKey: string) => string): ChangelogView {
+  const lines = foldChangelog(result.rows);
+  const firstDay = result.rows.reduce<string | null>((min, r) => (min === null || r.day < min ? r.day : min), null);
+  const notice = result.error && result.rows.length === 0 ? CHANGELOG_UNAVAILABLE_NOTICE : null;
+  const sections = CHANGELOG_SECTIONS.map((section) => ({
+    key: section.key,
+    title: section.title,
+    collapsed: section.collapsed,
+    groups: groupByDay(sectionLines(lines, section.key), label),
+    emptyLine:
+      section.key === "regulatory" && !notice ? regulatoryEmptyLine(firstDay ? label(firstDay) : null) : "Nothing recorded yet.",
+  }));
+  return { notice, firstDay, sections };
 }

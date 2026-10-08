@@ -13615,18 +13615,17 @@ def build_delete_statement(ids: list[str]) -> str:
 
 
 def build_provision_change_insert(ancestor_id: str, note: str) -> str:
-    # change_type is DB-constrained (summary_approved, summary_edited,
-    # summary_rejected, text_updated, added, summary_regenerated, removed and,
-    # since 20261007040000, links_updated -- the trigger
+    # A removal is logged as 'removed' against the surviving ancestor, one
+    # row per removed provision (change_type is DB-constrained; the trigger
     # log_provision_text_updated writes text_updated or links_updated itself
     # on every full_text change, by whether the visible letters and digits
-    # changed). There is no 'provision_removed' value, so a removal note is
-    # logged as 'text_updated' against the surviving ancestor (this is what
-    # was actually run for the Reg 7 re-import -- see
-    # pipeline/out/apply_reg7/finish.sql).
+    # changed). The hand-run SQL path has no finalize step: after running
+    # it, run changelog_sources.finalize_import_changelog() (the --execute
+    # path does so itself) so the row is re-labelled transcription_corrected
+    # unless the source version changed.
     return (
         "INSERT INTO provision_changes (provision_id, change_type, note)\nVALUES ("
-        f"{sql_dollar_quote(ancestor_id)}, {sql_dollar_quote('text_updated')}, "
+        f"{sql_dollar_quote(ancestor_id)}, {sql_dollar_quote('removed')}, "
         f"{sql_dollar_quote(note)});"
     )
 
@@ -14091,6 +14090,14 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
         if action["op"] == "insert":
             payloads = action["payloads"]
             client.table("provisions").insert(payloads).execute()
+            # One 'added' row per new provision. finalize_import_changelog()
+            # below re-labels it transcription_corrected unless this import
+            # also found a new source version (changelog_sources.py).
+            client.table("provision_changes").insert([
+                {"provision_id": p["id"], "change_type": "added",
+                 "note": f"{p.get('citation') or p['id']} added in re-import from the official text ({today})"}
+                for p in payloads
+            ]).execute()
             done += len(payloads)
             print(f"  inserted {done}/{total} (new chunk of {len(payloads)})")
         else:
@@ -14116,12 +14123,14 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
                 print(f"  WARNING: skipping removal note for {pid} — no surviving ancestor found.", file=sys.stderr)
                 continue
             row = db_by_id[pid]
-            note = f"{row.get('citation') or pid} removed in re-import from official CCR text (Sept 2026); no longer in the current regulation"
-            # change_type is DB-constrained (see build_provision_change_insert) --
-            # no 'provision_removed' value exists, so this is logged as
-            # 'text_updated' against the surviving ancestor.
+            note = f"{row.get('citation') or pid} ({pid}) removed in re-import from the official text ({today}); no longer in the current document"
+            # Logged as 'removed' against the surviving ancestor (one row per
+            # removed provision, as migration 20261004200000 does).
+            # finalize_import_changelog() below re-labels it
+            # transcription_corrected unless this import also found a new
+            # source version.
             client.table("provision_changes").insert({
-                "provision_id": ancestor, "change_type": "text_updated", "note": note,
+                "provision_id": ancestor, "change_type": "removed", "note": note,
             }).execute()
 
         print(f"Deleting {len(c['obsolete'])} obsolete row(s)...")
@@ -14129,6 +14138,15 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
             chunk = c["obsolete"][i:i + EXECUTE_CHUNK]
             client.table("provisions").delete().in_("id", chunk).execute()
             print(f"  deleted {i + len(chunk)}/{len(c['obsolete'])}")
+
+    # What this run tells /changelog: an agency version change is logged as
+    # its own row and keeps the run's text/added/removed rows regulatory;
+    # otherwise they are re-labelled as corrections of our own copy. Then
+    # the stored changelog is refreshed (the page never aggregates live).
+    from changelog_sources import finalize_import_changelog
+
+    print("Finalizing the changelog for this import...")
+    finalize_import_changelog(client, getattr(args, "reg", None) or "", now_iso)
 
     print("Execute complete.")
 

@@ -240,6 +240,18 @@ jobs:
         run: |
           python embed.py --reg "$REG"
 
+      - name: Refresh the stored changelog counts
+        # /changelog reads a stored snapshot, not a live aggregate (7 Oct
+        # 2026). The execute path refreshes it itself; this is the backstop
+        # after the chained run and the embed step, and after a dry run it
+        # only recomputes what is already there.
+        if: ${{ always() && inputs.execute }}
+        working-directory: pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python refresh_changelog.py
+
       - name: Open a pull request with the spot-check sample
         if: ${{ inputs.execute && !inputs.skip_summaries && steps.chain.outcome == 'success' }}
         env:

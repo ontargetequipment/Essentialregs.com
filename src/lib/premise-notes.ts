@@ -36,17 +36,25 @@ export type PremiseSentence = {
 };
 
 export type PremiseNote = {
-  /** "gp01-required" */
+  /** "gp01-required", "apen-every-point" */
   key: string;
-  /** "GP01" */
-  permit: string;
-  /** Lower-case reg key, "gp01". */
-  regKey: string;
+  /**
+   * "permit": one of the eleven "is GP<nn> required" notes, matched by
+   * permit number; "topic": a note on another misconception (7 Oct 2026:
+   * the five below), matched by its own test on the question.
+   */
+  kind: "permit" | "topic";
+  /** "GP01" (permit notes only). */
+  permit?: string;
+  /** Lower-case reg key, "gp01" (permit notes only). */
+  regKey?: string;
   /** Heading of the note box. */
   title: string;
   sentences: PremiseSentence[];
   /** The map the question is answered with. */
   map: QuestionMap;
+  /** Topic notes: true when the normalised question is this misconception. */
+  matches?: (normalisedQuestion: string) => boolean;
 };
 
 /** The eleven general permits a note exists for (GP04 is not active and has no document in the corpus). */
@@ -538,6 +546,7 @@ function buildNote(spec: PermitSpec): PremiseNote {
   ];
   return {
     key: `gp${spec.num}-required`,
+    kind: "permit",
     permit,
     regKey: `gp${spec.num}`,
     title: `Is ${permit} required?`,
@@ -553,8 +562,242 @@ function buildNote(spec: PermitSpec): PremiseNote {
   };
 }
 
-/** The eleven notes, in permit order. Every id is verified against the database by corpus_qa.sql check 20 (scripts/question-map-ids.sql). */
-export const PREMISE_NOTES: PremiseNote[] = PERMITS.map(buildNote);
+/** The eleven permit notes, in permit order. */
+export const PERMIT_NOTES: PremiseNote[] = PERMITS.map(buildNote);
+
+// ---- topic notes (7 Oct 2026) ------------------------------------------------
+//
+// Five further misconceptions the corpus supports, proposed in the review 4
+// report and shipped on the owner's instruction. Same rules as the permit
+// notes: fixed text, every sentence cited, nothing that reads as a
+// determination. Each is matched by its own test on the normalised
+// question, before the permit notes (a diesel GP02 question would otherwise
+// take the "Is GP02 required?" note).
+
+const any = (q: string, ...res: RegExp[]) => res.some((re) => re.test(q));
+const all = (q: string, ...res: RegExp[]) => res.every((re) => re.test(q));
+
+const APEN_SCOPE = String.raw`(?:every|each|all|any)\s+(?:single\s+)?(?:emission\s+(?:point|unit|source)s?|pieces?\s+of\s+equipment|equipment|tanks?|engines?|units?|sources?|points?)`;
+
+type TopicSpec = Omit<PremiseNote, "kind" | "map"> & { map: Omit<QuestionMap, "triggers"> };
+
+const TOPICS: TopicSpec[] = [
+  {
+    key: "apen-every-point",
+    title: "Does every emission point need an APEN?",
+    matches: (q) =>
+      any(
+        q,
+        new RegExp(String.raw`\b${APEN_SCOPE}\b[^?]*\bapens?\b`, "i"),
+        new RegExp(String.raw`\bapens?\b[^?]*\b(?:for|on|per|from)\s+${APEN_SCOPE}\b`, "i")
+      ),
+    sentences: [
+      {
+        text: "An Air Pollutant Emission Notice is required for a stationary source's emission points unless the point is exempt under Regulation 3 Part A, Section II.D.",
+        cites: [REG3_APEN_REQUIRED],
+      },
+      {
+        text: "The exemptions include individual emission points with uncontrolled actual emissions of any criteria pollutant below one ton per year in a nonattainment area or two tons per year elsewhere, and a list of specific equipment and activities, among them storage tanks that meet the criteria in II.D.1.fff.",
+        cites: ["sec-3-A-II-D-1-a", "sec-3-A-II-D-1-fff", "sec-3-A-II-D-1-fff-(i)"],
+      },
+      {
+        text: "An emission unit exempt from filing an APEN must still comply with every other requirement that applies to it.",
+        cites: [REG3_APEN_EXEMPTIONS],
+      },
+      {
+        text: "Sources exempt from filing an APEN are also exempt from the construction permit requirement under Part B, Section II.D.1.a, and a permit exemption does not affect any other state or federal regulation that applies.",
+        cites: ["sec-3-B-II-D-1-a", REG3_PERMIT_EXEMPTIONS],
+      },
+    ],
+    map: {
+      key: "premise-apen-every-point",
+      name: "APENs: which emission points need one, and which are exempt",
+      factors: "Whether an emission point needs an APEN is decided under Regulation 3 Part A: Section II.A requires one and Section II.D lists the exemptions by emission rate and by equipment type.",
+      provisions: [
+        ...REG3_ROWS.filter((r) => r.id !== REG3_GENERAL_PERMIT_DEFINITION),
+        { id: "sec-3-A-II-D-1-a", group: "Colorado permitting and APEN", why: "Regulation 3 Part A II.D.1.a — the emission-rate exemption: under one ton per year (nonattainment) or two tons per year (attainment) of any criteria pollutant, uncontrolled actual" },
+        { id: "sec-3-A-II-D-1-fff", group: "Colorado permitting and APEN", why: "Regulation 3 Part A II.D.1.fff — storage tanks exempt from an APEN when they meet all of the listed criteria" },
+        { id: "sec-3-A-II-D-1-fff-(i)", group: "Colorado permitting and APEN", why: "Regulation 3 Part A II.D.1.fff.(i) — the tank throughput criterion, under 400,000 gallons a year" },
+        { id: "sec-3-B-II-D-1-a", group: "Colorado permitting and APEN", why: "Regulation 3 Part B II.D.1.a — APEN-exempt sources are also exempt from the construction permit requirement" },
+      ],
+    },
+  },
+  {
+    key: "title-v-well-site",
+    title: "Does a well site need a Title V operating permit?",
+    matches: (q) =>
+      any(
+        q,
+        /\btitle\s*v\b[^?]*\b(?:required|needed|necessary|mandatory|apply|applies|applicable|need|trigger|triggered)\b/i,
+        /\b(?:need|needs|require|requires|required|have\s+to\s+get|must\s+get|must\s+have|get|obtain|subject\s+to)\b[^?]*\btitle\s*v\b/i,
+        /\boperating\s+permit\b[^?]*\b(?:well\s+site|well\s+pad|well\s+production\s+facilit|tank\s+batter|compressor\s+station|minor\s+source|small\s+(?:source|site|facility))/i,
+        /\b(?:well\s+site|well\s+pad|well\s+production\s+facilit|tank\s+batter|compressor\s+station|minor\s+source)[^?]*\b(?:need|needs|require|requires|required)\b[^?]*\boperating\s+permit\b/i
+      ),
+    sentences: [
+      {
+        text: "A Title V operating permit under Regulation 3 Part C is required only for the sources Part C lists: an affected source, a major source, a source required to hold a PSD permit, a source required to hold a nonattainment New Source Review permit, and the other categories in Section II.A.1.",
+        cites: ["sec-3-C-II-A-1", "sec-3-C-II-A-1-a", "sec-3-C-II-A-1-b", "sec-3-C-II-A-1-c", "sec-3-C-II-A-1-d"],
+      },
+      {
+        text: "Each APCD general permit is open only to a true minor or synthetic minor source for the operating permit program, so a facility registered under one is, by the permit's own terms, not a Title V source at the time it registers.",
+        cites: ["sec-gp12-I-E", "sec-gp02-I-A-1", "sec-gp06-I-A-1"],
+      },
+      {
+        text: "Emission units exempt from an APEN or from a construction permit still count when Title V applicability is determined.",
+        cites: [REG3_APEN_EXEMPTIONS, REG3_PERMIT_EXEMPTIONS],
+      },
+      {
+        text: "Whether a construction permit or an APEN is required is a separate question, decided under Regulation 3 Parts A and B.",
+        cites: [REG3_APEN_REQUIRED, REG3_APEN_EXEMPTIONS, REG3_PERMIT_REQUIRED_PART_B, REG3_PERMIT_REQUIRED, REG3_PERMIT_EXEMPTIONS],
+      },
+    ],
+    map: {
+      key: "premise-title-v-well-site",
+      name: "Title V operating permits: which sources Regulation 3 Part C covers",
+      factors: "Title V applies to the source categories Regulation 3 Part C, Section II.A.1 lists, chiefly major sources; the general permits are open only to true minor or synthetic minor sources for the operating permit program.",
+      provisions: [
+        { id: "sec-3-C-II-A-1", group: "Colorado permitting and APEN", why: "Regulation 3 Part C II.A.1 — the sources that may not operate without an operating permit" },
+        { id: "sec-3-C-II-A-1-a", group: "Colorado permitting and APEN", why: "Regulation 3 Part C II.A.1.a — any affected source" },
+        { id: "sec-3-C-II-A-1-b", group: "Colorado permitting and APEN", why: "Regulation 3 Part C II.A.1.b — any major source (with the particulate exception stated there)" },
+        { id: "sec-3-C-II-A-1-c", group: "Colorado permitting and APEN", why: "Regulation 3 Part C II.A.1.c — a source required to hold a PSD permit" },
+        { id: "sec-3-C-II-A-1-d", group: "Colorado permitting and APEN", why: "Regulation 3 Part C II.A.1.d — a source required to hold a nonattainment New Source Review permit" },
+        ...REG3_ROWS.filter((r) => r.id !== REG3_GENERAL_PERMIT_DEFINITION),
+        { id: "sec-gp12-I-E", group: "General Permit options", why: "GP12 I.E — true minor or synthetic minor sources only, for the operating permit, NSR, PSD and MACT programs" },
+        { id: "sec-gp02-I-A-1", group: "General Permit options", why: "GP02 I.A.1 — a true minor or synthetic minor source for the operating permit and NSR programs" },
+        { id: "sec-gp06-I-A-1", group: "General Permit options", why: "GP06 I.A.1 — a true minor or synthetic minor source for the operating permit, PSD and NSR programs" },
+      ],
+    },
+  },
+  {
+    key: "exempt-still-regulated",
+    title: "If a source is exempt from a permit, do other rules still apply?",
+    matches: (q) =>
+      all(
+        q,
+        /\bexempt/i,
+        /\b(?:permit|apen)s?\b/i,
+        /\b(?:still|also|anyway|regardless|other\s+(?:rules|requirements|regulations)|means?|free\s+(?:of|from)|off\s+the\s+hook|nothing\s+else|no\s+(?:other\s+)?(?:rules|requirements))\b/i
+      ),
+    sentences: [
+      {
+        text: "A construction permit exemption under Regulation 3 Part B, Section II.D does not affect the applicability of any other state or federal regulation to the source.",
+        cites: [REG3_PERMIT_EXEMPTIONS],
+      },
+      {
+        text: "An emission unit exempt from filing an APEN must still comply with every requirement that otherwise applies to it, including Title V, PSD, nonattainment New Source Review, opacity limits and odor rules.",
+        cites: [REG3_APEN_EXEMPTIONS],
+      },
+      {
+        text: "The construction permit exemptions begin with the sources exempt from filing an APEN under Part A, Section II.D.",
+        cites: ["sec-3-B-II-D-1-a"],
+      },
+      {
+        text: "Regulation 7's requirements apply by their own applicability provisions, for example Part B, Section I.A for oil and gas operations that collect, store or handle hydrocarbon liquids or produced water.",
+        cites: ["sec-7-B-I-A", "sec-7-B-I-A-1"],
+      },
+    ],
+    map: {
+      key: "premise-exempt-still-regulated",
+      name: "Permit and APEN exemptions: what they do and do not change",
+      factors: "An exemption from a construction permit or an APEN under Regulation 3 removes that filing only; every other applicable requirement, state or federal, applies by its own terms.",
+      provisions: [
+        ...REG3_ROWS.filter((r) => r.id !== REG3_GENERAL_PERMIT_DEFINITION),
+        { id: "sec-3-B-II-D-1-a", group: "Colorado permitting and APEN", why: "Regulation 3 Part B II.D.1.a — the construction permit exemptions start from the APEN exemptions" },
+        { id: "sec-7-B-I-A", group: "Colorado standards", why: "Regulation 7 Part B I.A — applicability of the hydrocarbon liquids and produced water requirements" },
+        { id: "sec-7-B-I-A-1", group: "Colorado standards", why: "Regulation 7 Part B I.A.1 — applies to oil and gas operations that collect, store or handle hydrocarbon liquids or produced water, by its own terms" },
+      ],
+    },
+  },
+  {
+    key: "oooob-existing-well",
+    title: "Does NSPS Subpart OOOOb apply to an existing well?",
+    matches: (q) =>
+      all(
+        q,
+        /\b(?:oooo\s*b|subpart\s+oooob|60\.5365b)\b/i,
+        /\b(?:existing|old|older|legacy|already|before\s+(?:december\s+)?(?:6,?\s+)?2022|pre-?2022|prior\s+to|drilled\s+(?:in|before)|built\s+(?:in|before)|grandfather)/i
+      ),
+    sentences: [
+      {
+        text: "Subpart OOOOb applies to an affected facility in the crude oil and natural gas source category for which construction, modification or reconstruction commenced after December 6, 2022.",
+        cites: ["sec-oooob-60.5365b"],
+      },
+      {
+        text: "A facility built before that date is not an OOOOb affected facility by its age alone, but a later modification or reconstruction can bring it in: for a well, a modification occurs in the circumstances § 60.5365b(a)(1) lists in addition to § 60.14, and for a tank battery the definitions in § 60.5365b(e)(3) decide when an existing battery becomes a storage vessel affected facility.",
+        cites: ["sec-oooob-60.5365b", "sec-oooob-60.5365b-(a)-(1)", "sec-oooob-60.5365b-(e)-(3)"],
+      },
+      {
+        text: "A liquids unloading event is not a modification of a well.",
+        cites: ["sec-oooob-60.5365b-(a)-(2)"],
+      },
+      {
+        text: "Existing designated facilities are covered instead by the emission guidelines of Subpart OOOOc under Clean Air Act section 111(d).",
+        cites: ["sec-ooooc-60.5360c"],
+      },
+      {
+        text: "Compliance with OOOOb is required by May 7, 2024 or at initial startup, whichever is later, with the exceptions § 60.5370b(a) lists.",
+        cites: ["sec-oooob-60.5370b-(a)"],
+      },
+    ],
+    map: {
+      key: "premise-oooob-existing-well",
+      name: "NSPS OOOOb and existing facilities: construction, modification and reconstruction dates",
+      factors: "OOOOb applicability turns on when construction, modification or reconstruction commenced (after December 6, 2022); existing facilities fall under OOOOc's emission guidelines unless a later modification or reconstruction brings them into OOOOb.",
+      provisions: [
+        { id: "sec-oooob-60.5365b", group: "Federal NSPS", why: "§ 60.5365b — am I subject to this subpart: affected facilities with construction, modification or reconstruction after December 6, 2022" },
+        { id: "sec-oooob-60.5365b-(a)-(1)", group: "Federal NSPS", why: "§ 60.5365b(a)(1) — when a modification of an existing well occurs, in addition to § 60.14" },
+        { id: "sec-oooob-60.5365b-(a)-(2)", group: "Federal NSPS", why: "§ 60.5365b(a)(2) — a liquids unloading event is not a modification" },
+        { id: "sec-oooob-60.5365b-(e)-(3)", group: "Federal NSPS", why: "§ 60.5365b(e)(3) — reconstruction and modification definitions for an existing tank battery" },
+        { id: "sec-oooob-60.5370b-(a)", group: "Federal NSPS", why: "§ 60.5370b(a) — the compliance date: May 7, 2024 or initial startup, whichever is later" },
+        { id: "sec-ooooc-60.5360c", group: "Federal NSPS", why: "§ 60.5360c — OOOOc's emission guidelines for existing (designated) facilities" },
+      ],
+    },
+  },
+  {
+    key: "gp02-diesel",
+    title: "Can a diesel engine register under GP02?",
+    matches: (q) => all(q, /\bGP02\b/, /\bdiesel\b/i),
+    sentences: [
+      {
+        text: "GP02 can be used only for natural gas fired reciprocating internal combustion engines at an oil and gas stationary source.",
+        cites: [gp("02", "I-A")],
+      },
+      {
+        text: "A diesel fuel-fired reciprocating internal combustion engine, including a portable unit, is the equipment GP06 covers.",
+        cites: [gp("06", "I-A")],
+      },
+      {
+        text: "At a well production facility, GP12 covers both natural gas-fired and diesel fuel-fired reciprocating internal combustion engines.",
+        cites: [gp("12", "I-A-1"), gp("12", "I-A-2")],
+      },
+      REG3_SENTENCE,
+      {
+        text: "If a permit is needed and neither general permit fits, the alternative is an individual construction permit under Regulation 3 Part B.",
+        cites: [gp("06", "IX-E-3"), gp("02", "XI-D-3")],
+      },
+    ],
+    map: {
+      key: "premise-gp02-diesel",
+      name: "Diesel engines and GP02: which general permit covers which fuel",
+      factors: "GP02 is written for natural gas fired engines and GP06 for diesel fuel-fired engines; GP12 covers both at a well production facility; whether a permit or an APEN is required at all is decided under Regulation 3.",
+      provisions: [
+        { id: gp("02", "I-A"), group: PREMISE_GROUP_APPLICABILITY, why: "GP02 I.A — natural gas fired reciprocating internal combustion engines only" },
+        { id: gp("06", "I-A"), group: PREMISE_GROUP_APPLICABILITY, why: "GP06 I.A — diesel fuel-fired reciprocating internal combustion engines, including portable units" },
+        { id: gp("12", "I-A-1"), group: PREMISE_GROUP_APPLICABILITY, why: "GP12 I.A.1 — natural gas-fired engines at a well production facility" },
+        { id: gp("12", "I-A-2"), group: PREMISE_GROUP_APPLICABILITY, why: "GP12 I.A.2 — diesel fuel-fired engines at a well production facility" },
+        ...REG3_ROWS,
+        { id: gp("06", "IX-E-3"), group: PREMISE_GROUP_ALTERNATIVES, why: "GP06's own terms: a source may hold an individual construction permit under Regulation 3 Part B instead" },
+        { id: gp("02", "XI-D-3"), group: PREMISE_GROUP_ALTERNATIVES, why: "GP02's own terms: a source may hold an individual construction permit under Regulation 3 Part B instead" },
+      ],
+    },
+  },
+];
+
+/** The five topic notes (7 Oct 2026), in the order above. */
+export const TOPIC_NOTES: PremiseNote[] = TOPICS.map((t) => ({ ...t, kind: "topic", map: { ...t.map, triggers: [] } }));
+
+/** Every note: the eleven permit notes, then the topic notes. Every id is verified against the database by corpus_qa.sql check 20 (scripts/question-map-ids.sql). */
+export const PREMISE_NOTES: PremiseNote[] = [...PERMIT_NOTES, ...TOPIC_NOTES];
 
 // ---- matching ------------------------------------------------------------------
 
@@ -626,11 +869,17 @@ export function premisePermitNumber(question: string): string | null {
   return null;
 }
 
-/** The premise note a question matches (raw or expanded question), or null. */
+/**
+ * The premise note a question matches (raw or expanded question), or null.
+ * Topic notes are tried first (their tests are the more specific), then
+ * the permit notes by permit number.
+ */
 export function matchPremiseNote(question: string): PremiseNote | null {
+  const q = normaliseQuestion(question);
+  for (const n of TOPIC_NOTES) if (n.matches && n.matches(q)) return n;
   const num = premisePermitNumber(question);
   if (!num) return null;
-  return PREMISE_NOTES.find((n) => n.regKey === `gp${num}`) ?? null;
+  return PERMIT_NOTES.find((n) => n.regKey === `gp${num}`) ?? null;
 }
 
 /** The note whose map has this key ("premise-gp01"), or null. */

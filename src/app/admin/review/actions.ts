@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin";
+import { refreshChangelogSnapshot } from "@/lib/changelog-refresh";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -22,7 +23,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * 20261006090000) refuses any other approval, and corpus QA check 21
  * (approved_outside_pipeline) fails CI if one ever appears.
  */
-function revalidateAfterReview() {
+async function revalidateAfterReview() {
+  // /changelog reads a stored snapshot (7 Oct 2026): refresh it so the
+  // review just logged shows, then revalidate. A failed refresh is logged,
+  // not raised -- the review itself is already written.
+  await refreshChangelogSnapshot();
   revalidatePath("/regulations/[reg]", "page");
   revalidatePath("/admin/review");
   revalidatePath("/changelog");
@@ -55,7 +60,7 @@ export async function sendBackToPending(formData: FormData): Promise<void> {
     });
   if (changeError) throw new Error(changeError.message);
 
-  revalidateAfterReview();
+  await revalidateAfterReview();
 }
 
 /**
@@ -104,7 +109,7 @@ export async function saveEditForReview(formData: FormData): Promise<void> {
     });
   if (changeError) throw new Error(changeError.message);
 
-  revalidateAfterReview();
+  await revalidateAfterReview();
 }
 
 export async function rejectSummary(formData: FormData): Promise<void> {
@@ -134,5 +139,5 @@ export async function rejectSummary(formData: FormData): Promise<void> {
     });
   if (changeError) throw new Error(changeError.message);
 
-  revalidateAfterReview();
+  await revalidateAfterReview();
 }

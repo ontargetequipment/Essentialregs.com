@@ -416,20 +416,33 @@ class _FakeQuery:
         self.payload = payload
         self.ids = None
         self.eq_id = None
+        self.filters: list[tuple] = []
 
     def in_(self, col, ids):
         self.ids = list(ids)
         return self
 
     def eq(self, col, val):
-        assert col == "id"
-        self.eq_id = val
+        # provisions updates match on id; the changelog finalize step
+        # (changelog_sources.py) filters other columns, recorded as-is.
+        if col == "id":
+            self.eq_id = val
+        else:
+            self.filters.append(("eq", col, val))
+        return self
+
+    def like(self, col, val):
+        self.filters.append(("like", col, val))
+        return self
+
+    def gte(self, col, val):
+        self.filters.append(("gte", col, val))
         return self
 
     def execute(self):
         call = {
             "table": self.table.name, "kind": self.kind, "payload": self.payload,
-            "ids": self.ids, "id": self.eq_id,
+            "ids": self.ids, "id": self.eq_id, "filters": list(self.filters),
         }
         self.table.client.calls.append(call)
         fail_at = self.table.client.fail_at_call
@@ -456,6 +469,9 @@ class _FakeTable:
     def delete(self):
         return _FakeQuery(self, "delete")
 
+    def select(self, *cols):
+        return _FakeQuery(self, "select")
+
 
 class _FakeClient:
     def __init__(self, fail_at_call=None, no_match_ids=frozenset()):
@@ -466,6 +482,10 @@ class _FakeClient:
 
     def table(self, name):
         return self._tables.setdefault(name, _FakeTable(name, self))
+
+    def rpc(self, name, params=None):
+        # The changelog snapshot refresh at the end of an execute.
+        return _FakeQuery(_FakeTable(f"rpc:{name}", self), "rpc", params)
 
 
 class _FakeSupabaseModuleCtx:
@@ -507,7 +527,7 @@ class CmdApplyExecuteEndToEndTests(unittest.TestCase):
                 os.environ[k] = v
 
     def _args(self, yes=True):
-        return SimpleNamespace(yes=yes)
+        return SimpleNamespace(yes=yes, reg=REG)
 
     def test_refuses_without_yes(self):
         c = _build_classification()
@@ -532,26 +552,51 @@ class CmdApplyExecuteEndToEndTests(unittest.TestCase):
         self.assertFalse(any(call["kind"] == "upsert" for call in fake.calls))
 
         kinds = [(call["table"], call["kind"]) for call in fake.calls]
-        # Every provisions update/insert precedes every provision_changes
-        # insert, which precedes every provisions delete (rule 3/4 — deletes
-        # last).
+        # Every provisions update/insert precedes the removal note, which
+        # precedes every provisions delete (rule 3/4 — deletes last). The
+        # 'added' rows are logged right after the insert chunk they belong to.
         provisions_writes = [i for i, k in enumerate(kinds) if k[0] == "provisions" and k[1] in ("update", "insert")]
-        first_note_insert = next(i for i, k in enumerate(kinds) if k == ("provision_changes", "insert"))
+        removal_note = next(
+            i for i, call in enumerate(fake.calls)
+            if call["table"] == "provision_changes" and call["kind"] == "insert"
+            and isinstance(call["payload"], dict) and call["payload"]["change_type"] == "removed"
+        )
         first_delete = next(i for i, k in enumerate(kinds) if k == ("provisions", "delete"))
-        self.assertLess(max(provisions_writes), first_note_insert)
-        self.assertLess(first_note_insert, first_delete)
+        self.assertLess(max(provisions_writes), removal_note)
+        self.assertLess(removal_note, first_delete)
 
-        # The removal note lands on the resolved surviving ancestor with the
-        # right change_type, and the delete covers exactly the obsolete id.
-        note_call = next(call for call in fake.calls if call["kind"] == "insert" and call["table"] == "provision_changes")
+        # The removal is logged as 'removed' on the resolved surviving
+        # ancestor (one row per removed provision, naming it), and the delete
+        # covers exactly the obsolete id.
+        note_call = fake.calls[removal_note]
         self.assertEqual(note_call["payload"]["provision_id"], PART_A)
-        # 'provision_removed' is not a valid change_type per the DB check
-        # constraint -- removal notes are logged as 'text_updated' (see
-        # build_provision_change_insert / pipeline/out/apply_reg7/finish.sql).
-        self.assertEqual(note_call["payload"]["change_type"], "text_updated")
+        self.assertIn(f"sec-{REG}-A-OLD", note_call["payload"]["note"])
 
         delete_call = next(call for call in fake.calls if call["kind"] == "delete")
         self.assertEqual(delete_call["ids"], [f"sec-{REG}-A-OLD"])
+
+        # The new row is logged as 'added' right after its insert chunk.
+        added = [call for call in fake.calls if call["table"] == "provision_changes" and call["kind"] == "insert"
+                 and isinstance(call["payload"], list)]
+        self.assertEqual([r["provision_id"] for c_ in added for r in c_["payload"]], [f"sec-{REG}-A-III"])
+        self.assertTrue(all(r["change_type"] == "added" for c_ in added for r in c_["payload"]))
+        insert_idx = next(i for i, k in enumerate(kinds) if k == ("provisions", "insert"))
+        self.assertEqual(kinds[insert_idx + 1], ("provision_changes", "insert"))
+
+        # After the writes the changelog is finalized (changelog_sources.py):
+        # the recorded source version is read, this run's regulatory-looking
+        # rows are re-labelled as corrections (no version change known for
+        # the test reg), and the stored changelog is refreshed, last.
+        self.assertTrue(any(call["table"] == "source_versions" and call["kind"] == "select" for call in fake.calls))
+        relabels = [call for call in fake.calls if call["table"] == "provision_changes" and call["kind"] == "update"]
+        self.assertEqual([call["payload"] for call in relabels], [{"change_type": "transcription_corrected"}] * 3)
+        self.assertEqual(sorted(f[2] for call in relabels for f in call["filters"] if f[0] == "eq"),
+                         ["added", "removed", "text_updated"])
+        for call in relabels:
+            self.assertIn(("like", "provision_id", f"sec-{REG}-%"), call["filters"])
+            self.assertTrue(any(f[0] == "gte" and f[1] == "created_at" for f in call["filters"]))
+        self.assertEqual(kinds[-1], ("rpc:refresh_changelog_snapshot", "rpc"))
+        self.assertLess(first_delete, len(kinds) - 1)
 
         # No provisions write ever carries ai_summary; identical-class
         # updates never carry full_text or an `id` column.
@@ -710,9 +755,18 @@ class EmptyDbPathTests(unittest.TestCase):
                     os.environ[k] = v
 
         self.assertTrue(fake.calls)
-        self.assertTrue(all(call["table"] == "provisions" and call["kind"] == "insert" for call in fake.calls))
-        inserted_ids = {row["id"] for call in fake.calls for row in call["payload"]}
+        # The provisions writes are pure inserts (no update, no delete); the
+        # 'added' change rows follow each chunk and the changelog finalize
+        # (source_versions read, re-labels, snapshot refresh) closes the run.
+        provisions_calls = [call for call in fake.calls if call["table"] == "provisions"]
+        self.assertTrue(provisions_calls)
+        self.assertTrue(all(call["kind"] == "insert" for call in provisions_calls))
+        inserted_ids = {row["id"] for call in provisions_calls for row in call["payload"]}
         self.assertEqual(inserted_ids, {r["id"] for r in parsed})
+        added = [row for call in fake.calls if call["table"] == "provision_changes" and call["kind"] == "insert" for row in call["payload"]]
+        self.assertEqual({row["provision_id"] for row in added}, inserted_ids)
+        self.assertTrue(all(row["change_type"] == "added" for row in added))
+        self.assertEqual(fake.calls[-1]["table"], "rpc:refresh_changelog_snapshot")
 
 # ---------------------------------------------------------------------------
 # Reg 8 (5 CCR 1001-10) additions: statement-of-basis SECTIONS inside
