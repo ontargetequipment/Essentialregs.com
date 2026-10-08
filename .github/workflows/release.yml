@@ -1,0 +1,35 @@
+name: Release regulation
+
+# Flips a staged (newly imported, not yet released) document to released:
+# subscribers then see it in the reader, keyword search, Ask, related
+# provisions, the previews and the indexes, and other documents may link to
+# it (pipeline/import_ccr.py release; migration 20261008040000). Run it after
+# the Cowork session has checked the 40-row sample and said "make <reg>
+# public". Then re-run the markup-only re-imports of the documents that cite
+# it (pipeline/link_change_report.py names them) so their links are written.
+
+on:
+  workflow_dispatch:
+    inputs:
+      reg:
+        description: "Regulation key to release (e.g. oooo)."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r pipeline/requirements.txt
+      - name: Release
+        run: python pipeline/import_ccr.py release --reg "${{ inputs.reg }}" --yes

@@ -151,6 +151,44 @@ class _StubExportClient:
         return self._table
 
 
+class _StubReleaseTable:
+    """regulation_releases for the stubs: filters by status or reg_key, records inserts."""
+
+    def __init__(self, staged, released, inserts):
+        self._rows = [{"reg_key": k, "status": "staged"} for k in staged] + \
+                     [{"reg_key": k, "status": "released"} for k in released]
+        self._filters: dict = {}
+        self._inserts = inserts
+
+    def select(self, cols):
+        self._filters = {}
+        return self
+
+    def eq(self, col, val):
+        self._filters[col] = val
+        return self
+
+    def insert(self, payload):
+        self._inserts.append(payload)
+        return self
+
+    def execute(self):
+        rows = [r for r in self._rows if all(r.get(c) == v for c, v in self._filters.items())]
+        return SimpleNamespace(data=rows)
+
+
+class _StubReleaseClient(_StubExportClient):
+    def __init__(self, rows, staged=(), released=()):
+        super().__init__(rows)
+        self.release_inserts: list = []
+        self._release = _StubReleaseTable(list(staged), list(released), self.release_inserts)
+
+    def table(self, name):
+        if name == "regulation_releases":
+            return self._release
+        return super().table(name)
+
+
 def _row(pid: str) -> dict:
     return {
         "id": pid, "citation": pid, "title": pid, "parent_id": None,
@@ -11717,6 +11755,58 @@ class CorpusIdIndexTests(XregBase):
             with open(out, encoding="utf-8") as fh:
                 data = json.load(fh)
         self.assertEqual(data, {"1": ["sec-1-top-REG-1"], "7": ["sec-7-B-I", "sec-7-top-REG-7"], "gp02": ["sec-gp02-II-B"]})
+
+    def test_dump_ids_leaves_staged_regulations_out_and_writes_the_staged_list(self):
+        rows = [_row(i) for i in ("sec-7-B-I", "sec-7-top-REG-7", "sec-oooo-60.5365", "sec-oooo-top-REG-oooo")]
+        client = _StubReleaseClient(sorted(rows, key=lambda r: r["id"]), staged=["oooo"])
+        fake_supabase = types.SimpleNamespace(create_client=lambda url, key: client)
+        with tempfile.TemporaryDirectory() as d, \
+                mock.patch.dict(sys.modules, {"supabase": fake_supabase}), \
+                mock.patch.dict(os.environ, {"SUPABASE_URL": "https://x", "SUPABASE_SERVICE_ROLE_KEY": "k"}):
+            out = os.path.join(d, "corpus_ids.json")
+            ic.cmd_dump_ids(SimpleNamespace(out=out, staged_out=None))
+            with open(out, encoding="utf-8") as fh:
+                data = json.load(fh)
+            with open(os.path.join(d, "corpus_staged.json"), encoding="utf-8") as fh:
+                staged = json.load(fh)
+        self.assertEqual(data, {"7": ["sec-7-B-I", "sec-7-top-REG-7"]})
+        self.assertEqual(staged, ["oooo"])
+
+    def test_staged_regulations_are_not_linked_except_the_one_being_parsed(self):
+        import import_ecfr as ie
+        self.assertIn("oooo", ic.CORPUS_REGS)
+        self.assertIn("oooo", ie.CORPUS_REGS)
+        try:
+            removed = ic.set_staged_regs(["oooo", "7"], keep="7")
+            self.assertEqual(removed, ["oooo"])
+            self.assertNotIn("oooo", ic.CORPUS_REGS)
+            self.assertNotIn("oooo", ie.CORPUS_REGS)
+            self.assertIn("7", ic.CORPUS_REGS)
+            html, _buckets = ic.link_citations(
+                "Storage vessels subject to NSPS Subpart OOOO or Subpart OOOOa of Part 60.", "7",
+                set(), set(ic.CORPUS_REGS), own_part="B", own_id="sec-7-B-I-A-1")
+            self.assertNotIn("/regulations/oooo\"", html)
+            self.assertIn("/regulations/ooooa", html)
+        finally:
+            ic.restore_staged_regs()
+        self.assertIn("oooo", ic.CORPUS_REGS)
+        self.assertIn("oooo", ie.CORPUS_REGS)
+        html, _buckets = ic.link_citations(
+            "Storage vessels subject to NSPS Subpart OOOO of Part 60.", "7",
+            set(), set(ic.CORPUS_REGS), own_part="B", own_id="sec-7-B-I-A-1")
+        self.assertIn("/regulations/oooo", html)
+
+    def test_execute_stages_a_new_document_and_leaves_a_known_one_alone(self):
+        client = _StubReleaseClient([], staged=[])
+        self.assertEqual(ic.ensure_release_row(client, "newreg"), "staged")
+        self.assertEqual(client.release_inserts, [{"reg_key": "newreg", "status": "staged",
+                                                  "note": "first import; staged by import_ccr.py apply --execute"}])
+        client = _StubReleaseClient([], staged=[], released=["7"])
+        self.assertEqual(ic.ensure_release_row(client, "7"), "released")
+        self.assertEqual(client.release_inserts, [])
+        client = _StubReleaseClient([], staged=["oooo"])
+        self.assertEqual(ic.ensure_release_row(client, "oooo"), "staged")
+        self.assertEqual(client.release_inserts, [])
 
     def test_cmd_parse_installs_the_index_from_the_flag(self):
         seen = {}

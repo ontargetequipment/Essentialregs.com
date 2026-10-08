@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeHtml, stripHtml, titleWithoutCitation } from "@/lib/regulation";
 import { regKeyOf } from "@/lib/changelog";
 import { rejectSummary, saveEditForReview, sendBackToPending } from "./actions";
@@ -121,12 +121,14 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
   const offset = (page - 1) * PAGE_SIZE;
   const regKey = regFilter || null;
 
-  // Reads go through the cookie-scoped client (an admin is just a
-  // subscriber whose email happens to be on the allowlist — RLS already
-  // lets any authenticated user read every provisions row). Only the
-  // actions in ./actions.ts touch the service-role client, and only after
-  // requireAdmin() runs again there.
-  const supabase = await createClient();
+  // Reads use the service-role client, after requireAdmin() above: a
+  // staged (newly imported, not yet released) document is hidden from
+  // subscribers by RLS (regulation_releases, migration 20261008040000) and
+  // an admin is a subscriber on the allowlist, so the cookie-scoped client
+  // would not show the very rows that need review before release. The
+  // actions in ./actions.ts use the same client after their own
+  // requireAdmin().
+  const supabase = createAdminClient();
 
   // Counts per status: a plain filtered count query per status. Fine at
   // this scale (4,400 rows); a single grouped query would need a Postgres

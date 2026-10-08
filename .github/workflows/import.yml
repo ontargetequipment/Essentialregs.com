@@ -323,7 +323,10 @@ jobs:
         # written against an older Regulation 7 must not open the wrong
         # definition (renumbered -> the sibling that defines it; unverifiable
         # -> plain text). Both default paths; the committed copies are the
-        # fallback when this step is skipped.
+        # fallback when this step is skipped. It also writes
+        # pipeline/out/corpus_staged.json: the staged (imported, not yet
+        # released) documents, which `parse` must not link to -- see
+        # "Staged (not yet released) documents" in import_ccr.py.
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

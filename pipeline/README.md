@@ -110,7 +110,23 @@ and nobody has to ask for it. Since 6 Oct 2026 (ReviewBuiltIn):
    the branch `chain-sample/<label>-<run id>`, logs a warning naming it, and
    someone opens the pull request from that branch by hand (the sample is in
    the `chain-report` artifact too).
-4. **Make the regulation public** — its summaries do not appear on the public
+4. **Release** — a first import lands the document **staged**
+   (`regulation_releases`, migration 20261008040000; `apply --execute`
+   inserts the row and prints `NEW DOCUMENT: <reg> is STAGED`). Staged means
+   invisible to subscribers: the reader, `/regs/<id>`, keyword search, Ask,
+   related provisions, the previews and the Federal/States/GP indexes, the
+   sitemap and the public changelog all leave it out, and other documents'
+   re-imports do not write links to it (`dump-ids` leaves its ids out of
+   `corpus_ids.json` and lists it in `corpus_staged.json`). Admins on
+   `ADMIN_EMAILS` still open it in the reader and the review queue. When the
+   Cowork session says "make <reg> public", run Actions → **Release
+   regulation** (`python pipeline/import_ccr.py release --reg <reg> --yes`),
+   then `dump-ids` and the markup-only re-imports of the documents that cite
+   it (`pipeline/link_change_report.py` names them), then the Ask and Keyword
+   evals. Before 8 Oct 2026 there was no such state: `is_public` only decides
+   which four rows anonymous visitors may read on `/sample`, and Subpart OOOO
+   was visible to every subscriber from the moment it was imported.
+5. **Public sample** — a regulation's summaries do not appear on the public
    `/sample` or `/regulations/<reg>/preview` pages until nothing of it is still
    pending review (`teaserSummariesVisible`, `gatePublicSummaries`).
 

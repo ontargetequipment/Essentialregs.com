@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchStagedRegKeys } from "@/lib/release";
 import { escapeHtml, summaryParagraphs, summaryStatusBadge, titleWithoutCitation } from "@/lib/regulation";
 import { regBadge } from "@/lib/semantic";
 import { regulationDisplayName } from "@/lib/regulation-pure";
@@ -144,6 +145,7 @@ export async function fetchRelatedTeaser(provisionId: string): Promise<RelatedIt
     .eq("provision_id", provisionId)
     .order("rank", { ascending: true });
   if (error) throw new Error(error.message);
+  const staged = await fetchStagedRegKeys();
   const items = ((data ?? []) as unknown as NeighborRow[])
     .map((r) => {
       if (r.neighbor && !["approved", "edited"].includes(r.neighbor.summary_status ?? "")) {
@@ -151,7 +153,9 @@ export async function fetchRelatedTeaser(provisionId: string): Promise<RelatedIt
       }
       return toItem(provisionId, r);
     })
-    .filter((i): i is RelatedItem => i !== null);
+    .filter((i): i is RelatedItem => i !== null)
+    // a staged document is not shown to anyone (src/lib/release.ts)
+    .filter((i) => !i.reg_key || !staged.has(i.reg_key));
   return orderForDisplay(items);
 }
 

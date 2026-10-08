@@ -6384,6 +6384,90 @@ def load_corpus_ids(path) -> dict[str, frozenset]:
     return {str(k): frozenset(v) for k, v in data.items()}
 
 
+# --------------------------------------------------------------------------
+# Staged (not yet released) documents -- the release state the 8 Oct 2026
+# OOOO review found missing. `regulation_releases` (migration
+# 20261008040000) marks a newly imported reg_key `staged`: the database hides
+# it from subscribers, and THIS module keeps other documents from linking
+# to it until it is released:
+#   * `dump-ids` leaves a staged reg's ids out of corpus_ids.json (no deep
+#     links) and writes the staged keys to corpus_staged.json beside it;
+#   * `parse` reads that file and drops the staged keys from CORPUS_REGS
+#     (and import_ecfr.CORPUS_REGS) for the run, so "Subpart OOOO" or
+#     "Regulation Number 99" stays plain text -- except the document being
+#     parsed itself, which must keep its own links;
+#   * `apply --execute` inserts the staged row the first time a reg_key is
+#     written; `release` flips it to released and names the documents whose
+#     markup-only re-import will then write the links.
+# --------------------------------------------------------------------------
+
+CORPUS_STAGED_DEFAULT_PATH = Path(__file__).resolve().parent / "out" / "corpus_staged.json"
+_STAGED_REGS: list[str] = []
+_STAGED_REMOVED: dict[str, str] = {}   # CORPUS_REGS entries removed for this run, for restore
+
+
+def fetch_staged_reg_keys(client) -> list[str]:
+    """reg_keys whose regulation_releases row is `staged` (service role).
+    [] when the table cannot be read (an older database, a test stub)."""
+    try:
+        resp = client.table("regulation_releases").select("reg_key").eq("status", "staged").execute()
+    except Exception as exc:  # noqa: BLE001 -- the table may not exist yet
+        print(f"  WARNING: regulation_releases not readable ({exc!r}); treating every document as released", file=sys.stderr)
+        return []
+    return sorted({r["reg_key"] for r in (resp.data or []) if r.get("reg_key")})
+
+
+def write_staged_regs(path, keys) -> None:
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(sorted(set(keys)), ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+
+def load_staged_regs(path) -> list[str]:
+    return sorted(set(json.loads(Path(path).read_text(encoding="utf-8"))))
+
+
+def set_staged_regs(keys, keep: str | None = None) -> list[str]:
+    """Drop `keys` (except `keep`, the document being parsed) from the
+    whole-regulation link gates for this process: CORPUS_REGS here and
+    import_ecfr.CORPUS_REGS. Returns the keys actually removed. Call
+    `restore_staged_regs()` to undo (tests)."""
+    global _STAGED_REGS
+    removed: list[str] = []
+    for k in sorted(set(keys)):
+        if k == keep:
+            continue
+        if k in CORPUS_REGS:
+            _STAGED_REMOVED[k] = CORPUS_REGS.pop(k)
+            removed.append(k)
+        try:
+            import import_ecfr  # lazy: import_ecfr imports this module lazily too
+            if k in import_ecfr.CORPUS_REGS:
+                import_ecfr.CORPUS_REGS.discard(k)
+                _STAGED_REMOVED.setdefault(k, k)
+                if k not in removed:
+                    removed.append(k)
+        except ImportError:  # pragma: no cover
+            pass
+    _STAGED_REGS = sorted(set(_STAGED_REGS) | set(removed))
+    return removed
+
+
+def restore_staged_regs() -> None:
+    """Undo set_staged_regs (the module-level sets are process-wide)."""
+    global _STAGED_REGS
+    for k, v in _STAGED_REMOVED.items():
+        CORPUS_REGS.setdefault(k, v)
+        try:
+            import import_ecfr
+            if k in import_ecfr.SUBPART_META:
+                import_ecfr.CORPUS_REGS.add(k)
+        except ImportError:  # pragma: no cover
+            pass
+    _STAGED_REMOVED.clear()
+    _STAGED_REGS = []
+
+
 def group_ids_by_reg(ids) -> dict[str, list[str]]:
     """Group provision ids by regulation key; each list sorted bytewise
     (UTF-8), the order Postgres' COLLATE "C" gives, so the file is stable and
@@ -12535,8 +12619,18 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
 
 def cmd_parse(args):
     corpus_ids_path = getattr(args, "corpus_ids", None)
+    staged_path = getattr(args, "corpus_staged", None)
+    if staged_path is None and corpus_ids_path and Path(corpus_ids_path).with_name("corpus_staged.json").exists():
+        staged_path = str(Path(corpus_ids_path).with_name("corpus_staged.json"))
+    if staged_path and Path(staged_path).exists():
+        staged = load_staged_regs(staged_path)
+        removed = set_staged_regs(staged, keep=args.reg.lower())
+        if removed:
+            print(f"Staged regulations excluded from cross-regulation links this run: {removed} ({staged_path})")
     if corpus_ids_path:
         index = load_corpus_ids(corpus_ids_path)
+        for k in _STAGED_REGS:
+            index.pop(k, None)
         set_corpus_ids(index)
         print(f"Cross-regulation deep links ON: corpus id index {corpus_ids_path} "
               f"({len(index)} regulations, {sum(len(v) for v in index.values())} ids).")
@@ -13304,8 +13398,17 @@ def cmd_dump_ids(args) -> None:
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     ids = fetch_all_provision_ids(client)
     by_reg = group_ids_by_reg(ids)
+    # A staged document (regulation_releases) is not deep-linkable: its ids
+    # stay out of the index, and its key goes to corpus_staged.json so parse
+    # drops it from the whole-regulation link gate too.
+    staged = fetch_staged_reg_keys(client)
+    for k in staged:
+        by_reg.pop(k, None)
     write_corpus_ids(args.out, by_reg)
-    print(f"Dumped {len(ids)} provision ids across {len(by_reg)} regulations -> {args.out}")
+    staged_out = getattr(args, "staged_out", None) or str(Path(args.out).with_name("corpus_staged.json"))
+    write_staged_regs(staged_out, staged)
+    print(f"Dumped {sum(len(v) for v in by_reg.values())} provision ids across {len(by_reg)} regulations -> {args.out}")
+    print(f"Staged (not yet released, not linkable) regulations: {staged or 'none'} -> {staged_out}")
     defs_out = getattr(args, "definitions_out", None)
     if defs_out:
         rows = fetch_definition_candidates(client)
@@ -13723,6 +13826,70 @@ def build_provision_change_insert(ancestor_id: str, note: str) -> str:
         f"{sql_dollar_quote(ancestor_id)}, {sql_dollar_quote('removed')}, "
         f"{sql_dollar_quote(note)});"
     )
+
+
+def ensure_release_row(client, reg: str) -> str | None:
+    """The release state after an executed import: a reg_key with no
+    regulation_releases row is a NEW document and is inserted `staged`
+    (hidden from subscribers, unlinked by other documents) until
+    `release`. Returns the row's status, or None when the table is not
+    readable (an older database)."""
+    if not reg:
+        return None
+    try:
+        resp = client.table("regulation_releases").select("reg_key, status").eq("reg_key", reg).execute()
+    except Exception as exc:  # noqa: BLE001
+        print(f"  WARNING: regulation_releases not readable ({exc!r}); release state not recorded", file=sys.stderr)
+        return None
+    rows = resp.data or []
+    if rows:
+        status = rows[0].get("status")
+        print(f"Release state of {reg}: {status}" + (" -- hidden from subscribers until `release`." if status == "staged" else "."))
+        return status
+    client.table("regulation_releases").insert({
+        "reg_key": reg, "status": "staged",
+        "note": "first import; staged by import_ccr.py apply --execute",
+    }).execute()
+    print(f"NEW DOCUMENT: {reg} is STAGED -- invisible to subscribers (reader, keyword search, Ask, related, "
+          f"previews, indexes) and not linked by other documents until "
+          f"`python pipeline/import_ccr.py release --reg {reg} --yes`.")
+    return "staged"
+
+
+def cmd_release(args) -> None:
+    """Flip a staged document to released (service role). Prints what to
+    run next: the markup-only re-imports that write other documents' links
+    to it (they were withheld while it was staged)."""
+    import os
+
+    missing = [n for n in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY") if not os.environ.get(n)]
+    if missing:
+        print(f"release requires {' and '.join(missing)} in the environment.", file=sys.stderr)
+        sys.exit(2)
+    if not args.yes:
+        print("release writes the database; pass --yes to confirm.", file=sys.stderr)
+        sys.exit(2)
+    from supabase import create_client
+
+    reg = args.reg.lower()
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    now_iso = datetime.now(timezone.utc).isoformat()
+    resp = client.table("regulation_releases").select("reg_key, status").eq("reg_key", reg).execute()
+    rows = resp.data or []
+    if rows and rows[0].get("status") == "released":
+        print(f"{reg} is already released.")
+        return
+    payload = {"reg_key": reg, "status": "released", "released_at": now_iso,
+               "note": f"released by import_ccr.py release ({now_iso[:10]})"}
+    if rows:
+        client.table("regulation_releases").update(payload).eq("reg_key", reg).execute()
+    else:
+        client.table("regulation_releases").insert(payload).execute()
+    print(f"{reg} RELEASED: subscribers now see it in the reader, keyword search, Ask, related provisions, "
+          "the previews and the indexes.")
+    print("Next: re-run `dump-ids`, then the markup-only re-imports of the documents that cite it "
+          "(pipeline/link_change_report.py lists them) so their links to it are written; "
+          "then the Ask and Keyword evals.")
 
 
 def cmd_apply(args):
@@ -14250,6 +14417,8 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
                 "note", "null"
             ).gte("created_at", now_iso).execute()
 
+    ensure_release_row(client, getattr(args, "reg", None) or "")
+
     # What this run tells /changelog: an agency version change is logged as
     # its own row and keeps the run's text/added/removed rows regulatory;
     # otherwise they are re-labelled as corrections of our own copy. Then
@@ -14278,6 +14447,9 @@ def main():
     p_parse.add_argument("--no-corpus-ids", action="store_true",
                          help="Ignore any corpus id index: cross-regulation citations link only the regulation name, "
                               "exactly as before deep links existed.")
+    p_parse.add_argument("--corpus-staged", default=None,
+                         help="JSON list of staged regulation keys (written by `dump-ids`) that this parse must not link to "
+                              "(default: corpus_staged.json beside --corpus-ids, when present).")
     p_parse.add_argument("--corpus-definitions", default=None,
                          help="Definitions index (JSON {reg key: {provision id: defined term}}, written by `dump-ids`) "
                               "used to verify a deep link into a definition against the term the citing sentence names. "
@@ -14301,10 +14473,21 @@ def main():
              "against). Requires SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY; makes no writes.",
     )
     p_dump.add_argument("--out", default=str(CORPUS_IDS_DEFAULT_PATH))
+    p_dump.add_argument("--staged-out", default=None,
+                        help="Where to write the staged (not yet released) regulation keys "
+                             "(default: corpus_staged.json beside --out).")
     p_dump.add_argument("--definitions-out", default=str(CORPUS_DEFINITIONS_DEFAULT_PATH),
                         help="Where to write the definitions index ({reg key: {id: defined term}}) read beside the id "
                              "index; '' to skip it.")
     p_dump.set_defaults(func=cmd_dump_ids)
+
+    p_release = sub.add_parser(
+        "release",
+        help="Flip a staged (newly imported) regulation to released so subscribers can see it and other documents may link to it.",
+    )
+    p_release.add_argument("--reg", required=True)
+    p_release.add_argument("--yes", action="store_true", help="Required: confirms the database write.")
+    p_release.set_defaults(func=cmd_release)
 
     p_diff = sub.add_parser("diff", help="Diff parsed output against an exported DB snapshot.")
     p_diff.add_argument("--reg", required=True)
