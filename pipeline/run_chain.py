@@ -655,6 +655,16 @@ def main(argv: Optional[list[str]] = None) -> int:
     md, data = build_report(args, budget, started_at, notes, s1, r1, s2, r2, e, state, still_pending, stopped, False)
     write_report(md, data)
     print(f"\nReport: {REPORT_MD_PATH}")
+    # The stored /changelog counts (the page never aggregates live): refresh
+    # after this run's summary and review rows. A failure here is reported,
+    # not fatal -- the previous snapshot stays and the workflow step that
+    # follows retries.
+    try:
+        from changelog_sources import refresh_changelog_snapshot
+
+        print(f"Changelog snapshot refreshed: {refresh_changelog_snapshot(client_supabase)}")
+    except Exception as exc:  # noqa: BLE001 - the snapshot is a convenience, the run's writes are done
+        print(f"WARNING: changelog snapshot refresh failed: {type(exc).__name__}: {exc}", file=sys.stderr)
     if args.sample_dir and r1 is not None:
         seed = args.seed or int(datetime.now(timezone.utc).strftime("%Y%m%d"))
         sample = build_sample(client_supabase, meta, children_index, r1, r2, seed,

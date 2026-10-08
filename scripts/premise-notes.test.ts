@@ -11,8 +11,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
+  PERMIT_NOTES,
   PREMISE_GP_NUMBERS,
   PREMISE_NOTES,
+  TOPIC_NOTES,
   citeLabel,
   citeRegKey,
   matchPremiseNote,
@@ -95,29 +97,52 @@ test("the matcher runs on the raw or the acronym-expanded question alike", () =>
 
 // ---- the notes ---------------------------------------------------------------
 
-test("there is one note per general permit (the eleven), every sentence is cited, every cite is a real-looking id in the generated list", () => {
-  assert.deepEqual(PREMISE_NOTES.map((n) => n.regKey), PREMISE_GP_NUMBERS.map((n) => `gp${n}`));
+test("there is one note per general permit (the eleven) and five topic notes; every sentence is cited, every cite is a real-looking id in the generated list", () => {
+  assert.deepEqual(PERMIT_NOTES.map((n) => n.regKey), PREMISE_GP_NUMBERS.map((n) => `gp${n}`));
+  assert.deepEqual(PREMISE_NOTES, [...PERMIT_NOTES, ...TOPIC_NOTES]);
+  assert.deepEqual(TOPIC_NOTES.map((n) => n.key), ["apen-every-point", "title-v-well-site", "exempt-still-regulated", "oooob-existing-well", "gp02-diesel"]);
   const sql = readFileSync(QUESTION_MAP_IDS_SQL, "utf8");
-  for (const n of PREMISE_NOTES) {
+  for (const n of PERMIT_NOTES) {
+    assert.equal(n.kind, "permit");
     assert.equal(n.key, `${n.regKey}-required`);
     assert.equal(n.map.key, `premise-${n.regKey}`);
     assert.equal(n.map.permitRegKey, n.regKey);
     assert.equal(n.title, `Is ${n.permit} required?`);
     assert.ok(n.sentences.length >= 4, `${n.key}: too few sentences`);
+    for (const s of n.sentences) for (const id of s.cites) assert.match(id, /^sec-(gp\d\d|3)-/, `${n.key}: a cite outside the permits and Regulation 3: ${id}`);
+  }
+  for (const n of TOPIC_NOTES) {
+    assert.equal(n.kind, "topic");
+    assert.equal(n.map.key, `premise-${n.key}`);
+    assert.equal(typeof n.matches, "function");
+    assert.ok(n.sentences.length >= 4, `${n.key}: too few sentences`);
+  }
+  for (const n of PREMISE_NOTES) {
+    const keys = new Set<string>();
     for (const s of n.sentences) {
       assert.ok(s.text.trim().length > 20, `${n.key}: empty sentence`);
       assert.ok(s.cites.length >= 1, `${n.key}: uncited sentence: ${s.text}`);
       for (const id of s.cites) {
-        assert.match(id, /^sec-(gp\d\d|3)-/, `${n.key}: a cite outside the permits and Regulation 3: ${id}`);
+        assert.match(id, /^sec-[a-z0-9]+-/, `${n.key}: not a provision id: ${id}`);
         assert.ok(sql.includes(`('${n.map.key}:note', '${id}')`), `${id} missing from scripts/question-map-ids.sql (run npx tsx scripts/question-map-ids.ts)`);
       }
+      // The note never reads as a determination.
+      assert.doesNotMatch(s.text, /\byou (?:must|need|are required|do not need)\b/i, `${n.key}: addresses the visitor as a determination: ${s.text}`);
     }
-    for (const p of n.map.provisions) assert.ok(sql.includes(`('${n.map.key}', '${p.id}')`), `${p.id} missing from the generated file`);
+    for (const p of n.map.provisions) {
+      assert.ok(sql.includes(`('${n.map.key}', '${p.id}')`), `${p.id} missing from the generated file`);
+      assert.ok(!keys.has(p.id), `${n.key}: ${p.id} listed twice`);
+      keys.add(p.id);
+    }
+    assert.ok(n.map.factors.length > 40, `${n.key}: no factors line`);
   }
+  // Map keys are unique across every note and the ordinary maps.
+  const mapKeys = PREMISE_NOTES.map((n) => n.map.key);
+  assert.equal(new Set(mapKeys).size, mapKeys.length);
 });
 
-test("every note says registration is voluntary and that Regulation 3 decides whether a permit or an APEN is required, with the Regulation 3 rows cited", () => {
-  for (const n of PREMISE_NOTES) {
+test("every permit note says registration is voluntary and that Regulation 3 decides whether a permit or an APEN is required, with the Regulation 3 rows cited", () => {
+  for (const n of PERMIT_NOTES) {
     const voluntary = n.sentences.find((s) => /registration under it is voluntary/.test(s.text));
     assert.ok(voluntary, `${n.key}: no voluntary sentence`);
     assert.ok(voluntary.cites.some((id) => /-(VIII|IX|XI|IV)-[DE]-3$/.test(id)), `${n.key}: the voluntary sentence must cite the permit's own "voluntary" row`);
@@ -133,7 +158,7 @@ test("every note says registration is voluntary and that Regulation 3 decides wh
 });
 
 test("GP09 and GP10 open with the closure, cite their document row and GP12; the eleven notes name the right alternatives", () => {
-  const byKey = Object.fromEntries(PREMISE_NOTES.map((n) => [n.regKey, n]));
+  const byKey = Object.fromEntries(PERMIT_NOTES.map((n) => [n.regKey!, n]));
   for (const k of ["gp09", "gp10"]) {
     const first = byKey[k].sentences[0];
     assert.match(first.text, /closed to new registrations \(July 15, 2026\)/);
@@ -158,7 +183,7 @@ test("GP09 and GP10 open with the closure, cite their document row and GP12; the
 });
 
 test("a premise map lists the permit's Section I rows first, then the Regulation 3 rows, then the alternatives, in MAP_GROUP_ORDER", () => {
-  for (const n of PREMISE_NOTES) {
+  for (const n of PERMIT_NOTES) {
     const groups = [...new Set(n.map.provisions.map((p) => p.group))];
     assert.deepEqual(groups, ["Permit applicability", "Colorado permitting and APEN", "Alternatives if the permit does not fit"], n.key);
     const idx = groups.map((g) => MAP_GROUP_ORDER.indexOf(g));
@@ -173,7 +198,7 @@ test("a premise map lists the permit's Section I rows first, then the Regulation
     assert.ok(!QUESTION_MAPS.some((m) => m.key === n.map.key));
   }
   // GP01: I.A through I.F in order.
-  const gp01 = PREMISE_NOTES[0].map.provisions.filter((p) => p.group === "Permit applicability").map((p) => p.id);
+  const gp01 = PERMIT_NOTES[0].map.provisions.filter((p) => p.group === "Permit applicability").map((p) => p.id);
   assert.deepEqual(gp01, ["sec-gp01-I-A", "sec-gp01-I-B", "sec-gp01-I-C", "sec-gp01-I-D", "sec-gp01-I-E", "sec-gp01-I-F"]);
 });
 
@@ -374,5 +399,83 @@ test("the eval's new fields are declared only on the rows that need them", () =>
     "Do I need a GP12?",
     "What applies to a diesel engine?",
     "What rules apply to a produced water storage tank at a well site?",
+    "Do I need an APEN for every emission point at my site?",
+    "Does my well site need a Title V operating permit?",
+    "If my tank battery is exempt from a construction permit, does Regulation 7 still apply?",
+    "Does OOOOb apply to an existing well drilled before 2022?",
+    "Can I register a diesel engine under GP02?",
   ]);
+});
+
+// ---- the five topic notes (7 Oct 2026) ---------------------------------------
+
+test("the topic notes match their misconceptions, never the pinned eval questions or the permit notes' own questions", () => {
+  const route = (q: string) => matchPremiseNote(q)?.key ?? null;
+  assert.equal(route("Do I need an APEN for every emission point at my site?"), "apen-every-point");
+  assert.equal(route("Does every tank need an APEN?"), "apen-every-point");
+  assert.equal(route("Is an APEN required for each piece of equipment?"), "apen-every-point");
+  assert.equal(route("Does my well site need a Title V operating permit?"), "title-v-well-site");
+  assert.equal(route("Is Title V required for a compressor station?"), "title-v-well-site");
+  assert.equal(route("Are we subject to Title V?"), "title-v-well-site");
+  assert.equal(route("If my tank battery is exempt from a construction permit, does Regulation 7 still apply?"), "exempt-still-regulated");
+  assert.equal(route("Does an APEN exemption mean no other rules apply?"), "exempt-still-regulated");
+  assert.equal(route("Does OOOOb apply to an existing well drilled before 2022?"), "oooob-existing-well");
+  assert.equal(route("Is an old well grandfathered out of Subpart OOOOb?"), "oooob-existing-well");
+  assert.equal(route("Can I register a diesel engine under GP02?"), "gp02-diesel");
+  assert.equal(route("Can I use GP02 for a diesel engine?"), "gp02-diesel");
+  assert.equal(route("gp2 diesel"), "gp02-diesel");
+  // The permit note still answers its own question; the pinned rows keep their maps.
+  assert.equal(route("Do I need a GP02?"), "gp02-required");
+  assert.equal(route("When do I have to file an APEN for a new source and what is the threshold?"), null);
+  assert.equal(route("APEN exemptions for small sources"), null);
+  assert.equal(route("When does a source need a construction permit versus just an APEN?"), null);
+  assert.equal(route("Am I subject to the federal OOOOb rules if I modified a well after December 2022?"), null);
+  assert.equal(route("What applies to a diesel engine?"), null);
+  assert.equal(route("What regulations apply to a natural gas-fired engine?"), null);
+  for (const e of EVAL_QUESTIONS) {
+    if (e.premise === undefined) assert.equal(route(e.q), null, e.q);
+    else assert.equal(route(e.q), e.premise, e.q);
+  }
+  // matchQuestionMap() takes the topic note's map, so a question map never overrides it.
+  assert.equal(matchQuestionMap("Can I register a diesel engine under GP02?")?.key, "premise-gp02-diesel");
+  assert.equal(matchQuestionMap("Do I need an APEN for every emission point at my site?")?.key, "premise-apen-every-point");
+});
+
+test("each topic note says what the owner asked for, with the provision that supports it", () => {
+  const byKey = Object.fromEntries(TOPIC_NOTES.map((n) => [n.key, n]));
+  const text = (k: string) => byKey[k].sentences.map((s) => s.text).join(" ");
+  const cited = (k: string) => new Set(byKey[k].sentences.flatMap((s) => s.cites));
+  // APEN: every point unless exempt; the thresholds; exempt units still comply.
+  assert.match(text("apen-every-point"), /unless the point is exempt under Regulation 3 Part A, Section II\.D/);
+  assert.match(text("apen-every-point"), /one ton per year in a nonattainment area or two tons per year elsewhere/);
+  assert.ok(cited("apen-every-point").has("sec-3-A-II-D-1-a") && cited("apen-every-point").has("sec-3-A-II-A-1"));
+  // Title V: Part C's list; the general permits' minor-source condition.
+  assert.match(text("title-v-well-site"), /required only for the sources Part C lists/);
+  assert.ok(cited("title-v-well-site").has("sec-3-C-II-A-1") && cited("title-v-well-site").has("sec-gp12-I-E"));
+  assert.match(text("title-v-well-site"), /classified as a major source for Title V must apply for a Title V operating permit/);
+  assert.ok(cited("title-v-well-site").has("sec-gp05-VIII-A") && cited("title-v-well-site").has("sec-gp07-VIII-A"));
+  // Exempt: a permit exemption does not affect other regulations; Regulation 7 by its own terms.
+  assert.match(text("exempt-still-regulated"), /does not affect the applicability of any other state or federal regulation/);
+  assert.ok(cited("exempt-still-regulated").has("sec-3-B-II-D") && cited("exempt-still-regulated").has("sec-7-B-I-A-1"));
+  // OOOOb: the date, and a later modification or reconstruction brings an existing facility in (owner's ask), cited.
+  assert.match(text("oooob-existing-well"), /after December 6, 2022/);
+  const later = byKey["oooob-existing-well"].sentences.find((s) => /later modification or reconstruction can bring it in/.test(s.text))!;
+  assert.ok(later, "the later-modification sentence");
+  assert.deepEqual(later.cites, ["sec-oooob-60.5365b", "sec-oooob-60.5365b-(a)-(1)", "sec-oooob-60.5365b-(e)-(3)"]);
+  assert.ok(cited("oooob-existing-well").has("sec-ooooc-60.5360c"));
+  // GP02 diesel: GP02 natural gas only, GP06 diesel, GP12 both, Regulation 3 decides.
+  assert.match(text("gp02-diesel"), /only for natural gas fired reciprocating internal combustion engines/);
+  assert.match(text("gp02-diesel"), /GP06 covers/);
+  assert.match(text("gp02-diesel"), /GP12 covers both/);
+  assert.match(text("gp02-diesel"), /decided under Regulation 3/);
+  // The shown order for the diesel question: GP02 I.A first, GP06 I.A within three, GP12 I.A.2 shown.
+  const layout = layoutAsk("Can I register a diesel engine under GP02?", []);
+  assert.equal(layout.note?.key, "gp02-diesel");
+  assert.equal(layout.shownIds[0], "sec-gp02-I-A");
+  assert.ok(layout.shownIds.slice(0, 3).includes("sec-gp06-I-A"));
+  assert.ok(layout.shownIds.includes("sec-gp12-I-A-2"));
+  assert.ok(layout.shownIds.includes("sec-3-A-II-A-1"));
+  // Nothing omitted: the premise map has no facets, so "diesel" leaves nothing out.
+  assert.deepEqual(layout.summary?.omittedIds, []);
+  assert.deepEqual(layout.summary?.stated, []);
 });

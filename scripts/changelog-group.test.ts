@@ -7,7 +7,19 @@
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { describeLine, foldChangelog } from "../src/lib/changelog-group";
+import {
+  CHANGELOG_SECTIONS,
+  CHANGELOG_UNAVAILABLE_NOTICE,
+  SUMMARY_QUALITY_EXPLANATION,
+  buildChangelogView,
+  describeLine,
+  describeSection,
+  foldChangelog,
+  regulatoryEmptyLine,
+  sectionLines,
+  sectionTotal,
+  summaryDayTotal,
+} from "../src/lib/changelog-group";
 
 test("one line per regulation per day, newest first, change types folded in", () => {
   const lines = foldChangelog([
@@ -171,19 +183,10 @@ test("no rows, no lines", () => {
 
 // ---- the three sections (review 4, 7 Oct 2026) ---------------------------------
 
-import {
-  CHANGELOG_SECTIONS,
-  SUMMARY_QUALITY_EXPLANATION,
-  describeSection,
-  sectionLines,
-  sectionTotal,
-  summaryDayTotal,
-} from "../src/lib/changelog-group";
-
 test("three sections: regulatory first and open, links second, summary quality last and collapsed", () => {
   assert.deepEqual(CHANGELOG_SECTIONS.map((s) => [s.key, s.title, s.collapsed]), [
     ["regulatory", "Regulatory changes", false],
-    ["links", "Links and sources", false],
+    ["links", "Links, sources and transcription", false],
     ["summaries", "Summary quality", true],
   ]);
   assert.match(SUMMARY_QUALITY_EXPLANATION, /^An automated second pass compares each plain-English summary with the official text\./);
@@ -232,4 +235,95 @@ test("the summary section's one-line total per day sums the day's regulations in
   const [all] = foldChangelog([{ day: "2026-10-07", reg_key: "3", change_type: "summary_edited", provision_count: 98, latest: "2026-10-07T01:00:00Z" }]);
   assert.equal(summaryDayTotal([all]), "98 summaries corrected on AI review");
   assert.doesNotMatch(summaryDayTotal(lines), /(?<!AI )reviewed/);
+});
+
+test("regulatory changes are only what came from the agency; our corrections and duplicate removals read as such, under links (7 Oct 2026)", () => {
+  const lines = foldChangelog([
+    { day: "2026-10-04", reg_key: "gp12", change_type: "transcription_corrected", provision_count: 13, latest: "2026-10-04T20:00:00Z" },
+    { day: "2026-10-04", reg_key: "26", change_type: "duplicate_removed", provision_count: 20, latest: "2026-10-04T21:00:00Z" },
+    { day: "2026-10-04", reg_key: "26", change_type: "links_updated", provision_count: 11, latest: "2026-10-04T21:00:00Z" },
+    { day: "2026-11-02", reg_key: "7", change_type: "source_version_changed", provision_count: 1, latest: "2026-11-02T15:00:00Z" },
+    { day: "2026-11-02", reg_key: "7", change_type: "text_updated", provision_count: 40, latest: "2026-11-02T15:00:00Z" },
+    { day: "2026-11-02", reg_key: "7", change_type: "added", provision_count: 3, latest: "2026-11-02T15:00:00Z" },
+    { day: "2026-11-02", reg_key: "7", change_type: "removed", provision_count: 1, latest: "2026-11-02T15:00:00Z" },
+    // the internal duplicate of a counted removal is never shown
+    { day: "2026-10-04", reg_key: "26", change_type: "removal_note", provision_count: 19, latest: "2026-10-04T21:00:00Z" },
+  ]);
+  const gp12 = lines.find((l) => l.regKey === "gp12")!;
+  assert.deepEqual(describeLine(gp12), ["corrections to our copy of the text in 13 provisions"]);
+  assert.deepEqual(describeSection(gp12, "regulatory"), []);
+  assert.deepEqual(describeSection(gp12, "links"), ["corrections to our copy of the text in 13 provisions"]);
+  assert.equal(sectionTotal(gp12, "regulatory"), 0);
+  assert.equal(sectionTotal(gp12, "links"), 13);
+  const reg26 = lines.find((l) => l.regKey === "26")!;
+  assert.deepEqual(describeSection(reg26, "links"), [
+    "links added or updated in 11 provisions",
+    "20 provisions removed that duplicated another document in the corpus",
+  ]);
+  assert.deepEqual(describeSection(reg26, "regulatory"), []);
+  // An agency change: the version line first, then the counts of the same import.
+  const reg7 = lines.find((l) => l.regKey === "7")!;
+  assert.deepEqual(describeSection(reg7, "regulatory"), [
+    "official text updated to the agency's new version",
+    "40 provisions updated",
+    "3 provisions added",
+    "1 provision removed",
+  ]);
+  assert.equal(sectionTotal(reg7, "regulatory"), 45);
+  assert.deepEqual(sectionLines(lines, "regulatory").map((l) => l.regKey), ["7"]);
+  assert.deepEqual(sectionLines(lines, "links").map((l) => l.regKey), ["26", "gp12"]);
+  // No phrase ever calls our own work "provisions updated".
+  for (const l of [gp12, reg26]) for (const p of describeLine(l)) assert.doesNotMatch(p, /provisions? updated/);
+});
+
+test("the regulatory section's empty line names the earliest recorded day, and the view says so when nothing came from the agency", () => {
+  assert.equal(
+    regulatoryEmptyLine("September 14, 2026"),
+    "No agency rule changes recorded since September 14, 2026. Each regulation's page shows its current version and effective date."
+  );
+  assert.equal(regulatoryEmptyLine(null), "No agency rule changes recorded. Each regulation's page shows its current version and effective date.");
+  const label = (d: string) => `L(${d})`;
+  const view = buildChangelogView(
+    {
+      rows: [
+        { day: "2026-10-06", reg_key: "7", change_type: "links_updated", provision_count: 22, latest: "2026-10-07T01:39:30Z" },
+        { day: "2026-09-14", reg_key: "7", change_type: "transcription_corrected", provision_count: 1400, latest: "2026-09-14T20:00:00Z" },
+        { day: "2026-10-05", reg_key: "3", change_type: "summary_approved", provision_count: 2, latest: "2026-10-05T01:00:00Z" },
+      ],
+      computedAt: "2026-10-07T12:00:00Z",
+      source: "snapshot",
+      error: null,
+    },
+    label
+  );
+  assert.equal(view.notice, null);
+  assert.equal(view.firstDay, "2026-09-14");
+  assert.deepEqual(view.sections.map((s) => [s.key, s.title, s.collapsed, s.groups.length]), [
+    ["regulatory", "Regulatory changes", false, 0],
+    ["links", "Links, sources and transcription", false, 2],
+    ["summaries", "Summary quality", true, 1],
+  ]);
+  assert.equal(view.sections[0].emptyLine, regulatoryEmptyLine("L(2026-09-14)"));
+  assert.deepEqual(view.sections[1].groups.map((g) => [g.key, g.label, g.lines.length]), [["2026-10-06", "L(2026-10-06)", 1], ["2026-09-14", "L(2026-09-14)", 1]]);
+  assert.equal(summaryDayTotal(view.sections[2].groups[0].lines), "2 summaries AI reviewed");
+  assert.equal(CHANGELOG_SECTIONS.length, 3);
+  assert.match(SUMMARY_QUALITY_EXPLANATION, /official text is never changed/);
+});
+
+test("when the counts could not be loaded the view carries the notice and every section its empty line (the page still renders)", () => {
+  const view = buildChangelogView({ rows: [], computedAt: null, source: "none", error: "snapshot: timeout; live: timeout" }, (d) => d);
+  assert.equal(view.notice, CHANGELOG_UNAVAILABLE_NOTICE);
+  assert.equal(view.firstDay, null);
+  assert.deepEqual(view.sections.map((s) => [s.key, s.groups.length, s.emptyLine]), [
+    ["regulatory", 0, "Nothing recorded yet."],
+    ["links", 0, "Nothing recorded yet."],
+    ["summaries", 0, "Nothing recorded yet."],
+  ]);
+  // The last good rows with an error: no notice, the rows shown.
+  const memory = buildChangelogView(
+    { rows: [{ day: "2026-10-06", reg_key: "7", change_type: "links_updated", provision_count: 22, latest: "2026-10-07T01:39:30Z" }], computedAt: null, source: "memory", error: "snapshot: timeout" },
+    (d) => d
+  );
+  assert.equal(memory.notice, null);
+  assert.equal(memory.sections[1].groups.length, 1);
 });

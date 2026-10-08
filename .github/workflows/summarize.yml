@@ -127,6 +127,16 @@ jobs:
             if [ -f "$f" ]; then echo "::group::$f"; cat "$f"; echo "::endgroup::"; fi
           done
 
+      - name: Refresh the stored changelog counts
+        # /changelog reads a stored snapshot (7 Oct 2026); the chained run
+        # refreshes it itself, this is the backstop.
+        if: always()
+        working-directory: pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python refresh_changelog.py
+
       - name: Upload report, state and failures
         if: always()
         uses: actions/upload-artifact@v4

@@ -560,10 +560,10 @@ test("rowsNeeded fetches FACET_FETCH_FACTOR times the window when the question s
   assert.equal(rowsNeeded(apen), 5);
 });
 
-test("the twenty-one map-checked eval questions route as pinned (32 questions), and KNOWN_FAILURES is empty", () => {
-  assert.equal(EVAL_QUESTIONS.length, 32);
+test("the twenty-six map-checked eval questions route as pinned (37 questions), and KNOWN_FAILURES is empty", () => {
+  assert.equal(EVAL_QUESTIONS.length, 37);
   const pinned = EVAL_QUESTIONS.filter((e) => e.map !== undefined);
-  assert.equal(pinned.length, 21);
+  assert.equal(pinned.length, 26);
   assert.deepEqual(
     pinned.map((e) => [e.q, e.map]),
     [
@@ -588,6 +588,11 @@ test("the twenty-one map-checked eval questions route as pinned (32 questions), 
       ["Do I need a GP12?", "premise-gp12"],
       ["What applies to a diesel engine?", "engines"],
       ["What rules apply to a produced water storage tank at a well site?", "storage-tanks"],
+      ["Do I need an APEN for every emission point at my site?", "premise-apen-every-point"],
+      ["Does my well site need a Title V operating permit?", "premise-title-v-well-site"],
+      ["If my tank battery is exempt from a construction permit, does Regulation 7 still apply?", "premise-exempt-still-regulated"],
+      ["Does OOOOb apply to an existing well drilled before 2022?", "premise-oooob-existing-well"],
+      ["Can I register a diesel engine under GP02?", "premise-gp02-diesel"],
     ]
   );
   // The general-permits question and the new per-day-maximum question (the 29th) close the original block, before the reviewer questions.

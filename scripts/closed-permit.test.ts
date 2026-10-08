@@ -128,8 +128,8 @@ test("noBasis and minFederal checks", () => {
   assert.match(twoFederal.failures.join("\\n"), /2 federal rows in the top 10; need 3/);
 });
 
-test("the list carries the original 24 questions unchanged, the maps batch 3 and 4 questions, then the three reviewer questions and the three review-4 rows", () => {
-  assert.equal(EVAL_QUESTIONS.length, 32);
+test("the list carries the original 24 questions unchanged, the maps batch 3 and 4 questions, then the three reviewer questions, the three review-4 rows and the five topic-note rows", () => {
+  assert.equal(EVAL_QUESTIONS.length, 37);
   const plain = EVAL_QUESTIONS.slice(0, 26);
   for (const e of plain) {
     assert.equal(e.topN, undefined, e.q);
@@ -145,6 +145,11 @@ test("the list carries the original 24 questions unchanged, the maps batch 3 and
       "Do I need a GP12?",
       "What applies to a diesel engine?",
       "What rules apply to a produced water storage tank at a well site?",
+      "Do I need an APEN for every emission point at my site?",
+      "Does my well site need a Title V operating permit?",
+      "If my tank battery is exempt from a construction permit, does Regulation 7 still apply?",
+      "Does OOOOb apply to an existing well drilled before 2022?",
+      "Can I register a diesel engine under GP02?",
     ]
   );
   // the measured 30 Sep production top 10 for each passes its own question

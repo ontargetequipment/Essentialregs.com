@@ -299,20 +299,36 @@ test.describe("anonymous", () => {
 
   test("/changelog has three sections in order; summary quality is collapsed to one line per day with its explanation", async ({ page }) => {
     // Review 4 (7 Oct 2026): regulatory changes first and open, links and
-    // sources second, summary quality last, collapsed by default.
+    // sources second, summary quality last, collapsed by default. Since the
+    // second review of the page (7 Oct 2026) the regulatory section lists
+    // only what came from the agency, so it normally shows one line saying
+    // none is recorded; the links section carries our own corrections.
     const res = await page.goto("/changelog");
     expect(res?.status()).toBe(200);
     const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
-    expect(headings).toEqual(["Regulatory changes", "Links and sources", "Summary quality"]);
+    expect(headings).toEqual(["Regulatory changes", "Links, sources and transcription", "Summary quality"]);
+    await expect(page.getByText("The changelog could not be loaded right now", { exact: false })).toHaveCount(0);
     await expect(page.getByText("An automated second pass compares each plain-English summary with the official text.", { exact: false })).toHaveCount(1);
     const summaryDays = page.locator("section[aria-labelledby='changelog-summaries'] details");
     expect(await summaryDays.count()).toBeGreaterThan(0);
     await expect(summaryDays.first()).not.toHaveAttribute("open", "");
     await expect(summaryDays.first().locator("summary")).toContainText(/summar(y|ies)/);
-    // The regulatory section lists its days open, each line naming a regulation.
+    // The regulatory section either lists agency changes (days open, each
+    // line naming a regulation) or says in one line that none is recorded.
     const regulatory = page.locator("section[aria-labelledby='changelog-regulatory']");
-    expect(await regulatory.locator("h3").count()).toBeGreaterThan(0);
-    expect(await regulatory.locator("li").count()).toBeGreaterThan(0);
+    const regulatoryLines = await regulatory.locator("li").count();
+    if (regulatoryLines > 0) {
+      expect(await regulatory.locator("h3").count()).toBeGreaterThan(0);
+      await expect(regulatory.locator("li").first()).toContainText(/provisions? (updated|added|removed)|agency's new version/);
+    } else {
+      await expect(regulatory.locator("p[data-empty-section='regulatory']")).toContainText(/^No agency rule changes recorded since .+\. Each regulation's page shows its current version and effective date\.$/);
+    }
+    // Our own work never reads as an agency change: the links section
+    // carries the corrections and the link imports.
+    const links = page.locator("section[aria-labelledby='changelog-links']");
+    expect(await links.locator("li").count()).toBeGreaterThan(0);
+    await expect(links.locator("li").filter({ hasText: "corrections to our copy of the text" }).first()).toBeVisible();
+    await expect(regulatory.locator("li").filter({ hasText: /corrections to our copy|links added/ })).toHaveCount(0);
   });
 
   test("/sitemap.xml lists more than 50 URLs", async ({ page }) => {
