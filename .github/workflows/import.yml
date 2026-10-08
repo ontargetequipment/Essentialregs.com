@@ -250,7 +250,7 @@ jobs:
           PART=60; [ "$REG" = "zzzz" ] && PART=63
           URL="https://www.ecfr.gov/api/versioner/v1/full/${AS_OF}/title-40.xml?part=${PART}&subpart=${SRC_BASENAME}"
           echo "Fetching $URL"
-          curl -sSL -A "EssentialRegsImporter/1.0 (+https://essentialregs.com)" --max-time 300 -o "pipeline/sources/${SRC_BASENAME}.xml" -w "HTTP %{http_code}, %{size_download} bytes\n" "$URL"
+          curl -sSL --compressed -A "EssentialRegsImporter/1.0 (+https://essentialregs.com)" --max-time 300 -o "pipeline/sources/${SRC_BASENAME}.xml" -w "HTTP %{http_code}, %{size_download} bytes\n" "$URL"
           head -c 300 "pipeline/sources/${SRC_BASENAME}.xml"; echo
           grep -q "<DIV6" "pipeline/sources/${SRC_BASENAME}.xml" || { echo "::error::not a subpart XML"; exit 1; }
           echo "images: $(grep -o '<img [^>]*>' "pipeline/sources/${SRC_BASENAME}.xml" | wc -l); MATH elements: $(grep -o '<MATH' "pipeline/sources/${SRC_BASENAME}.xml" | wc -l); tables: $(grep -o '<GPOTABLE' "pipeline/sources/${SRC_BASENAME}.xml" | wc -l)"
