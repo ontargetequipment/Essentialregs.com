@@ -6,7 +6,7 @@ name: Keyword eval
 # request to main, and by hand with extra queries to print the top 10 for.
 # Make the "Keyword eval" check required in the branch protection.
 #
-# Footprint: seven to ten RPC calls with the service role, read-only (no
+# Footprint: eight to eleven RPC calls with the service role, read-only (no
 # search_queries rows). The script exits non-zero when a row outside
 # KEYWORD_KNOWN_FAILURES fails; the top 5 of every row is printed either way.
 #

@@ -61,6 +61,11 @@ and nobody has to ask for it. Since 6 Oct 2026 (ReviewBuiltIn):
   The only override is the workflow input **approved_budget**, which the run
   prints at the top of its report. `summarize.py`, `review.py` and `embed.py`
   enforce the same rule when run on their own.
+- **One budget, two passes.** `summarize.record_spend` and
+  `review.record_spend` add a run's spend to what the stage already held, so
+  the regenerate and second-review passes of a chained run no longer erase
+  the first passes' figures (the 8 Oct 2026 Subpart OOOO report printed
+  $0.0136 spent when its first review alone cost $1.38).
 - **Reconnect and resume.** Every database write goes through
   `pipeline/dbclient.py`, which reopens the connection and replays the request
   when the host closes it (it does so after 10,000 requests on one HTTP/2
