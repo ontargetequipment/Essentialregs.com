@@ -1366,8 +1366,16 @@ def estimate_into_budget(client_anthropic, reviews: list[ReviewInput], model: st
 
 
 def record_spend(stats: "RunStats", model: str, budget, batch: bool = True) -> None:
+    """This run's per-regulation spend so far, on top of what the stage held
+    when the run began: a chained run reviews twice (review, then review2
+    after the regeneration) with one Budget, and the second run must add to
+    the first, not replace it (see summarize.record_spend)."""
+    base = getattr(stats, "budget_base", None)
+    if base is None:
+        base = {reg: budget.spent.get(reg, {}).get("review", 0.0) for reg in budget.spent}
+        stats.budget_base = base
     for reg, usd in stats.cost_by_reg(model, batch=batch).items():
-        budget.set_spent(reg, "review", usd)
+        budget.set_spent(reg, "review", base.get(reg, 0.0) + usd)
 
 
 def count_tokens_many(client_anthropic, reviews: list[ReviewInput], model: str,

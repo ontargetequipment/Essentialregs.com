@@ -2318,9 +2318,18 @@ def estimate_into_budget(client_anthropic, model: str, prompts: dict[str, Prompt
 
 
 def record_spend(stats: RunStats, model: str, budget, batch: bool = True) -> None:
-    """Copies this run's per-regulation spend so far into `budget`."""
+    """Copies this run's per-regulation spend so far into `budget`, on top of
+    what the stage already held when this run began. A chained run passes
+    through the writer twice (summarize, then regenerate for the reviewer's
+    fails) with one Budget; copying the second run's cumulative figure over
+    the first's made the 8 Oct 2026 Subpart OOOO report show $0.0061 for a
+    stage that had written 511 summaries."""
+    base = getattr(stats, "budget_base", None)
+    if base is None:
+        base = {reg: budget.spent.get(reg, {}).get("summarize", 0.0) for reg in budget.spent}
+        stats.budget_base = base
     for reg, usd in stats.cost_by_reg(model, batch=batch).items():
-        budget.set_spent(reg, "summarize", usd)
+        budget.set_spent(reg, "summarize", base.get(reg, 0.0) + usd)
 
 
 def run_sync(client_anthropic, client_supabase, rows: list[dict], meta: dict, model: str,

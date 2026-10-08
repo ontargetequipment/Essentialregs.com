@@ -258,12 +258,19 @@ def stage_review(client_anthropic, client_supabase, ids: list[str], meta, childr
         return batch
     client_anthropic.messages.batches.create = recording_create
     try:
-        for reg in list(budget.estimates):
-            budget.estimates[reg].pop("review", None)   # run_reviews re-adds the exact figure for this stage
+        # run_reviews re-adds the exact estimate for this stage, so the figure
+        # already there (the pre-run estimate, or the first review's when this
+        # is review2) is set aside; the second pass puts the first's back so
+        # the report keeps what the owner saw before the first paid call.
+        prior = {reg: budget.estimates[reg].pop("review", 0.0) for reg in list(budget.estimates)}
         refused = review.run_reviews(client_anthropic, client_supabase, reviews, rows_by_id, model, effort, stats,
                                      execute=True, budget=budget, poll_interval=poll_interval, resume_batches=resume)
     finally:
         client_anthropic.messages.batches.create = real_create
+        if stage_name != "review":
+            for reg, usd in prior.items():
+                if usd:
+                    budget.estimates.setdefault(reg, {})["review"] = budget.estimates.get(reg, {}).get("review", 0.0) + usd
     if refused:
         stats.budget_stopped = refused
     print(f"  pass: {stats.passed}; corrected: {stats.corrected}; fail: {stats.failed}; API errors: {stats.api_errors}")
