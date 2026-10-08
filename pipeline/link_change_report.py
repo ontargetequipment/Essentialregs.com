@@ -42,11 +42,11 @@ _SPAN_RE = re.compile(r'<span class="xref" data-target="([^"]*)">(.*?)</span>', 
 _ANCHOR_RE = re.compile(r'<a class="xref-external-reg"[^>]*href="(/regulations/[^"]*)"[^>]*>(.*?)</a>', re.S)
 # The federal subparts in the corpus (acceptance item 2, 7 Oct 2026): links
 # to their documents ("/regulations/zzzz") and sections ("/regulations/iiii#sec-iiii-60.4209-(a)").
-FEDERAL_KEYS = ("iiii", "jjjj", "zzzz", "ooooa", "oooob", "ooooc")
+FEDERAL_KEYS = ("iiii", "jjjj", "zzzz", "oooo", "ooooa", "oooob", "ooooc")
 _FED_HREF_RE = re.compile(r"^/regulations/(" + "|".join(FEDERAL_KEYS) + r")(#.*)?$")
 # cfr-bucket entries that name one of the engine / oil-and-gas codes or a
 # section in their ranges: "skipped" when the subpart is not in the corpus
-# (the original OOOO, a Part 63 coating subpart), "unresolved" when it is
+# (a Part 63 coating subpart; the original OOOO until 8 Oct 2026), "unresolved" when it is
 # but the cited section is not in the index.
 _FED_BUCKET_RE = re.compile(r"\b(OOOO[abc]?|JJJJ|IIII|ZZZZ)\b|\b6[03]\.\d{4}[a-c]?\b")
 
@@ -272,7 +272,7 @@ def main() -> None:
 
     L.append("## Federal subpart links (acceptance item 2, 7 Oct 2026)\n")
     L.append("Links to the corpus's 40 CFR Part 60 / 63 subpart documents and their sections, per citing regulation, "
-             "OLD -> NEW. *skipped* = citations of a subpart that is not in the corpus (the original Subpart OOOO; a Part "
+             "OLD -> NEW. *skipped* = citations of a subpart that is not in the corpus (a Part "
              "63 subpart other than ZZZZ, including Regulation 8's coating-rule Subparts IIII / JJJJ / OOOO, which the old "
              "code linked to the Part 60 engine rules), counted in the cfr bucket and left as text; *unresolved* = a section "
              "number inside a corpus subpart's range that the corpus index does not hold (linked to nothing). Only regulations "
