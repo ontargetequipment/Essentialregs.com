@@ -134,6 +134,8 @@
    .equation A hand-transcribed equation (pipeline/curated_equations.json):
              .eq-math is the display form (stacked fractions, var/sub/sup),
              .eq-text the same formula in plain text for copying.
+   .figure-omitted  A visible "not reproduced here" placeholder with a link
+             to the official source, where the source has only an image.
    Unlayered on purpose so they also apply to the reader (reader.css scopes
    its own rules under .reg-reader) and to provision cards (.card-text).
 --------------------------------------------------------------------------- */
@@ -152,6 +154,23 @@
   font-family: var(--font-sans);
   font-size: 0.8em;
   color: var(--muted);
+}
+/* "Equation/Figure/Symbol not reproduced here. See the official source: …"
+   -- the importer's placeholder at an image the source publishes only as a
+   picture (import_ecfr.insert_ecfr_image_notes, import_ccr APPENDIX_FIGURES).
+   Visible on purpose: a gap in our copy is never silent. */
+.figure-omitted {
+  font-family: var(--font-sans);
+  font-size: 0.8em;
+  color: var(--muted);
+  margin: 0.4em 0 0.8em;
+  padding: 0.35em 0.6em;
+  border-left: 2px solid var(--line);
+}
+.figure-omitted a {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
 }
 .equation-block {
   margin: 0.8em 0 1em;

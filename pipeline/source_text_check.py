@@ -224,6 +224,104 @@ def source_words(reg: str, txt_path: Path) -> tuple[list[str], list[int]]:
     return words, linenos
 
 
+# --------------------------------------------------------------------------
+# Corpus-side checks (Oct 2026 review of the OOOO import). The word diff
+# above cannot see a problem the source text shares -- a page-break header
+# pdftotext reprints inside a table, an e-mail address the eCFR itself
+# prints with doubled underscores, an equation the eCFR publishes only as
+# an image -- so these look at the stored text alone and report every hit;
+# any hit fails the check like an unknown extraction difference does.
+# --------------------------------------------------------------------------
+
+_TABLE_EL_RE = re.compile(r"<table.*?</table>", re.S)
+_TR_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S)
+_CELL_RE = re.compile(r"<t[hd][^>]*>(.*?)</t[hd]>", re.S)
+_THEAD_RE = re.compile(r"<thead[^>]*>(.*?)</thead>", re.S)
+_TBODY_RE = re.compile(r"<tbody[^>]*>(.*?)</tbody>", re.S)
+# two or more underscores inside an e-mail address or a URL
+_UNDERSCORE_RUN_RE = re.compile(r"[\w.\-]*_{2,}[\w.\-]*@[\w.\-]+|(?:https?://|www\.)[^\s<]*_{2,}[^\s<]*")
+# "... as follows:" / "using the following equation:" / "using Equation 1 ...:"
+# directly followed by "Where:" (an optional eCFR equation caption between)
+_EQUATION_GAP_RE = re.compile(
+    r"(?:as follows|following equations?|using (?:the following )?equations?[^:]{0,40}|by):\s*"
+    r"(?:Equation \d+ to [Pp]aragraph [^:]{0,30})?\s*Where:", re.I)
+
+
+def _cells(tr_html: str) -> list[str]:
+    return [_plain(c).strip() for c in _CELL_RE.findall(tr_html)]
+
+
+def _row_words(cells: list[str]) -> Counter:
+    return Counter(w.lower() for c in cells for w in _WORD_RE.findall(c))
+
+
+def repeated_header_rows(html: str) -> list[str]:
+    """Body rows of the tables in `html` that repeat the header: the same
+    cells as a header row, or (a fused page-break header, OOOO Table 3 on
+    the v1 algorithm) every word of a header row inside one body row. One
+    description per hit."""
+    hits: list[str] = []
+    for t in _TABLE_EL_RE.findall(html):
+        thead = _THEAD_RE.search(t)
+        tbody = _TBODY_RE.search(t)
+        if thead:
+            header_rows = [_cells(tr) for tr in _TR_RE.findall(thead.group(1))]
+            body_rows = [_cells(tr) for tr in _TR_RE.findall(tbody.group(1) if tbody else t)]
+        else:
+            rows = [_cells(tr) for tr in _TR_RE.findall(t)]
+            header_rows, body_rows = rows[:1], rows[1:]
+        header_keys = [letters_digits(h) for h in header_rows if any(h)]
+        header_words = [_row_words(h) for h in header_rows if len(set(_row_words(h))) >= 3]
+        for cells in body_rows:
+            key = letters_digits(cells)
+            if key and key in header_keys:
+                hits.append("header row repeated in the body: " + " | ".join(cells)[:120])
+                continue
+            words = _row_words(cells)
+            for hw in header_words:
+                if all(words.get(w, 0) >= n for w, n in hw.items()):
+                    hits.append("header words fused into a body row: " + " | ".join(cells)[:120])
+                    break
+    return hits
+
+
+def underscore_runs(html: str) -> list[str]:
+    """E-mail addresses / URLs in `html` with a run of two or more
+    underscores, except one already carrying a [sic] marker (an EssentialRegs
+    note saying the official text prints it that way)."""
+    hits: list[str] = []
+    for m in _UNDERSCORE_RUN_RE.finditer(html):
+        if html[m.end():m.end() + 24].startswith('<span class="er-sic"'):
+            continue
+        hits.append(m.group(0))
+    return hits
+
+
+def equation_gaps(html: str) -> list[str]:
+    """Lead-ins announcing an equation that run straight into "Where:" --
+    nothing (no transcription, no placeholder) between them."""
+    text = re.sub(r"\s+", " ", _plain(html))
+    return [m.group(0)[-80:] for m in _EQUATION_GAP_RE.finditer(text)]
+
+
+def corpus_checks(rows: list[dict]) -> list[dict]:
+    """Every hit of the three checks over `rows`: dicts (id, kind, note)."""
+    out: list[dict] = []
+    for r in sorted(rows, key=lambda r: r.get("sort_order", 0)):
+        html = r.get("full_text") or ""
+        for h in repeated_header_rows(html):
+            out.append(dict(id=r["id"], kind="repeated_header", note=h))
+        for h in underscore_runs(html):
+            out.append(dict(id=r["id"], kind="underscore_run",
+                            note=f"{h}: confirm against the eCFR XML; if the official text prints it this way, "
+                                 "add a pipeline/curated_sic.json note (tooltip) instead of altering it"))
+        for h in equation_gaps(html):
+            out.append(dict(id=r["id"], kind="equation_gap",
+                            note=f"…{h}: no equation between the lead-in and 'Where:' (an image in the source? "
+                                 "import_ecfr.insert_ecfr_image_notes places a transcription or placeholder from the XML)"))
+    return out
+
+
 def compare(reg: str, rows: list[dict], txt_path: Path) -> dict:
     a_words, owners, in_table = corpus_words(rows, ecfr=is_ecfr_subpart(reg))
     b_words, linenos = source_words(reg, txt_path)
@@ -325,7 +423,8 @@ def compare(reg: str, rows: list[dict], txt_path: Path) -> dict:
             extraction.append(rec)
     return dict(reg=reg, corpus_words=len(a_words), source_words=len(b_words), equal=equal,
                 spacing=spacing, table_layout=table_layout, extraction=extraction,
-                unknown=[d for d in extraction if not d["known"]])
+                unknown=[d for d in extraction if not d["known"]],
+                corpus_checks=corpus_checks(rows))
 
 
 def _is_repeated_header(owner: str, a_span: list[str], b_span: list[str]) -> bool:
@@ -372,14 +471,23 @@ def render(results: list[dict]) -> str:
                "source. A difference with identical letters and digits is *spacing* (free); a table "
                "difference with the same letters as a multiset is *table layout* (free); the rest are "
                "*extraction differences*, each either known (reason given) or **unknown** (fails).\n")
-    out.append("| reg | corpus words | source words | equal | spacing | table layout | extraction | unknown |")
-    out.append("|---|---|---|---|---|---|---|---|")
+    out.append("Corpus checks look at the stored text alone (the source may share the fault): a table "
+               "header row repeated or fused inside the body, a run of two or more underscores in an "
+               "e-mail address or URL, an equation lead-in followed directly by \"Where:\". Any hit fails.\n")
+    out.append("| reg | corpus words | source words | equal | spacing | table layout | extraction | unknown | corpus checks |")
+    out.append("|---|---|---|---|---|---|---|---|---|")
     for r in results:
         out.append(f"| {r['reg']} | {r['corpus_words']} | {r['source_words']} | {r['equal']} | {len(r['spacing'])} "
-                   f"| {len(r['table_layout'])} | {len(r['extraction'])} | **{len(r['unknown'])}** |")
+                   f"| {len(r['table_layout'])} | {len(r['extraction'])} | **{len(r['unknown'])}** "
+                   f"| **{len(r.get('corpus_checks', []))}** |")
     out.append("")
     for r in results:
         out.append(f"## {r['reg']}\n")
+        if r.get("corpus_checks"):
+            out.append(f"### Corpus checks: {len(r['corpus_checks'])} hit(s)\n")
+            for d in r["corpus_checks"]:
+                out.append(f"- `{d['id']}` **{d['kind']}**: {d['note']}")
+            out.append("")
         if r["extraction"]:
             out.append("### Extraction differences\n")
             for d in r["extraction"]:
@@ -422,7 +530,8 @@ def main(argv: list[str] | None = None) -> int:
         results.append(res)
         print(f"{reg}: {res['corpus_words']} corpus words, {res['source_words']} source words, "
               f"{res['equal']} equal; spacing {len(res['spacing'])}, table layout {len(res['table_layout'])}, "
-              f"extraction {len(res['extraction'])} (unknown {len(res['unknown'])})")
+              f"extraction {len(res['extraction'])} (unknown {len(res['unknown'])}); "
+              f"corpus checks {len(res['corpus_checks'])}")
     report = render(results)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -430,7 +539,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {args.out}")
     else:
         print(report)
-    return 1 if any(r["unknown"] for r in results) else 0
+    return 1 if any(r["unknown"] or r.get("corpus_checks") for r in results) else 0
 
 
 if __name__ == "__main__":

@@ -73,7 +73,11 @@ SUBPART_META: dict[str, dict] = {
     "oooo": dict(
         part=60, code="OOOO", suffix="", sections=(5360, 5433),
         url="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO",
-        enable_table_ref_links=False, table_algorithm="v1",
+        # Tables 1-3 come from pipeline/sources/OOOO.xml (the eCFR versioner
+        # XML the Import workflow fetches with ecfr_xml=true): the v1 layout
+        # algorithm fused Table 3's repeated page-break header into the body
+        # and split the two-line headers of Tables 1 and 2 (Oct 2026 review).
+        enable_table_ref_links=False, table_algorithm="xml",
     ),
     "ooooa": dict(
         part=60, code="OOOOa", suffix="a", sections=(5300, 5499),
@@ -1227,9 +1231,11 @@ def _pdfplumber_rows_are_soup(rows: list[list[str]]) -> bool:
 # layout problem: every table is real `<TABLE class="gpo_table">` markup
 # with `<THEAD>`/`<TBODY>`/`<TFOOT>` rows and `<TD>`/`<TH>` cells, already
 # correctly segmented by the government's own typesetting -- there is
-# nothing to reconstruct. This algorithm is gated to jjjj/iiii/zzzz via
-# `SUBPART_META[...]["table_algorithm"] = "xml"`; OOOO stays on `"v1"` and
-# reads no XML at all.
+# nothing to reconstruct. This algorithm is gated per subpart via
+# `SUBPART_META[...]["table_algorithm"] = "xml"` (jjjj/iiii/zzzz, and oooo
+# since the Oct 2026 review found its Table 3 header fused into the body);
+# OOOOa/b/c stay on `"v1"` for tables and read the XML only for the
+# equation-image positions (insert_ecfr_image_notes below).
 # --------------------------------------------------------------------------
 
 _XML_INLINE_TAGS = {"sup", "sub", "br"}
@@ -2063,6 +2069,222 @@ def _norm_text(html: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html)).strip()
 
 
+# --------------------------------------------------------------------------
+# Equations the eCFR publishes only as images (Oct 2026 review)
+# --------------------------------------------------------------------------
+#
+# The eCFR sets every display equation of these subparts as a GIF
+# (`<img src="/graphics/er16au12.000.gif"/>` in the versioner XML, an image
+# in the PDF print). pdftotext carries nothing of it, so a row read
+# "... must be computed as follows:" and then "Where:" with nothing in
+# between -- a silent gap the source text check could not see because the
+# source text has the same gap. The XML knows exactly where each image
+# sits, so the parse now reads it (pipeline/sources/<CODE>.xml, fetched by
+# the Import workflow's ecfr_xml input) and, at each image's position in
+# the row's text, renders either
+#   * the curated transcription of the equation (pipeline/curated_equations.json
+#     keyed by the row id, the same markup + copyable plain text the GP12
+#     equations use, with an EssentialRegs note naming the source page and
+#     linking the official text), or
+#   * a visible placeholder: "Equation not reproduced here. See the official
+#     source: <link>" -- so no gap is silent while a transcription is
+#     pending. Figures (the Tutwiler burette drawing after § 60.5408) and
+#     inline symbol images (OOOOb's § 60.5432b prints a few variables as
+#     images in mid-sentence) get the same placeholder with "Figure" /
+#     "Symbol".
+# Both are EssentialRegs notes, not official text: the source text check
+# strips them, the apply step classifies the change as markup-only (no
+# summary regeneration) and logs it as transcription_corrected.
+# Every image that cannot be placed in a row is reported (parse report
+# `image_notes_unmatched`, a WARNING on stderr) and fails the eCFR tests.
+
+_IMG_INLINE_CLOSERS_RE = re.compile(r"^(?:\s|</(?:span|sup|sub|i|b|var|a|em|strong)>)*</p>")
+
+
+def _alnum_lower(s: str) -> str:
+    return "".join(ch for ch in s.lower() if ch.isalnum())
+
+
+def _html_alnum_map(html: str) -> tuple[str, list[int]]:
+    """(alnum-lowercase text of `html` with tags removed and entities
+    decoded, end offset in `html` just after each kept character)."""
+    import html as _html
+    out: list[str] = []
+    ends: list[int] = []
+    i, n = 0, len(html)
+    while i < n:
+        ch = html[i]
+        if ch == "<":
+            j = html.find(">", i)
+            i = n if j < 0 else j + 1
+            continue
+        if ch == "&":
+            j = html.find(";", i)
+            if 0 < j - i <= 10:
+                dec = _html.unescape(html[i:j + 1])
+                for c in dec.lower():
+                    if c.isalnum():
+                        out.append(c); ends.append(j + 1)
+                i = j + 1
+                continue
+        if ch.isalnum():
+            out.append(ch.lower()); ends.append(i + 1)
+        i += 1
+    return "".join(out), ends
+
+
+def _ecfr_official_url(meta: dict, row: dict) -> tuple[str, str]:
+    """(URL of the row's own paragraph on the eCFR, display citation)."""
+    cite = re.sub(r"\s+", "", (row.get("citation") or "").replace("§", ""))
+    label = f"40 CFR {cite}" if cite else "the eCFR"
+    if "(" in cite:
+        return f"{meta['url']}#p-{cite}", label
+    if cite:
+        return f"https://www.ecfr.gov/current/title-40/section-{cite}", label
+    return meta["url"], label
+
+
+def _xml_image_sites(xml_path: str) -> list[dict]:
+    """Every `<img>` of the subpart XML in document order: the section it
+    is in (DIV8 N), the alnum key of the element printed just before it,
+    and its kind -- "equation", "figure" (followed by a <BCAP> caption, or
+    last in its section after a sentence that ends in a full stop) or
+    "symbol" (followed by a lower-case continuation of the same sentence)."""
+    import xml.etree.ElementTree as ET
+    root = ET.parse(xml_path).getroot()
+    parent = {c: p for p in root.iter() for c in p}
+    sites: list[dict] = []
+    for img in root.iter("img"):
+        par = parent.get(img)
+        if par is None:
+            continue
+        kids = list(par)
+        idx = kids.index(img)
+        prev = kids[idx - 1] if idx > 0 else None
+        nxt = kids[idx + 1] if idx + 1 < len(kids) else None
+        sec = None
+        node = par
+        while node is not None:
+            if node.tag == "DIV8":
+                sec = node.get("N")
+                break
+            node = parent.get(node)
+        prev_text = re.sub(r"\s+", " ", "".join(prev.itertext())).strip() if prev is not None else ""
+        next_text = re.sub(r"\s+", " ", "".join(nxt.itertext())).strip() if nxt is not None else ""
+        # The parser moves a paragraph's label "(6)" / "(12)(i)" out of its
+        # text (into `citation`), so the anchor must not start with it.
+        prev_text = re.sub(r"^(?:\([^()\s]{1,5}\)\s*)+", "", prev_text)
+        # Two images in a row (OOOOa § 60.5432a(b)(11) prints its two
+        # equations as two GIFs): the second has no text of its own before
+        # it and goes directly after the first.
+        after_previous = prev is not None and prev.tag == "img"
+        if (nxt is not None and nxt.tag == "BCAP") or (nxt is None and prev_text.endswith(".")):
+            kind = "figure"
+        elif nxt is not None and nxt.tag == "FP" and next_text[:1].islower():
+            kind = "symbol"
+        else:
+            kind = "equation"
+        sites.append(dict(src=img.get("src") or "", section=sec or "", kind=kind, after_previous=after_previous,
+                          anchor=_alnum_lower(prev_text)[-40:], anchor_text=prev_text[-80:]))
+    return sites
+
+
+def insert_ecfr_image_notes(reg: str, rows: list[dict], xml_path: str | None) -> tuple[list[dict], list[dict]]:
+    """Places a note at every image position of `reg`'s XML (see the block
+    comment above), in place. Returns (placed, unmatched) report rows."""
+    import import_ccr as ic  # lazy: import_ccr.cmd_parse imports this module
+    meta = SUBPART_META[_norm_reg(reg)]
+    if not xml_path or not Path(xml_path).exists():
+        if xml_path:
+            print(f"WARNING: {xml_path} not found -- equation-image positions unknown for {reg}; "
+                  "fetch it with the Import workflow's ecfr_xml input (no image notes placed).", file=sys.stderr)
+        return [], []
+    sites = _xml_image_sites(xml_path)
+    text_rows = [r for r in rows if r.get("kind") in ("section", "item")]
+    placed: list[dict] = []
+    unmatched: list[dict] = []
+    # Which row each image belongs to: the deepest row of the image's
+    # section whose text contains the words printed just before the image.
+    owner_of: list[str | None] = []
+    sort_of = {r["id"]: r["sort_order"] for r in text_rows}
+    last_sort = -1
+    for site in sites:
+        if site["after_previous"] and owner_of:
+            owner_of.append(owner_of[-1])
+            continue
+        prefix = f"sec-{reg}-{site['section']}"
+        cands = []
+        for r in text_rows:
+            if not (r["id"] == prefix or r["id"].startswith(prefix + "-")):
+                continue
+            key, _ends = _html_alnum_map(r["full_text"])
+            if site["anchor"] and site["anchor"] in key:
+                cands.append(r["id"])
+        cands = [c for c in cands if not any(o != c and o.startswith(c + "-") for o in cands)]
+        if len(cands) > 1:
+            # The same lead-in phrase printed twice in a section (OOOOb
+            # § 60.5432b(b)(11) and (b)(13)): images come in document order,
+            # so the owner is the first candidate at or after the last one.
+            later = sorted((c for c in cands if sort_of[c] >= last_sort), key=lambda c: sort_of[c])
+            cands = later[:1] if later else []
+        owner_of.append(cands[0] if len(cands) == 1 else None)
+        if cands:
+            last_sort = sort_of[cands[0]]
+    per_row = Counter(o for o in owner_of if o)
+    cursor: dict[str, int] = defaultdict(int)
+    by_id = {r["id"]: r for r in rows}
+    for site, owner in zip(sites, owner_of):
+        if owner is None:
+            unmatched.append(dict(src=site["src"], section=site["section"], kind=site["kind"],
+                                  anchor=site["anchor_text"]))
+            print(f"WARNING: no row of {reg} § {site['section']} carries the text before image "
+                  f"{site['src']} ({site['anchor_text']!r}); the gap stays silent", file=sys.stderr)
+            continue
+        row = by_id[owner]
+        html = row["full_text"]
+        if site["after_previous"] and cursor[owner]:
+            end = cursor[owner]
+        else:
+            key, ends = _html_alnum_map(html)
+            start_key = len(_html_alnum_map(html[:cursor[owner]])[0])
+            k = key.find(site["anchor"], start_key)
+            if k < 0:
+                k = key.find(site["anchor"])
+            end = ends[k + len(site["anchor"]) - 1]
+            # keep the lead-in's closing punctuation (":" / ",") with it
+            while end < len(html) and html[end] in ":;,. )":
+                end += 1
+        url, cite = _ecfr_official_url(meta, row)
+        curated = owner in ic.CURATED_EQUATIONS and site["kind"] == "equation"
+        if curated and per_row[owner] > 1 and len(ic.CURATED_EQUATIONS[owner].get("images", [])) == 0:
+            print(f"WARNING: {owner} has {per_row[owner]} images but one curated entry; "
+                  "placeholder used (add per-image entries to curated_equations.json)", file=sys.stderr)
+            curated = False
+        if curated:
+            block = ic.render_equations_html(owner)
+            what = "curated"
+        else:
+            word = {"equation": "Equation", "figure": "Figure", "symbol": "Symbol"}[site["kind"]]
+            block = (f'<p class="figure-omitted">{word} not reproduced here. See the official source: '
+                     f'<a href="{escape_html_text(url)}">{escape_html_text(cite)}</a>.</p>')
+            what = "placeholder"
+        m = _IMG_INLINE_CLOSERS_RE.match(html[end:])
+        if site["after_previous"] and cursor[owner]:
+            at = end  # directly after the previous image's block
+            new_html = html[:at] + block + html[at:]
+        elif m:
+            at = end + m.end()
+            new_html = html[:at] + block + html[at:]
+        else:
+            # the image sits mid-paragraph (an inline symbol): split it
+            new_html = html[:end] + "</p>" + block + "<p>" + html[end:]
+            at = end + len("</p>")
+        row["full_text"] = new_html
+        cursor[owner] = at + len(block)
+        placed.append(dict(id=owner, src=site["src"], kind=site["kind"], note=what, anchor=site["anchor_text"]))
+    return placed, unmatched
+
+
 def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict], dict]:
     reg = _norm_reg(reg)
     meta = SUBPART_META[reg]
@@ -2631,9 +2853,15 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
                 toc_title_mismatches.append((num, toc_norm, body_norm))
 
     label_fixes_applied = label_fixes_applied + apply_known_html_fixes(reg, rows)
+    import import_ccr as ic  # lazy: import_ccr.cmd_parse imports this module
+    label_fixes_applied = label_fixes_applied + ic.apply_sic_markers(reg, rows)
+    image_xml = str(Path(pdf_path).with_suffix(".xml")) if pdf_path else None
+    image_notes, image_notes_unmatched = insert_ecfr_image_notes(reg, rows, image_xml)
 
     report = {
         "reg": reg,
+        "image_notes": image_notes,
+        "image_notes_unmatched": image_notes_unmatched,
         "n_sections_toc": len(toc_seen_nums),
         "n_sections_body": len(body_seen_nums),
         "missing_sections": missing_sections,

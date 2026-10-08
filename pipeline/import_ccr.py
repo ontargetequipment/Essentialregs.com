@@ -2760,10 +2760,15 @@ def render_equations_html(row_id: str) -> str:
     entry = CURATED_EQUATIONS[row_id]
     eqs = entry["equations"]
     many = len(eqs) > 1
+    reason = entry.get("reason") or "the PDF's equation text does not survive text extraction"
     note = (f"{'Equations' if many else 'Equation'} transcribed by EssentialRegs from page {entry.get('page')} "
-            f"of {entry.get('source', 'the official PDF')}: the PDF's equation text does not survive text "
-            f"extraction. The plain-text line under {'each one' if many else 'it'} is the same formula for copying.")
-    parts = [f'<div class="equation-block"><p class="er-note eq-note">{escape_html_text(note)}</p>']
+            f"of {entry.get('source', 'the official PDF')}: {reason}. "
+            f"The plain-text line under {'each one' if many else 'it'} is the same formula for copying.")
+    note_html = escape_html_text(note)
+    if entry.get("url"):
+        # eCFR entries (import_ecfr.insert_ecfr_image_notes) link the official text.
+        note_html += f' <a href="{escape_html_text(entry["url"])}">Official text</a>.'
+    parts = [f'<div class="equation-block"><p class="er-note eq-note">{note_html}</p>']
     for e in eqs:
         label = e.get("label") or ""
         label_html = f'<span class="eq-label">{escape_html_text(label)}</span> ' if label else ""
@@ -2816,12 +2821,20 @@ def apply_sic_markers(reg: str, rows: list[dict]) -> list[dict]:
             continue
         for e in CURATED_SIC[pid]:
             printed = escape_html_text(e["printed"])
+            # An entry may carry its own tooltip (the reader shows it on the
+            # marker) when the plain "Printed this way" would leave the
+            # reader guessing -- e.g. an e-mail address the eCFR prints with
+            # doubled underscores. Same span class, so every check that
+            # treats the marker as an EssentialRegs note still matches it.
+            marker = SIC_MARKER_HTML
+            if e.get("tooltip"):
+                marker = f'<span class="er-sic" title="{escape_html_text(e["tooltip"])}"> [sic]</span>'
             row = by_id.get(pid)
             hits = 0
             if row is not None and printed:
                 hits = row["full_text"].count(printed)
                 if hits:
-                    row["full_text"] = row["full_text"].replace(printed, printed + SIC_MARKER_HTML)
+                    row["full_text"] = row["full_text"].replace(printed, printed + marker)
             applied.append(dict(old_label=e["printed"], new_label=e["printed"] + " [sic]", line_hint=pid,
                                 note="[sic] marker (pipeline/curated_sic.json): " + e["reason"],
                                 hits=hits, expect_hits=int(e.get("expect", 1))))
@@ -13370,11 +13383,32 @@ def _visible_text(text: str) -> str:
     space): an xref span/anchor inserted flush against punctuation
     ("Regulation</a>." vs "Regulation.") must read as the same visible text
     -- replacing the tag with a space turned every such new link into a false
-    "visible text changed" (Reg 6 IX.C on the batch-4 re-import). The [sic]
-    marker span (SIC_MARKER_HTML) is removed with its text first: it is an
-    EssentialRegs note, so adding one is markup-only and keeps the row's
-    summary and review state."""
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", _SIC_SPAN_RE.sub("", text or ""))).strip()
+    "visible text changed" (Reg 6 IX.C on the batch-4 re-import). EssentialRegs'
+    own notes are removed with their text first -- the [sic] marker span
+    (SIC_MARKER_HTML), a curated equation block (render_equations_html) and
+    a figure/equation-omitted placeholder (_figure_placeholder_html,
+    import_ecfr.insert_ecfr_image_notes): they are not official text, so
+    adding one is markup-only and keeps the row's summary and review state
+    (the changelog still records it: cmd_apply logs a note change as
+    transcription_corrected, see `notes_changed`)."""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", strip_er_notes(text or ""))).strip()
+
+
+_FIGURE_OMITTED_RE = re.compile(r'<p class="figure-omitted">.*?</p>', re.S)
+
+
+def strip_er_notes(html: str) -> str:
+    """`html` without EssentialRegs' own notes: [sic] spans, curated equation
+    blocks and figure/equation-omitted placeholders."""
+    return _FIGURE_OMITTED_RE.sub("", _EQUATION_BLOCK_RE.sub("", _SIC_SPAN_RE.sub("", html or "")))
+
+
+def er_notes_of(html: str) -> list[str]:
+    """The EssentialRegs notes in `html`, in order (whitespace-collapsed), so
+    two versions of a row can be compared note-for-note."""
+    found = [(m.start(), m.group(0)) for pat in (_SIC_SPAN_RE, _EQUATION_BLOCK_RE, _FIGURE_OMITTED_RE)
+             for m in pat.finditer(html or "")]
+    return [re.sub(r"\s+", " ", t).strip() for _, t in sorted(found)]
 
 
 def text_letters_digits_changed(parsed_text: str, db_text: str) -> bool:
@@ -13402,6 +13436,14 @@ def ancestors_of(pid: str, by_id: dict) -> list[str]:
     return out
 
 
+def _note_kind(note_html: str) -> str:
+    if note_html.startswith('<span class="er-sic"'):
+        return "[sic] marker"
+    if note_html.startswith('<div class="equation-block">'):
+        return "transcribed equation block"
+    return "not-reproduced placeholder"
+
+
 def classify_apply(parsed: list[dict], db: list[dict]) -> dict:
     """Classifies every id (parsed union db) into identical/changed/new/
     obsolete per the apply task's rule 1, and — for `changed` rows only —
@@ -13417,6 +13459,7 @@ def classify_apply(parsed: list[dict], db: list[dict]) -> dict:
     identical: list[str] = []
     changed: list[str] = []
     markup_only: dict[str, bool] = {}
+    notes_changed: dict[str, str] = {}
     for pid in shared:
         p_text = parsed_by_id[pid].get("full_text") or ""
         d_text = db_by_id[pid].get("full_text") or ""
@@ -13425,6 +13468,21 @@ def classify_apply(parsed: list[dict], db: list[dict]) -> dict:
         else:
             changed.append(pid)
             markup_only[pid] = not text_letters_digits_changed(p_text, d_text)
+            before, after = er_notes_of(d_text), er_notes_of(p_text)
+            if before != after:
+                # A markup-only change that adds, drops or rewrites an
+                # EssentialRegs note (a [sic] marker, a transcribed equation,
+                # an "Equation not reproduced here" placeholder) is a
+                # correction of our copy: --execute logs it as
+                # transcription_corrected with this note instead of the
+                # trigger's bare links_updated.
+                kinds = Counter(_note_kind(n) for n in after) - Counter(_note_kind(n) for n in before)
+                gone = Counter(_note_kind(n) for n in before) - Counter(_note_kind(n) for n in after)
+                desc = ", ".join(f"{n} {k}{'s' if n > 1 else ''}" for k, n in sorted(kinds.items()))
+                if gone:
+                    desc = (desc + "; " if desc else "") + "removed " + ", ".join(
+                        f"{n} {k}{'s' if n > 1 else ''}" for k, n in sorted(gone.items()))
+                notes_changed[pid] = f"EssentialRegs note added to our copy of the official text: {desc or 'note rewritten'}"
 
     new_ids = sorted(parsed_ids - db_ids)
     obsolete_ids = sorted(db_ids - parsed_ids)
@@ -13437,6 +13495,7 @@ def classify_apply(parsed: list[dict], db: list[dict]) -> dict:
         identical=sorted(identical),
         changed=sorted(changed),
         markup_only=markup_only,
+        notes_changed=notes_changed,
         new=new_ids,
         obsolete=obsolete_ids,
     )
@@ -13786,6 +13845,7 @@ def cmd_apply(args):
         f"- `identical` (no text/summary change): **{len(c['identical'])}**",
         f"- `changed` (full_text replaced, ai_summary kept, summary_status→pending): **{len(c['changed'])}**",
         f"  - of which markup-only (visible text unchanged — full_text replaced, review state and summary_status left as they are): **{markup_only_count}**",
+        f"  - of which an EssentialRegs note was added or changed ([sic] marker, transcribed equation, not-reproduced placeholder; logged transcription_corrected on --execute): **{len(c.get('notes_changed') or {})}**",
         f"  - of which visible text changed (regen needed): **{changed_needing_regen}**",
         f"- `new` (inserted): **{len(c['new'])}**",
         f"- `obsolete` (deleted): **{len(c['obsolete'])}**",
@@ -14174,6 +14234,21 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
             chunk = c["obsolete"][i:i + EXECUTE_CHUNK]
             client.table("provisions").delete().in_("id", chunk).execute()
             print(f"  deleted {i + len(chunk)}/{len(c['obsolete'])}")
+
+    # Rows whose only change is an EssentialRegs note (classify_apply's
+    # notes_changed): the DB trigger logged a bare links_updated (or
+    # text_updated when the note adds letters, e.g. a transcribed equation);
+    # re-label this run's row for each as transcription_corrected with a
+    # note saying what was added, so /changelog shows the correction.
+    notes_changed = c.get("notes_changed") or {}
+    if notes_changed:
+        print(f"Re-labelling {len(notes_changed)} note-only change(s) as transcription_corrected...")
+        for pid, note in sorted(notes_changed.items()):
+            client.table("provision_changes").update(
+                {"change_type": "transcription_corrected", "note": note}
+            ).eq("provision_id", pid).in_("change_type", ["links_updated", "text_updated"]).is_(
+                "note", "null"
+            ).gte("created_at", now_iso).execute()
 
     # What this run tells /changelog: an agency version change is logged as
     # its own row and keeps the run's text/added/removed rows regulatory;
