@@ -154,7 +154,9 @@ jobs:
           # UtilityNav.addGeneratePdfOnClickEvent / handleSuccess). The POST is
           # a Rails request: the page's csrf-token and its session cookie go
           # with it.
-          CSRF=$(grep -o '<meta name="csrf-token" content="[^"]*"' pipeline/out/ecfr_fetch/page.html | head -1 | sed 's/.*content="//; s/"$//')
+          META=$(grep -o '<meta[^>]*csrf-token[^>]*>' pipeline/out/ecfr_fetch/page.html | head -1 || true)
+          echo "csrf meta: ${META:-(none)}"
+          CSRF=$(printf '%s' "$META" | grep -o 'content="[^"]*"' | head -1 | sed 's/^content="//; s/"$//' || true)
           GEN_URL="${FINAL_URL%%\?*}.pdf"
           echo "Generate PDF: POST $GEN_URL (csrf token ${#CSRF} chars)"
           if curl -sS -A "$UA" -b "$CJ" -c "$CJ" -X POST -H "X-CSRF-Token: $CSRF" -H "X-Requested-With: XMLHttpRequest" -H "Accept: application/json, text/javascript, */*; q=0.01" -H "Referer: $FINAL_URL" -o pipeline/out/ecfr_fetch/gen.json -w "generate HTTP %{http_code}, %{content_type}\n" "$GEN_URL"; then
