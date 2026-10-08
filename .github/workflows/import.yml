@@ -176,7 +176,25 @@ jobs:
             echo "not the enhanced-display print of Subpart ${CODE}; next"
           done
           if [ -z "$found" ]; then
-            echo "::error::No candidate URL returned the enhanced-display PDF of Subpart ${CODE}. Read pdf_mentions.txt in the import artifact for the page's own link and re-run with ecfr_pdf_url set."
+            # Diagnostics in the log (the artifact store is not reachable from a
+            # cloud session): the page markup around its PDF controls and the
+            # script lines that build the PDF URL.
+            echo "::group::Page markup around generate-pdf / Print/PDF"
+            tr -d '\n' < pipeline/out/ecfr_fetch/page.html | grep -o -i '.\{0,400\}generate-pdf.\{0,600\}' | head -5
+            tr -d '\n' < pipeline/out/ecfr_fetch/page.html | grep -o -i '.\{0,300\}Print/PDF.\{0,300\}' | head -5
+            tr -d '\n' < pipeline/out/ecfr_fetch/page.html | grep -o -i '.\{0,300\}pdf-spinner.\{0,300\}' | head -3
+            echo "::endgroup::"
+            echo "::group::Script sources and their PDF URL templates"
+            grep -o '<script[^>]*src="[^"]*"' pipeline/out/ecfr_fetch/page.html | grep -o 'src="[^"]*"' | sed 's/src="//; s/"$//' | sort -u | tee pipeline/out/ecfr_fetch/scripts.txt
+            while read -r js; do
+              case "$js" in http*) ;; /*) js="https://www.ecfr.gov$js" ;; *) continue ;; esac
+              curl -sSL -A "$UA" --max-time 120 -o pipeline/out/ecfr_fetch/script.js "$js" || continue
+              echo "== $js ($(wc -c < pipeline/out/ecfr_fetch/script.js) bytes)"
+              grep -o -i '.\{0,250\}generate[_-]\?pdf.\{0,350\}' pipeline/out/ecfr_fetch/script.js | head -8
+              grep -o -i '.\{0,160\}\(renderer\|/pdf\|\.pdf\).\{0,160\}' pipeline/out/ecfr_fetch/script.js | head -12
+            done < pipeline/out/ecfr_fetch/scripts.txt
+            echo "::endgroup::"
+            echo "::error::No candidate URL returned the enhanced-display PDF of Subpart ${CODE}. Read the diagnostics above and re-run with ecfr_pdf_url set."
             exit 1
           fi
           cp pipeline/out/ecfr_fetch/cand.bin "$PDF"
