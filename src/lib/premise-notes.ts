@@ -741,6 +741,10 @@ const TOPICS: TopicSpec[] = [
         cites: ["sec-ooooc-60.5360c"],
       },
       {
+        text: "A facility whose construction, modification or reconstruction commenced after September 18, 2015 and on or before December 6, 2022 is an affected facility under Subpart OOOOa, and one from after August 23, 2011 to September 18, 2015 under the original Subpart OOOO; each subpart applies by its own dates.",
+        cites: ["sec-ooooa-60.5365a", "sec-oooo-60.5365"],
+      },
+      {
         text: "Compliance with OOOOb is required by May 7, 2024 or at initial startup, whichever is later, with the exceptions § 60.5370b(a) lists.",
         cites: ["sec-oooob-60.5370b-(a)"],
       },
@@ -748,7 +752,7 @@ const TOPICS: TopicSpec[] = [
     map: {
       key: "premise-oooob-existing-well",
       name: "NSPS OOOOb and existing facilities: construction, modification and reconstruction dates",
-      factors: "OOOOb applicability turns on when construction, modification or reconstruction commenced (after December 6, 2022); existing facilities fall under OOOOc's emission guidelines unless a later modification or reconstruction brings them into OOOOb.",
+      factors: "OOOOb applicability turns on when construction, modification or reconstruction commenced (after December 6, 2022); a facility from September 18, 2015 to December 6, 2022 is OOOOa's and one from August 23, 2011 to September 18, 2015 the original OOOO's; existing facilities fall under OOOOc's emission guidelines unless a later modification or reconstruction brings them into OOOOb.",
       provisions: [
         { id: "sec-oooob-60.5365b", group: "Federal NSPS", why: "§ 60.5365b — am I subject to this subpart: affected facilities with construction, modification or reconstruction after December 6, 2022" },
         { id: "sec-oooob-60.5365b-(a)-(1)", group: "Federal NSPS", why: "§ 60.5365b(a)(1) — when a modification of an existing well occurs, in addition to § 60.14" },
@@ -756,6 +760,8 @@ const TOPICS: TopicSpec[] = [
         { id: "sec-oooob-60.5365b-(e)-(3)", group: "Federal NSPS", why: "§ 60.5365b(e)(3) — reconstruction and modification definitions for an existing tank battery" },
         { id: "sec-oooob-60.5370b-(a)", group: "Federal NSPS", why: "§ 60.5370b(a) — the compliance date: May 7, 2024 or initial startup, whichever is later" },
         { id: "sec-ooooc-60.5360c", group: "Federal NSPS", why: "§ 60.5360c — OOOOc's emission guidelines for existing (designated) facilities" },
+        { id: "sec-ooooa-60.5365a", group: "Federal NSPS", why: "§ 60.5365a — OOOOa: affected facilities from September 18, 2015 to December 6, 2022" },
+        { id: "sec-oooo-60.5365", group: "Federal NSPS", why: "§ 60.5365 — the original OOOO: affected facilities from August 23, 2011 to September 18, 2015" },
       ],
     },
   },
