@@ -35,6 +35,10 @@
 --     corpus_ids.json and writes corpus_staged.json, which parse uses to
 --     drop it from CORPUS_REGS (import_ccr.set_staged_regs).
 -- service_role (the pipeline, the admin review page) sees staged rows.
+--
+-- Applied to the live project on 8 Oct 2026 through the Supabase MCP in
+-- pieces (table + function, seed, ALTER POLICY in place of the DROP/CREATE
+-- below, then each function); this file is the same change for a replay.
 
 create table if not exists public.regulation_releases (
   reg_key     text primary key,
@@ -96,6 +100,12 @@ create policy "subscribers can read all neighbors"
 -- Ask: vector-only (20260925013159) and hybrid (20261002151233) functions,
 -- unchanged except that a staged document's rows and embeddings are
 -- skipped unless the caller is service_role.
+-- Touching a vector value first loads pgvector's library in this session,
+-- so the functions' `set hnsw.*` clauses name known settings: without it
+-- a non-superuser (the MCP / dashboard role) gets "permission denied to
+-- set parameter hnsw.iterative_scan" on a placeholder GUC.
+select '[0]'::extensions.vector(1);
+
 create or replace function public.match_provisions(
   query_embedding     extensions.vector(1024),
   match_count         integer default 20,

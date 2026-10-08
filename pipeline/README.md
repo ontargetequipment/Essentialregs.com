@@ -95,7 +95,17 @@ and nobody has to ask for it. Since 6 Oct 2026 (ReviewBuiltIn):
    Code cloud session) and commits the PDF and its pdftotext text to the
    branch the run was started on, so the dry run and the execute read the
    same bytes (added 8 Oct 2026 for the original Subpart OOOO; `ecfr_pdf_url`
-   names the PDF link when the page's own cannot be found).
+   names the PDF link when the page's own cannot be found). Tick `ecfr_xml` on
+   the first dry run of a 40 CFR subpart: it commits the eCFR versioner XML
+   (`pipeline/sources/<CODE>.xml`) that the parser needs for the tables of a
+   subpart on `table_algorithm="xml"` and, for every subpart, for the position
+   of each equation the eCFR publishes only as an image
+   (`import_ecfr.insert_ecfr_image_notes`: a curated transcription from
+   `pipeline/curated_equations.json`, else a visible "Equation not reproduced
+   here. See the official source" line). Run `pipeline/source_text_check.py
+   --regs <reg>` afterwards: it fails on an unknown extraction difference, a
+   table header repeated or fused in a body row, a doubled underscore in an
+   address or URL, or an equation lead-in running straight into "Where:".
 2. **Summarize, review and embed in one run** — automatic after the import
    (new rows and changed rows) and, for a regulation imported before 6 Oct
    2026 or for a full redo, **Generate summaries** with `reg` set. Within the

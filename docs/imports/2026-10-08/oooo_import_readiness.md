@@ -130,3 +130,106 @@ captures "OOOOa/b/c" (every pattern ends in a word boundary; tested in
    sample pull request (the repository setting that lets Actions open pull
    requests is on now: #77 was opened by the run itself), markup-only
    re-imports with 0 rows regenerated and 0 rows embedded.
+
+## Follow-up after the Cowork spot-check (8 Oct 2026, same branch)
+
+The Cowork session checked the 40-row sample against `pipeline/sources/OOOO.txt`
+and production: 33 summaries fine, 6 minor, 1 wrong, three faults in our copy of
+the official text, and one process gap (OOOO was visible to subscribers from the
+import on). OOOO stays visible; nothing is public. Spending for this follow-up
+was capped at $1.
+
+### A. Our copy of the official text
+
+1. **Tables 1–3.** The v1 layout algorithm fused Table 3's repeated page-break
+   header into a body row ("§ 60.6 General Review of plans Subject of Yes. …")
+   and split the two-line headers of Tables 1 and 2. The Import workflow gained
+   an `ecfr_xml` input that fetches the subpart's eCFR versioner XML at the
+   manifest's `as_of` date (`pipeline/sources/OOOO.xml`, `OOOOa.xml`,
+   `OOOOb.xml`, `OOOOc.xml` are committed; the API refuses uncompressed
+   responses, so the step sends `Accept-Encoding`), and `oooo` now takes its
+   tables from the XML like JJJJ/IIII/ZZZZ (`table_algorithm="xml"`). After the
+   re-import Table 3 reads `§ 60.6 | Review of plans | Yes.` with a four-cell
+   header, and Tables 1 and 2 keep their `H₂S content` / `Sulfur feed rate`
+   two-row header with the exponents as superscripts.
+2. **The EPA e-mail address.** Checked against the eCFR versioner XML, not the
+   print: the XML of OOOO and OOOOa itself prints `Oil__and__Gas__PT@EPA.GOV`
+   (§ 60.5413(e)(6), § 60.5413a(d)(12), § 60.5420a(b)(10)) and
+   `Oil____and____Gas____PT@EPA.GOV` (§ 60.5420(b)(8), § 60.5413a(e)(6)); OOOOb
+   and OOOOc print `Oil_and_Gas_PT@EPA.GOV`. So it is not our transcription
+   error, and the official text stays exactly as printed. Each of the five rows
+   now carries an EssentialRegs `[sic]` marker whose tooltip says the eCFR prints
+   the address with doubled underscores and names the OOOOb/OOOOc form
+   (`pipeline/curated_sic.json`); the seven summaries give
+   `Oil_and_Gas_PT@EPA.GOV` and say the rule prints it differently. The note is
+   logged as `transcription_corrected` ("EssentialRegs note added to our copy of
+   the official text: 1 [sic] marker").
+3. **Equations.** The eCFR publishes every display equation of these subparts
+   as a GIF; the text layer has nothing at its position. Gaps counted from the
+   XML (`<img>` elements) and placed by the new
+   `import_ecfr.insert_ecfr_image_notes`:
+
+   | Subpart | Images in the XML | Equations | Figures | Inline symbols | What the reader sees now |
+   |---|---|---|---|---|---|
+   | OOOO | 10 | 9 | 1 (Tutwiler burette, § 60.5408) | 0 | 9 transcriptions (`pipeline/curated_equations.json`, read from OOOO.pdf pages 16, 17, 21, 33, 34, 39; § 60.5406(c)(1) checked against OOOOb's legible print of the same equation), 1 placeholder |
+   | OOOOa | 30 | 20 | 1 | 9 (§ 60.5432a variables) | 30 placeholders |
+   | OOOOb | 37 | 27 | 1 | 9 (§ 60.5432b variables) | 37 placeholders |
+   | OOOOc | 7 | 7 | 0 | 0 | 7 placeholders |
+
+   A transcription is the GP12 form: readable markup, a copyable plain-text
+   line, a note "Equation transcribed by EssentialRegs from page N of OOOO.pdf …"
+   and a link to the official paragraph. A placeholder is the visible line
+   "Equation not reproduced here. See the official source: 40 CFR 60.5413b(b)(3)(ii)"
+   (Figure / Symbol for the other kinds), linked to the eCFR paragraph. Every
+   image of the four subparts is placed (test
+   `EcfrImageNoteSourceTests.test_every_image_is_placed`); no gap is silent. The
+   eight OOOO summaries that said "the equation itself is not shown" now state
+   the transcribed formula. Both kinds of note are EssentialRegs notes: the
+   source text check strips them, the apply step classifies the change as
+   markup-only (no summary regeneration) and logs it as `transcription_corrected`.
+4. **Source text check.** Three corpus-side checks, each a failure when it hits
+   (`pipeline/source_text_check.py`, tests in `test_source_text_check.py`): a
+   table header row repeated in the body or its words fused into a body row;
+   a run of two or more underscores in an e-mail address or URL (a `[sic]`
+   marker directly after it counts as acknowledged); an equation lead-in
+   ("as follows:", "using Equation …:", "following equations:", "by:") followed
+   directly by "Where:" with nothing between. On the re-parsed four subparts:
+   0, 0, 0, 0 hits. The pre-existing extraction differences on OOOOb (1) and
+   OOOOc (11) are the print's group headings and a list the diff aligns oddly,
+   not gaps in the stored text.
+
+### B. Summaries
+
+5. **"75 percent".** The ten summaries no longer say "unavailable for at least
+   75 percent": each says a deviation occurs when valid monitoring data are
+   available for less than 75 percent of the operating hours in a day, quotes
+   the rule's phrase and cites the paragraph that requires 75 percent
+   (§ 60.5417(e), § 60.5417a(e), § 60.5417b(e)(1), § 60.5417b(i)(6)(ii),
+   § 60.5417c(i)(6)(ii)). Writer rule 11 and reviewer allowance 4 (ambiguous
+   negation: quote the phrase, name the requirement, never paraphrase into the
+   opposite) are in `summarize.py` and `review.py`.
+6. **§ 60.5371's suspension.** Every summary under § 60.5371 (18), § 60.5371a
+   (18) and § 60.5371b (42) now opens with "§ 60.5371 does not apply between
+   July 31, 2025, and January 22, 2027; it applies after January 22, 2027."
+   (the section summaries already said so). Why the ancestor rule missed it:
+   the writer's rule 5 tells the model to carry an ancestor's limit but, in the
+   same breath, not to fold "an applicability date or a scope qualifier into a
+   sub-paragraph it does not govern"; a section-wide suspension read as an
+   applicability date and was left out, and the reviewer's context rule (a)
+   named only who/when/condition limits. Both rules now say a suspension or
+   applicability window an ancestor states for the whole section binds every
+   provision under it and must be carried with its dates. Short rows (under
+   25 words, the summarizer's headings-only rule) have no summary and need none.
+7. **Smaller corrections.** § 60.5385 (a choice of (a)(1), (a)(2) or (a)(3);
+   the 36 months from startup for a new compressor), § 60.5420(b)(8) (the
+   e-mail route is the route for manufacturer-tested combustors),
+   § 60.5417(f)(2)(i) and (g) (paragraphs (c)–(g) reach centrifugal compressor
+   control devices through (a); storage vessel devices are under (h)),
+   § 60.5417(h)(2) (paragraph (h)'s scope and its exemption for
+   manufacturer-tested models), § 60.5420(b)(7) (the CBI procedure and the
+   delegated-authority copy).
+8. **Review and embedding.** 108 hand-edited rows were set to `pending`
+   (`summary_original` kept, a `summary_regenerated` row with the reason on each,
+   the same path as the admin "save as pending" button); the chained run reviews
+   only the rows it writes, so the Review workflow was run on the four subparts
+   and the Embed workflow re-embedded the changed rows. Results below.
