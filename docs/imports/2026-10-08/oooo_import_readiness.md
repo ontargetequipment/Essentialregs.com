@@ -238,4 +238,79 @@ was capped at $1.
    (`summary_original` kept, a `summary_regenerated` row with the reason on each,
    the same path as the admin "save as pending" button); the chained run reviews
    only the rows it writes, so the Review workflow was run on the four subparts
-   and the Embed workflow re-embedded the changed rows. Results below.
+   and the Embed workflow re-embedded the changed rows.
+
+   | Run | Rows | Result | Cost |
+   |---|---:|---|---:|
+   | Import `oooo` execute + chained run (37722142204) | 15 changed (12 note-only, 3 tables), 4 regenerated (3 tables + root) | 2 pass, 2 corrected, 0 pending | $0.0723 |
+   | Import `ooooa` / `oooob` / `ooooc` execute (37722147794, 37722153035, 37722158421) | 20 / 28 / 7 note-only changes | nothing to summarize | $0 |
+   | Review workflow (37723194309), `claude-sonnet-5-5` | 109 pending rows (oooo 36, ooooa 24, oooob 46, ooooc 3) | 90 pass, 19 corrected, 0 fail | $0.3366 |
+   | Embed workflow ×4 (`voyage-3.5-lite`) | changed hashes only | re-embedded, neighbours rebuilt | < $0.01 |
+   | Second review of 3 rows the reviewer had stripped (below) | 3 | see below | ≈ $0.01 |
+
+   Every row of the four subparts is `approved`; nothing is pending. Of the
+   19 corrections, 16 tightened wording the reviewer could check (an
+   acronym expanded, a unit, a "may include" read as optional, § 60.5371b's
+   exemptions); three struck statements the user asked for -- § 60.5417(g)'s
+   "valid data for 75 percent" with its pointer to paragraph (e), and the
+   paragraph (a) / paragraph (h) allocation in § 60.5417(g) and (f)(2)(i) --
+   as "not in the text", because the reviewer saw only the provision, its
+   descendants and its ancestors. The reviewer's input now carries the own
+   text of every sibling paragraph or section a summary cites
+   (`review.cited_rows`, context rule (d)), the three rows were restored by
+   hand and reviewed again (run 37726960232): § 60.5417(g) and § 60.5417a(g)
+   passed as restored (valid data for less than 75 percent, paragraph (e)
+   cited; the (a) / (h) allocation in § 60.5417(g)); § 60.5417(f)(2)(i) was
+   corrected a second time -- with paragraphs (a) and (h) in front of it the
+   reviewer still holds that paragraph (f) says nothing about (a) or
+   § 60.5380 and that the section's lead-in covers storage vessels and
+   centrifugal compressors alike, so that summary describes the condenser
+   curve rule under (f) without the allocation. That one is a judgment call
+   for the Cowork session: the allocation is in (g) and the text of (a) and
+   (h) is one click away in the reader. Total spent on this follow-up: about
+   $0.43 of the $1 approved.
+
+### C. The gate
+
+9. **What `is_public` controls today, and only this:** which rows an anonymous
+   visitor may read -- the four `/sample` rows (policy "public can read public
+   provisions"; `provision_path()` returns their breadcrumb). It never hid a
+   document from a subscriber: the "subscribers can read all provisions"
+   policy, `has_full_access()` inside the SECURITY DEFINER Ask functions and
+   the app's service-role reads (regulation roots, the preview teaser, the
+   cached reader body) read every reg_key. That is why OOOO was in the
+   reader, keyword search, Ask and the Federal index for every subscriber from
+   the import on, and why 55 provisions in eleven documents could link to it.
+
+   **The staged state** (migration `20261008040000_regulation_release_state.sql`,
+   applied to the live project through the Supabase MCP in pieces):
+   `regulation_releases(reg_key, status staged | released)`. No row = released;
+   every existing document, OOOO included, is seeded released (OOOO stays
+   visible: hiding it would break the links). `apply --execute` inserts a
+   `staged` row the first time it writes a reg_key and prints
+   `NEW DOCUMENT: <reg> is STAGED`. While staged: subscribers cannot read its
+   rows (RLS on `provisions` and `provision_neighbors`), so the reader's live
+   path, `/regs/<id>`, the provision preview API, keyword search
+   (`search_provisions` is SECURITY INVOKER) and related provisions return
+   nothing; `match_provisions` and `match_provisions_hybrid` skip its rows and
+   embeddings unless the caller is service_role; `changelog_public` leaves it
+   out; the app's service-role reads (`src/lib/release.ts`) drop it from the
+   Federal / States / GP indexes, `/sample`, the sitemap, the preview and the
+   cached reader -- `loadReaderPage` checks `isVisible` before the entitlement
+   gate, and an admin on `ADMIN_EMAILS` still opens it; the admin review queue
+   reads with the service role so staged rows can be reviewed; `dump-ids`
+   leaves its ids out of `corpus_ids.json` and writes `corpus_staged.json`,
+   which `parse` uses to drop it from `CORPUS_REGS` (whole-document links) for
+   every document but itself. `python pipeline/import_ccr.py release --reg X
+   --yes` (Actions → **Release regulation**) flips it to released; then
+   `dump-ids`, the markup-only re-imports of the citing documents and the
+   evals. Tests: `scripts/reader-gate.test.ts` (isVisible first; a staged
+   document 404s entitled or not), `scripts/release.test.ts`
+   (`filterReleased`), `pipeline/test_import_ccr.py` (dump-ids exclusion, the
+   link gate, `ensure_release_row`). Checklist: `pipeline/README.md` step 4.
+
+### D. Release
+
+10. One pull request for the branch (import, wiring, these fixes), merged on
+    green; the chained runs also opened their own sample pull requests (#77
+    for the import, #78 for the 4-row re-import of the tables and the root).
