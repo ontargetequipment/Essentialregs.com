@@ -643,6 +643,10 @@ const TOPICS: TopicSpec[] = [
         cites: ["sec-gp12-I-E", "sec-gp02-I-A-1", "sec-gp06-I-A-1"],
       },
       {
+        text: "A facility registered under a general permit that is classified as a major source for Title V must apply for a Title V operating permit that incorporates the general permit's terms, on the schedule the permit sets.",
+        cites: [gp("05", "VIII-A"), gp("07", "VIII-A")],
+      },
+      {
         text: "Emission units exempt from an APEN or from a construction permit still count when Title V applicability is determined.",
         cites: [REG3_APEN_EXEMPTIONS, REG3_PERMIT_EXEMPTIONS],
       },
@@ -665,6 +669,8 @@ const TOPICS: TopicSpec[] = [
         { id: "sec-gp12-I-E", group: "General Permit options", why: "GP12 I.E — true minor or synthetic minor sources only, for the operating permit, NSR, PSD and MACT programs" },
         { id: "sec-gp02-I-A-1", group: "General Permit options", why: "GP02 I.A.1 — a true minor or synthetic minor source for the operating permit and NSR programs" },
         { id: "sec-gp06-I-A-1", group: "General Permit options", why: "GP06 I.A.1 — a true minor or synthetic minor source for the operating permit, PSD and NSR programs" },
+        { id: gp("05", "VIII-A"), group: "General Permit options", why: "GP05 VIII.A — a registered facility classified as a major source for Title V must apply for a Title V operating permit incorporating the general permit's terms" },
+        { id: gp("07", "VIII-A"), group: "General Permit options", why: "GP07 VIII.A — the same Title V application requirement for a loading facility" },
       ],
     },
   },

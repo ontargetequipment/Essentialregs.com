@@ -484,12 +484,12 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   },
   {
     q: "Does my well site need a Title V operating permit?",
-    expect: ["sec-3-C-", "sec-3-A-I-B", "sec-gp12-I-E"],
+    expect: ["sec-3-C-", "sec-3-A-I-B", "sec-gp12-I-E", "sec-gp05-VIII-A", "sec-gp07-VIII-A", "sec-gp01-I-D", "sec-gp05-I-D", "sec-gp08-I-E", "sec-gp11-I-A-4"],
     topN: 10,
     map: "premise-title-v-well-site",
     premise: "title-v-well-site",
-    shown: [{ any: ["sec-3-C-II-A-1"], topN: 3 }, { any: ["sec-gp12-I-E"] }],
-    note: "the Title V note: Regulation 3 Part C II.A.1 leads, the general permits' minor-source condition shown; retrieval finds a Part C row, the major-source definition or GP12 I.E in the top 10",
+    shown: [{ any: ["sec-3-C-II-A-1"], topN: 3 }, { any: ["sec-gp12-I-E"] }, { any: ["sec-gp05-VIII-A"] }],
+    note: "the Title V note: Regulation 3 Part C II.A.1 leads, the general permits' minor-source condition and their Title V rows shown; retrieval finds a Part C row, the major-source definition, or one of the general permits' own Title V provisions (a registered facility that becomes a major source must apply for a Title V permit: GP05 / GP07 VIII.A; sources that became subject to Title V on the Northern Weld County reclassification: GP01 I.D, GP05 I.D, GP08 I.E, GP11 I.A.4) in the top 10 (production 8 Oct 2026: GP11 I.A.4, GP05 VIII.A, GP07 VIII.A, GP08 I.E, GP05 I.D lead)",
   },
   {
     q: "If my tank battery is exempt from a construction permit, does Regulation 7 still apply?",

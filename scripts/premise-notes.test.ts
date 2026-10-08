@@ -452,6 +452,8 @@ test("each topic note says what the owner asked for, with the provision that sup
   // Title V: Part C's list; the general permits' minor-source condition.
   assert.match(text("title-v-well-site"), /required only for the sources Part C lists/);
   assert.ok(cited("title-v-well-site").has("sec-3-C-II-A-1") && cited("title-v-well-site").has("sec-gp12-I-E"));
+  assert.match(text("title-v-well-site"), /classified as a major source for Title V must apply for a Title V operating permit/);
+  assert.ok(cited("title-v-well-site").has("sec-gp05-VIII-A") && cited("title-v-well-site").has("sec-gp07-VIII-A"));
   // Exempt: a permit exemption does not affect other regulations; Regulation 7 by its own terms.
   assert.match(text("exempt-still-regulated"), /does not affect the applicability of any other state or federal regulation/);
   assert.ok(cited("exempt-still-regulated").has("sec-3-B-II-D") && cited("exempt-still-regulated").has("sec-7-B-I-A-1"));
