@@ -24,6 +24,11 @@ on:
         description: "First import of a 40 CFR subpart only: the eCFR Print/PDF link to download when pipeline/sources/<CODE>.pdf is not committed yet (the page's own link and the known URL shapes are tried when blank). The fetched PDF and its pdftotext text are committed to this branch."
         required: false
         default: ""
+      ecfr_xml:
+        description: "40 CFR subparts only: also fetch the eCFR versioner XML of the subpart at the manifest's as_of date to pipeline/sources/<CODE>.xml (tables and equation positions come from it) and commit it to this branch."
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write
@@ -231,6 +236,33 @@ jobs:
           echo "$(grep -c $'\f' "$TXT" || true) pages; $(wc -c < "$PDF") bytes PDF; $(wc -l < "$TXT") text lines"
           sha256sum "$PDF" "$TXT" | tee pipeline/out/ecfr_fetch/sha256.txt
           rm -f pipeline/out/ecfr_fetch/cand.bin pipeline/out/ecfr_fetch/cand.txt
+
+      - name: Fetch the eCFR versioner XML of the subpart (ecfr_xml)
+        # The XML (the same source the p19x parts are parsed from) carries the
+        # subpart's tables as structured rows and marks every equation image,
+        # neither of which the pdftotext text has. Fetched at the manifest's
+        # as_of date so it is the print's version; committed beside the print.
+        if: ${{ inputs.ecfr_xml && contains(fromJSON('["oooo","ooooa","oooob","ooooc","jjjj","iiii","zzzz"]'), inputs.reg) }}
+        id: fetch_xml
+        run: |
+          AS_OF=$(jq -r --arg k "$REG" '.sources[$k].as_of // empty' pipeline/sources/manifest.json)
+          if [ -z "$AS_OF" ]; then echo "::error::manifest has no as_of for $REG"; exit 1; fi
+          PART=60; [ "$REG" = "zzzz" ] && PART=63
+          URL="https://www.ecfr.gov/api/versioner/v1/full/${AS_OF}/title-40.xml?part=${PART}&subpart=${SRC_BASENAME}"
+          echo "Fetching $URL"
+          curl -sSL -A "EssentialRegsImporter/1.0 (+https://essentialregs.com)" --max-time 300 -o "pipeline/sources/${SRC_BASENAME}.xml" -w "HTTP %{http_code}, %{size_download} bytes\n" "$URL"
+          head -c 300 "pipeline/sources/${SRC_BASENAME}.xml"; echo
+          grep -q "<DIV6" "pipeline/sources/${SRC_BASENAME}.xml" || { echo "::error::not a subpart XML"; exit 1; }
+          echo "images: $(grep -o '<img [^>]*>' "pipeline/sources/${SRC_BASENAME}.xml" | wc -l); MATH elements: $(grep -o '<MATH' "pipeline/sources/${SRC_BASENAME}.xml" | wc -l); tables: $(grep -o '<GPOTABLE' "pipeline/sources/${SRC_BASENAME}.xml" | wc -l)"
+          echo "::group::equation and image markers"; grep -n -o '<img [^>]*>\|<MATH[^>]*>' "pipeline/sources/${SRC_BASENAME}.xml" | head -80; echo "::endgroup::"
+          echo "::group::the e-mail address as the XML has it"; grep -o '[A-Za-z_]*@EPA.GOV\|[A-Za-z_]*@epa.gov' "pipeline/sources/${SRC_BASENAME}.xml" | sort | uniq -c; echo "::endgroup::"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "pipeline/sources/${SRC_BASENAME}.xml"
+          if git diff --cached --quiet; then echo "XML unchanged -- nothing to commit."; exit 0; fi
+          git commit -m "Sources: eCFR versioner XML of Subpart ${SRC_BASENAME} as of ${AS_OF} (${SRC_BASENAME}.xml)" -m "Fetched by the Import regulation workflow (run ${{ github.run_id }}) from ${URL}."
+          git pull --rebase -q origin "${{ github.ref_name }}" || true
+          git push origin "HEAD:${{ github.ref_name }}"
 
       - name: Commit fetched sources to this branch
         if: ${{ steps.fetch_ecfr.outputs.fetched == 'true' }}
