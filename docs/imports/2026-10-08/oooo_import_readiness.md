@@ -228,6 +228,12 @@ was capped at $1.
    § 60.5417(h)(2) (paragraph (h)'s scope and its exemption for
    manufacturer-tested models), § 60.5420(b)(7) (the CBI procedure and the
    delegated-authority copy).
+   The re-import's chained run regenerated the three table rows and the root
+   ($0.07): the reviewer, reading Table 1 as flat text, moved its formula out of
+   the three feed-rate columns the cell spans and dropped Table 2's exponents, so
+   `summarize.strip_html` now lays a table out one row per line with its spans
+   named and turns `<sup>` into `^(…)`; both table summaries were rewritten by
+   hand from the table's rows and re-reviewed with the rest.
 8. **Review and embedding.** 108 hand-edited rows were set to `pending`
    (`summary_original` kept, a `summary_regenerated` row with the reason on each,
    the same path as the admin "save as pending" button); the chained run reviews

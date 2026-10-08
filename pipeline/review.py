@@ -418,7 +418,13 @@ REVIEW_SYSTEM_PROMPT = (
     "available on request\") with a vaguer one (\"requires action\", "
     "\"requires a report\", \"available for inspection\"); if you cannot "
     "state the duty as precisely as the summary did, leave the summary's "
-    "words.\n\n"
+    "words. (d) The block \"OTHER PROVISIONS OF THIS REGULATION THE SUMMARY "
+    "CITES\", when present, holds the own text of the sibling paragraphs and "
+    "sections the summary names (\"paragraph (e) requires valid data for 75 "
+    "percent of the operating hours\", \"the standard in § 60.5380\"). It is "
+    "part of the text you are given: a statement one of those excerpts "
+    "supports is supported, and a correct citation to it is not an addition. "
+    "Only a statement that none of the text shown supports is unsupported.\n\n"
     "Answer with the JSON object only."
 )
 
@@ -812,15 +818,99 @@ def build_official_text(provision: dict, meta: dict, children_index: dict,
     return result, result.ancestors
 
 
+# --------------------------------------------------------------------------
+# Paragraphs the summary cites (8 Oct 2026). A summary may legitimately
+# point at a sibling paragraph of its own section -- "paragraph (e)
+# requires valid data for 75 percent of the operating hours", "the
+# monitoring paragraph (a) requires", "control devices on storage vessels
+# are under paragraph (h)" -- or at another section of the regulation
+# ("the standard in § 60.5380"). The reviewer saw only the provision, its
+# descendants and its ancestors, so it struck every such statement as
+# "not in the text" (OOOO § 60.5417(g) and (f)(2)(i), the 8 Oct review).
+# Now the own text of every eCFR-style paragraph or section the summary
+# names, when it exists in the regulation and is not already shown, is
+# appended as a separate block, so the reviewer checks the statement
+# against the cited text instead of against silence.
+# --------------------------------------------------------------------------
+
+CITED_EXCERPT_CHARS = 700
+CITED_MAX = 8
+_CITED_PARA_RE = re.compile(r"\bparagraphs?\s+(\([a-zA-Z0-9]+\)(?:\([a-zA-Z0-9]+\))*)"
+                            r"(?:\s+(?:through|to|and|or)\s+(\([a-zA-Z0-9]+\)(?:\([a-zA-Z0-9]+\))*))?")
+_CITED_SECTION_RE = re.compile(r"§\s*(\d+\.\d+[a-z]?)\b")
+_ECFR_SECTION_ID_RE = re.compile(r"^(sec-[^-]+-\d+\.\d+[a-z]?)(?:-|$)")
+
+
+def cited_rows(provision: dict, summary: str, meta: dict) -> list[dict]:
+    """Rows of `meta` the summary cites by eCFR paragraph or section label,
+    minus the provision, its ancestors and its descendants (already in the
+    official text). Empty for a regulation whose ids are not eCFR-shaped."""
+    m = _ECFR_SECTION_ID_RE.match(provision.get("id") or "")
+    if not m or not summary:
+        return []
+    section_id = m.group(1)
+    reg_prefix = section_id.rsplit("-", 1)[0]  # "sec-oooo"
+    wanted: list[str] = []
+
+    def add(pid: str) -> None:
+        if pid in meta and pid not in wanted:
+            wanted.append(pid)
+
+    for first, last in _CITED_PARA_RE.findall(summary):
+        labels = re.findall(r"\(([a-zA-Z0-9]+)\)", first)
+        add(section_id + "".join(f"-({l})" for l in labels))
+        if last:
+            last_labels = re.findall(r"\(([a-zA-Z0-9]+)\)", last)
+            # a range at one level: paragraphs (c) through (g)
+            if len(labels) == 1 and len(last_labels) == 1 and len(labels[0]) == 1 and len(last_labels[0]) == 1 \
+                    and labels[0].islower() and last_labels[0].islower() and labels[0] < last_labels[0]:
+                for code in range(ord(labels[0]) + 1, ord(last_labels[0]) + 1):
+                    add(f"{section_id}-({chr(code)})")
+            else:
+                add(section_id + "".join(f"-({l})" for l in last_labels))
+    for sec in _CITED_SECTION_RE.findall(summary):
+        add(f"{reg_prefix}-{sec}")
+
+    own = provision["id"]
+    ancestors = set()
+    cur = provision.get("parent_id")
+    while cur and cur in meta and cur not in ancestors:
+        ancestors.add(cur)
+        cur = meta[cur].get("parent_id")
+    out: list[dict] = []
+    for pid in wanted:
+        if pid == own or pid in ancestors or pid.startswith(own + "-"):
+            continue
+        out.append(meta[pid])
+        if len(out) >= CITED_MAX:
+            break
+    return out
+
+
+def cited_block(rows: list[dict]) -> str:
+    if not rows:
+        return ""
+    lines = ["OTHER PROVISIONS OF THIS REGULATION THE SUMMARY CITES (their own text only, "
+             "for checking what the summary attributes to them; a statement one of these "
+             "supports is supported):"]
+    for r in rows:
+        excerpt, _cut = sz.honest_cut(sz.strip_html(r.get("full_text") or "") or (r.get("title") or ""),
+                                      CITED_EXCERPT_CHARS)
+        lines.append(f"[{r['id']}] {r.get('citation') or r['id']}: {excerpt}")
+    return "\n".join(lines)
+
+
 def build_review_input(provision: dict, meta: dict, children_index: dict) -> ReviewInput:
     text, ancestors = build_official_text(provision, meta, children_index)
     summary = (provision.get("ai_summary") or "").strip()
+    cited = cited_block(cited_rows(provision, summary, meta))
     prompt = (
         "OFFICIAL TEXT (the only source of truth; the provision and the provisions "
         "inside it as the summary's author saw them, plus the text of every ancestor "
         "above the provision):\n\n"
         f"{text.prompt}\n\n"
-        "CURRENT SUMMARY (under review):\n"
+        + (f"{cited}\n\n" if cited else "")
+        + "CURRENT SUMMARY (under review):\n"
         f"{summary}"
     )
     return ReviewInput(
