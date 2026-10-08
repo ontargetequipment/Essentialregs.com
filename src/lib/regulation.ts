@@ -3,7 +3,8 @@ import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Provision } from "@/lib/types";
-import { sanitizeHtml } from "@/lib/regulation-pure";
+import { filterReleased, sanitizeHtml } from "@/lib/regulation-pure";
+import { fetchStagedRegKeys, isRegReleased } from "@/lib/release";
 import { renderReaderBody, type RenderedReader } from "@/lib/reader-render";
 
 // Everything that does NOT talk to the database lives in regulation-pure.ts
@@ -225,6 +226,10 @@ export const TEASER_SUMMARY_LIMIT = 5;
 export async function fetchRegulationTeaser(
   regNumber: string
 ): Promise<RegulationTeaser> {
+  // A staged document has no public preview: the page 404s on a null root.
+  if (!(await isRegReleased(regNumber))) {
+    return { root: null, headings: [], summaries: [], pendingSummaries: 0 };
+  }
   const supabase = createAdminClient();
   const scopedToReg = () =>
     supabase.from("provisions").select(TEASER_COLUMNS).eq("reg_key", regNumber);
@@ -333,7 +338,9 @@ export async function fetchRegulationRoots(ids?: string[]): Promise<RegulationRo
     .like("id", "sec-%-top-REG-%")
     .order("id", { ascending: true });
   if (ids) query = query.in("id", ids);
-  const { data, error } = await query;
+  const [{ data, error }, staged] = await Promise.all([query, fetchStagedRegKeys()]);
   if (error) throw new Error(error.message);
-  return (data ?? []) as RegulationRoot[];
+  // A staged (newly imported, not yet released) document is not in any
+  // index, sitemap or sample card -- see src/lib/release.ts.
+  return filterReleased((data ?? []) as RegulationRoot[], staged);
 }

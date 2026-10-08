@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeHtml, stripHtml, titleWithoutCitation } from "@/lib/regulation";
 import { regKeyOf } from "@/lib/changelog";
 import { rejectSummary, saveEditForReview, sendBackToPending } from "./actions";
 
 export const metadata = { title: "Review queue" };
 
-const REG_KEYS = ["cp", "1", "2", "3", "6", "7", "8", "9", "22", "24", "26", "30", "11", "12", "25", "27", "16", "18", "19", "20", "21", "aqs", "sip", "proc", "4", "10", "15", "23", "28", "29", "31", "gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12", "ecmc", "ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz", "p191", "p192", "p194", "p195", "p199", "p190", "p193", "p196"] as const;
+const REG_KEYS = ["cp", "1", "2", "3", "6", "7", "8", "9", "22", "24", "26", "30", "11", "12", "25", "27", "16", "18", "19", "20", "21", "aqs", "sip", "proc", "4", "10", "15", "23", "28", "29", "31", "gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12", "ecmc", "oooo", "ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz", "p191", "p192", "p194", "p195", "p199", "p190", "p193", "p196"] as const;
 const REG_LABELS: Record<string, string> = {
   cp: "Common Provisions",
   "1": "Reg 1",
@@ -52,6 +52,7 @@ const REG_LABELS: Record<string, string> = {
   gp11: "GP11",
   gp12: "GP12",
   ecmc: "ECMC rules",
+  oooo: "40 CFR 60 Subpart OOOO",
   ooooa: "40 CFR 60 Subpart OOOOa",
   oooob: "OOOOb",
   ooooc: "40 CFR 60 Subpart OOOOc",
@@ -120,12 +121,14 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
   const offset = (page - 1) * PAGE_SIZE;
   const regKey = regFilter || null;
 
-  // Reads go through the cookie-scoped client (an admin is just a
-  // subscriber whose email happens to be on the allowlist — RLS already
-  // lets any authenticated user read every provisions row). Only the
-  // actions in ./actions.ts touch the service-role client, and only after
-  // requireAdmin() runs again there.
-  const supabase = await createClient();
+  // Reads use the service-role client, after requireAdmin() above: a
+  // staged (newly imported, not yet released) document is hidden from
+  // subscribers by RLS (regulation_releases, migration 20261008040000) and
+  // an admin is a subscriber on the allowlist, so the cookie-scoped client
+  // would not show the very rows that need review before release. The
+  // actions in ./actions.ts use the same client after their own
+  // requireAdmin().
+  const supabase = createAdminClient();
 
   // Counts per status: a plain filtered count query per status. Fine at
   // this scale (4,400 rows); a single grouped query would need a Postgres

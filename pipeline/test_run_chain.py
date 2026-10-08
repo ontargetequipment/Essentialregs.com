@@ -659,3 +659,38 @@ def test_every_stage_reads_the_one_budget_constant():
     for module in (sz, review, embed, run_chain):
         assert getattr(module, "budget_module") is budget_module
     assert budget_module.budget_from_args(None).usd_per_reg == budget_module.STANDING_BUDGET_USD
+
+
+def test_a_second_pass_through_a_stage_adds_its_spend_instead_of_replacing_it():
+    """The 8 Oct 2026 Subpart OOOO chained run reported $0.0136 spent while
+    its first review alone cost $1.38: summarize.record_spend and
+    review.record_spend copied THEIR run's cumulative figure over the stage's
+    total, so the one-row regenerate / review2 passes erased the first
+    passes. Each run now records on top of what the stage held when it
+    began, and the budget enforcement sees the real total."""
+    import budget as budget_module
+    import summarize as sz
+    import review
+
+    class Stats:
+        def __init__(self, costs):
+            self._costs = costs
+
+        def cost_by_reg(self, model, batch=True):
+            return dict(self._costs)
+
+    b = budget_module.Budget()
+    first = Stats({"oooo": 1.0})
+    sz.record_spend(first, "m", b)
+    first._costs["oooo"] = 2.5                     # the same run, a later batch: cumulative, replaces
+    sz.record_spend(first, "m", b)
+    assert b.spent["oooo"]["summarize"] == 2.5
+    second = Stats({"oooo": 0.006})                # the regenerate pass: a new run, adds
+    sz.record_spend(second, "m", b)
+    assert round(b.spent["oooo"]["summarize"], 6) == 2.506
+    r1 = Stats({"oooo": 1.38})
+    review.record_spend(r1, "m", b)
+    r2 = Stats({"oooo": 0.0042})
+    review.record_spend(r2, "m", b)
+    assert round(b.spent["oooo"]["review"], 6) == 1.3842
+    assert round(b.spent_total("oooo"), 6) == 3.8902

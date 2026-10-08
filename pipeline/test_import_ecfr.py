@@ -862,6 +862,174 @@ class OoooByteIdenticalBaselineTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Equations the eCFR publishes only as images (insert_ecfr_image_notes), the
+# XML-sourced OOOO tables and the e-mail address [sic] notes (Oct 2026 review)
+# ---------------------------------------------------------------------------
+
+_FOUR = [("oooo", "OOOO"), ("ooooa", "OOOOa"), ("oooob", "OOOOb"), ("ooooc", "OOOOc")]
+_PARSE_CACHE: dict = {}
+
+
+def _parsed(reg, code):
+    if reg not in _PARSE_CACHE:
+        pdf, txt, xml = (os.path.join(SOURCES, f"{code}.{ext}") for ext in ("pdf", "txt", "xml"))
+        if not (os.path.exists(pdf) and os.path.exists(txt) and os.path.exists(xml)):
+            _PARSE_CACHE[reg] = None
+        else:
+            _PARSE_CACHE[reg] = ie.parse_ecfr(reg, pdf, txt)
+    return _PARSE_CACHE[reg]
+
+
+class EcfrImageNoteUnitTests(unittest.TestCase):
+    def test_alnum_map_decodes_entities_and_skips_tags(self):
+        html = '<p>H&amp;S <sub>2</sub>x &#x3B3;o</p>'
+        key, ends = ie._html_alnum_map(html)
+        self.assertEqual(key, "hs2xγo")  # &amp; decodes to a non-alnum and is dropped
+        self.assertEqual(len(ends), 6)
+        self.assertEqual(html[ends[1] - 1], "S")
+        self.assertEqual(html[ends[3] - 1], "x")
+        self.assertEqual(html[ends[4] - 1], ";")  # a decoded entity ends at its semicolon
+
+    def test_image_kinds_from_a_mini_xml(self):
+        import tempfile
+        xml = ('<DIV6 N="OOOO" TYPE="SUBPART"><DIV8 N="60.5406" TYPE="SECTION"><HEAD>§ 60.5406 T.</HEAD>'
+               '<P>(1) The rate (X) must be computed as follows:</P><img src="/graphics/a.gif"/>'
+               '<img src="/graphics/a2.gif"/><EXTRACT><FP>Where:</FP></EXTRACT>'
+               '<P>(6) Calculate the density of oil at the wellhead,</P><img src="/graphics/b.gif"/>'
+               '<FP>using the following equation:</FP><img src="/graphics/c.gif"/>'
+               '<P>(f) A blank determination is required.</P><img src="/graphics/d.gif"/>'
+               '<BCAP>Figure 1 to § 60.5406.</BCAP></DIV8></DIV6>')
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "mini.xml")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(xml)
+            sites = ie._xml_image_sites(path)
+        self.assertEqual([s["kind"] for s in sites], ["equation", "equation", "symbol", "equation", "figure"])
+        self.assertEqual([s["after_previous"] for s in sites], [False, True, False, False, False])
+        # the paragraph label is not part of the anchor (the parser moves it out)
+        self.assertTrue(sites[0]["anchor_text"].startswith("The rate (X)"))
+        self.assertEqual(sites[2]["anchor_text"], "Calculate the density of oil at the wellhead,")
+        self.assertEqual([s["section"] for s in sites], ["60.5406"] * 5)
+
+    def test_official_url_for_items_and_sections(self):
+        meta = ie.SUBPART_META["oooob"]
+        self.assertEqual(ie._ecfr_official_url(meta, {"citation": "§ 60.5413b(b)(3)(ii)"}),
+                         (meta["url"] + "#p-60.5413b(b)(3)(ii)", "40 CFR 60.5413b(b)(3)(ii)"))
+        self.assertEqual(ie._ecfr_official_url(meta, {"citation": "§ 60.5408b"}),
+                         ("https://www.ecfr.gov/current/title-40/section-60.5408b", "40 CFR 60.5408b"))
+
+    def test_missing_xml_places_nothing_and_reports_nothing(self):
+        rows = [dict(id="sec-oooo-60.5406-(b)-(1)", kind="item", citation="§ 60.5406(b)(1)", sort_order=10,
+                     full_text="<p>as follows:</p><p>Where:</p>")]
+        self.assertEqual(ie.insert_ecfr_image_notes("oooo", rows, os.path.join(SOURCES, "nope.xml")), ([], []))
+        self.assertEqual(rows[0]["full_text"], "<p>as follows:</p><p>Where:</p>")
+
+
+class EcfrImageNoteSourceTests(unittest.TestCase):
+    """Against the committed sources: every image of the four subparts'
+    XML lands in a row, OOOO's equations are the curated transcriptions,
+    the rest are visible placeholders -- no gap is silent."""
+
+    def _rows_report(self, reg, code):
+        parsed = _parsed(reg, code)
+        if parsed is None:
+            self.skipTest(f"{code} pdf/txt/xml not present")
+        return parsed
+
+    def test_every_image_is_placed(self):
+        import re as _re
+        for reg, code in _FOUR:
+            rows, report = self._rows_report(reg, code)
+            with open(os.path.join(SOURCES, f"{code}.xml"), encoding="utf-8") as f:
+                n_img = len(_re.findall(r"<img ", f.read()))
+            self.assertEqual(report["image_notes_unmatched"], [], reg)
+            self.assertEqual(len(report["image_notes"]), n_img, reg)
+            self.assertGreater(n_img, 0, reg)
+
+    def test_no_row_runs_an_equation_lead_in_straight_into_where(self):
+        import re as _re
+        gap = _re.compile(r"(?:as follows|following equations?|using (?:the following )?equations?[^:]{0,40}|by):\s*"
+                          r"(?:Equation \d+ to [Pp]aragraph [^:]{0,30})?\s*Where:", _re.I)
+        for reg, code in _FOUR:
+            rows, _ = self._rows_report(reg, code)
+            bad = [r["id"] for r in rows
+                   if gap.search(_re.sub(r"\s+", " ", _re.sub(r"<[^>]+>", " ", r["full_text"] or "")))]
+            self.assertEqual(bad, [], reg)
+
+    def test_oooo_equations_are_curated_and_the_burette_figure_is_a_placeholder(self):
+        rows, report = self._rows_report("oooo", "OOOO")
+        notes = report["image_notes"]
+        self.assertEqual(sum(1 for n in notes if n["note"] == "curated" and n["kind"] == "equation"), 9)
+        self.assertEqual([n["id"] for n in notes if n["note"] == "placeholder"], ["sec-oooo-60.5408-(f)"])
+        by_id = {r["id"]: r for r in rows}
+        for pid in ("sec-oooo-60.5406-(b)-(1)", "sec-oooo-60.5407-(e)", "sec-oooo-60.5413-(d)-(9)-(vi)"):
+            html = by_id[pid]["full_text"]
+            self.assertIn('<div class="equation-block">', html, pid)
+            # lead-in, then the block, then "Where:" -- the colon stays with the lead-in
+            self.assertRegex(html, r':</p><div class="equation-block">.*</figure></div><p>Where:</p>')
+            self.assertNotIn("<p>:</p>", html, pid)
+            self.assertIn('Official text</a>', html, pid)
+        a = by_id["sec-oooo-60.5413-(b)-(3)-(ii)-(A)"]["full_text"]
+        self.assertEqual(a.count('<figure class="equation">'), 2)
+        self.assertIn('<pre class="eq-text">X = K × Q_a × Y</pre>', by_id["sec-oooo-60.5406-(b)-(1)"]["full_text"])
+        fig = by_id["sec-oooo-60.5408-(f)"]["full_text"]
+        self.assertTrue(fig.endswith('">40 CFR 60.5408(f)</a>.</p>'), fig[-120:])
+        self.assertIn('<p class="figure-omitted">Figure not reproduced here. See the official source: ', fig)
+
+    def test_placeholders_in_the_other_subparts(self):
+        rows, report = self._rows_report("ooooc", "OOOOc")
+        by_id = {r["id"]: r for r in rows}
+        html = by_id["sec-ooooc-60.5413c-(b)-(3)-(ii)"]["full_text"]
+        self.assertIn('as follows:</p><p class="figure-omitted">Equation not reproduced here. See the official source: '
+                      '<a href="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOc'
+                      '#p-60.5413c(b)(3)(ii)">40 CFR 60.5413c(b)(3)(ii)</a>.</p><p>Where:</p>', html)
+        rows, report = self._rows_report("oooob", "OOOOb")
+        kinds = Counter(n["kind"] for n in report["image_notes"])
+        self.assertEqual(kinds["figure"], 1)
+        self.assertGreaterEqual(kinds["symbol"], 5)
+        by_id = {r["id"]: r for r in rows}
+        # an inline symbol image splits its sentence around a visible placeholder
+        self.assertIn('wellhead,</p><p class="figure-omitted">Symbol not reproduced here.',
+                      by_id["sec-oooob-60.5432b-(b)-(6)"]["full_text"])
+        rows, report = self._rows_report("ooooa", "OOOOa")
+        by_id = {r["id"]: r for r in rows}
+        # two images back to back: two placeholders back to back, no stray paragraph
+        self.assertEqual(by_id["sec-ooooa-60.5432a-(b)-(11)"]["full_text"].count('<p class="figure-omitted">'), 2)
+        self.assertNotIn("</p></p>", by_id["sec-ooooa-60.5432a-(b)-(11)"]["full_text"])
+
+    def test_oooo_tables_come_from_the_xml(self):
+        rows, report = self._rows_report("oooo", "OOOO")
+        proofs = {p["id"]: p for p in report["table_algo_proof"]}
+        for n in (1, 2, 3):
+            self.assertEqual(proofs[f"sec-oooo-TABLE-{n}"]["xml_match"], "yes", n)
+        by_id = {r["id"]: r for r in rows}
+        t3 = by_id["sec-oooo-TABLE-3"]["full_text"]
+        self.assertIn("<th>General<br/>provisions<br/>citation</th><th>Subject of citation</th>"
+                      "<th>Applies to<br/>subpart?</th><th>Explanation</th>", t3)
+        self.assertIn("<tr><td>§ 60.6</td><td>Review of plans</td><td>Yes.</td><td></td></tr>", t3)
+        self.assertEqual(t3.count("Explanation"), 1)  # the page-break header is not fused into the body
+        t1 = by_id["sec-oooo-TABLE-1"]["full_text"]
+        self.assertIn('<th rowspan="2">H<sub>2</sub> S content of acid gas (Y), %</th><th colspan="4">Sulfur feed rate (X), LT/D</th>', t1)
+        self.assertIn("88.51X<sup>0.0101</sup> Y<sup>0.0125</sup> or 99.9, whichever is smaller.", t1)
+        import source_text_check as stc
+        for n in (1, 2, 3):
+            self.assertEqual(stc.repeated_header_rows(by_id[f"sec-oooo-TABLE-{n}"]["full_text"]), [], n)
+
+    def test_the_doubled_underscore_address_carries_a_sic_note(self):
+        want = {"oooo": ["sec-oooo-60.5413-(e)-(6)", "sec-oooo-60.5420-(b)-(8)"],
+                "ooooa": ["sec-ooooa-60.5413a-(d)-(12)", "sec-ooooa-60.5413a-(e)-(6)", "sec-ooooa-60.5420a-(b)-(10)"]}
+        for reg, code in _FOUR[:2]:
+            rows, _ = self._rows_report(reg, code)
+            by_id = {r["id"]: r for r in rows}
+            for pid in want[reg]:
+                self.assertRegex(by_id[pid]["full_text"],
+                                 r'Oil_{2,}and_{2,}Gas_{2,}PT@EPA\.GOV<span class="er-sic" title="[^"]*Oil_and_Gas_PT@EPA\.GOV[^"]*"> \[sic\]</span>')
+        for reg, code in _FOUR[2:]:
+            rows, _ = self._rows_report(reg, code)
+            self.assertFalse(any("__" in (r["full_text"] or "") for r in rows), reg)
+
+
+# ---------------------------------------------------------------------------
 # Whole-PART (49 CFR 191/192) documents, parsed from the eCFR XML
 # ---------------------------------------------------------------------------
 

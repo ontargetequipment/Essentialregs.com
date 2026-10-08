@@ -17,13 +17,14 @@ const row = (q: string) => {
   return r;
 };
 
-test("the seven rows are the reviewer's, in the acceptance table's order", () => {
+test("the seven rows are the reviewer's, in the acceptance table's order, plus the OOOO row (8 Oct 2026)", () => {
   assert.deepEqual(
     KEYWORD_ROWS.map((r) => r.q),
-    ["storage tank requirements", "fugitive emissions", "produced water tank", "APEN requirements", "well production facility", "OOOOb", "reciprocating internal combustion engine"]
+    ["storage tank requirements", "fugitive emissions", "produced water tank", "APEN requirements", "well production facility", "OOOOb", "OOOO", "reciprocating internal combustion engine"]
   );
   assert.deepEqual(Object.keys(KEYWORD_KNOWN_FAILURES), ["fugitive emissions"]);
   assert.equal(keywordRowsNeeded(row("OOOOb")), 1);
+  assert.equal(keywordRowsNeeded(row("OOOO")), 1);
   assert.equal(keywordRowsNeeded(row("storage tank requirements")), 5);
   assert.equal(keywordRowsNeeded(row("reciprocating internal combustion engine")), 25);
 });

@@ -24,6 +24,7 @@ test("a row inside a Colorado regulation is Colorado even when stored as federal
 test("federal documents stay Federal whatever the row says", () => {
   assert.equal(regBadge("jjjj", "federal"), "Federal");
   assert.equal(regBadge("oooob", "state"), "Federal");
+  assert.equal(regBadge("oooo", "federal"), "Federal"); // the original Subpart OOOO, 8 Oct 2026
   assert.equal(regBadge("p192", "federal"), "Federal");
 });
 

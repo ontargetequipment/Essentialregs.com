@@ -61,6 +61,11 @@ and nobody has to ask for it. Since 6 Oct 2026 (ReviewBuiltIn):
   The only override is the workflow input **approved_budget**, which the run
   prints at the top of its report. `summarize.py`, `review.py` and `embed.py`
   enforce the same rule when run on their own.
+- **One budget, two passes.** `summarize.record_spend` and
+  `review.record_spend` add a run's spend to what the stage already held, so
+  the regenerate and second-review passes of a chained run no longer erase
+  the first passes' figures (the 8 Oct 2026 Subpart OOOO report printed
+  $0.0136 spent when its first review alone cost $1.38).
 - **Reconnect and resume.** Every database write goes through
   `pipeline/dbclient.py`, which reopens the connection and replays the request
   when the host closes it (it does so after 10,000 requests on one HTTP/2
@@ -83,7 +88,24 @@ and nobody has to ask for it. Since 6 Oct 2026 (ReviewBuiltIn):
 
 1. **Import** — Actions → **Import regulation from official PDF** → dry run
    (unchecked `execute`), read the stats and diff report, then run again with
-   `execute`. The chained run follows automatically.
+   `execute`. The chained run follows automatically. The source must be
+   committed to `pipeline/sources/` first; for a 40 CFR subpart whose eCFR
+   print is not committed yet, the workflow's "Fetch the eCFR print" step
+   downloads it on the runner (www.ecfr.gov is not reachable from a Claude
+   Code cloud session) and commits the PDF and its pdftotext text to the
+   branch the run was started on, so the dry run and the execute read the
+   same bytes (added 8 Oct 2026 for the original Subpart OOOO; `ecfr_pdf_url`
+   names the PDF link when the page's own cannot be found). Tick `ecfr_xml` on
+   the first dry run of a 40 CFR subpart: it commits the eCFR versioner XML
+   (`pipeline/sources/<CODE>.xml`) that the parser needs for the tables of a
+   subpart on `table_algorithm="xml"` and, for every subpart, for the position
+   of each equation the eCFR publishes only as an image
+   (`import_ecfr.insert_ecfr_image_notes`: a curated transcription from
+   `pipeline/curated_equations.json`, else a visible "Equation not reproduced
+   here. See the official source" line). Run `pipeline/source_text_check.py
+   --regs <reg>` afterwards: it fails on an unknown extraction difference, a
+   table header repeated or fused in a body row, a doubled underscore in an
+   address or URL, or an equation lead-in running straight into "Where:".
 2. **Summarize, review and embed in one run** — automatic after the import
    (new rows and changed rows) and, for a regulation imported before 6 Oct
    2026 or for a full redo, **Generate summaries** with `reg` set. Within the
@@ -98,7 +120,23 @@ and nobody has to ask for it. Since 6 Oct 2026 (ReviewBuiltIn):
    the branch `chain-sample/<label>-<run id>`, logs a warning naming it, and
    someone opens the pull request from that branch by hand (the sample is in
    the `chain-report` artifact too).
-4. **Make the regulation public** — its summaries do not appear on the public
+4. **Release** — a first import lands the document **staged**
+   (`regulation_releases`, migration 20261008040000; `apply --execute`
+   inserts the row and prints `NEW DOCUMENT: <reg> is STAGED`). Staged means
+   invisible to subscribers: the reader, `/regs/<id>`, keyword search, Ask,
+   related provisions, the previews and the Federal/States/GP indexes, the
+   sitemap and the public changelog all leave it out, and other documents'
+   re-imports do not write links to it (`dump-ids` leaves its ids out of
+   `corpus_ids.json` and lists it in `corpus_staged.json`). Admins on
+   `ADMIN_EMAILS` still open it in the reader and the review queue. When the
+   Cowork session says "make <reg> public", run Actions → **Release
+   regulation** (`python pipeline/import_ccr.py release --reg <reg> --yes`),
+   then `dump-ids` and the markup-only re-imports of the documents that cite
+   it (`pipeline/link_change_report.py` names them), then the Ask and Keyword
+   evals. Before 8 Oct 2026 there was no such state: `is_public` only decides
+   which four rows anonymous visitors may read on `/sample`, and Subpart OOOO
+   was visible to every subscriber from the moment it was imported.
+5. **Public sample** — a regulation's summaries do not appear on the public
    `/sample` or `/regulations/<reg>/preview` pages until nothing of it is still
    pending review (`teaserSummariesVisible`, `gatePublicSummaries`).
 
@@ -484,8 +522,19 @@ links to the part root), and the first section of a list carries the
   a bare JJJJ / IIII links only when the paragraph shows Part 60 or NSPS, a
   bare ZZZZ / OOOOa / OOOOb / OOOOc always (they occur in one part only).
   "Regulation Number 6, Part A, Subpart IIII" deep-links to Regulation 6's
-  own adoption row. The original Subpart OOOO and every subpart not in the
-  corpus are counted in the diff report's `cfr` bucket and never linked.
+  own adoption row. Every subpart not in the corpus is counted in the diff
+  report's `cfr` bucket and never linked. The original Subpart OOOO is in
+  the corpus since 8 Oct 2026 (`oooo`): "NSPS OOOO", "40 CFR Part 60,
+  Subpart OOOO", "NSPS Subpart OOOO", "Subpart OOOO, OOOOa, or OOOOb" and a
+  bare "§ 60.5365" link to it (`CFR_SECTION_RANGES` holds its 60.5360-60.5433
+  range with no suffix; a number with a letter is OOOOa/b/c, and "OOOO" never
+  captures the longer codes -- every pattern ends in a word boundary). The
+  one care: 40 CFR Part 63 has its own Subpart OOOO (fabric printing, coating
+  and dyeing), which Regulation 8 Part A lists, so a bare "Subpart OOOO"
+  with no part and no program word links only when the paragraph shows the
+  Part 60 context (NSPS, Part 60, a § 60.53xx section or OOOOa/b/c beside
+  it) and no Part 63 / NESHAP / MACT context (`OOOO_CONTEXT_RE`,
+  `PART_63_CONTEXT_RE`); "40 C.F.R. Part 63, Subpart OOOO" stays plain text.
   `pipeline/link_change_report.py` has a "Federal subpart links" table (per
   regulation: document and section links old -> new, skipped, unresolved);
   the 7 Oct 2026 run is `pipeline/out/acceptance_federal_subpart_links.md`.

@@ -1863,3 +1863,33 @@ def test_fixture_title_v_name_is_in_the_prompt_and_a_wrong_expansion_still_corre
     v = review.validate_verdict(data, r)
     assert v.verdict == "corrected"
     assert wrong != r.summary
+
+
+def test_cited_sibling_paragraphs_are_shown_to_the_reviewer():
+    meta = {
+        "sec-x-top-REG-x": {"id": "sec-x-top-REG-x", "parent_id": None, "citation": "X", "full_text": "<p>X</p>", "sort_order": 0},
+        "sec-x-60.5417": {"id": "sec-x-60.5417", "parent_id": "sec-x-top-REG-x", "citation": "§ 60.5417", "full_text": "<p>You must meet this section.</p>", "sort_order": 10},
+        "sec-x-60.5417-(a)": {"id": "sec-x-60.5417-(a)", "parent_id": "sec-x-60.5417", "citation": "§ 60.5417(a)", "full_text": "<p>For each control device used for § 60.5380 install monitoring per (c) through (g).</p>", "sort_order": 20},
+        "sec-x-60.5417-(e)": {"id": "sec-x-60.5417-(e)", "parent_id": "sec-x-60.5417", "citation": "§ 60.5417(e)", "full_text": "<p>Valid data points must be available for 75 percent of the operating hours.</p>", "sort_order": 30},
+        "sec-x-60.5417-(g)": {"id": "sec-x-60.5417-(g)", "parent_id": "sec-x-60.5417", "citation": "§ 60.5417(g)", "full_text": "<p>A deviation occurs when the criteria in (g)(1) through (6) are met.</p>", "sort_order": 40,
+                              "ai_summary": "A deviation occurs when valid monitoring data are available for less than 75 percent of the operating hours in a day (paragraph (e) requires valid data for 75 percent); paragraphs (c) through (g) reach devices through paragraph (a) and the standard in § 60.5380; see paragraph (h)."},
+        "sec-x-60.5417-(g)-(4)": {"id": "sec-x-60.5417-(g)-(4)", "parent_id": "sec-x-60.5417-(g)", "citation": "§ 60.5417(g)(4)", "full_text": "<p>A deviation occurs when the monitoring data are not available for at least 75 percent of the operating hours in a day.</p>", "sort_order": 50},
+        "sec-x-60.5380": {"id": "sec-x-60.5380", "parent_id": "sec-x-top-REG-x", "citation": "§ 60.5380", "full_text": "<p>The centrifugal compressor standard.</p>", "sort_order": 5},
+    }
+    for r in meta.values():
+        r.setdefault("title", r["citation"])
+    row = meta["sec-x-60.5417-(g)"]
+    rows = review.cited_rows(row, row["ai_summary"], meta)
+    ids = [r["id"] for r in rows]
+    # (e) and (a) are siblings, § 60.5380 another section; (c)..(f) do not exist;
+    # (g) itself and (g)(4) (a descendant) are already in the official text; (h) does not exist
+    assert ids == ["sec-x-60.5417-(e)", "sec-x-60.5417-(a)", "sec-x-60.5380"]
+    inp = review.build_review_input(row, meta, sz.build_children_index(meta))
+    assert "OTHER PROVISIONS OF THIS REGULATION THE SUMMARY CITES" in inp.prompt
+    assert "[sec-x-60.5417-(e)] § 60.5417(e): Valid data points must be available for 75 percent" in inp.prompt
+    assert inp.prompt.index("OTHER PROVISIONS") < inp.prompt.index("CURRENT SUMMARY")
+    # a summary that cites nothing adds no block
+    plain = dict(row, ai_summary="A deviation occurs when the criteria are met.")
+    assert "OTHER PROVISIONS" not in review.build_review_input(plain, meta, sz.build_children_index(meta)).prompt
+    # CCR-shaped ids are left alone
+    assert review.cited_rows({"id": "sec-7-B-I-A-1", "parent_id": None}, "see paragraph (a)", meta) == []

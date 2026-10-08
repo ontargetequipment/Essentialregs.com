@@ -309,8 +309,12 @@ REVIEW_SYSTEM_PROMPT = (
     "plain everyday wording is expected and is not a defect. The summary "
     "may describe the provision together with the provisions listed inside "
     "it; that is how it is meant to work. A summary that reports an "
-    "equation as not shown is correct when the text lists variables "
-    "without a formula. The regulation line and the block \"Text above this "
+    "equation as not shown or not reproduced is correct when the text lists "
+    "variables without a formula or carries \"Equation not reproduced here\"; "
+    "where the text carries an EssentialRegs transcription (\"Equation "
+    "transcribed by EssentialRegs ...\" and a plain-text formula), a summary "
+    "that states that formula is supported by it, and a summary that still "
+    "says the equation is not shown is corrected. The regulation line and the block \"Text above this "
     "provision\" -- the own text of every ancestor from the root down to the "
     "parent, each labelled with its id -- are part of the text you are "
     "given: a summary may say where the provision sits and connect it to "
@@ -332,7 +336,8 @@ REVIEW_SYSTEM_PROMPT = (
     "and a summary may say so, as long as it adds no number, date, party, "
     "threshold, exception or requirement of its own. Tense (\"is\" / \"will "
     "be\") and voice are style.\n\n"
-    "Three allowances. These are about plain English; nothing in them "
+    "Four allowances. These are about plain English and about the text's own "
+    "ambiguities; nothing in them "
     "loosens the rules above on numbers, dates, thresholds, citations, "
     "scope, parties, conditions and exceptions, which must still match the "
     "text, or on asserting what the text does not say.\n\n"
@@ -372,7 +377,21 @@ REVIEW_SYSTEM_PROMPT = (
     "3. Source typos. Never change a summary to reproduce an evident typo "
     "or misspelling in the official text (\"trionyl chloride\" for thionyl "
     "chloride, a doubled or dropped letter). The summary uses the correct "
-    "word; a summary that already does is not in error on that point.\n\n"
+    "word; a summary that already does is not in error on that point. A "
+    "\"[sic]\" in the text is EssentialRegs' marker for such a misprint (an "
+    "e-mail address printed with doubled underscores): a summary that gives "
+    "the corrected form, with or without a note that the rule prints it "
+    "differently, is correct; do not correct it back to the misprint.\n\n"
+    "4. Ambiguous negation. Where the text's own negation can be read two "
+    "ways (\"a deviation occurs when the monitoring data are not available "
+    "for at least 75 percent of the operating hours\"), a summary that "
+    "quotes the text's phrase and states the requirement it refers to, in "
+    "the text's words (\"valid data must be available for 75 percent of the "
+    "operating hours\", so a deviation when valid data are available for "
+    "less than 75 percent), is correct and must not be \"corrected\" to the "
+    "opposite reading. A summary that paraphrases such a phrase into the "
+    "opposite reading (\"unavailable for at least 75 percent\") is an error "
+    "to correct the same way: quote the phrase and name the requirement.\n\n"
     "Everything else is unchanged. Style-only rewrites are a pass.\n\n"
     "Context above the provision. The duty a nested item serves is often "
     "stated two or more levels up (\"A revised APEN must be filed:\" / "
@@ -384,7 +403,12 @@ REVIEW_SYSTEM_PROMPT = (
     "I.C. or I.D.\"), when, or under what condition -- binds the provision, "
     "so a summary that states the ancestor's duty for everyone, or without "
     "that condition, widens the scope and is corrected by adding the limit "
-    "in the ancestor's words. "
+    "in the ancestor's words. A suspension or applicability window an "
+    "ancestor states for the whole section or paragraph (\"The provisions of "
+    "this section will not apply between July 31, 2025, and January 22, "
+    "2027\") is such a limit on every provision under it: a summary below "
+    "that ancestor that does not carry it, with its dates, is corrected by "
+    "adding it. "
     "(b) Where an excerpt is marked cut -- it ends with [excerpt cut], or a "
     "note says the provision text or the ancestor list was truncated -- the "
     "missing part is not silence: do not remove or change a statement "
@@ -394,7 +418,13 @@ REVIEW_SYSTEM_PROMPT = (
     "available on request\") with a vaguer one (\"requires action\", "
     "\"requires a report\", \"available for inspection\"); if you cannot "
     "state the duty as precisely as the summary did, leave the summary's "
-    "words.\n\n"
+    "words. (d) The block \"OTHER PROVISIONS OF THIS REGULATION THE SUMMARY "
+    "CITES\", when present, holds the own text of the sibling paragraphs and "
+    "sections the summary names (\"paragraph (e) requires valid data for 75 "
+    "percent of the operating hours\", \"the standard in § 60.5380\"). It is "
+    "part of the text you are given: a statement one of those excerpts "
+    "supports is supported, and a correct citation to it is not an addition. "
+    "Only a statement that none of the text shown supports is unsupported.\n\n"
     "Answer with the JSON object only."
 )
 
@@ -788,15 +818,99 @@ def build_official_text(provision: dict, meta: dict, children_index: dict,
     return result, result.ancestors
 
 
+# --------------------------------------------------------------------------
+# Paragraphs the summary cites (8 Oct 2026). A summary may legitimately
+# point at a sibling paragraph of its own section -- "paragraph (e)
+# requires valid data for 75 percent of the operating hours", "the
+# monitoring paragraph (a) requires", "control devices on storage vessels
+# are under paragraph (h)" -- or at another section of the regulation
+# ("the standard in § 60.5380"). The reviewer saw only the provision, its
+# descendants and its ancestors, so it struck every such statement as
+# "not in the text" (OOOO § 60.5417(g) and (f)(2)(i), the 8 Oct review).
+# Now the own text of every eCFR-style paragraph or section the summary
+# names, when it exists in the regulation and is not already shown, is
+# appended as a separate block, so the reviewer checks the statement
+# against the cited text instead of against silence.
+# --------------------------------------------------------------------------
+
+CITED_EXCERPT_CHARS = 700
+CITED_MAX = 8
+_CITED_PARA_RE = re.compile(r"\bparagraphs?\s+(\([a-zA-Z0-9]+\)(?:\([a-zA-Z0-9]+\))*)"
+                            r"(?:\s+(?:through|to|and|or)\s+(\([a-zA-Z0-9]+\)(?:\([a-zA-Z0-9]+\))*))?")
+_CITED_SECTION_RE = re.compile(r"§\s*(\d+\.\d+[a-z]?)\b")
+_ECFR_SECTION_ID_RE = re.compile(r"^(sec-[^-]+-\d+\.\d+[a-z]?)(?:-|$)")
+
+
+def cited_rows(provision: dict, summary: str, meta: dict) -> list[dict]:
+    """Rows of `meta` the summary cites by eCFR paragraph or section label,
+    minus the provision, its ancestors and its descendants (already in the
+    official text). Empty for a regulation whose ids are not eCFR-shaped."""
+    m = _ECFR_SECTION_ID_RE.match(provision.get("id") or "")
+    if not m or not summary:
+        return []
+    section_id = m.group(1)
+    reg_prefix = section_id.rsplit("-", 1)[0]  # "sec-oooo"
+    wanted: list[str] = []
+
+    def add(pid: str) -> None:
+        if pid in meta and pid not in wanted:
+            wanted.append(pid)
+
+    for first, last in _CITED_PARA_RE.findall(summary):
+        labels = re.findall(r"\(([a-zA-Z0-9]+)\)", first)
+        add(section_id + "".join(f"-({l})" for l in labels))
+        if last:
+            last_labels = re.findall(r"\(([a-zA-Z0-9]+)\)", last)
+            # a range at one level: paragraphs (c) through (g)
+            if len(labels) == 1 and len(last_labels) == 1 and len(labels[0]) == 1 and len(last_labels[0]) == 1 \
+                    and labels[0].islower() and last_labels[0].islower() and labels[0] < last_labels[0]:
+                for code in range(ord(labels[0]) + 1, ord(last_labels[0]) + 1):
+                    add(f"{section_id}-({chr(code)})")
+            else:
+                add(section_id + "".join(f"-({l})" for l in last_labels))
+    for sec in _CITED_SECTION_RE.findall(summary):
+        add(f"{reg_prefix}-{sec}")
+
+    own = provision["id"]
+    ancestors = set()
+    cur = provision.get("parent_id")
+    while cur and cur in meta and cur not in ancestors:
+        ancestors.add(cur)
+        cur = meta[cur].get("parent_id")
+    out: list[dict] = []
+    for pid in wanted:
+        if pid == own or pid in ancestors or pid.startswith(own + "-"):
+            continue
+        out.append(meta[pid])
+        if len(out) >= CITED_MAX:
+            break
+    return out
+
+
+def cited_block(rows: list[dict]) -> str:
+    if not rows:
+        return ""
+    lines = ["OTHER PROVISIONS OF THIS REGULATION THE SUMMARY CITES (their own text only, "
+             "for checking what the summary attributes to them; a statement one of these "
+             "supports is supported):"]
+    for r in rows:
+        excerpt, _cut = sz.honest_cut(sz.strip_html(r.get("full_text") or "") or (r.get("title") or ""),
+                                      CITED_EXCERPT_CHARS)
+        lines.append(f"[{r['id']}] {r.get('citation') or r['id']}: {excerpt}")
+    return "\n".join(lines)
+
+
 def build_review_input(provision: dict, meta: dict, children_index: dict) -> ReviewInput:
     text, ancestors = build_official_text(provision, meta, children_index)
     summary = (provision.get("ai_summary") or "").strip()
+    cited = cited_block(cited_rows(provision, summary, meta))
     prompt = (
         "OFFICIAL TEXT (the only source of truth; the provision and the provisions "
         "inside it as the summary's author saw them, plus the text of every ancestor "
         "above the provision):\n\n"
         f"{text.prompt}\n\n"
-        "CURRENT SUMMARY (under review):\n"
+        + (f"{cited}\n\n" if cited else "")
+        + "CURRENT SUMMARY (under review):\n"
         f"{summary}"
     )
     return ReviewInput(
@@ -1366,8 +1480,16 @@ def estimate_into_budget(client_anthropic, reviews: list[ReviewInput], model: st
 
 
 def record_spend(stats: "RunStats", model: str, budget, batch: bool = True) -> None:
+    """This run's per-regulation spend so far, on top of what the stage held
+    when the run began: a chained run reviews twice (review, then review2
+    after the regeneration) with one Budget, and the second run must add to
+    the first, not replace it (see summarize.record_spend)."""
+    base = getattr(stats, "budget_base", None)
+    if base is None:
+        base = {reg: budget.spent.get(reg, {}).get("review", 0.0) for reg in budget.spent}
+        stats.budget_base = base
     for reg, usd in stats.cost_by_reg(model, batch=batch).items():
-        budget.set_spent(reg, "review", usd)
+        budget.set_spent(reg, "review", base.get(reg, 0.0) + usd)
 
 
 def count_tokens_many(client_anthropic, reviews: list[ReviewInput], model: str,

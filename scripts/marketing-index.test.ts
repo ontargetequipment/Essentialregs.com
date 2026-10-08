@@ -92,7 +92,7 @@ const ROOTS = [
   ...["gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12"].map(
     (k) => ({ id: rootIdOf(k), jurisdiction_level: "state" as const })
   ),
-  ...["iiii", "jjjj", "ooooa", "oooob", "ooooc", "zzzz", "p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"].map(
+  ...["iiii", "jjjj", "oooo", "ooooa", "oooob", "ooooc", "zzzz", "p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"].map(
     (k) => ({ id: rootIdOf(k), jurisdiction_level: "federal" as const })
   ),
 ];
@@ -101,7 +101,7 @@ test("/federal shows every federal root, whoever is looking", () => {
   // The page's own filter over what fetchRegulationRoots returns. The
   // RLS-bound list a prospect used to get was empty: no root is is_public.
   const federal = ROOTS.filter((r) => r.jurisdiction_level === "federal");
-  assert.equal(federal.length, 14);
+  assert.equal(federal.length, 15);
 });
 
 test("/states/colorado shows every Colorado root, whoever is looking", () => {

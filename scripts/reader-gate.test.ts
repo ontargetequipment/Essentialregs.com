@@ -31,9 +31,13 @@ const publicRoot: Provision = {
 
 const cached: RenderedReader = { title: "REGULATION T", blurb: "", navHtml: "<nav-from-cache>", docHtml: "<doc-from-cache>" };
 
-function deps(entitled: boolean, liveRows: Provision[] = [publicRoot]) {
+function deps(entitled: boolean, liveRows: Provision[] = [publicRoot], visible = true) {
   const calls: string[] = [];
   const d: ReaderPageDeps = {
+    isVisible: async (reg) => {
+      calls.push(`isVisible:${reg}`);
+      return visible;
+    },
     hasAccess: async () => {
       calls.push("hasAccess");
       return entitled;
@@ -57,7 +61,7 @@ function deps(entitled: boolean, liveRows: Provision[] = [publicRoot]) {
 test("an unentitled request never reaches the cached path", async () => {
   const { d, calls } = deps(false);
   const reader = await loadReaderPage("t", d);
-  assert.deepEqual(calls, ["hasAccess", "fetchLive:t"]);
+  assert.deepEqual(calls, ["isVisible:t", "hasAccess", "fetchLive:t"]);
   // Rendered live from what RLS let through: the root row only.
   assert.ok(reader);
   assert.equal(reader.title, "REGULATION T");
@@ -68,13 +72,13 @@ test("an unentitled request never reaches the cached path", async () => {
 test("an unentitled request with nothing visible 404s without touching the cache", async () => {
   const { d, calls } = deps(false, []);
   assert.equal(await loadReaderPage("t", d), null);
-  assert.deepEqual(calls, ["hasAccess", "fetchLive:t"]);
+  assert.deepEqual(calls, ["isVisible:t", "hasAccess", "fetchLive:t"]);
 });
 
 test("an entitled request reads the cache under the data version, never the live path", async () => {
   const { d, calls } = deps(true);
   const reader = await loadReaderPage("t", d);
-  assert.deepEqual(calls, ["hasAccess", "fetchVersion:t", "fetchCached:t:6754:2026-09-20T15:13:42Z"]);
+  assert.deepEqual(calls, ["isVisible:t", "hasAccess", "fetchVersion:t", "fetchCached:t:6754:2026-09-20T15:13:42Z"]);
   assert.equal(reader, cached);
 });
 
@@ -82,5 +86,13 @@ test("the gate runs before anything else, on every call", async () => {
   const { d, calls } = deps(false);
   await loadReaderPage("t", d);
   await loadReaderPage("t", d);
-  assert.deepEqual(calls, ["hasAccess", "fetchLive:t", "hasAccess", "fetchLive:t"]);
+  assert.deepEqual(calls, ["isVisible:t", "hasAccess", "fetchLive:t", "isVisible:t", "hasAccess", "fetchLive:t"]);
+});
+
+test("a staged document 404s before the entitlement gate and before any fetch, entitled or not", async () => {
+  for (const entitled of [false, true]) {
+    const { d, calls } = deps(entitled, [publicRoot], false);
+    assert.equal(await loadReaderPage("oooo", d), null);
+    assert.deepEqual(calls, ["isVisible:oooo"]);
+  }
 });

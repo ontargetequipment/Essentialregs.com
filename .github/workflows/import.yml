@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       reg:
-        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, cp, aqs, sip, proc, ecmc, oooob, ooooa, ooooc, gp01-gp12, jjjj, iiii, zzzz, p190, p191, p192, p193, p194, p195, p196, p199."
+        description: "Regulation number to (re-)import, e.g. 7, 3, 22, 26, cp, aqs, sip, proc, ecmc, oooo, oooob, ooooa, ooooc, gp01-gp12, jjjj, iiii, zzzz, p190, p191, p192, p193, p194, p195, p196, p199."
         required: true
       execute:
         description: "Execute: actually write the plan to Supabase. Leave unchecked to only parse/export/diff/build the apply plan and upload the report -- no database writes."
@@ -20,6 +20,15 @@ on:
         description: "Owner-approved budget in USD per regulation for this run's summaries, replacing the standing $10 rule. Leave blank for the standing rule."
         required: false
         default: ""
+      ecfr_pdf_url:
+        description: "First import of a 40 CFR subpart only: the eCFR Print/PDF link to download when pipeline/sources/<CODE>.pdf is not committed yet (the page's own link and the known URL shapes are tried when blank). The fetched PDF and its pdftotext text are committed to this branch."
+        required: false
+        default: ""
+      ecfr_xml:
+        description: "40 CFR subparts only: also fetch the eCFR versioner XML of the subpart at the manifest's as_of date to pipeline/sources/<CODE>.xml (tables and equation positions come from it) and commit it to this branch."
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write
@@ -50,6 +59,7 @@ jobs:
           # cp -> REG_CP, aqs -> REG_AQS, sip -> REG_SIP and (Batch 7) the
           # Procedural Rules, proc -> REG_PROC.
           # Federal eCFR subparts use their own subpart-code basename instead --
+          # oooo -> OOOO.pdf/.txt (the original Subpart OOOO, 8 Oct 2026),
           # oooob -> OOOOb.pdf/.txt, ooooa -> OOOOa.pdf/.txt, ooooc -> OOOOc.pdf/.txt,
           # jjjj -> JJJJ.pdf/.txt, iiii -> IIII.pdf/.txt, zzzz -> ZZZZ.pdf/.txt.
           # APCD general permits (gp01-gp12) use their upper-cased key as the
@@ -72,6 +82,8 @@ jobs:
             SRC_BASENAME="REG_PROC"
           elif [ "$REG" = "ecmc" ]; then
             SRC_BASENAME="ECMC"
+          elif [ "$REG" = "oooo" ]; then
+            SRC_BASENAME="OOOO"
           elif [ "$REG" = "oooob" ]; then
             SRC_BASENAME="OOOOb"
           elif [ "$REG" = "ooooa" ]; then
@@ -85,7 +97,7 @@ jobs:
           elif [[ "$REG" =~ ^p19[0-9]$ ]]; then
             SRC_BASENAME="${REG^^}"
           else
-            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), cp, aqs, sip, proc, ecmc, one of oooob/ooooa/ooooc/jjjj/iiii/zzzz, an APCD general permit gp01-gp12, or one of the whole-PART 49 CFR regs p190/p191/p192/p193/p194/p195/p196/p199."
+            echo "::error::Don't know the source file basename for reg '$REG' -- expected a numeric CCR reg (e.g. 7, 22, 26), cp, aqs, sip, proc, ecmc, one of oooo/oooob/ooooa/ooooc/jjjj/iiii/zzzz, an APCD general permit gp01-gp12, or one of the whole-PART 49 CFR regs p190/p191/p192/p193/p194/p195/p196/p199."
             exit 1
           fi
           echo "SRC_BASENAME=${SRC_BASENAME}" >> "$GITHUB_ENV"
@@ -93,6 +105,175 @@ jobs:
 
       - name: Install poppler-utils (pdftotext)
         run: sudo apt-get update && sudo apt-get install -y poppler-utils
+
+      - name: Fetch the eCFR print when a 40 CFR subpart's source is not committed yet
+        # First import of a federal subpart (8 Oct 2026, Subpart OOOO). The
+        # importer parses the eCFR "enhanced display" print -- the PDF a
+        # person saves from the eCFR's Print/PDF menu -- and the checklist
+        # says to commit it to pipeline/sources/ first. www.ecfr.gov is not
+        # reachable from a Claude Code cloud session (the egress proxy
+        # refuses the host), so when neither the PDF nor the text is
+        # committed for one of the 40 CFR subpart keys, this step downloads
+        # the print here, on the runner, which reaches it (the freshness
+        # watcher has fetched the versioner API from runners since
+        # September 2026). A candidate is accepted only when the download is
+        # a PDF whose first text line is the eCFR running header of this
+        # subpart. The "Commit fetched sources" step below saves the PDF and
+        # its pdftotext text to this branch, so the dry run and the execute
+        # run read the same bytes and the file is in the repository like
+        # every other source. Never runs when the source is committed.
+        if: ${{ contains(fromJSON('["oooo","ooooa","oooob","ooooc","jjjj","iiii","zzzz"]'), inputs.reg) }}
+        id: fetch_ecfr
+        env:
+          ECFR_PDF_URL: ${{ inputs.ecfr_pdf_url }}
+          UA: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 EssentialRegsImporter/1.0 (+https://essentialregs.com)"
+        run: |
+          set -o pipefail
+          PDF="pipeline/sources/${SRC_BASENAME}.pdf"
+          TXT="pipeline/sources/${SRC_BASENAME}.txt"
+          if [ -f "$PDF" ] || [ -f "$TXT" ]; then
+            echo "$SRC_BASENAME source is committed -- nothing to fetch."
+            echo "fetched=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CODE="$SRC_BASENAME"
+          PART=60; [ "$REG" = "zzzz" ] && PART=63
+          mkdir -p pipeline/out/ecfr_fetch
+          PAGE_URL="https://www.ecfr.gov/current/title-40/part-${PART}/subpart-${CODE}"
+          echo "Subpart page: $PAGE_URL"
+          CJ=pipeline/out/ecfr_fetch/cookies.txt
+          FINAL_URL=$(curl -sSL -A "$UA" -c "$CJ" -o pipeline/out/ecfr_fetch/page.html -w "%{url_effective}" "$PAGE_URL")
+          echo "Final URL: $FINAL_URL"
+          grep -o -i '[^"'"'"' <>]*\(pdf\|print\)[^"'"'"' <>]*' pipeline/out/ecfr_fetch/page.html | sort -u > pipeline/out/ecfr_fetch/pdf_mentions.txt || true
+          VERS_URL="https://www.ecfr.gov/api/versioner/v1/versions/title-40.json?part=${PART}&subpart=${CODE}"
+          curl -sSL -A "$UA" -o pipeline/out/ecfr_fetch/versions.json -w "versions HTTP %{http_code}\n" "$VERS_URL" || true
+          if jq -e '.content_versions' pipeline/out/ecfr_fetch/versions.json >/dev/null 2>&1; then
+            echo "Versioner: $(jq '.content_versions | length' pipeline/out/ecfr_fetch/versions.json) section versions; latest amendment date $(jq -r '[.content_versions[].amendment_date] | max' pipeline/out/ecfr_fetch/versions.json); latest issue date $(jq -r '[.content_versions[].issue_date] | max' pipeline/out/ecfr_fetch/versions.json)"
+          fi
+          cands=()
+          [ -n "$ECFR_PDF_URL" ] && cands+=("$ECFR_PDF_URL")
+          # The eCFR's own Print/PDF: the page's "Generate PDF" control POSTs to
+          # <page path>.pdf (JSON: uuid, complete, retries), polls
+          # /pdfs/<uuid>.json?retries=N until complete, then downloads
+          # /pdfs/<uuid>.pdf (assets/application_pipeline.js,
+          # UtilityNav.addGeneratePdfOnClickEvent / handleSuccess). The POST is
+          # a Rails request: the page's csrf-token and its session cookie go
+          # with it.
+          META=$(grep -o '<meta[^>]*csrf-token[^>]*>' pipeline/out/ecfr_fetch/page.html | head -1 || true)
+          echo "csrf meta: ${META:-(none)}"
+          CSRF=$(printf '%s' "$META" | grep -o 'content="[^"]*"' | head -1 | sed 's/^content="//; s/"$//' || true)
+          GEN_URL="${FINAL_URL%%\?*}.pdf"
+          echo "Generate PDF: POST $GEN_URL (csrf token ${#CSRF} chars)"
+          if curl -sS -A "$UA" -b "$CJ" -c "$CJ" -X POST -H "X-CSRF-Token: $CSRF" -H "X-Requested-With: XMLHttpRequest" -H "Accept: application/json, text/javascript, */*; q=0.01" -H "Referer: $FINAL_URL" -o pipeline/out/ecfr_fetch/gen.json -w "generate HTTP %{http_code}, %{content_type}\n" "$GEN_URL"; then
+            head -c 400 pipeline/out/ecfr_fetch/gen.json; echo
+            uuid=$(jq -r '.uuid // empty' pipeline/out/ecfr_fetch/gen.json 2>/dev/null || true)
+            complete=$(jq -r '.complete // false' pipeline/out/ecfr_fetch/gen.json 2>/dev/null || echo false)
+            n=0
+            while [ -n "$uuid" ] && [ "$complete" != "true" ] && [ $n -lt 90 ]; do
+              n=$((n+1)); sleep 5
+              curl -sS -A "$UA" -b "$CJ" -c "$CJ" -X POST -H "X-CSRF-Token: $CSRF" -H "X-Requested-With: XMLHttpRequest" -H "Accept: application/json, text/javascript, */*; q=0.01" -H "Referer: $FINAL_URL" -o pipeline/out/ecfr_fetch/gen.json "https://www.ecfr.gov/pdfs/${uuid}.json?retries=${n}" || true
+              complete=$(jq -r '.complete // false' pipeline/out/ecfr_fetch/gen.json 2>/dev/null || echo false)
+              echo "poll $n: complete=$complete $(head -c 200 pipeline/out/ecfr_fetch/gen.json | tr -d '\n')"
+            done
+            if [ -n "$uuid" ] && [ "$complete" = "true" ]; then
+              cands+=("https://www.ecfr.gov/pdfs/${uuid}.pdf")
+            else
+              echo "::warning::The eCFR PDF generator did not report a finished PDF (uuid='${uuid}', complete='${complete}')."
+            fi
+          else
+            echo "::warning::POST $GEN_URL failed."
+          fi
+          # Known URL shapes, tried last.
+          cands+=(
+            "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-40.pdf?part=${PART}&subpart=${CODE}"
+            "https://www.ecfr.gov/current/title-40/part-${PART}/subpart-${CODE}.pdf"
+          )
+          found=""
+          for u in "${cands[@]}"; do
+            echo "--- candidate: $u"
+            if ! curl -sSL -A "$UA" -b "$CJ" --max-time 600 -o pipeline/out/ecfr_fetch/cand.bin -w "HTTP %{http_code}, %{size_download} bytes, %{content_type}\n" "$u"; then
+              echo "download failed"; continue
+            fi
+            mime=$(file -b --mime-type pipeline/out/ecfr_fetch/cand.bin)
+            echo "mime: $mime"
+            [ "$mime" = "application/pdf" ] || continue
+            pdftotext -layout pipeline/out/ecfr_fetch/cand.bin pipeline/out/ecfr_fetch/cand.txt
+            first=$(grep -m1 -v '^\s*$' pipeline/out/ecfr_fetch/cand.txt || true)
+            echo "first text line: $first"
+            if echo "$first" | grep -q "Part ${PART} Subpart ${CODE} (up to date as of"; then found="$u"; break; fi
+            echo "not the enhanced-display print of Subpart ${CODE}; next"
+          done
+          if [ -z "$found" ]; then
+            # Diagnostics in the log (the artifact store is not reachable from a
+            # cloud session): the page markup around its PDF controls and the
+            # script lines that build the PDF URL.
+            echo "::group::The page's Print/PDF control and the script that drives it"
+            # (no regexes over the whole one-line page: a .{0,400} window on 570 KB took 13 minutes)
+            grep -o '<a class="generate-pdf"[^>]*>' pipeline/out/ecfr_fetch/page.html | head -3
+            grep -o '<script[^>]*src="[^"]*"' pipeline/out/ecfr_fetch/page.html | grep -o 'src="[^"]*"' | sed 's/src="//; s/"$//' | sort -u > pipeline/out/ecfr_fetch/scripts.txt
+            while read -r js; do
+              case "$js" in *application*) ;; *) continue ;; esac
+              case "$js" in http*) ;; /*) js="https://www.ecfr.gov$js" ;; *) continue ;; esac
+              curl -sSL -A "$UA" --max-time 120 -o pipeline/out/ecfr_fetch/script.js "$js" || continue
+              echo "== $js ($(wc -c < pipeline/out/ecfr_fetch/script.js) bytes)"
+              grep -n -A70 'addGeneratePdfOnClickEvent = function' pipeline/out/ecfr_fetch/script.js | head -90
+              echo "-- every statement naming pdf:"
+              grep -o -i '[^;{}]\{0,120\}pdf[^;{}]\{0,120\}' pipeline/out/ecfr_fetch/script.js | grep -v -i 'generate-pdf\|pdf-spinner\|icon-ecfr-doc-pdf' | head -40
+            done < pipeline/out/ecfr_fetch/scripts.txt
+            echo "::endgroup::"
+            echo "::error::No candidate URL returned the enhanced-display PDF of Subpart ${CODE}. Read the diagnostics above and re-run with ecfr_pdf_url set."
+            exit 1
+          fi
+          cp pipeline/out/ecfr_fetch/cand.bin "$PDF"
+          # The same command the pdftotext step below would run; written here so the
+          # commit step saves both files together.
+          pdftotext -layout "$PDF" "$TXT"
+          echo "$found" > pipeline/out/ecfr_fetch/pdf_source_url.txt
+          echo "fetched=true" >> "$GITHUB_OUTPUT"
+          echo "pdf_source_url=$found" >> "$GITHUB_OUTPUT"
+          echo "PDF source URL: $found"
+          echo "Header: $(grep -m1 -v '^\s*$' "$TXT")"
+          echo "$(grep -c $'\f' "$TXT" || true) pages; $(wc -c < "$PDF") bytes PDF; $(wc -l < "$TXT") text lines"
+          sha256sum "$PDF" "$TXT" | tee pipeline/out/ecfr_fetch/sha256.txt
+          rm -f pipeline/out/ecfr_fetch/cand.bin pipeline/out/ecfr_fetch/cand.txt
+
+      - name: Fetch the eCFR versioner XML of the subpart (ecfr_xml)
+        # The XML (the same source the p19x parts are parsed from) carries the
+        # subpart's tables as structured rows and marks every equation image,
+        # neither of which the pdftotext text has. Fetched at the manifest's
+        # as_of date so it is the print's version; committed beside the print.
+        if: ${{ inputs.ecfr_xml && contains(fromJSON('["oooo","ooooa","oooob","ooooc","jjjj","iiii","zzzz"]'), inputs.reg) }}
+        id: fetch_xml
+        run: |
+          AS_OF=$(jq -r --arg k "$REG" '.sources[$k].as_of // empty' pipeline/sources/manifest.json)
+          if [ -z "$AS_OF" ]; then echo "::error::manifest has no as_of for $REG"; exit 1; fi
+          PART=60; [ "$REG" = "zzzz" ] && PART=63
+          URL="https://www.ecfr.gov/api/versioner/v1/full/${AS_OF}/title-40.xml?part=${PART}&subpart=${SRC_BASENAME}"
+          echo "Fetching $URL"
+          curl -sSL --compressed -A "EssentialRegsImporter/1.0 (+https://essentialregs.com)" --max-time 300 -o "pipeline/sources/${SRC_BASENAME}.xml" -w "HTTP %{http_code}, %{size_download} bytes\n" "$URL"
+          head -c 300 "pipeline/sources/${SRC_BASENAME}.xml"; echo
+          grep -q "<DIV6" "pipeline/sources/${SRC_BASENAME}.xml" || { echo "::error::not a subpart XML"; exit 1; }
+          echo "images: $(grep -o '<img [^>]*>' "pipeline/sources/${SRC_BASENAME}.xml" | wc -l); MATH elements: $(grep -o '<MATH' "pipeline/sources/${SRC_BASENAME}.xml" | wc -l); tables: $(grep -o '<GPOTABLE' "pipeline/sources/${SRC_BASENAME}.xml" | wc -l)"
+          echo "::group::equation and image markers"; grep -n -o '<img [^>]*>\|<MATH[^>]*>' "pipeline/sources/${SRC_BASENAME}.xml" | head -80; echo "::endgroup::"
+          echo "::group::the e-mail address as the XML has it"; grep -o '[A-Za-z_]*@EPA.GOV\|[A-Za-z_]*@epa.gov' "pipeline/sources/${SRC_BASENAME}.xml" | sort | uniq -c; echo "::endgroup::"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "pipeline/sources/${SRC_BASENAME}.xml"
+          if git diff --cached --quiet; then echo "XML unchanged -- nothing to commit."; exit 0; fi
+          git commit -m "Sources: eCFR versioner XML of Subpart ${SRC_BASENAME} as of ${AS_OF} (${SRC_BASENAME}.xml)" -m "Fetched by the Import regulation workflow (run ${{ github.run_id }}) from ${URL}."
+          git pull --rebase -q origin "${{ github.ref_name }}" || true
+          git push origin "HEAD:${{ github.ref_name }}"
+
+      - name: Commit fetched sources to this branch
+        if: ${{ steps.fetch_ecfr.outputs.fetched == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "pipeline/sources/${SRC_BASENAME}.pdf" "pipeline/sources/${SRC_BASENAME}.txt"
+          FIRST=$(grep -m1 -v '^\s*$' "pipeline/sources/${SRC_BASENAME}.txt")
+          git commit -m "Sources: eCFR print of 40 CFR Subpart ${SRC_BASENAME} (${SRC_BASENAME}.pdf/.txt)" \
+                     -m "Downloaded by the Import regulation workflow (run ${{ github.run_id }}) from ${{ steps.fetch_ecfr.outputs.pdf_source_url }}. Header: ${FIRST}"
+          git push origin "HEAD:${{ github.ref_name }}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -142,7 +323,10 @@ jobs:
         # written against an older Regulation 7 must not open the wrong
         # definition (renumbered -> the sibling that defines it; unverifiable
         # -> plain text). Both default paths; the committed copies are the
-        # fallback when this step is skipped.
+        # fallback when this step is skipped. It also writes
+        # pipeline/out/corpus_staged.json: the staged (imported, not yet
+        # released) documents, which `parse` must not link to -- see
+        # "Staged (not yet released) documents" in import_ccr.py.
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

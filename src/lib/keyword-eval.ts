@@ -41,7 +41,12 @@ export type KeywordHit = {
 export const DEFAULT_TOP_N = 5;
 export const DEFAULT_SCAN_N = 25;
 
-/** The seven rows of the acceptance table ("EssentialRegs: Path to 9/10", keyword search). */
+/**
+ * The seven rows of the acceptance table ("EssentialRegs: Path to 9/10",
+ * keyword search), plus (8 Oct 2026, the original Subpart OOOO import) the
+ * "OOOO" row: the shorter code must find its own document first and never
+ * OOOOa/b/c, and "OOOOb" must still find OOOOb first.
+ */
 export const KEYWORD_ROWS: KeywordRow[] = [
   {
     q: "storage tank requirements",
@@ -70,9 +75,16 @@ export const KEYWORD_ROWS: KeywordRow[] = [
   },
   {
     q: "OOOOb",
-    condition: "the subpart document first, its tables below",
+    condition: "the subpart document first, its tables below; never the original OOOO",
     first: ["sec-oooob-top-REG-oooob"],
-    none: ["sec-oooob-TABLE-"],
+    none: ["sec-oooob-TABLE-", "sec-oooo-"],
+    topN: 1,
+  },
+  {
+    q: "OOOO",
+    condition: "the original subpart's document first; never OOOOa, OOOOb, OOOOc or its tables",
+    first: ["sec-oooo-top-REG-oooo"],
+    none: ["sec-oooo-TABLE-", "sec-ooooa-", "sec-oooob-", "sec-ooooc-"],
     topN: 1,
   },
   {
