@@ -136,9 +136,10 @@ jobs:
           mkdir -p pipeline/out/ecfr_fetch
           PAGE_URL="https://www.ecfr.gov/current/title-40/part-${PART}/subpart-${CODE}"
           echo "Subpart page: $PAGE_URL"
-          curl -sSL -A "$UA" -o pipeline/out/ecfr_fetch/page.html -w "page HTTP %{http_code}, final URL %{url_effective}\n" "$PAGE_URL"
+          CJ=pipeline/out/ecfr_fetch/cookies.txt
+          FINAL_URL=$(curl -sSL -A "$UA" -c "$CJ" -o pipeline/out/ecfr_fetch/page.html -w "%{url_effective}" "$PAGE_URL")
+          echo "Final URL: $FINAL_URL"
           grep -o -i '[^"'"'"' <>]*\(pdf\|print\)[^"'"'"' <>]*' pipeline/out/ecfr_fetch/page.html | sort -u > pipeline/out/ecfr_fetch/pdf_mentions.txt || true
-          echo "::group::PDF / print mentions in the page HTML"; cat pipeline/out/ecfr_fetch/pdf_mentions.txt; echo "::endgroup::"
           VERS_URL="https://www.ecfr.gov/api/versioner/v1/versions/title-40.json?part=${PART}&subpart=${CODE}"
           curl -sSL -A "$UA" -o pipeline/out/ecfr_fetch/versions.json -w "versions HTTP %{http_code}\n" "$VERS_URL" || true
           if jq -e '.content_versions' pipeline/out/ecfr_fetch/versions.json >/dev/null 2>&1; then
@@ -146,24 +147,44 @@ jobs:
           fi
           cands=()
           [ -n "$ECFR_PDF_URL" ] && cands+=("$ECFR_PDF_URL")
-          while read -r u; do
-            [ -z "$u" ] && continue
-            case "$u" in
-              http*) cands+=("$u") ;;
-              /*) cands+=("https://www.ecfr.gov$u") ;;
-            esac
-          done < <(grep -i 'pdf' pipeline/out/ecfr_fetch/pdf_mentions.txt || true)
+          # The eCFR's own Print/PDF: the page's "Generate PDF" control POSTs to
+          # <page path>.pdf (JSON: uuid, complete, retries), polls
+          # /pdfs/<uuid>.json?retries=N until complete, then downloads
+          # /pdfs/<uuid>.pdf (assets/application_pipeline.js,
+          # UtilityNav.addGeneratePdfOnClickEvent / handleSuccess). The POST is
+          # a Rails request: the page's csrf-token and its session cookie go
+          # with it.
+          CSRF=$(grep -o '<meta name="csrf-token" content="[^"]*"' pipeline/out/ecfr_fetch/page.html | head -1 | sed 's/.*content="//; s/"$//')
+          GEN_URL="${FINAL_URL%%\?*}.pdf"
+          echo "Generate PDF: POST $GEN_URL (csrf token ${#CSRF} chars)"
+          if curl -sS -A "$UA" -b "$CJ" -c "$CJ" -X POST -H "X-CSRF-Token: $CSRF" -H "X-Requested-With: XMLHttpRequest" -H "Accept: application/json, text/javascript, */*; q=0.01" -H "Referer: $FINAL_URL" -o pipeline/out/ecfr_fetch/gen.json -w "generate HTTP %{http_code}, %{content_type}\n" "$GEN_URL"; then
+            head -c 400 pipeline/out/ecfr_fetch/gen.json; echo
+            uuid=$(jq -r '.uuid // empty' pipeline/out/ecfr_fetch/gen.json 2>/dev/null || true)
+            complete=$(jq -r '.complete // false' pipeline/out/ecfr_fetch/gen.json 2>/dev/null || echo false)
+            n=0
+            while [ -n "$uuid" ] && [ "$complete" != "true" ] && [ $n -lt 90 ]; do
+              n=$((n+1)); sleep 5
+              curl -sS -A "$UA" -b "$CJ" -c "$CJ" -X POST -H "X-CSRF-Token: $CSRF" -H "X-Requested-With: XMLHttpRequest" -H "Accept: application/json, text/javascript, */*; q=0.01" -H "Referer: $FINAL_URL" -o pipeline/out/ecfr_fetch/gen.json "https://www.ecfr.gov/pdfs/${uuid}.json?retries=${n}" || true
+              complete=$(jq -r '.complete // false' pipeline/out/ecfr_fetch/gen.json 2>/dev/null || echo false)
+              echo "poll $n: complete=$complete $(head -c 200 pipeline/out/ecfr_fetch/gen.json | tr -d '\n')"
+            done
+            if [ -n "$uuid" ] && [ "$complete" = "true" ]; then
+              cands+=("https://www.ecfr.gov/pdfs/${uuid}.pdf")
+            else
+              echo "::warning::The eCFR PDF generator did not report a finished PDF (uuid='${uuid}', complete='${complete}')."
+            fi
+          else
+            echo "::warning::POST $GEN_URL failed."
+          fi
+          # Known URL shapes, tried last.
           cands+=(
             "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-40.pdf?part=${PART}&subpart=${CODE}"
-            "https://www.ecfr.gov/api/renderer/v1/content/pdf/current/title-40?part=${PART}&subpart=${CODE}"
             "https://www.ecfr.gov/current/title-40/part-${PART}/subpart-${CODE}.pdf"
-            "https://www.ecfr.gov/current/title-40/part-${PART}/subpart-${CODE}?print=pdf"
-            "https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-40?part=${PART}&subpart=${CODE}&format=pdf"
           )
           found=""
           for u in "${cands[@]}"; do
             echo "--- candidate: $u"
-            if ! curl -sSL -A "$UA" --max-time 600 -o pipeline/out/ecfr_fetch/cand.bin -w "HTTP %{http_code}, %{size_download} bytes, %{content_type}\n" "$u"; then
+            if ! curl -sSL -A "$UA" -b "$CJ" --max-time 600 -o pipeline/out/ecfr_fetch/cand.bin -w "HTTP %{http_code}, %{size_download} bytes, %{content_type}\n" "$u"; then
               echo "download failed"; continue
             fi
             mime=$(file -b --mime-type pipeline/out/ecfr_fetch/cand.bin)
