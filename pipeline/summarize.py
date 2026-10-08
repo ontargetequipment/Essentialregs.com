@@ -1491,11 +1491,46 @@ REG_PROMPT_HINTS["p196"] = (
 # Text helpers
 # --------------------------------------------------------------------------
 
+_SUP_RE = re.compile(r"<sup>(.*?)</sup>", re.S)
+_TABLE_RE = re.compile(r"<table\b.*?</table>", re.S)
+_TR_RE = re.compile(r"<tr\b[^>]*>(.*?)</tr>", re.S)
+_CELL_RE = re.compile(r"<t([hd])\b([^>]*)>(.*?)</t[hd]>", re.S)
+_SPAN_RE = re.compile(r'(col|row)span="(\d+)"')
+
+
+def _table_to_text(table_html: str) -> str:
+    """One line per table row, cells separated by " | ", a cell that spans
+    several columns or rows saying so. Tag-stripping a table ran its cells
+    together and lost the spans, and the reviewer then misread which column
+    a value sat in (OOOO Table 1: the formula cell spans the three highest
+    feed-rate columns; read as plain text it looked like it sat in one),
+    so the writer and the reviewer now see the table's shape."""
+    lines: list[str] = []
+    for tr in _TR_RE.findall(table_html):
+        cells: list[str] = []
+        for _kind, attrs, inner in _CELL_RE.findall(tr):
+            text = WS_RE.sub(" ", TAG_RE.sub(" ", _SUP_RE.sub(r"^(\1)", inner))).strip() or "(blank)"
+            spans = [f"spans {n} {'columns' if what == 'col' else 'rows'}" for what, n in _SPAN_RE.findall(attrs) if int(n) > 1]
+            if spans:
+                text += " (" + ", ".join(spans) + ")"
+            cells.append(text)
+        if cells:
+            lines.append(" | ".join(cells))
+    return "\n".join(lines)
+
+
 def strip_html(html: str) -> str:
     """Tag-stripped plain text, mirroring src/lib/regulation.ts's stripHtml
     (minus the truncation -- callers here need the full text to count and
-    cap words themselves)."""
-    text = TAG_RE.sub(" ", html or "")
+    cap words themselves). Two readability steps first: a <sup> exponent
+    becomes ^(…) so "88.51X<sup>0.0101</sup>" reads as a power, not as
+    "88.51X 0.0101"; a <table> is laid out one row per line with its spans
+    named (_table_to_text). Other tags, <sub> included, are replaced by a
+    space as before."""
+    html = html or ""
+    html = _TABLE_RE.sub(lambda m: "\n" + _table_to_text(m.group(0)) + "\n", html)
+    html = _SUP_RE.sub(r"^(\1)", html)
+    text = TAG_RE.sub(" ", html)
     text = NBSP_RE.sub(" ", text)
     text = WS_RE.sub(" ", text).strip()
     return text

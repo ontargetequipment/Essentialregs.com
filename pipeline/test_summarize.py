@@ -2525,3 +2525,18 @@ def test_write_back_first_summary_named_explicitly_is_not_a_rewrite():
     assert (table, op) == ("provisions", "update")
     assert "summary_original" not in payload
     assert payload["summary_status"] == "pending"
+
+
+def test_strip_html_keeps_exponents_and_table_shape():
+    html = ('<div class="doc-table-caption">Table 1</div><table class="doc-table"><thead><tr>'
+            '<th rowspan="2">H<sub>2</sub> S content of acid gas (Y), %</th><th colspan="4">Sulfur feed rate (X), LT/D</th></tr>'
+            '<tr><th>2.0 ≤ X ≤ 5.0</th><th>5.0 &lt; X ≤ 15.0</th><th>15.0 &lt; X ≤ 300.0</th><th>X &gt; 300.0</th></tr></thead>'
+            '<tbody><tr><td>Y ≥ 50</td><td>79.0</td><td colspan="3">88.51X<sup>0.0101</sup> Y<sup>0.0125</sup> or 99.9, whichever is smaller.</td></tr>'
+            '</tbody></table><p>Note 1<sup>a</sup></p>')
+    text = summarize.strip_html(html)
+    assert "88.51X^(0.0101) Y^(0.0125) or 99.9, whichever is smaller. (spans 3 columns)" in text
+    assert "H 2 S content of acid gas (Y), % (spans 2 rows) | Sulfur feed rate (X), LT/D (spans 4 columns)" in text
+    assert "Y ≥ 50 | 79.0 | 88.51X^(0.0101)" in text
+    assert "Note 1^(a)" in text
+    # plain prose is unchanged
+    assert summarize.strip_html("<p>Keep <b>this</b>&nbsp;text.</p>") == "Keep this text."
