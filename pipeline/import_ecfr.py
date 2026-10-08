@@ -3,7 +3,8 @@
 eCFR importer for essentialregs.com.
 
 Parses the eCFR "enhanced display" PDF prints of 40 CFR Part 60 Subparts
-OOOOa, OOOOb and OOOOc (`pdftotext -layout` output) into the same
+OOOO (the original, 8 Oct 2026), OOOOa, OOOOb and OOOOc (`pdftotext -layout`
+output) into the same
 `provisions` row shape the CCR importer (`pipeline/import_ccr.py`) produces
 -- {id, citation, title, parent_id, sort_order, full_text, kind} -- so the
 existing diff/apply machinery in import_ccr.py works unchanged.
@@ -63,6 +64,17 @@ FF = "\x0c"  # form-feed: pdftotext -layout emits exactly one per PDF page
 # `enable_table_ref_links` below -- OFF for OOOOa/b/c so their byte-identical
 # baselines are untouched by a capability added for the new subparts).
 SUBPART_META: dict[str, dict] = {
+    # The original Subpart OOOO (construction, modification or reconstruction
+    # after August 23, 2011 and on or before September 18, 2015), imported
+    # 8 Oct 2026 to complete the federal storage-vessel timeline. No letter
+    # suffix: like JJJJ/IIII it is told apart by its own section range
+    # (§ 60.5360-60.5430); a number in that range WITH a letter is OOOOa/b/c
+    # (_resolve_target_reg). Same print format and table algorithm as OOOOa.
+    "oooo": dict(
+        part=60, code="OOOO", suffix="", sections=(5360, 5433),
+        url="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO",
+        enable_table_ref_links=False, table_algorithm="v1",
+    ),
     "ooooa": dict(
         part=60, code="OOOOa", suffix="a", sections=(5300, 5499),
         url="https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOOa",
@@ -1415,7 +1427,7 @@ def render_table_html(caption: str, rows: list[list[str]]) -> str:
 # --------------------------------------------------------------------------
 
 BUCKET_CFR = "cfr_not_in_corpus"          # CFR parts/sections not in our corpus (Part 60 subpart A GP, other parts)
-BUCKET_OTHER_SUBPART = "other_subpart"    # "subpart X of this part" where X isn't OOOOa/b/c
+BUCKET_OTHER_SUBPART = "other_subpart"    # "subpart X of this part" where X isn't a corpus subpart (OOOO/OOOOa/b/c, JJJJ, IIII, ZZZZ)
 BUCKET_UNPARSEABLE = "unparseable"        # same-subpart ref we recognized but couldn't resolve to a parsed id
 ALL_BUCKETS = [BUCKET_CFR, BUCKET_OTHER_SUBPART, BUCKET_UNPARSEABLE]
 

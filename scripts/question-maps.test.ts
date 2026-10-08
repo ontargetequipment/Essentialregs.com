@@ -217,14 +217,14 @@ test("maps batch 4: the enforcement map's 21 rows in four groups, in display ord
 test("maps batch 3: row counts, groups in display order, GP01 first among the tanks permits, the shared rows", () => {
   const byKey = Object.fromEntries(QUESTION_MAPS.map((m) => [m.key, m]));
   const groupsOf = (key: string) => [...new Set(byKey[key].provisions.map((p) => p.group))];
-  // The tanks map gained GP01, first in its General Permit options group.
-  assert.equal(byKey["storage-tanks"].provisions.length, 25);
+  // The tanks map gained GP01, first in its General Permit options group; the original OOOO added three rows (8 Oct 2026).
+  assert.equal(byKey["storage-tanks"].provisions.length, 28);
   assert.deepEqual(
     byKey["storage-tanks"].provisions.filter((p) => p.group === "General Permit options").map((p) => p.id),
     ["sec-gp01-I-A", "sec-gp08-I-B", "sec-gp05-I-A", "sec-gp12-I-A-3", "sec-gp07-I-A"]
   );
   assert.equal(byKey["combustion-devices"].name, "Flares and enclosed combustion devices");
-  assert.equal(byKey["combustion-devices"].provisions.length, 14);
+  assert.equal(byKey["combustion-devices"].provisions.length, 16); // two OOOO rows, 8 Oct 2026
   assert.deepEqual(groupsOf("combustion-devices"), ["Colorado standards", "Federal NSPS", "Definitions"]);
   // No "Enclosed combustion device" / "Flare" definition row exists in Reg 7 Part B: the two
   // definitions are II.A 'Air pollution control equipment' and 'Approved instrument monitoring method'.
@@ -287,9 +287,9 @@ test("the engines map lists its 23 rows in the plan's order, six groups, GP06 af
 test("maps batch 2: row counts, groups in display order, the two empty Federal NESHAP groups, the shared APEN rows", () => {
   const byKey = Object.fromEntries(QUESTION_MAPS.map((m) => [m.key, m]));
   const groupsOf = (key: string) => [...new Set(byKey[key].provisions.map((p) => p.group))];
-  assert.equal(byKey["storage-tanks"].provisions.length, 25); // 24 in batch 2, GP01 added in batch 3
+  assert.equal(byKey["storage-tanks"].provisions.length, 28); // 24 in batch 2, GP01 added in batch 3, three OOOO rows 8 Oct 2026
   assert.deepEqual(groupsOf("storage-tanks"), ["Colorado permitting and APEN", "General Permit options", "Colorado standards", "Federal NSPS", "Definitions"]);
-  assert.equal(byKey["pneumatic-controllers"].provisions.length, 19);
+  assert.equal(byKey["pneumatic-controllers"].provisions.length, 21); // two OOOO rows, 8 Oct 2026
   assert.deepEqual(groupsOf("pneumatic-controllers"), ["Colorado standards", "Federal NSPS", "Definitions"]);
   assert.equal(byKey["dehydrators"].provisions.length, 10);
   assert.deepEqual(groupsOf("dehydrators"), ["Colorado permitting and APEN", "Colorado standards", "Definitions"]);
@@ -354,7 +354,7 @@ test("groupForHit routes one row per group, a Definitions row, the ECMC and PHMS
 });
 
 test("the key lists are the ones groupForHit consults", () => {
-  assert.deepEqual([...FEDERAL_NSPS_REG_KEYS], ["ooooa", "oooob", "ooooc", "jjjj", "iiii"]);
+  assert.deepEqual([...FEDERAL_NSPS_REG_KEYS], ["oooo", "ooooa", "oooob", "ooooc", "jjjj", "iiii"]);
   assert.deepEqual([...FEDERAL_NESHAP_REG_KEYS], ["zzzz"]);
   assert.deepEqual([...ECMC_REG_KEYS], ["ecmc"]);
   assert.deepEqual([...PHMSA_REG_KEYS], ["p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"]);

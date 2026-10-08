@@ -4208,6 +4208,9 @@ CORPUS_REGS = {
     # 1001-33) — see REG_META["10"] / ["15"] / ["29"].
     "10": "10", "15": "15", "29": "29",
     "oooob": "oooob", "ooooa": "ooooa", "ooooc": "ooooc",
+    # The original 40 CFR Part 60 Subpart OOOO (8 Oct 2026, the fourth
+    # outside review: completes the federal storage-vessel timeline).
+    "oooo": "oooo",
     # 40 CFR Part 60 Subparts JJJJ/IIII and 40 CFR Part 63 Subpart ZZZZ
     # (stationary engine rules) -- parsed by import_ecfr.py alongside
     # OOOOa/b/c; see ECFR_REGS below and IMPORTER_SPEC.md.
@@ -4255,24 +4258,27 @@ CORPUS_REGS = {
 # "p191"/"p192" are eCFR-sourced too, but whole PARTS read from the eCFR
 # XML rather than subparts read from a PDF print -- import_ecfr.cmd_parse
 # dispatches on SUBPART_META[reg]["document"] == "part" and expects --xml.
-ECFR_REGS = {"ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz",
+ECFR_REGS = {"oooo", "ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz",
              "p191", "p192", "p194", "p195", "p199",
              "p190", "p193", "p196"}
 
-# 40 CFR Part 60 Subpart OOOO (the un-suffixed, pre-2022 version) is
-# deliberately NOT in CORPUS_REGS: citations to it stay plain text
-# (BUCKET_CFR) until/unless it is imported too — see IMPORTER_SPEC.md and the
-# diff report's "CFR part/subpart not in corpus" section. (Regulation Number
-# 27 was in the same position until Batch 5 imported it — see REG_META["27"];
-# the "Regulation Number 27" mentions in Reg 7 Part B Section VII.F.6, Reg 26
-# Part C entry I, Reg 30 Part C entry III and Reg 22's Part E stubs now link.)
+# 40 CFR Part 60 Subpart OOOO (the un-suffixed, 2012 version) was NOT in
+# CORPUS_REGS until 8 Oct 2026: citations to it stayed plain text
+# (BUCKET_CFR). It is in the corpus now ("oooo"), so "NSPS OOOO", "40 CFR
+# Part 60, Subpart OOOO", "Subpart OOOO, OOOOa, or OOOOb" and a bare
+# "§ 60.5365" link to it like the other subparts -- with one care: 40 CFR
+# Part 63 has its own Subpart OOOO (printing, coating and dyeing of fabrics,
+# listed by Regulation 8 Part A), so a bare "Subpart OOOO" with no part and
+# no program word links only when the paragraph shows the Part 60 context
+# and no Part 63 one (OOOO_CONTEXT_RE / PART_63_CONTEXT_RE in
+# _subpart_regkey). (Regulation Number 27 was in the same position until
+# Batch 5 imported it — see REG_META["27"].)
 
 # 40 CFR Part 60/63 Subpart code -> the id key it links to when that
 # subpart is in CORPUS_REGS. "OOOOB" -> "oooob" (matches the existing
 # `sec-oooob-top-REG-oooob` root); "OOOOA"/"OOOOC" mirror that same
-# four-O-plus-suffix id shape ("ooooa"/"ooooc" — see REG_META). Bare "OOOO"
-# (no letter suffix) has no entry here, so it always falls through to
-# BUCKET_CFR regardless of corpus membership.
+# four-O-plus-suffix id shape ("ooooa"/"ooooc" — see REG_META); "OOOO" (no
+# letter suffix, the original subpart) -> "oooo" since 8 Oct 2026.
 #
 # "JJJJ"/"IIII" (Part 60) and "ZZZZ" (Part 63) are added the same way. This
 # dict is keyed on the subpart CODE alone, not (part, code) -- CFR_RE's
@@ -4287,7 +4293,7 @@ ECFR_REGS = {"ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz",
 # bare "40 CFR Part 63" (no subpart, or a different one) still falls through
 # to BUCKET_CFR as before.
 CFR_SUBPART_TO_REGKEY = {
-    "OOOOA": "ooooa", "OOOOB": "oooob", "OOOOC": "ooooc",
+    "OOOO": "oooo", "OOOOA": "ooooa", "OOOOB": "oooob", "OOOOC": "ooooc",
     "JJJJ": "jjjj", "IIII": "iiii", "ZZZZ": "zzzz",
 }
 
@@ -4302,6 +4308,7 @@ CFR_SUBPART_TO_REGKEY = {
 # Part 63), resolves through _subpart_regkey below; CFR_SUBPART_TO_REGKEY
 # stays the list of corpus codes.
 CFR_PART_SUBPART_TO_REGKEY: dict[tuple[str, str], str] = {
+    ("60", "OOOO"): "oooo",
     ("60", "OOOOA"): "ooooa", ("60", "OOOOB"): "oooob", ("60", "OOOOC"): "ooooc",
     ("60", "JJJJ"): "jjjj", ("60", "IIII"): "iiii",
     ("63", "ZZZZ"): "zzzz",
@@ -4314,14 +4321,26 @@ PROGRAM_PART = {"NSPS": "60", "NESHAP": "63", "MACT": "63"}
 # context (ENGINE_CONTEXT_RE).
 UNAMBIGUOUS_SUBPART_PART = {"ZZZZ": "63", "OOOOA": "60", "OOOOB": "60", "OOOOC": "60"}
 ENGINE_CONTEXT_RE = re.compile(r"\bNSPS\b|\bPart\s+60\b|\b60\.4[0-2]\d\d\b")
+# The original Subpart OOOO (in the corpus since 8 Oct 2026) is not
+# unambiguous either: 40 CFR Part 63 Subpart OOOO is the fabric printing,
+# coating and dyeing NESHAP, which Regulation 8 Part A lists. A bare "Subpart
+# OOOO" (no part, no program word) is read as the Part 60 oil-and-gas rule
+# only when the paragraph shows that context -- NSPS, Part 60, a § 60.53xx /
+# 60.54xx section, or one of its successors OOOOa/b/c beside it ("Subpart
+# OOOO, OOOOa, or OOOOb") -- and no Part 63 / NESHAP / MACT context at all.
+# Never a capture of the longer codes: every OOOO pattern ends in a word
+# boundary, so "OOOOa" is not "OOOO" + "a".
+OOOO_CONTEXT_RE = re.compile(r"\bNSPS\b|\bPart\s+60\b|\b60\.5[34]\d\d\b|\bOOOO[abc]\b")
+PART_63_CONTEXT_RE = re.compile(r"\bPart\s+63\b|\bNESHAP\b|\bMACT\b")
 # The section ranges of the corpus subparts, for a bare "§ 60.4209(a)" /
 # "Section 60.4244" / "60.5386b(c)" citation (link_citations step 1.28):
 # (part, first, last, suffix) -> reg key. The OOOO family shares one numeric
 # range and differs by the letter suffix; a number in that range with no
-# suffix is the original Subpart OOOO, which is not in the corpus.
+# suffix is the original Subpart OOOO (in the corpus since 8 Oct 2026).
 CFR_SECTION_RANGES: list[tuple[str, int, int, str | None, str]] = [
     ("60", 4200, 4219, None, "iiii"),
     ("60", 4230, 4248, None, "jjjj"),
+    ("60", 5360, 5433, None, "oooo"),
     ("60", 5360, 5433, "a", "ooooa"),
     ("60", 5360, 5433, "b", "oooob"),
     ("60", 5360, 5433, "c", "ooooc"),
@@ -4336,9 +4355,11 @@ def _subpart_regkey(code: str | None, part: str | None = None, program: str | No
     `part` is the printed CFR part ("60" / "63") when the citation names
     one; else `program` ("NSPS" -> 60, "NESHAP"/"MACT" -> 63) when a
     program word precedes it; else the code alone decides when it occurs in
-    only one part (UNAMBIGUOUS_SUBPART_PART), and a bare JJJJ / IIII is read
-    as the Part 60 engine rule only when `context` (the paragraph) shows
-    Part 60 or NSPS (ENGINE_CONTEXT_RE). A code that is not a corpus code,
+    only one part (UNAMBIGUOUS_SUBPART_PART), a bare JJJJ / IIII is read as
+    the Part 60 engine rule only when `context` (the paragraph) shows Part
+    60 or NSPS (ENGINE_CONTEXT_RE), and a bare OOOO as the Part 60 oil-and-
+    gas rule only when the paragraph shows that context and no Part 63 one
+    (OOOO_CONTEXT_RE, PART_63_CONTEXT_RE). A code that is not a corpus code,
     or sits in the other part, is None -- the citation stays plain text."""
     if not code:
         return None
@@ -4348,6 +4369,9 @@ def _subpart_regkey(code: str | None, part: str | None = None, program: str | No
     if part is None:
         part = UNAMBIGUOUS_SUBPART_PART.get(code_u)
         if part is None and code_u in ("JJJJ", "IIII") and context is not None and ENGINE_CONTEXT_RE.search(context):
+            part = "60"
+        if (part is None and code_u == "OOOO" and context is not None
+                and OOOO_CONTEXT_RE.search(context) and not PART_63_CONTEXT_RE.search(context)):
             part = "60"
     if part is None:
         return None
@@ -4777,6 +4801,16 @@ REG_META: dict[str, dict] = {
             "CONTROL OF EMISSIONS FROM VOLATILE ORGANIC COMPOUNDS AND "
             "PETROLEUM LIQUIDS STORAGE AND PETROLEUM PROCESSING AND "
             "REFINING 5 CCR 1001-28"
+        ),
+    },
+    "oooo": {
+        "jurisdiction_level": "federal", "issuing_body": "EPA",
+        "source_url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO",
+        "root_citation": "40 CFR Part 60 Subpart OOOO",
+        "root_title": (
+            "40 CFR Part 60 Subpart OOOO — Standards of Performance for Crude Oil and Natural Gas "
+            "Facilities for which Construction, Modification or Reconstruction Commenced After "
+            "August 23, 2011, and on or Before September 18, 2015"
         ),
     },
     "oooob": {
@@ -7110,8 +7144,9 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         if regkey and regkey in corpus_regs:
             pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
         else:
-            # "NSPS OOOO" (the original subpart, not in the corpus), "NESHAP
-            # JJJJ" (the Part 63 coating rule): counted, never linked.
+            # "NESHAP JJJJ" (the Part 63 coating rule): counted, never
+            # linked. ("NSPS OOOO" links since 8 Oct 2026: the original
+            # subpart is in the corpus.)
             buckets[BUCKET_CFR][m.group(0)] += 1
 
     # 1.28) A 40 CFR 60 / 63 section number inside a corpus subpart's range
@@ -7119,7 +7154,7 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
     # paragraph of Subpart IIII when the index has it, else its nearest
     # existing ancestor, else (no such section in the index) counted in the
     # cfr bucket. A number in the OOOO range with no suffix is the original
-    # Subpart OOOO, not in the corpus: counted. Numbers outside every range
+    # Subpart OOOO (in the corpus since 8 Oct 2026). Numbers outside every range
     # (Reg 6's "Section 60.2550", Reg 23's "40 CFR 63.1568") are not CFR
     # citations this importer knows anything about and are left alone.
     # Only with a corpus id index (use_ids), like every deep link.
@@ -7525,8 +7560,9 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
     # Runs last, after every fuller form and after a flat-entry regulation
     # (Reg 6) has claimed its own "Subpart IIII" rows. ZZZZ and the OOOOa/b/c
     # family occur in one part only and link; JJJJ and IIII link only when
-    # the paragraph shows the Part 60 context (ENGINE_CONTEXT_RE); the
-    # original OOOO and a code in the other part are counted, never linked.
+    # the paragraph shows the Part 60 context (ENGINE_CONTEXT_RE), the
+    # original OOOO only with the oil-and-gas context and no Part 63 one
+    # (OOOO_CONTEXT_RE); a code in the other part is counted, never linked.
     # "Regulation Number 6, Part A, Subpart IIII" deep-links to Regulation
     # 6's own adoption row when the index has it.
     for m in BARE_SUBPART_RE.finditer(html_text):

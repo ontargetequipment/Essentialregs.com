@@ -2581,7 +2581,7 @@ class BatchBPhmsaTouchpointTests(unittest.TestCase):
     def test_40_cfr_subpart_map_is_untouched(self):
         self.assertEqual(
             ic.CFR_SUBPART_TO_REGKEY,
-            {"OOOOA": "ooooa", "OOOOB": "oooob", "OOOOC": "ooooc",
+            {"OOOO": "oooo", "OOOOA": "ooooa", "OOOOB": "oooob", "OOOOC": "ooooc",
              "JJJJ": "jjjj", "IIII": "iiii", "ZZZZ": "zzzz"},
         )
 
@@ -12278,13 +12278,15 @@ class FederalSubpartLinkTests(XregBase):
     """Acceptance item 2 (6-7 Oct 2026): every form the Colorado documents
     use to cite 40 CFR Part 60 / 63 engine and oil-and-gas subparts links to
     the corpus document when it is in the corpus, and to the section when a
-    § number is cited and resolves. A subpart that is not in the corpus (the
-    original OOOO; every Part 63 subpart but ZZZZ) is counted in the cfr
-    bucket and never linked -- including Regulation 8's Part 63 Subparts
-    IIII / JJJJ / OOOO, which share their codes with the Part 60 engine rules
-    (the map is part-aware now)."""
+    § number is cited and resolves. A subpart that is not in the corpus
+    (every Part 63 subpart but ZZZZ) is counted in the cfr bucket and never
+    linked -- including Regulation 8's Part 63 Subparts IIII / JJJJ / OOOO,
+    which share their codes with the Part 60 engine rules and, since 8 Oct
+    2026, with the original Part 60 Subpart OOOO in the corpus (the map is
+    part-aware)."""
 
     FED_IDS = {
+        "oooo": {"sec-oooo-top-REG-oooo", "sec-oooo-60.5365", "sec-oooo-60.5365-(e)", "sec-oooo-60.5395"},
         "iiii": {"sec-iiii-top-REG-iiii", "sec-iiii-60.4201", "sec-iiii-60.4209", "sec-iiii-60.4209-(a)", "sec-iiii-60.4209-(b)"},
         "jjjj": {"sec-jjjj-top-REG-jjjj", "sec-jjjj-60.4244", "sec-jjjj-60.4244-(a)"},
         "zzzz": {"sec-zzzz-top-REG-zzzz", "sec-zzzz-63.6600", "sec-zzzz-63.6603", "sec-zzzz-63.6635"},
@@ -12363,9 +12365,10 @@ class FederalSubpartLinkTests(XregBase):
         self.assertIn('NSPS, <a class="xref-external-reg" href="/regulations/jjjj">Subpart JJJJ</a>;', html)
         self.assertIn('<a class="xref-external-reg" href="/regulations/ooooa">NSPS OOOOa</a>', html)
         self.assertIn('<a class="xref-external-reg" href="/regulations/zzzz">MACT ZZZZ</a>', html)
-        self.assertIn("NSPS OOOO, NESHAP JJJJ and", html)
-        self.assertEqual(html.count("<a "), 4)
-        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"NSPS OOOO": 1, "NESHAP JJJJ": 1})
+        # The original OOOO is in the corpus since 8 Oct 2026; NESHAP JJJJ is the Part 63 coating rule.
+        self.assertIn('<a class="xref-external-reg" href="/regulations/oooo">NSPS OOOO</a>, NESHAP JJJJ and', html)
+        self.assertEqual(html.count("<a "), 5)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"NESHAP JJJJ": 1})
         # The whole phrase links when the program word is plain, as before.
         html, _ = self.fed("Engines must meet NSPS Subpart IIII.", reg="gp06")
         self.assertIn('<a class="xref-external-reg" href="/regulations/iiii">NSPS Subpart IIII</a>.', html)
@@ -12374,10 +12377,27 @@ class FederalSubpartLinkTests(XregBase):
         # ZZZZ and the OOOOa/b/c family occur in one part only.
         html, buckets = self.fed("40 C.F.R. §60.5430a (Subpart OOOOa). However, operators", reg="3", part="F")
         self.assertIn('(<a class="xref-external-reg" href="/regulations/ooooa">Subpart OOOOa</a>)', html)
+        # The original OOOO beside its successors: the Part 60 context (8 Oct 2026).
         html, buckets = self.fed("Subpart OOOO, OOOOa, or OOOOb – Standards of Performance for Crude Oil", reg="gp05")
-        self.assertIn('Subpart OOOO, <a class="xref-external-reg" href="/regulations/ooooa">OOOOa</a>, or '
+        self.assertIn('<a class="xref-external-reg" href="/regulations/oooo">Subpart OOOO</a>, '
+                      '<a class="xref-external-reg" href="/regulations/ooooa">OOOOa</a>, or '
                       '<a class="xref-external-reg" href="/regulations/oooob">OOOOb</a> – Standards', html)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {})
+        # A bare OOOO with no oil-and-gas context, or any Part 63 context, stays text; the
+        # Part 63 Subpart OOOO is the fabric coating NESHAP (Regulation 8 Part A).
+        html, buckets = self.fed("the transition from Subpart KKK to Subpart OOOO LDAR requirements", reg="7", part="E")
+        self.assertNotIn("<a", html)
         self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"Subpart OOOO": 1})
+        html, buckets = self.fed("NSPS rules such as Subpart OOOO and the NESHAP Part 63 Subpart OOOO rule", reg="8", part="E")
+        self.assertNotIn("<a", html)
+        html, buckets = self.fed("the transition from Subpart KKK to Subpart OOOO under the NSPS", reg="7", part="E")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/oooo">Subpart OOOO</a> under', html)
+        # "OOOO" is never a capture of "OOOOa": one link each, to its own document.
+        html, buckets = self.fed("NSPS Subpart OOOO and NSPS Subpart OOOOa and 40 CFR Part 60, Subpart OOOO", reg="gp01")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/oooo">NSPS Subpart OOOO</a> and', html)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/ooooa">NSPS Subpart OOOOa</a> and', html)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/oooo">40 CFR Part 60, Subpart OOOO</a>', html)
+        self.assertEqual(html.count("<a "), 3)
         # JJJJ / IIII only with the Part 60 context in the paragraph.
         html, buckets = self.fed("pending NSPS Standard under Subpart JJJJ.", reg="7", part="C")
         self.assertIn('under <a class="xref-external-reg" href="/regulations/jjjj">Subpart JJJJ</a>.', html)
@@ -12409,12 +12429,21 @@ class FederalSubpartLinkTests(XregBase):
                      "/regulations/oooob#sec-oooob-60.5386b-(c)", "/regulations/ooooa#sec-ooooa-60.5430a", "/regulations/jjjj#sec-jjjj-60.4244"):
             self.assertIn(f'href="{href}"', html, href)
         self.assertText(html, text)
-        # Inside a corpus range but not in the index: counted. In the OOOO range with no
-        # suffix: the original subpart, counted. Outside every range: not a citation
-        # this importer knows; untouched and uncounted.
-        html, buckets = self.fed("see 60.4210, 60.5365, 40 CFR 63.1568 and Section 60.2550.", reg="6", part="B")
+        # Inside a corpus range but not in the index: counted (60.5410 is in the original
+        # OOOO's range, in the corpus since 8 Oct 2026, but not in this index). Outside
+        # every range: not a citation this importer knows; untouched and uncounted.
+        html, buckets = self.fed("see 60.4210, 60.5410, 40 CFR 63.1568 and Section 60.2550.", reg="6", part="B")
         self.assertNotIn("<a", html)
-        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"40 CFR 60.4210": 1, "40 CFR 60.5365": 1})
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {"40 CFR 60.4210": 1, "40 CFR 60.5410": 1})
+        # A number in the OOOO range with no suffix is the original subpart: its own
+        # document and paragraph, never OOOOa's.
+        html, buckets = self.fed("storage vessels under 40 CFR 60.5365(e) and 60.5365a(e), and § 60.5395.", reg="7", part="B")
+        self.assertIn('40 CFR <a class="xref-external-reg" href="/regulations/oooo#sec-oooo-60.5365-(e)">60.5365(e)</a> and', html)
+        self.assertIn('href="/regulations/oooo#sec-oooo-60.5395">§ 60.5395</a>', html)
+        # 60.5365a is OOOOa's (not in this index: counted under its own name, never linked to OOOO).
+        self.assertIn("and 60.5365a(e), and", html)
+        self.assertEqual(buckets[ic.BUCKET_CFR]["40 CFR 60.5365a"], 1)
+        self.assertEqual(html.count("<a "), 2)
         # Without a corpus id index no section link is made (like every deep link).
         html, _ = ic.link_citations("per §60.4209(a).", "gp12", {"sec-gp12-top-REG-gp12"}, self.corpus, "", "sec-x", corpus_ids={})
         self.assertNotIn("<a", html)
@@ -12440,9 +12469,22 @@ class FederalSubpartLinkTests(XregBase):
         self.assertEqual(ic._subpart_regkey("zzzz"), "zzzz")
         self.assertIsNone(ic._subpart_regkey("JJJJ"))
         self.assertEqual(ic._subpart_regkey("JJJJ", context="the NSPS rule"), "jjjj")
-        self.assertIsNone(ic._subpart_regkey("OOOO", part="60"))
+        # The original OOOO (8 Oct 2026): Part 60 by part or program word, by the
+        # oil-and-gas context without a Part 63 one, never bare.
+        self.assertEqual(ic._subpart_regkey("OOOO", part="60"), "oooo")
+        self.assertIsNone(ic._subpart_regkey("OOOO", part="63"))
+        self.assertEqual(ic._subpart_regkey("OOOO", program="NSPS"), "oooo")
+        self.assertIsNone(ic._subpart_regkey("OOOO", program="NESHAP"))
+        self.assertIsNone(ic._subpart_regkey("OOOO"))
+        self.assertEqual(ic._subpart_regkey("OOOO", context="Subpart OOOO, OOOOa, or OOOOb"), "oooo")
+        self.assertEqual(ic._subpart_regkey("OOOO", context="the NSPS Subpart OOOO LDAR program"), "oooo")
+        self.assertIsNone(ic._subpart_regkey("OOOO", context="Subpart OOOO, 40 C.F.R. Part 63"))
+        self.assertIsNone(ic._subpart_regkey("OOOO", context="NSPS OOOO and the NESHAP"))
+        self.assertIsNone(ic._subpart_regkey("OOOO", context="Subpart OOOO fabric coating"))
         self.assertEqual(ic.cfr_section_regkey("60", "4209", None), "iiii")
         self.assertEqual(ic.cfr_section_regkey("60", "5386", "b"), "oooob")
-        self.assertIsNone(ic.cfr_section_regkey("60", "5386", None))
+        self.assertEqual(ic.cfr_section_regkey("60", "5386", None), "oooo")
+        self.assertEqual(ic.cfr_section_regkey("60", "5365", None), "oooo")
+        self.assertEqual(ic.cfr_section_regkey("60", "5365", "a"), "ooooa")
         self.assertIsNone(ic.cfr_section_regkey("63", "1568", None))
         self.assertEqual(ic.cfr_section_regkey("63", "6675", None), "zzzz")

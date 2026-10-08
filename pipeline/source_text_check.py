@@ -27,6 +27,14 @@ they replace, whose letters are checked by the glyph-count test instead).
     python pipeline/source_text_check.py --regs gp12 gp06           # parse in process
     python pipeline/source_text_check.py --all-gp --parsed-dir pipeline/out --out pipeline/out/sprint3_source_text_check.md
     python pipeline/source_text_check.py --regs gp12 --db-json pipeline/out/reggp12_db.json   # the live rows instead of a parse
+    python pipeline/source_text_check.py --regs oooo --parsed-dir pipeline/out                # an eCFR subpart print (8 Oct 2026)
+
+The 40 CFR subpart prints (OOOO, OOOOa/b/c, JJJJ, IIII, ZZZZ; import_ecfr.py)
+are checked the same way since 8 Oct 2026: the source side is the print's
+body after import_ecfr's own furniture stripping and body start (the table
+of contents is dropped), and the corpus side puts back what that parser
+moves out of the text -- a section's "§ 60.5365 heading" line (its title)
+and a paragraph's printed label "(e)" (the tail of its citation).
 
 Exit status 1 when an unknown extraction difference remains.
 """
@@ -43,6 +51,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import import_ccr as ic  # noqa: E402
+import import_ecfr as ie  # noqa: E402
 
 SOURCES = Path(__file__).resolve().parent / "sources"
 GP_REGS = list(ic.GP_KEYS)
@@ -71,9 +80,14 @@ KNOWN_DIFFERENCES: dict[tuple[str, str], str] = {
 }
 
 
+def is_ecfr_subpart(reg: str) -> bool:
+    """A 40 CFR subpart read from an eCFR print (not a whole-PART XML document)."""
+    return reg in ic.ECFR_REGS and reg in ie.SUBPART_META and ie.SUBPART_META[reg].get("document") != "part"
+
+
 def source_basename(reg: str) -> str:
     fixed = {"cp": "REG_CP", "aqs": "REG_AQS", "sip": "REG_SIP", "proc": "REG_PROC", "ecmc": "ECMC",
-             "oooob": "OOOOb", "ooooa": "OOOOa", "ooooc": "OOOOc"}
+             "oooo": "OOOO", "oooob": "OOOOb", "ooooa": "OOOOa", "ooooc": "OOOOc"}
     if reg in fixed:
         return fixed[reg]
     if reg.isdigit():
@@ -97,7 +111,25 @@ TABLE_HEADERS: dict[str, Counter] = {}
 _HEADER_ROW_RE = re.compile(r"<thead>.*?</thead>|<tr>.*?</tr>", re.S)
 
 
-def corpus_words(rows: list[dict]) -> tuple[list[str], list[str], list[bool]]:
+_ECFR_LABEL_RE = re.compile(r"\(([a-zA-Z0-9]{1,4})\)$")
+
+
+def _ecfr_lead_words(r: dict) -> list[str]:
+    """What import_ecfr moves out of a row's text and the print shows in
+    front of it: a section row's heading line ("§ 60.5365 Am I subject to
+    this subpart?", the row's title), a paragraph row's label ("(e)", the
+    tail of its citation). Tables carry their caption in the text already;
+    group headings keep their text."""
+    cit = r.get("citation") or ""
+    m = _ECFR_LABEL_RE.search(cit)
+    if m:
+        return [m.group(1)]
+    if cit.startswith("§") and r.get("title"):
+        return _WORD_RE.findall(r["title"])
+    return []
+
+
+def corpus_words(rows: list[dict], ecfr: bool = False) -> tuple[list[str], list[str], list[bool]]:
     """(words, row id per word, in-table flag per word) for the stored text,
     in document order, EssentialRegs notes removed, the synthesized root
     row skipped (its title is not printed in the PDF)."""
@@ -115,7 +147,19 @@ def corpus_words(rows: list[dict]) -> tuple[list[str], list[str], list[bool]]:
         # The parser moves an item's printed label ("III.F.3") out of the
         # body into `citation` (the reader prints it as a badge); a heading
         # row keeps it in its text. Put it back in front unless it is there.
-        cit_words = _WORD_RE.findall(r.get("citation") or "")
+        if ecfr:
+            # import_ecfr always moves the label out, so it always goes back
+            # (no "already there" test: "(A) A pilot flame" starts with the
+            # letter of its own label); a label-only paragraph (kind
+            # "heading", its text is the synthesized "§ 60.5365(d)" title) is
+            # printed as the bare label and nothing else.
+            for w in _ecfr_lead_words(r):
+                words.append(w); owners.append(r["id"]); in_table.append(False)
+            if r.get("kind") == "heading" and _plain(html).strip() == (r.get("title") or "").strip():
+                continue
+            cit_words = []
+        else:
+            cit_words = _WORD_RE.findall(r.get("citation") or "")
         body_ld = letters_digits(_WORD_RE.findall(_plain(html)))
         cit_ld = letters_digits(cit_words)
         if cit_words and not body_ld.startswith(cit_ld):
@@ -146,6 +190,19 @@ def source_words(reg: str, txt_path: Path) -> tuple[list[str], list[int]]:
     text, prepared exactly as parse_reg prepares it (page furniture off,
     body start found, spacing fixes applied), math-glyph lines dropped."""
     raw = txt_path.read_text(encoding="utf-8")
+    if is_ecfr_subpart(reg):
+        lines = ie.strip_page_furniture(raw)
+        lines, _ = ie.apply_known_label_fixes(reg, lines)
+        meta = ie.SUBPART_META[reg]
+        heading_re = re.compile(rf"^Subpart {re.escape(meta['code'])}—")
+        _toc_end, start = ie.find_body_start(lines, heading_re)
+        words: list[str] = []
+        linenos: list[int] = []
+        for i, ln in enumerate(lines[start:], start):
+            for w in _WORD_RE.findall(ln):
+                words.append(w)
+                linenos.append(i + 1)
+        return words, linenos
     lines, _seams = ic.clean_pages(raw, reg)
     lines, _ = ic.apply_known_label_fixes(reg, lines)
     lines, _ = ic.apply_known_text_fixes(reg, lines)
@@ -168,7 +225,7 @@ def source_words(reg: str, txt_path: Path) -> tuple[list[str], list[int]]:
 
 
 def compare(reg: str, rows: list[dict], txt_path: Path) -> dict:
-    a_words, owners, in_table = corpus_words(rows)
+    a_words, owners, in_table = corpus_words(rows, ecfr=is_ecfr_subpart(reg))
     b_words, linenos = source_words(reg, txt_path)
     sm = difflib.SequenceMatcher(None, a_words, b_words, autojunk=False)
     spacing: list[dict] = []
@@ -302,13 +359,16 @@ def load_rows(reg: str, parsed_dir: Path | None, db_json: Path | None) -> list[d
             return json.loads(p.read_text(encoding="utf-8"))
     base = source_basename(reg)
     pdf = SOURCES / f"{base}.pdf"
+    if is_ecfr_subpart(reg):
+        rows, _report = ie.parse_ecfr(reg, str(pdf) if pdf.exists() else None, str(SOURCES / f"{base}.txt"))
+        return rows
     result = ic.parse_reg(reg, str(SOURCES / f"{base}.txt"), str(pdf) if pdf.exists() else None)
     return result[0]
 
 
 def render(results: list[dict]) -> str:
     out = ["# Source text check: stored text vs. source PDF text (letters and digits)\n"]
-    out.append("Word-level diff of each general permit's stored text against the body of its pdftotext "
+    out.append("Word-level diff of each document's stored text against the body of its pdftotext "
                "source. A difference with identical letters and digits is *spacing* (free); a table "
                "difference with the same letters as a multiset is *table layout* (free); the rest are "
                "*extraction differences*, each either known (reason given) or **unknown** (fails).\n")

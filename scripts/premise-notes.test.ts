@@ -369,7 +369,7 @@ test("the diesel and produced-water rows: GP06 and IIII shown without JJJJ; GP05
   // Without a stated value the tanks map is unchanged.
   const plain = layoutAsk("What Colorado and federal requirements could apply to storage vessels?", []);
   assert.equal(plain.summary!.title, "Storage tanks and tank batteries");
-  assert.equal(plain.shownIds.length, 25);
+  assert.equal(plain.shownIds.length, 28);
   assert.deepEqual(plain.summary!.omitted, []);
 });
 
@@ -463,6 +463,9 @@ test("each topic note says what the owner asked for, with the provision that sup
   assert.ok(later, "the later-modification sentence");
   assert.deepEqual(later.cites, ["sec-oooob-60.5365b", "sec-oooob-60.5365b-(a)-(1)", "sec-oooob-60.5365b-(e)-(3)"]);
   assert.ok(cited("oooob-existing-well").has("sec-ooooc-60.5360c"));
+  // The predecessors, since the original OOOO joined the corpus (8 Oct 2026): OOOOa's and OOOO's own date windows, cited.
+  assert.match(text("oooob-existing-well"), /after August 23, 2011 to September 18, 2015 under the original Subpart OOOO/);
+  assert.ok(cited("oooob-existing-well").has("sec-oooo-60.5365") && cited("oooob-existing-well").has("sec-ooooa-60.5365a"));
   // GP02 diesel: GP02 natural gas only, GP06 diesel, GP12 both, Regulation 3 decides.
   assert.match(text("gp02-diesel"), /only for natural gas fired reciprocating internal combustion engines/);
   assert.match(text("gp02-diesel"), /GP06 covers/);

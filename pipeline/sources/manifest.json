@@ -289,6 +289,17 @@
    "ruleVersionId": "12558",
    "effective_date": "2026-05-30"
   },
+  "oooo": {
+   "kind": "ecfr",
+   "title": "40",
+   "part": "60",
+   "subpart": "OOOO",
+   "as_of": "2026-10-06",
+   "xml_sha256": null,
+   "url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO",
+   "latest_amendment": "2025-07-31",
+   "note": "eCFR enhanced-display print 'up to date as of 10/06/2026', fetched 8 Oct 2026 by the Import regulation workflow (run 37712067602) through the eCFR Print/PDF generator; the versioner's latest amendment_date for the subpart is 2025-07-31 (90 FR 36531)."
+  },
   "ooooa": {
    "kind": "ecfr",
    "title": "40",

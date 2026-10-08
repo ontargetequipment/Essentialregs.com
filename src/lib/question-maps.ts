@@ -65,7 +65,7 @@ export const MAP_GROUP_ORDER: MapGroup[] = [
 export const OTHER_GROUP = "Other matches";
 
 /** 40 CFR Part 60 subparts in the corpus: NSPS rows go under "Federal NSPS". */
-export const FEDERAL_NSPS_REG_KEYS: readonly string[] = ["ooooa", "oooob", "ooooc", "jjjj", "iiii"];
+export const FEDERAL_NSPS_REG_KEYS: readonly string[] = ["oooo", "ooooa", "oooob", "ooooc", "jjjj", "iiii"];
 
 /** 40 CFR Part 63 subparts in the corpus: NESHAP rows go under "Federal NESHAP". */
 export const FEDERAL_NESHAP_REG_KEYS: readonly string[] = ["zzzz"];
@@ -384,7 +384,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
       /\b(?:storage (?:tanks?|vessels?)|tank batter(?:y|ies)|(?:condensate|produced[- ]water|crude[- ]oil|oil|hydrocarbon liquid) tanks?|thief hatch(?:es)?|gp\s?0?1|gp\s?0?5|gp\s?0?8|gp\s?0?7)\b/i,
     ],
     factors:
-      "What applies depends on the tank's uncontrolled and controlled VOC emissions, what it stores (condensate, crude oil, intermediate hydrocarbon liquids or produced water), its throughput, when it was built or modified, whether it sits at a well production facility or a midstream or E&P site, whether that site is in the 8-hour Ozone Control Area or Northern Weld County, and — federally — which NSPS subpart reaches the tank battery: OOOOb if it was constructed, modified or reconstructed after December 6, 2022; OOOOa if that happened between September 18, 2015 and December 6, 2022 (the original Subpart OOOO covers August 23, 2011 to September 18, 2015 and is not in this corpus); and OOOOc for existing tank batteries, on the schedule in Colorado's state plan once that plan takes effect. A tank battery modified after a subpart's date moves into that subpart, and each subpart's own storage vessel threshold (potential VOC or methane emissions) decides whether the battery is covered at all.",
+      "What applies depends on the tank's uncontrolled and controlled VOC emissions, what it stores (condensate, crude oil, intermediate hydrocarbon liquids or produced water), its throughput, when it was built or modified, whether it sits at a well production facility or a midstream or E&P site, whether that site is in the 8-hour Ozone Control Area or Northern Weld County, and — federally — which NSPS subpart reaches the tank battery: OOOOb if it was constructed, modified or reconstructed after December 6, 2022; OOOOa if that happened between September 18, 2015 and December 6, 2022; the original Subpart OOOO if it happened after August 23, 2011 and on or before September 18, 2015; and OOOOc for existing tank batteries, on the schedule in Colorado's state plan once that plan takes effect. A tank battery modified after a subpart's date moves into that subpart, and each subpart's own storage vessel threshold (potential VOC or methane emissions) decides whether the battery is covered at all.",
     provisions: [
       // Colorado permitting and APEN
       { id: "sec-3-A-II-A", group: "Colorado permitting and APEN", why: "APENs are required for new, modified and existing sources unless exempt under II.D" },
@@ -408,6 +408,8 @@ export const QUESTION_MAPS: QuestionMap[] = [
       { id: "sec-oooob-60.5395b", group: "Federal NSPS", why: "OOOOb — GHG and VOC standards for storage vessel affected facilities" },
       { id: "sec-ooooa-60.5365a-(e)", group: "Federal NSPS", why: "OOOOa applicability — storage vessel affected facility (built Sept 18, 2015 – Dec 6, 2022)" },
       { id: "sec-ooooa-60.5395a", group: "Federal NSPS", why: "OOOOa — VOC standards for storage vessel affected facilities" },
+      { id: "sec-oooo-60.5365-(e)", group: "Federal NSPS", why: "OOOO applicability — storage vessel affected facility (built Aug 23, 2011 – Sept 18, 2015)" },
+      { id: "sec-oooo-60.5395", group: "Federal NSPS", why: "OOOO — VOC standards for storage vessel affected facilities" },
       { id: "sec-ooooc-60.5386c-(e)", group: "Federal NSPS", why: "OOOOc applicability — storage vessel designated facility (existing tank batteries)" },
       { id: "sec-ooooc-60.5396c", group: "Federal NSPS", why: "OOOOc — GHG standards for storage vessel designated facilities" },
       // Federal NESHAP: none. 40 CFR 63 Subpart HH is not in the corpus (see the note above QUESTION_MAPS).
@@ -417,6 +419,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
       { id: "sec-7-B-II-A-43", group: "Definitions", why: "Reg 7 Part B II.A — 'Storage tank' (Section II)" },
       { id: "sec-7-B-I-B-34", group: "Definitions", why: "Reg 7 Part B I.B — 'Well production facility'" },
       { id: "sec-oooob-60.5430b", group: "Definitions", why: "OOOOb definitions (storage vessel, tank battery, potential for VOC emissions)" },
+      { id: "sec-oooo-60.5430", group: "Definitions", why: "OOOO definitions (storage vessel, the original subpart)" },
     ],
   },
   {
@@ -426,7 +429,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
       /\b(?:pneumatic (?:controllers?|devices?|pumps?)|process controllers?|(?:high|low|no|zero)[- ]bleed|natural gas[- ](?:driven|actuated) controllers?|intermittent (?:vent )?controllers?)\b/i,
     ],
     factors:
-      "What applies depends on whether the controller or pump is driven by natural gas, whether it is continuous-bleed (high or low) or intermittent, when the facility was built or modified (after December 6, 2022 → OOOOb; September 18, 2015 to December 6, 2022 → OOOOa; existing facilities → OOOOc, on the schedule in Colorado's 111(d) state plan once it takes effect), whether the site has access to electrical power, whether it is a natural gas processing plant, and whether it sits in the 8-hour Ozone Control Area or Northern Weld County.",
+      "What applies depends on whether the controller or pump is driven by natural gas, whether it is continuous-bleed (high or low) or intermittent, when the facility was built or modified (after December 6, 2022 → OOOOb; September 18, 2015 to December 6, 2022 → OOOOa; August 23, 2011 to September 18, 2015 → the original OOOO; existing facilities → OOOOc, on the schedule in Colorado's 111(d) state plan once it takes effect), whether the site has access to electrical power, whether it is a natural gas processing plant, and whether it sits in the 8-hour Ozone Control Area or Northern Weld County.",
     provisions: [
       // Colorado standards
       { id: "sec-7-B-III", group: "Colorado standards", why: "Reg 7 Part B III — natural gas-actuated pneumatic controllers and pumps (the section)" },
@@ -441,6 +444,8 @@ export const QUESTION_MAPS: QuestionMap[] = [
       { id: "sec-oooob-60.5393b", group: "Federal NSPS", why: "OOOOb — standards for pump affected facilities" },
       { id: "sec-ooooa-60.5365a-(d)", group: "Federal NSPS", why: "OOOOa applicability — pneumatic controller affected facility" },
       { id: "sec-ooooa-60.5390a", group: "Federal NSPS", why: "OOOOa — GHG and VOC standards for pneumatic controllers (bleed-rate limits)" },
+      { id: "sec-oooo-60.5365-(d)", group: "Federal NSPS", why: "OOOO applicability — pneumatic controller affected facility (built Aug 23, 2011 – Sept 18, 2015)" },
+      { id: "sec-oooo-60.5390", group: "Federal NSPS", why: "OOOO — VOC standards for pneumatic controller affected facilities (bleed-rate limits)" },
       { id: "sec-ooooc-60.5386c-(d)", group: "Federal NSPS", why: "OOOOc applicability — process controller designated facility (existing)" },
       { id: "sec-ooooc-60.5394c", group: "Federal NSPS", why: "OOOOc — GHG standards for process controller designated facilities" },
       // Definitions
@@ -499,6 +504,8 @@ export const QUESTION_MAPS: QuestionMap[] = [
       { id: "sec-oooob-60.5417b", group: "Federal NSPS", why: "OOOOb — continuous monitoring requirements for control devices" },
       { id: "sec-ooooa-60.5412a", group: "Federal NSPS", why: "OOOOa — control device requirements for initial compliance" },
       { id: "sec-ooooa-60.5413a", group: "Federal NSPS", why: "OOOOa — performance testing procedures for control devices" },
+      { id: "sec-oooo-60.5412", group: "Federal NSPS", why: "OOOO — control device requirements for initial compliance (the original subpart)" },
+      { id: "sec-oooo-60.5413", group: "Federal NSPS", why: "OOOO — performance testing procedures for control devices" },
       { id: "sec-ooooc-60.5412c", group: "Federal NSPS", why: "OOOOc — control device requirements for existing designated facilities" },
       // Definitions: no "Enclosed combustion device" or "Flare" row in Reg 7 Part B's
       // definition sections (see the note above QUESTION_MAPS).
@@ -513,7 +520,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
       /\b(?:ldar|leak detection|leak inspections?|leak surveys?|fugitive emissions?|fugitives|avo|audio,? visual|ogi|infra-?red camera|ir camera|method 21|component inspections?|compressor stations?)\b/i,
     ],
     factors:
-      "What applies depends on the facility type (well production facility or natural gas compressor station), its estimated uncontrolled actual VOC emissions tier (which sets the Reg 7 inspection frequency), when it was constructed (October 15, 2014 for the state program; December 6, 2022 for OOOOb versus OOOOc), whether it sits in the 8-hour Ozone Control Area or within 1,000 feet of an occupied area, the monitoring method used (approved instrument monitoring method, OGI, Method 21 or AVO), and federally whether the site is an OOOOa or OOOOb affected facility or an OOOOc designated facility.",
+      "What applies depends on the facility type (well production facility or natural gas compressor station), its estimated uncontrolled actual VOC emissions tier (which sets the Reg 7 inspection frequency), when it was constructed (October 15, 2014 for the state program; December 6, 2022 for OOOOb versus OOOOc), whether it sits in the 8-hour Ozone Control Area or within 1,000 feet of an occupied area, the monitoring method used (approved instrument monitoring method, OGI, Method 21 or AVO), and federally whether the site is an OOOOa or OOOOb affected facility or an OOOOc designated facility (the original Subpart OOOO has no fugitive emissions components standard; its leak rules reach only onshore natural gas processing plants).",
     provisions: [
       // General Permit options
       { id: "sec-gp12-I-A", group: "General Permit options", why: "GP12 — well production facilities (replaced GP09/GP10 for new applicants)" },

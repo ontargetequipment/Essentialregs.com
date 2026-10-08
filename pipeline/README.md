@@ -83,7 +83,14 @@ and nobody has to ask for it. Since 6 Oct 2026 (ReviewBuiltIn):
 
 1. **Import** — Actions → **Import regulation from official PDF** → dry run
    (unchecked `execute`), read the stats and diff report, then run again with
-   `execute`. The chained run follows automatically.
+   `execute`. The chained run follows automatically. The source must be
+   committed to `pipeline/sources/` first; for a 40 CFR subpart whose eCFR
+   print is not committed yet, the workflow's "Fetch the eCFR print" step
+   downloads it on the runner (www.ecfr.gov is not reachable from a Claude
+   Code cloud session) and commits the PDF and its pdftotext text to the
+   branch the run was started on, so the dry run and the execute read the
+   same bytes (added 8 Oct 2026 for the original Subpart OOOO; `ecfr_pdf_url`
+   names the PDF link when the page's own cannot be found).
 2. **Summarize, review and embed in one run** — automatic after the import
    (new rows and changed rows) and, for a regulation imported before 6 Oct
    2026 or for a full redo, **Generate summaries** with `reg` set. Within the
@@ -484,8 +491,19 @@ links to the part root), and the first section of a list carries the
   a bare JJJJ / IIII links only when the paragraph shows Part 60 or NSPS, a
   bare ZZZZ / OOOOa / OOOOb / OOOOc always (they occur in one part only).
   "Regulation Number 6, Part A, Subpart IIII" deep-links to Regulation 6's
-  own adoption row. The original Subpart OOOO and every subpart not in the
-  corpus are counted in the diff report's `cfr` bucket and never linked.
+  own adoption row. Every subpart not in the corpus is counted in the diff
+  report's `cfr` bucket and never linked. The original Subpart OOOO is in
+  the corpus since 8 Oct 2026 (`oooo`): "NSPS OOOO", "40 CFR Part 60,
+  Subpart OOOO", "NSPS Subpart OOOO", "Subpart OOOO, OOOOa, or OOOOb" and a
+  bare "§ 60.5365" link to it (`CFR_SECTION_RANGES` holds its 60.5360-60.5433
+  range with no suffix; a number with a letter is OOOOa/b/c, and "OOOO" never
+  captures the longer codes -- every pattern ends in a word boundary). The
+  one care: 40 CFR Part 63 has its own Subpart OOOO (fabric printing, coating
+  and dyeing), which Regulation 8 Part A lists, so a bare "Subpart OOOO"
+  with no part and no program word links only when the paragraph shows the
+  Part 60 context (NSPS, Part 60, a § 60.53xx section or OOOOa/b/c beside
+  it) and no Part 63 / NESHAP / MACT context (`OOOO_CONTEXT_RE`,
+  `PART_63_CONTEXT_RE`); "40 C.F.R. Part 63, Subpart OOOO" stays plain text.
   `pipeline/link_change_report.py` has a "Federal subpart links" table (per
   regulation: document and section links old -> new, skipped, unresolved);
   the 7 Oct 2026 run is `pipeline/out/acceptance_federal_subpart_links.md`.
