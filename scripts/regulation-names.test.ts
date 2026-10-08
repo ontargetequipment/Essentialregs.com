@@ -90,6 +90,7 @@ const ROOTS: Record<string, { citation: string }> = {
   ecmc: { citation: "Code of Colorado Regulations · 2 CCR 404-1" },
   gp02: { citation: "APCD General Permit GP02" },
   gp12: { citation: "APCD General Permit GP12" },
+  oooo: { citation: "40 CFR Part 60 Subpart OOOO" },
   oooob: { citation: "40 CFR Part 60 Subpart OOOOb" },
   ooooc: { citation: "40 CFR Part 60 Subpart OOOOc" },
   jjjj: { citation: "40 CFR Part 60 Subpart JJJJ" },
@@ -109,6 +110,7 @@ const EXPECTED: Record<string, string> = {
   ecmc: "2 CCR 404-1 (ECMC Rules)",
   gp02: "APCD General Permit GP02",
   gp12: "APCD General Permit GP12",
+  oooo: "40 CFR Part 60 Subpart OOOO",
   oooob: "40 CFR Part 60 Subpart OOOOb",
   ooooc: "40 CFR Part 60 Subpart OOOOc",
   jjjj: "40 CFR Part 60 Subpart JJJJ",
@@ -138,9 +140,9 @@ test("no display name is a bare reg key or a 'Reg <key>' label", () => {
   const keys = [
     ...["1", "10", "11", "12", "15", "16", "18", "19", "2", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "3", "30", "31", "4", "6", "7", "8", "9", "aqs", "cp", "ecmc", "proc", "sip"],
     ...["gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp09", "gp10", "gp11", "gp12"],
-    ...["iiii", "jjjj", "ooooa", "oooob", "ooooc", "zzzz", "p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"],
+    ...["iiii", "jjjj", "oooo", "ooooa", "oooob", "ooooc", "zzzz", "p190", "p191", "p192", "p193", "p194", "p195", "p196", "p199"],
   ];
-  assert.equal(keys.length, 57);
+  assert.equal(keys.length, 58);
   for (const key of keys) {
     const name = regulationDisplayName(key);
     assert.notEqual(name.toLowerCase(), key, key);

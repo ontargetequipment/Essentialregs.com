@@ -1,5 +1,5 @@
 {
- "_about": "Hand transcriptions of equations the official PDFs set in Cambria Math, which pdftotext renders as doubled math-italic glyphs. import_ccr.py swaps the garbled lines of each listed provision for this markup (see _swap_equation_lines). Each entry names the PDF page it was read from; `html` is display markup (plain HTML: span/var/sub/sup), `text` the same formula in plain text for copying. Letters and digits of every `text` were checked against the garbled glyph counts and the page image (Sprint 3, Oct 2026). Typos printed in the source (FuelRrate, hhr) are kept as printed and carry a [sic] marker.",
+ "_about": "Hand transcriptions of equations the official PDFs set in Cambria Math, which pdftotext renders as doubled math-italic glyphs. import_ccr.py swaps the garbled lines of each listed provision for this markup (see _swap_equation_lines). Each entry names the PDF page it was read from; `html` is display markup (plain HTML: span/var/sub/sup), `text` the same formula in plain text for copying. Letters and digits of every `text` were checked against the garbled glyph counts and the page image (Sprint 3, Oct 2026). Typos printed in the source (FuelRrate, hhr) are kept as printed and carry a [sic] marker. eCFR subparts (Oct 2026): the eCFR publishes each equation only as a GIF, so import_ecfr.insert_ecfr_image_notes places the entry at the image's position read from pipeline/sources/<CODE>.xml; `reason` replaces the default sentence of the note and `url` links the official paragraph. Transcribed from the page image of the committed print (OOOO.pdf), checked against the same equations as printed in OOOOb where the OOOO image is unclear.",
  "provisions": {
   "sec-gp12-III-F-3": {
    "page": 14,
@@ -82,6 +82,128 @@
      "label": "Eq. 2.e.",
      "html": "<var>Emission</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">ton</span><span class=\"eq-den\">year</span></span><span class=\"eq-paren\">)</span> = <var>EF</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">X g</span><span class=\"eq-den\">kw−hr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">kw−hr</span><span class=\"eq-den\">1.341 hp−hr</span></span><span class=\"eq-paren\">)</span> ∗ <var>HP</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hp</span><span class=\"eq-den\">1</span></span><span class=\"eq-paren\">)</span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">0.0022lb</span><span class=\"eq-den\">g</span></span><span class=\"eq-paren\">)</span> ∗ <var>FuelUsage</var> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">gal</span><span class=\"eq-den\">yr</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-frac\"><span class=\"eq-num\">1</span><span class=\"eq-den\"><var>FuelRrate</var><span class=\"er-sic\" title=\"Printed this way in the official document.\"> [sic]</span></span></span> <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">hr</span><span class=\"eq-den\">gal</span></span><span class=\"eq-paren\">)</span> ∗ <span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">1 ton</span><span class=\"eq-den\">2000 lb</span></span><span class=\"eq-paren\">)</span>",
      "text": "Emission (ton/year) = EF (X g / kw-hr) * (kw-hr / 1.341 hp-hr) * HP (hp/1) (0.0022lb/g) * FuelUsage (gal/yr) * 1/FuelRrate (hr/gal) * (1 ton / 2000 lb)"
+    }
+   ]
+  },
+  "sec-oooo-60.5406-(b)-(1)": {
+   "page": 16,
+   "source": "OOOO.pdf",
+   "reason": "the eCFR publishes this equation only as an image, so the text layer has nothing at its position",
+   "url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO#p-60.5406(b)(1)",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>X</var> = <var>K</var><var>Q</var><sub>a</sub><var>Y</var>",
+     "text": "X = K × Q_a × Y"
+    }
+   ]
+  },
+  "sec-oooo-60.5406-(c)-(1)": {
+   "page": 17,
+   "source": "OOOO.pdf",
+   "reason": "the eCFR publishes this equation only as an image, so the text layer has nothing at its position (the OOOO image is blurred at the numerator; the same equation is printed legibly as Equation 2 to paragraph (c)(1) of § 60.5406b, R = (100S)/(S + E))",
+   "url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO#p-60.5406(c)(1)",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>R</var> = <span class=\"eq-frac\"><span class=\"eq-num\">100<var>S</var></span><span class=\"eq-den\"><var>S</var> + <var>E</var></span></span>",
+     "text": "R = (100 × S) / (S + E)"
+    }
+   ]
+  },
+  "sec-oooo-60.5406-(c)-(3)": {
+   "page": 17,
+   "source": "OOOO.pdf",
+   "reason": "the eCFR publishes this equation only as an image, so the text layer has nothing at its position",
+   "url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO#p-60.5406(c)(3)",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>E</var> = <span class=\"eq-frac\"><span class=\"eq-num\"><var>C</var><sub>e</sub><var>Q</var><sub>sd</sub></span><span class=\"eq-den\"><var>K</var><sub>1</sub></span></span>",
+     "text": "E = (C_e × Q_sd) / K_1"
+    }
+   ]
+  },
+  "sec-oooo-60.5407-(e)": {
+   "page": 21,
+   "source": "OOOO.pdf",
+   "reason": "the eCFR publishes this equation only as an image, so the text layer has nothing at its position",
+   "url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO#p-60.5407(e)",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>R</var> = <span class=\"eq-frac\"><span class=\"eq-num\"><var>K</var><sub>2</sub><var>S</var></span><span class=\"eq-den\"><var>X</var></span></span>",
+     "text": "R = (K_2 × S) / X"
+    }
+   ]
+  },
+  "sec-oooo-60.5413-(b)-(3)-(ii)-(A)": {
+   "page": 33,
+   "source": "OOOO.pdf",
+   "reason": "the eCFR publishes this equation only as an image, so the text layer has nothing at its position",
+   "url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO#p-60.5413(b)(3)(ii)(A)",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>E</var><sub>i</sub> = <var>K</var><sub>2</sub><span class=\"eq-paren\">(</span>Σ<sub>j=1</sub><sup>n</sup> <var>C</var><sub>ij</sub><var>M</var><sub>ij</sub><span class=\"eq-paren\">)</span><var>Q</var><sub>i</sub>",
+     "text": "E_i = K_2 × (Σ_(j=1..n) C_ij × M_ij) × Q_i"
+    },
+    {
+     "label": "",
+     "html": "<var>E</var><sub>o</sub> = <var>K</var><sub>2</sub><span class=\"eq-paren\">(</span>Σ<sub>j=1</sub><sup>n</sup> <var>C</var><sub>oj</sub><var>M</var><sub>oj</sub><span class=\"eq-paren\">)</span><var>Q</var><sub>o</sub>",
+     "text": "E_o = K_2 × (Σ_(j=1..n) C_oj × M_oj) × Q_o"
+    }
+   ]
+  },
+  "sec-oooo-60.5413-(b)-(3)-(iii)": {
+   "page": 33,
+   "source": "OOOO.pdf",
+   "reason": "the eCFR publishes this equation only as an image, so the text layer has nothing at its position",
+   "url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO#p-60.5413(b)(3)(iii)",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>R</var><sub>cd</sub> = <span class=\"eq-frac\"><span class=\"eq-num\"><var>E</var><sub>i</sub> − <var>E</var><sub>o</sub></span><span class=\"eq-den\"><var>E</var><sub>i</sub></span></span> × 100%",
+     "text": "R_cd = ((E_i − E_o) / E_i) × 100%"
+    }
+   ]
+  },
+  "sec-oooo-60.5413-(b)-(4)-(ii)": {
+   "page": 34,
+   "source": "OOOO.pdf",
+   "reason": "the eCFR publishes this equation only as an image, so the text layer has nothing at its position",
+   "url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO#p-60.5413(b)(4)(ii)",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>C</var><sub>TOC</sub> = Σ<sub>i=1</sub><sup>x</sup> <span class=\"eq-frac\"><span class=\"eq-num\"><span class=\"eq-paren\">(</span>Σ<sub>j=1</sub><sup>n</sup> <var>C</var><sub>ji</sub><span class=\"eq-paren\">)</span></span><span class=\"eq-den\"><var>x</var></span></span>",
+     "text": "C_TOC = Σ_(i=1..x) [(Σ_(j=1..n) C_ji) / x]"
+    }
+   ]
+  },
+  "sec-oooo-60.5413-(b)-(4)-(iii)-(B)": {
+   "page": 34,
+   "source": "OOOO.pdf",
+   "reason": "the eCFR publishes this equation only as an image, so the text layer has nothing at its position",
+   "url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO#p-60.5413(b)(4)(iii)(B)",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>C</var><sub>c</sub> = <var>C</var><sub>m</sub><span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">17.9</span><span class=\"eq-den\">20.9 − %<var>O</var><sub>2d</sub></span></span><span class=\"eq-paren\">)</span>",
+     "text": "C_c = C_m × (17.9 / (20.9 − %O_2d))"
+    }
+   ]
+  },
+  "sec-oooo-60.5413-(d)-(9)-(vi)": {
+   "page": 39,
+   "source": "OOOO.pdf",
+   "reason": "the eCFR publishes this equation only as an image, so the text layer has nothing at its position",
+   "url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO#p-60.5413(d)(9)(vi)",
+   "equations": [
+    {
+     "label": "",
+     "html": "<var>C</var><sub>corr</sub> = <var>C</var><sub>meas</sub><span class=\"eq-paren\">(</span><span class=\"eq-frac\"><span class=\"eq-num\">3</span><span class=\"eq-den\"><var>CO</var><sub>2meas</sub></span></span><span class=\"eq-paren\">)</span>",
+     "text": "C_corr = C_meas × (3 / CO_2meas)"
     }
    ]
   }

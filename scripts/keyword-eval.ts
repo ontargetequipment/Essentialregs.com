@@ -1,5 +1,6 @@
 /**
- * Keyword-search acceptance report (the reviewer's seven rows, 6 Oct 2026):
+ * Keyword-search acceptance report (the reviewer's seven rows, 6 Oct 2026, plus
+ * the "OOOO" row of 8 Oct 2026):
  * the same search_provisions() RPC the /search page calls, run with the
  * service role -- which has_full_access() and provision_path() treat as an
  * entitled subscriber, so the pool-stage multipliers (Definitions,

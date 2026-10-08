@@ -27,6 +27,14 @@ they replace, whose letters are checked by the glyph-count test instead).
     python pipeline/source_text_check.py --regs gp12 gp06           # parse in process
     python pipeline/source_text_check.py --all-gp --parsed-dir pipeline/out --out pipeline/out/sprint3_source_text_check.md
     python pipeline/source_text_check.py --regs gp12 --db-json pipeline/out/reggp12_db.json   # the live rows instead of a parse
+    python pipeline/source_text_check.py --regs oooo --parsed-dir pipeline/out                # an eCFR subpart print (8 Oct 2026)
+
+The 40 CFR subpart prints (OOOO, OOOOa/b/c, JJJJ, IIII, ZZZZ; import_ecfr.py)
+are checked the same way since 8 Oct 2026: the source side is the print's
+body after import_ecfr's own furniture stripping and body start (the table
+of contents is dropped), and the corpus side puts back what that parser
+moves out of the text -- a section's "§ 60.5365 heading" line (its title)
+and a paragraph's printed label "(e)" (the tail of its citation).
 
 Exit status 1 when an unknown extraction difference remains.
 """
@@ -43,6 +51,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import import_ccr as ic  # noqa: E402
+import import_ecfr as ie  # noqa: E402
 
 SOURCES = Path(__file__).resolve().parent / "sources"
 GP_REGS = list(ic.GP_KEYS)
@@ -71,9 +80,14 @@ KNOWN_DIFFERENCES: dict[tuple[str, str], str] = {
 }
 
 
+def is_ecfr_subpart(reg: str) -> bool:
+    """A 40 CFR subpart read from an eCFR print (not a whole-PART XML document)."""
+    return reg in ic.ECFR_REGS and reg in ie.SUBPART_META and ie.SUBPART_META[reg].get("document") != "part"
+
+
 def source_basename(reg: str) -> str:
     fixed = {"cp": "REG_CP", "aqs": "REG_AQS", "sip": "REG_SIP", "proc": "REG_PROC", "ecmc": "ECMC",
-             "oooob": "OOOOb", "ooooa": "OOOOa", "ooooc": "OOOOc"}
+             "oooo": "OOOO", "oooob": "OOOOb", "ooooa": "OOOOa", "ooooc": "OOOOc"}
     if reg in fixed:
         return fixed[reg]
     if reg.isdigit():
@@ -97,7 +111,25 @@ TABLE_HEADERS: dict[str, Counter] = {}
 _HEADER_ROW_RE = re.compile(r"<thead>.*?</thead>|<tr>.*?</tr>", re.S)
 
 
-def corpus_words(rows: list[dict]) -> tuple[list[str], list[str], list[bool]]:
+_ECFR_LABEL_RE = re.compile(r"\(([a-zA-Z0-9]{1,4})\)$")
+
+
+def _ecfr_lead_words(r: dict) -> list[str]:
+    """What import_ecfr moves out of a row's text and the print shows in
+    front of it: a section row's heading line ("§ 60.5365 Am I subject to
+    this subpart?", the row's title), a paragraph row's label ("(e)", the
+    tail of its citation). Tables carry their caption in the text already;
+    group headings keep their text."""
+    cit = r.get("citation") or ""
+    m = _ECFR_LABEL_RE.search(cit)
+    if m:
+        return [m.group(1)]
+    if cit.startswith("§") and r.get("title"):
+        return _WORD_RE.findall(r["title"])
+    return []
+
+
+def corpus_words(rows: list[dict], ecfr: bool = False) -> tuple[list[str], list[str], list[bool]]:
     """(words, row id per word, in-table flag per word) for the stored text,
     in document order, EssentialRegs notes removed, the synthesized root
     row skipped (its title is not printed in the PDF)."""
@@ -115,7 +147,19 @@ def corpus_words(rows: list[dict]) -> tuple[list[str], list[str], list[bool]]:
         # The parser moves an item's printed label ("III.F.3") out of the
         # body into `citation` (the reader prints it as a badge); a heading
         # row keeps it in its text. Put it back in front unless it is there.
-        cit_words = _WORD_RE.findall(r.get("citation") or "")
+        if ecfr:
+            # import_ecfr always moves the label out, so it always goes back
+            # (no "already there" test: "(A) A pilot flame" starts with the
+            # letter of its own label); a label-only paragraph (kind
+            # "heading", its text is the synthesized "§ 60.5365(d)" title) is
+            # printed as the bare label and nothing else.
+            for w in _ecfr_lead_words(r):
+                words.append(w); owners.append(r["id"]); in_table.append(False)
+            if r.get("kind") == "heading" and _plain(html).strip() == (r.get("title") or "").strip():
+                continue
+            cit_words = []
+        else:
+            cit_words = _WORD_RE.findall(r.get("citation") or "")
         body_ld = letters_digits(_WORD_RE.findall(_plain(html)))
         cit_ld = letters_digits(cit_words)
         if cit_words and not body_ld.startswith(cit_ld):
@@ -146,6 +190,19 @@ def source_words(reg: str, txt_path: Path) -> tuple[list[str], list[int]]:
     text, prepared exactly as parse_reg prepares it (page furniture off,
     body start found, spacing fixes applied), math-glyph lines dropped."""
     raw = txt_path.read_text(encoding="utf-8")
+    if is_ecfr_subpart(reg):
+        lines = ie.strip_page_furniture(raw)
+        lines, _ = ie.apply_known_label_fixes(reg, lines)
+        meta = ie.SUBPART_META[reg]
+        heading_re = re.compile(rf"^Subpart {re.escape(meta['code'])}—")
+        _toc_end, start = ie.find_body_start(lines, heading_re)
+        words: list[str] = []
+        linenos: list[int] = []
+        for i, ln in enumerate(lines[start:], start):
+            for w in _WORD_RE.findall(ln):
+                words.append(w)
+                linenos.append(i + 1)
+        return words, linenos
     lines, _seams = ic.clean_pages(raw, reg)
     lines, _ = ic.apply_known_label_fixes(reg, lines)
     lines, _ = ic.apply_known_text_fixes(reg, lines)
@@ -167,8 +224,106 @@ def source_words(reg: str, txt_path: Path) -> tuple[list[str], list[int]]:
     return words, linenos
 
 
+# --------------------------------------------------------------------------
+# Corpus-side checks (Oct 2026 review of the OOOO import). The word diff
+# above cannot see a problem the source text shares -- a page-break header
+# pdftotext reprints inside a table, an e-mail address the eCFR itself
+# prints with doubled underscores, an equation the eCFR publishes only as
+# an image -- so these look at the stored text alone and report every hit;
+# any hit fails the check like an unknown extraction difference does.
+# --------------------------------------------------------------------------
+
+_TABLE_EL_RE = re.compile(r"<table.*?</table>", re.S)
+_TR_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S)
+_CELL_RE = re.compile(r"<t[hd][^>]*>(.*?)</t[hd]>", re.S)
+_THEAD_RE = re.compile(r"<thead[^>]*>(.*?)</thead>", re.S)
+_TBODY_RE = re.compile(r"<tbody[^>]*>(.*?)</tbody>", re.S)
+# two or more underscores inside an e-mail address or a URL
+_UNDERSCORE_RUN_RE = re.compile(r"[\w.\-]*_{2,}[\w.\-]*@[\w.\-]+|(?:https?://|www\.)[^\s<]*_{2,}[^\s<]*")
+# "... as follows:" / "using the following equation:" / "using Equation 1 ...:"
+# directly followed by "Where:" (an optional eCFR equation caption between)
+_EQUATION_GAP_RE = re.compile(
+    r"(?:as follows|following equations?|using (?:the following )?equations?[^:]{0,40}|by):\s*"
+    r"(?:Equation \d+ to [Pp]aragraph [^:]{0,30})?\s*Where:", re.I)
+
+
+def _cells(tr_html: str) -> list[str]:
+    return [_plain(c).strip() for c in _CELL_RE.findall(tr_html)]
+
+
+def _row_words(cells: list[str]) -> Counter:
+    return Counter(w.lower() for c in cells for w in _WORD_RE.findall(c))
+
+
+def repeated_header_rows(html: str) -> list[str]:
+    """Body rows of the tables in `html` that repeat the header: the same
+    cells as a header row, or (a fused page-break header, OOOO Table 3 on
+    the v1 algorithm) every word of a header row inside one body row. One
+    description per hit."""
+    hits: list[str] = []
+    for t in _TABLE_EL_RE.findall(html):
+        thead = _THEAD_RE.search(t)
+        tbody = _TBODY_RE.search(t)
+        if thead:
+            header_rows = [_cells(tr) for tr in _TR_RE.findall(thead.group(1))]
+            body_rows = [_cells(tr) for tr in _TR_RE.findall(tbody.group(1) if tbody else t)]
+        else:
+            rows = [_cells(tr) for tr in _TR_RE.findall(t)]
+            header_rows, body_rows = rows[:1], rows[1:]
+        header_keys = [letters_digits(h) for h in header_rows if any(h)]
+        header_words = [_row_words(h) for h in header_rows if len(set(_row_words(h))) >= 3]
+        for cells in body_rows:
+            key = letters_digits(cells)
+            if key and key in header_keys:
+                hits.append("header row repeated in the body: " + " | ".join(cells)[:120])
+                continue
+            words = _row_words(cells)
+            for hw in header_words:
+                if all(words.get(w, 0) >= n for w, n in hw.items()):
+                    hits.append("header words fused into a body row: " + " | ".join(cells)[:120])
+                    break
+    return hits
+
+
+def underscore_runs(html: str) -> list[str]:
+    """E-mail addresses / URLs in `html` with a run of two or more
+    underscores, except one already carrying a [sic] marker (an EssentialRegs
+    note saying the official text prints it that way)."""
+    hits: list[str] = []
+    for m in _UNDERSCORE_RUN_RE.finditer(html):
+        if html[m.end():m.end() + 24].startswith('<span class="er-sic"'):
+            continue
+        hits.append(m.group(0))
+    return hits
+
+
+def equation_gaps(html: str) -> list[str]:
+    """Lead-ins announcing an equation that run straight into "Where:" --
+    nothing (no transcription, no placeholder) between them."""
+    text = re.sub(r"\s+", " ", _plain(html))
+    return [m.group(0)[-80:] for m in _EQUATION_GAP_RE.finditer(text)]
+
+
+def corpus_checks(rows: list[dict]) -> list[dict]:
+    """Every hit of the three checks over `rows`: dicts (id, kind, note)."""
+    out: list[dict] = []
+    for r in sorted(rows, key=lambda r: r.get("sort_order", 0)):
+        html = r.get("full_text") or ""
+        for h in repeated_header_rows(html):
+            out.append(dict(id=r["id"], kind="repeated_header", note=h))
+        for h in underscore_runs(html):
+            out.append(dict(id=r["id"], kind="underscore_run",
+                            note=f"{h}: confirm against the eCFR XML; if the official text prints it this way, "
+                                 "add a pipeline/curated_sic.json note (tooltip) instead of altering it"))
+        for h in equation_gaps(html):
+            out.append(dict(id=r["id"], kind="equation_gap",
+                            note=f"…{h}: no equation between the lead-in and 'Where:' (an image in the source? "
+                                 "import_ecfr.insert_ecfr_image_notes places a transcription or placeholder from the XML)"))
+    return out
+
+
 def compare(reg: str, rows: list[dict], txt_path: Path) -> dict:
-    a_words, owners, in_table = corpus_words(rows)
+    a_words, owners, in_table = corpus_words(rows, ecfr=is_ecfr_subpart(reg))
     b_words, linenos = source_words(reg, txt_path)
     sm = difflib.SequenceMatcher(None, a_words, b_words, autojunk=False)
     spacing: list[dict] = []
@@ -268,7 +423,8 @@ def compare(reg: str, rows: list[dict], txt_path: Path) -> dict:
             extraction.append(rec)
     return dict(reg=reg, corpus_words=len(a_words), source_words=len(b_words), equal=equal,
                 spacing=spacing, table_layout=table_layout, extraction=extraction,
-                unknown=[d for d in extraction if not d["known"]])
+                unknown=[d for d in extraction if not d["known"]],
+                corpus_checks=corpus_checks(rows))
 
 
 def _is_repeated_header(owner: str, a_span: list[str], b_span: list[str]) -> bool:
@@ -302,24 +458,36 @@ def load_rows(reg: str, parsed_dir: Path | None, db_json: Path | None) -> list[d
             return json.loads(p.read_text(encoding="utf-8"))
     base = source_basename(reg)
     pdf = SOURCES / f"{base}.pdf"
+    if is_ecfr_subpart(reg):
+        rows, _report = ie.parse_ecfr(reg, str(pdf) if pdf.exists() else None, str(SOURCES / f"{base}.txt"))
+        return rows
     result = ic.parse_reg(reg, str(SOURCES / f"{base}.txt"), str(pdf) if pdf.exists() else None)
     return result[0]
 
 
 def render(results: list[dict]) -> str:
     out = ["# Source text check: stored text vs. source PDF text (letters and digits)\n"]
-    out.append("Word-level diff of each general permit's stored text against the body of its pdftotext "
+    out.append("Word-level diff of each document's stored text against the body of its pdftotext "
                "source. A difference with identical letters and digits is *spacing* (free); a table "
                "difference with the same letters as a multiset is *table layout* (free); the rest are "
                "*extraction differences*, each either known (reason given) or **unknown** (fails).\n")
-    out.append("| reg | corpus words | source words | equal | spacing | table layout | extraction | unknown |")
-    out.append("|---|---|---|---|---|---|---|---|")
+    out.append("Corpus checks look at the stored text alone (the source may share the fault): a table "
+               "header row repeated or fused inside the body, a run of two or more underscores in an "
+               "e-mail address or URL, an equation lead-in followed directly by \"Where:\". Any hit fails.\n")
+    out.append("| reg | corpus words | source words | equal | spacing | table layout | extraction | unknown | corpus checks |")
+    out.append("|---|---|---|---|---|---|---|---|---|")
     for r in results:
         out.append(f"| {r['reg']} | {r['corpus_words']} | {r['source_words']} | {r['equal']} | {len(r['spacing'])} "
-                   f"| {len(r['table_layout'])} | {len(r['extraction'])} | **{len(r['unknown'])}** |")
+                   f"| {len(r['table_layout'])} | {len(r['extraction'])} | **{len(r['unknown'])}** "
+                   f"| **{len(r.get('corpus_checks', []))}** |")
     out.append("")
     for r in results:
         out.append(f"## {r['reg']}\n")
+        if r.get("corpus_checks"):
+            out.append(f"### Corpus checks: {len(r['corpus_checks'])} hit(s)\n")
+            for d in r["corpus_checks"]:
+                out.append(f"- `{d['id']}` **{d['kind']}**: {d['note']}")
+            out.append("")
         if r["extraction"]:
             out.append("### Extraction differences\n")
             for d in r["extraction"]:
@@ -362,7 +530,8 @@ def main(argv: list[str] | None = None) -> int:
         results.append(res)
         print(f"{reg}: {res['corpus_words']} corpus words, {res['source_words']} source words, "
               f"{res['equal']} equal; spacing {len(res['spacing'])}, table layout {len(res['table_layout'])}, "
-              f"extraction {len(res['extraction'])} (unknown {len(res['unknown'])})")
+              f"extraction {len(res['extraction'])} (unknown {len(res['unknown'])}); "
+              f"corpus checks {len(res['corpus_checks'])}")
     report = render(results)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -370,7 +539,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {args.out}")
     else:
         print(report)
-    return 1 if any(r["unknown"] for r in results) else 0
+    return 1 if any(r["unknown"] or r.get("corpus_checks") for r in results) else 0
 
 
 if __name__ == "__main__":

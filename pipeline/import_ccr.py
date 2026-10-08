@@ -2760,10 +2760,15 @@ def render_equations_html(row_id: str) -> str:
     entry = CURATED_EQUATIONS[row_id]
     eqs = entry["equations"]
     many = len(eqs) > 1
+    reason = entry.get("reason") or "the PDF's equation text does not survive text extraction"
     note = (f"{'Equations' if many else 'Equation'} transcribed by EssentialRegs from page {entry.get('page')} "
-            f"of {entry.get('source', 'the official PDF')}: the PDF's equation text does not survive text "
-            f"extraction. The plain-text line under {'each one' if many else 'it'} is the same formula for copying.")
-    parts = [f'<div class="equation-block"><p class="er-note eq-note">{escape_html_text(note)}</p>']
+            f"of {entry.get('source', 'the official PDF')}: {reason}. "
+            f"The plain-text line under {'each one' if many else 'it'} is the same formula for copying.")
+    note_html = escape_html_text(note)
+    if entry.get("url"):
+        # eCFR entries (import_ecfr.insert_ecfr_image_notes) link the official text.
+        note_html += f' <a href="{escape_html_text(entry["url"])}">Official text</a>.'
+    parts = [f'<div class="equation-block"><p class="er-note eq-note">{note_html}</p>']
     for e in eqs:
         label = e.get("label") or ""
         label_html = f'<span class="eq-label">{escape_html_text(label)}</span> ' if label else ""
@@ -2816,12 +2821,20 @@ def apply_sic_markers(reg: str, rows: list[dict]) -> list[dict]:
             continue
         for e in CURATED_SIC[pid]:
             printed = escape_html_text(e["printed"])
+            # An entry may carry its own tooltip (the reader shows it on the
+            # marker) when the plain "Printed this way" would leave the
+            # reader guessing -- e.g. an e-mail address the eCFR prints with
+            # doubled underscores. Same span class, so every check that
+            # treats the marker as an EssentialRegs note still matches it.
+            marker = SIC_MARKER_HTML
+            if e.get("tooltip"):
+                marker = f'<span class="er-sic" title="{escape_html_text(e["tooltip"])}"> [sic]</span>'
             row = by_id.get(pid)
             hits = 0
             if row is not None and printed:
                 hits = row["full_text"].count(printed)
                 if hits:
-                    row["full_text"] = row["full_text"].replace(printed, printed + SIC_MARKER_HTML)
+                    row["full_text"] = row["full_text"].replace(printed, printed + marker)
             applied.append(dict(old_label=e["printed"], new_label=e["printed"] + " [sic]", line_hint=pid,
                                 note="[sic] marker (pipeline/curated_sic.json): " + e["reason"],
                                 hits=hits, expect_hits=int(e.get("expect", 1))))
@@ -4208,6 +4221,9 @@ CORPUS_REGS = {
     # 1001-33) — see REG_META["10"] / ["15"] / ["29"].
     "10": "10", "15": "15", "29": "29",
     "oooob": "oooob", "ooooa": "ooooa", "ooooc": "ooooc",
+    # The original 40 CFR Part 60 Subpart OOOO (8 Oct 2026, the fourth
+    # outside review: completes the federal storage-vessel timeline).
+    "oooo": "oooo",
     # 40 CFR Part 60 Subparts JJJJ/IIII and 40 CFR Part 63 Subpart ZZZZ
     # (stationary engine rules) -- parsed by import_ecfr.py alongside
     # OOOOa/b/c; see ECFR_REGS below and IMPORTER_SPEC.md.
@@ -4255,24 +4271,27 @@ CORPUS_REGS = {
 # "p191"/"p192" are eCFR-sourced too, but whole PARTS read from the eCFR
 # XML rather than subparts read from a PDF print -- import_ecfr.cmd_parse
 # dispatches on SUBPART_META[reg]["document"] == "part" and expects --xml.
-ECFR_REGS = {"ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz",
+ECFR_REGS = {"oooo", "ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz",
              "p191", "p192", "p194", "p195", "p199",
              "p190", "p193", "p196"}
 
-# 40 CFR Part 60 Subpart OOOO (the un-suffixed, pre-2022 version) is
-# deliberately NOT in CORPUS_REGS: citations to it stay plain text
-# (BUCKET_CFR) until/unless it is imported too — see IMPORTER_SPEC.md and the
-# diff report's "CFR part/subpart not in corpus" section. (Regulation Number
-# 27 was in the same position until Batch 5 imported it — see REG_META["27"];
-# the "Regulation Number 27" mentions in Reg 7 Part B Section VII.F.6, Reg 26
-# Part C entry I, Reg 30 Part C entry III and Reg 22's Part E stubs now link.)
+# 40 CFR Part 60 Subpart OOOO (the un-suffixed, 2012 version) was NOT in
+# CORPUS_REGS until 8 Oct 2026: citations to it stayed plain text
+# (BUCKET_CFR). It is in the corpus now ("oooo"), so "NSPS OOOO", "40 CFR
+# Part 60, Subpart OOOO", "Subpart OOOO, OOOOa, or OOOOb" and a bare
+# "§ 60.5365" link to it like the other subparts -- with one care: 40 CFR
+# Part 63 has its own Subpart OOOO (printing, coating and dyeing of fabrics,
+# listed by Regulation 8 Part A), so a bare "Subpart OOOO" with no part and
+# no program word links only when the paragraph shows the Part 60 context
+# and no Part 63 one (OOOO_CONTEXT_RE / PART_63_CONTEXT_RE in
+# _subpart_regkey). (Regulation Number 27 was in the same position until
+# Batch 5 imported it — see REG_META["27"].)
 
 # 40 CFR Part 60/63 Subpart code -> the id key it links to when that
 # subpart is in CORPUS_REGS. "OOOOB" -> "oooob" (matches the existing
 # `sec-oooob-top-REG-oooob` root); "OOOOA"/"OOOOC" mirror that same
-# four-O-plus-suffix id shape ("ooooa"/"ooooc" — see REG_META). Bare "OOOO"
-# (no letter suffix) has no entry here, so it always falls through to
-# BUCKET_CFR regardless of corpus membership.
+# four-O-plus-suffix id shape ("ooooa"/"ooooc" — see REG_META); "OOOO" (no
+# letter suffix, the original subpart) -> "oooo" since 8 Oct 2026.
 #
 # "JJJJ"/"IIII" (Part 60) and "ZZZZ" (Part 63) are added the same way. This
 # dict is keyed on the subpart CODE alone, not (part, code) -- CFR_RE's
@@ -4287,7 +4306,7 @@ ECFR_REGS = {"ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz",
 # bare "40 CFR Part 63" (no subpart, or a different one) still falls through
 # to BUCKET_CFR as before.
 CFR_SUBPART_TO_REGKEY = {
-    "OOOOA": "ooooa", "OOOOB": "oooob", "OOOOC": "ooooc",
+    "OOOO": "oooo", "OOOOA": "ooooa", "OOOOB": "oooob", "OOOOC": "ooooc",
     "JJJJ": "jjjj", "IIII": "iiii", "ZZZZ": "zzzz",
 }
 
@@ -4302,6 +4321,7 @@ CFR_SUBPART_TO_REGKEY = {
 # Part 63), resolves through _subpart_regkey below; CFR_SUBPART_TO_REGKEY
 # stays the list of corpus codes.
 CFR_PART_SUBPART_TO_REGKEY: dict[tuple[str, str], str] = {
+    ("60", "OOOO"): "oooo",
     ("60", "OOOOA"): "ooooa", ("60", "OOOOB"): "oooob", ("60", "OOOOC"): "ooooc",
     ("60", "JJJJ"): "jjjj", ("60", "IIII"): "iiii",
     ("63", "ZZZZ"): "zzzz",
@@ -4314,14 +4334,26 @@ PROGRAM_PART = {"NSPS": "60", "NESHAP": "63", "MACT": "63"}
 # context (ENGINE_CONTEXT_RE).
 UNAMBIGUOUS_SUBPART_PART = {"ZZZZ": "63", "OOOOA": "60", "OOOOB": "60", "OOOOC": "60"}
 ENGINE_CONTEXT_RE = re.compile(r"\bNSPS\b|\bPart\s+60\b|\b60\.4[0-2]\d\d\b")
+# The original Subpart OOOO (in the corpus since 8 Oct 2026) is not
+# unambiguous either: 40 CFR Part 63 Subpart OOOO is the fabric printing,
+# coating and dyeing NESHAP, which Regulation 8 Part A lists. A bare "Subpart
+# OOOO" (no part, no program word) is read as the Part 60 oil-and-gas rule
+# only when the paragraph shows that context -- NSPS, Part 60, a § 60.53xx /
+# 60.54xx section, or one of its successors OOOOa/b/c beside it ("Subpart
+# OOOO, OOOOa, or OOOOb") -- and no Part 63 / NESHAP / MACT context at all.
+# Never a capture of the longer codes: every OOOO pattern ends in a word
+# boundary, so "OOOOa" is not "OOOO" + "a".
+OOOO_CONTEXT_RE = re.compile(r"\bNSPS\b|\bPart\s+60\b|\b60\.5[34]\d\d\b|\bOOOO[abc]\b")
+PART_63_CONTEXT_RE = re.compile(r"\bPart\s+63\b|\bNESHAP\b|\bMACT\b")
 # The section ranges of the corpus subparts, for a bare "§ 60.4209(a)" /
 # "Section 60.4244" / "60.5386b(c)" citation (link_citations step 1.28):
 # (part, first, last, suffix) -> reg key. The OOOO family shares one numeric
 # range and differs by the letter suffix; a number in that range with no
-# suffix is the original Subpart OOOO, which is not in the corpus.
+# suffix is the original Subpart OOOO (in the corpus since 8 Oct 2026).
 CFR_SECTION_RANGES: list[tuple[str, int, int, str | None, str]] = [
     ("60", 4200, 4219, None, "iiii"),
     ("60", 4230, 4248, None, "jjjj"),
+    ("60", 5360, 5433, None, "oooo"),
     ("60", 5360, 5433, "a", "ooooa"),
     ("60", 5360, 5433, "b", "oooob"),
     ("60", 5360, 5433, "c", "ooooc"),
@@ -4336,9 +4368,11 @@ def _subpart_regkey(code: str | None, part: str | None = None, program: str | No
     `part` is the printed CFR part ("60" / "63") when the citation names
     one; else `program` ("NSPS" -> 60, "NESHAP"/"MACT" -> 63) when a
     program word precedes it; else the code alone decides when it occurs in
-    only one part (UNAMBIGUOUS_SUBPART_PART), and a bare JJJJ / IIII is read
-    as the Part 60 engine rule only when `context` (the paragraph) shows
-    Part 60 or NSPS (ENGINE_CONTEXT_RE). A code that is not a corpus code,
+    only one part (UNAMBIGUOUS_SUBPART_PART), a bare JJJJ / IIII is read as
+    the Part 60 engine rule only when `context` (the paragraph) shows Part
+    60 or NSPS (ENGINE_CONTEXT_RE), and a bare OOOO as the Part 60 oil-and-
+    gas rule only when the paragraph shows that context and no Part 63 one
+    (OOOO_CONTEXT_RE, PART_63_CONTEXT_RE). A code that is not a corpus code,
     or sits in the other part, is None -- the citation stays plain text."""
     if not code:
         return None
@@ -4348,6 +4382,9 @@ def _subpart_regkey(code: str | None, part: str | None = None, program: str | No
     if part is None:
         part = UNAMBIGUOUS_SUBPART_PART.get(code_u)
         if part is None and code_u in ("JJJJ", "IIII") and context is not None and ENGINE_CONTEXT_RE.search(context):
+            part = "60"
+        if (part is None and code_u == "OOOO" and context is not None
+                and OOOO_CONTEXT_RE.search(context) and not PART_63_CONTEXT_RE.search(context)):
             part = "60"
     if part is None:
         return None
@@ -4777,6 +4814,16 @@ REG_META: dict[str, dict] = {
             "CONTROL OF EMISSIONS FROM VOLATILE ORGANIC COMPOUNDS AND "
             "PETROLEUM LIQUIDS STORAGE AND PETROLEUM PROCESSING AND "
             "REFINING 5 CCR 1001-28"
+        ),
+    },
+    "oooo": {
+        "jurisdiction_level": "federal", "issuing_body": "EPA",
+        "source_url": "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-60/subpart-OOOO",
+        "root_citation": "40 CFR Part 60 Subpart OOOO",
+        "root_title": (
+            "40 CFR Part 60 Subpart OOOO — Standards of Performance for Crude Oil and Natural Gas "
+            "Facilities for which Construction, Modification or Reconstruction Commenced After "
+            "August 23, 2011, and on or Before September 18, 2015"
         ),
     },
     "oooob": {
@@ -6337,6 +6384,90 @@ def load_corpus_ids(path) -> dict[str, frozenset]:
     return {str(k): frozenset(v) for k, v in data.items()}
 
 
+# --------------------------------------------------------------------------
+# Staged (not yet released) documents -- the release state the 8 Oct 2026
+# OOOO review found missing. `regulation_releases` (migration
+# 20261008040000) marks a newly imported reg_key `staged`: the database hides
+# it from subscribers, and THIS module keeps other documents from linking
+# to it until it is released:
+#   * `dump-ids` leaves a staged reg's ids out of corpus_ids.json (no deep
+#     links) and writes the staged keys to corpus_staged.json beside it;
+#   * `parse` reads that file and drops the staged keys from CORPUS_REGS
+#     (and import_ecfr.CORPUS_REGS) for the run, so "Subpart OOOO" or
+#     "Regulation Number 99" stays plain text -- except the document being
+#     parsed itself, which must keep its own links;
+#   * `apply --execute` inserts the staged row the first time a reg_key is
+#     written; `release` flips it to released and names the documents whose
+#     markup-only re-import will then write the links.
+# --------------------------------------------------------------------------
+
+CORPUS_STAGED_DEFAULT_PATH = Path(__file__).resolve().parent / "out" / "corpus_staged.json"
+_STAGED_REGS: list[str] = []
+_STAGED_REMOVED: dict[str, str] = {}   # CORPUS_REGS entries removed for this run, for restore
+
+
+def fetch_staged_reg_keys(client) -> list[str]:
+    """reg_keys whose regulation_releases row is `staged` (service role).
+    [] when the table cannot be read (an older database, a test stub)."""
+    try:
+        resp = client.table("regulation_releases").select("reg_key").eq("status", "staged").execute()
+    except Exception as exc:  # noqa: BLE001 -- the table may not exist yet
+        print(f"  WARNING: regulation_releases not readable ({exc!r}); treating every document as released", file=sys.stderr)
+        return []
+    return sorted({r["reg_key"] for r in (resp.data or []) if r.get("reg_key")})
+
+
+def write_staged_regs(path, keys) -> None:
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(sorted(set(keys)), ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+
+def load_staged_regs(path) -> list[str]:
+    return sorted(set(json.loads(Path(path).read_text(encoding="utf-8"))))
+
+
+def set_staged_regs(keys, keep: str | None = None) -> list[str]:
+    """Drop `keys` (except `keep`, the document being parsed) from the
+    whole-regulation link gates for this process: CORPUS_REGS here and
+    import_ecfr.CORPUS_REGS. Returns the keys actually removed. Call
+    `restore_staged_regs()` to undo (tests)."""
+    global _STAGED_REGS
+    removed: list[str] = []
+    for k in sorted(set(keys)):
+        if k == keep:
+            continue
+        if k in CORPUS_REGS:
+            _STAGED_REMOVED[k] = CORPUS_REGS.pop(k)
+            removed.append(k)
+        try:
+            import import_ecfr  # lazy: import_ecfr imports this module lazily too
+            if k in import_ecfr.CORPUS_REGS:
+                import_ecfr.CORPUS_REGS.discard(k)
+                _STAGED_REMOVED.setdefault(k, k)
+                if k not in removed:
+                    removed.append(k)
+        except ImportError:  # pragma: no cover
+            pass
+    _STAGED_REGS = sorted(set(_STAGED_REGS) | set(removed))
+    return removed
+
+
+def restore_staged_regs() -> None:
+    """Undo set_staged_regs (the module-level sets are process-wide)."""
+    global _STAGED_REGS
+    for k, v in _STAGED_REMOVED.items():
+        CORPUS_REGS.setdefault(k, v)
+        try:
+            import import_ecfr
+            if k in import_ecfr.SUBPART_META:
+                import_ecfr.CORPUS_REGS.add(k)
+        except ImportError:  # pragma: no cover
+            pass
+    _STAGED_REMOVED.clear()
+    _STAGED_REGS = []
+
+
 def group_ids_by_reg(ids) -> dict[str, list[str]]:
     """Group provision ids by regulation key; each list sorted bytewise
     (UTF-8), the order Postgres' COLLATE "C" gives, so the file is stable and
@@ -7110,8 +7241,9 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         if regkey and regkey in corpus_regs:
             pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
         else:
-            # "NSPS OOOO" (the original subpart, not in the corpus), "NESHAP
-            # JJJJ" (the Part 63 coating rule): counted, never linked.
+            # "NESHAP JJJJ" (the Part 63 coating rule): counted, never
+            # linked. ("NSPS OOOO" links since 8 Oct 2026: the original
+            # subpart is in the corpus.)
             buckets[BUCKET_CFR][m.group(0)] += 1
 
     # 1.28) A 40 CFR 60 / 63 section number inside a corpus subpart's range
@@ -7119,7 +7251,7 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
     # paragraph of Subpart IIII when the index has it, else its nearest
     # existing ancestor, else (no such section in the index) counted in the
     # cfr bucket. A number in the OOOO range with no suffix is the original
-    # Subpart OOOO, not in the corpus: counted. Numbers outside every range
+    # Subpart OOOO (in the corpus since 8 Oct 2026). Numbers outside every range
     # (Reg 6's "Section 60.2550", Reg 23's "40 CFR 63.1568") are not CFR
     # citations this importer knows anything about and are left alone.
     # Only with a corpus id index (use_ids), like every deep link.
@@ -7525,8 +7657,9 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
     # Runs last, after every fuller form and after a flat-entry regulation
     # (Reg 6) has claimed its own "Subpart IIII" rows. ZZZZ and the OOOOa/b/c
     # family occur in one part only and link; JJJJ and IIII link only when
-    # the paragraph shows the Part 60 context (ENGINE_CONTEXT_RE); the
-    # original OOOO and a code in the other part are counted, never linked.
+    # the paragraph shows the Part 60 context (ENGINE_CONTEXT_RE), the
+    # original OOOO only with the oil-and-gas context and no Part 63 one
+    # (OOOO_CONTEXT_RE); a code in the other part is counted, never linked.
     # "Regulation Number 6, Part A, Subpart IIII" deep-links to Regulation
     # 6's own adoption row when the index has it.
     for m in BARE_SUBPART_RE.finditer(html_text):
@@ -12486,8 +12619,18 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
 
 def cmd_parse(args):
     corpus_ids_path = getattr(args, "corpus_ids", None)
+    staged_path = getattr(args, "corpus_staged", None)
+    if staged_path is None and corpus_ids_path and Path(corpus_ids_path).with_name("corpus_staged.json").exists():
+        staged_path = str(Path(corpus_ids_path).with_name("corpus_staged.json"))
+    if staged_path and Path(staged_path).exists():
+        staged = load_staged_regs(staged_path)
+        removed = set_staged_regs(staged, keep=args.reg.lower())
+        if removed:
+            print(f"Staged regulations excluded from cross-regulation links this run: {removed} ({staged_path})")
     if corpus_ids_path:
         index = load_corpus_ids(corpus_ids_path)
+        for k in _STAGED_REGS:
+            index.pop(k, None)
         set_corpus_ids(index)
         print(f"Cross-regulation deep links ON: corpus id index {corpus_ids_path} "
               f"({len(index)} regulations, {sum(len(v) for v in index.values())} ids).")
@@ -13255,8 +13398,17 @@ def cmd_dump_ids(args) -> None:
     client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     ids = fetch_all_provision_ids(client)
     by_reg = group_ids_by_reg(ids)
+    # A staged document (regulation_releases) is not deep-linkable: its ids
+    # stay out of the index, and its key goes to corpus_staged.json so parse
+    # drops it from the whole-regulation link gate too.
+    staged = fetch_staged_reg_keys(client)
+    for k in staged:
+        by_reg.pop(k, None)
     write_corpus_ids(args.out, by_reg)
-    print(f"Dumped {len(ids)} provision ids across {len(by_reg)} regulations -> {args.out}")
+    staged_out = getattr(args, "staged_out", None) or str(Path(args.out).with_name("corpus_staged.json"))
+    write_staged_regs(staged_out, staged)
+    print(f"Dumped {sum(len(v) for v in by_reg.values())} provision ids across {len(by_reg)} regulations -> {args.out}")
+    print(f"Staged (not yet released, not linkable) regulations: {staged or 'none'} -> {staged_out}")
     defs_out = getattr(args, "definitions_out", None)
     if defs_out:
         rows = fetch_definition_candidates(client)
@@ -13334,11 +13486,32 @@ def _visible_text(text: str) -> str:
     space): an xref span/anchor inserted flush against punctuation
     ("Regulation</a>." vs "Regulation.") must read as the same visible text
     -- replacing the tag with a space turned every such new link into a false
-    "visible text changed" (Reg 6 IX.C on the batch-4 re-import). The [sic]
-    marker span (SIC_MARKER_HTML) is removed with its text first: it is an
-    EssentialRegs note, so adding one is markup-only and keeps the row's
-    summary and review state."""
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", _SIC_SPAN_RE.sub("", text or ""))).strip()
+    "visible text changed" (Reg 6 IX.C on the batch-4 re-import). EssentialRegs'
+    own notes are removed with their text first -- the [sic] marker span
+    (SIC_MARKER_HTML), a curated equation block (render_equations_html) and
+    a figure/equation-omitted placeholder (_figure_placeholder_html,
+    import_ecfr.insert_ecfr_image_notes): they are not official text, so
+    adding one is markup-only and keeps the row's summary and review state
+    (the changelog still records it: cmd_apply logs a note change as
+    transcription_corrected, see `notes_changed`)."""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", strip_er_notes(text or ""))).strip()
+
+
+_FIGURE_OMITTED_RE = re.compile(r'<p class="figure-omitted">.*?</p>', re.S)
+
+
+def strip_er_notes(html: str) -> str:
+    """`html` without EssentialRegs' own notes: [sic] spans, curated equation
+    blocks and figure/equation-omitted placeholders."""
+    return _FIGURE_OMITTED_RE.sub("", _EQUATION_BLOCK_RE.sub("", _SIC_SPAN_RE.sub("", html or "")))
+
+
+def er_notes_of(html: str) -> list[str]:
+    """The EssentialRegs notes in `html`, in order (whitespace-collapsed), so
+    two versions of a row can be compared note-for-note."""
+    found = [(m.start(), m.group(0)) for pat in (_SIC_SPAN_RE, _EQUATION_BLOCK_RE, _FIGURE_OMITTED_RE)
+             for m in pat.finditer(html or "")]
+    return [re.sub(r"\s+", " ", t).strip() for _, t in sorted(found)]
 
 
 def text_letters_digits_changed(parsed_text: str, db_text: str) -> bool:
@@ -13366,6 +13539,14 @@ def ancestors_of(pid: str, by_id: dict) -> list[str]:
     return out
 
 
+def _note_kind(note_html: str) -> str:
+    if note_html.startswith('<span class="er-sic"'):
+        return "[sic] marker"
+    if note_html.startswith('<div class="equation-block">'):
+        return "transcribed equation block"
+    return "not-reproduced placeholder"
+
+
 def classify_apply(parsed: list[dict], db: list[dict]) -> dict:
     """Classifies every id (parsed union db) into identical/changed/new/
     obsolete per the apply task's rule 1, and — for `changed` rows only —
@@ -13381,6 +13562,7 @@ def classify_apply(parsed: list[dict], db: list[dict]) -> dict:
     identical: list[str] = []
     changed: list[str] = []
     markup_only: dict[str, bool] = {}
+    notes_changed: dict[str, str] = {}
     for pid in shared:
         p_text = parsed_by_id[pid].get("full_text") or ""
         d_text = db_by_id[pid].get("full_text") or ""
@@ -13389,6 +13571,21 @@ def classify_apply(parsed: list[dict], db: list[dict]) -> dict:
         else:
             changed.append(pid)
             markup_only[pid] = not text_letters_digits_changed(p_text, d_text)
+            before, after = er_notes_of(d_text), er_notes_of(p_text)
+            if before != after:
+                # A markup-only change that adds, drops or rewrites an
+                # EssentialRegs note (a [sic] marker, a transcribed equation,
+                # an "Equation not reproduced here" placeholder) is a
+                # correction of our copy: --execute logs it as
+                # transcription_corrected with this note instead of the
+                # trigger's bare links_updated.
+                kinds = Counter(_note_kind(n) for n in after) - Counter(_note_kind(n) for n in before)
+                gone = Counter(_note_kind(n) for n in before) - Counter(_note_kind(n) for n in after)
+                desc = ", ".join(f"{n} {k}{'s' if n > 1 else ''}" for k, n in sorted(kinds.items()))
+                if gone:
+                    desc = (desc + "; " if desc else "") + "removed " + ", ".join(
+                        f"{n} {k}{'s' if n > 1 else ''}" for k, n in sorted(gone.items()))
+                notes_changed[pid] = f"EssentialRegs note added to our copy of the official text: {desc or 'note rewritten'}"
 
     new_ids = sorted(parsed_ids - db_ids)
     obsolete_ids = sorted(db_ids - parsed_ids)
@@ -13401,6 +13598,7 @@ def classify_apply(parsed: list[dict], db: list[dict]) -> dict:
         identical=sorted(identical),
         changed=sorted(changed),
         markup_only=markup_only,
+        notes_changed=notes_changed,
         new=new_ids,
         obsolete=obsolete_ids,
     )
@@ -13630,6 +13828,70 @@ def build_provision_change_insert(ancestor_id: str, note: str) -> str:
     )
 
 
+def ensure_release_row(client, reg: str) -> str | None:
+    """The release state after an executed import: a reg_key with no
+    regulation_releases row is a NEW document and is inserted `staged`
+    (hidden from subscribers, unlinked by other documents) until
+    `release`. Returns the row's status, or None when the table is not
+    readable (an older database)."""
+    if not reg:
+        return None
+    try:
+        resp = client.table("regulation_releases").select("reg_key, status").eq("reg_key", reg).execute()
+    except Exception as exc:  # noqa: BLE001
+        print(f"  WARNING: regulation_releases not readable ({exc!r}); release state not recorded", file=sys.stderr)
+        return None
+    rows = resp.data or []
+    if rows:
+        status = rows[0].get("status")
+        print(f"Release state of {reg}: {status}" + (" -- hidden from subscribers until `release`." if status == "staged" else "."))
+        return status
+    client.table("regulation_releases").insert({
+        "reg_key": reg, "status": "staged",
+        "note": "first import; staged by import_ccr.py apply --execute",
+    }).execute()
+    print(f"NEW DOCUMENT: {reg} is STAGED -- invisible to subscribers (reader, keyword search, Ask, related, "
+          f"previews, indexes) and not linked by other documents until "
+          f"`python pipeline/import_ccr.py release --reg {reg} --yes`.")
+    return "staged"
+
+
+def cmd_release(args) -> None:
+    """Flip a staged document to released (service role). Prints what to
+    run next: the markup-only re-imports that write other documents' links
+    to it (they were withheld while it was staged)."""
+    import os
+
+    missing = [n for n in ("SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY") if not os.environ.get(n)]
+    if missing:
+        print(f"release requires {' and '.join(missing)} in the environment.", file=sys.stderr)
+        sys.exit(2)
+    if not args.yes:
+        print("release writes the database; pass --yes to confirm.", file=sys.stderr)
+        sys.exit(2)
+    from supabase import create_client
+
+    reg = args.reg.lower()
+    client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+    now_iso = datetime.now(timezone.utc).isoformat()
+    resp = client.table("regulation_releases").select("reg_key, status").eq("reg_key", reg).execute()
+    rows = resp.data or []
+    if rows and rows[0].get("status") == "released":
+        print(f"{reg} is already released.")
+        return
+    payload = {"reg_key": reg, "status": "released", "released_at": now_iso,
+               "note": f"released by import_ccr.py release ({now_iso[:10]})"}
+    if rows:
+        client.table("regulation_releases").update(payload).eq("reg_key", reg).execute()
+    else:
+        client.table("regulation_releases").insert(payload).execute()
+    print(f"{reg} RELEASED: subscribers now see it in the reader, keyword search, Ask, related provisions, "
+          "the previews and the indexes.")
+    print("Next: re-run `dump-ids`, then the markup-only re-imports of the documents that cite it "
+          "(pipeline/link_change_report.py lists them) so their links to it are written; "
+          "then the Ask and Keyword evals.")
+
+
 def cmd_apply(args):
     if not args.parsed or not args.db or not args.out_dir:
         print("apply requires --parsed, --db, and --out-dir (see --help).", file=sys.stderr)
@@ -13750,6 +14012,7 @@ def cmd_apply(args):
         f"- `identical` (no text/summary change): **{len(c['identical'])}**",
         f"- `changed` (full_text replaced, ai_summary kept, summary_status→pending): **{len(c['changed'])}**",
         f"  - of which markup-only (visible text unchanged — full_text replaced, review state and summary_status left as they are): **{markup_only_count}**",
+        f"  - of which an EssentialRegs note was added or changed ([sic] marker, transcribed equation, not-reproduced placeholder; logged transcription_corrected on --execute): **{len(c.get('notes_changed') or {})}**",
         f"  - of which visible text changed (regen needed): **{changed_needing_regen}**",
         f"- `new` (inserted): **{len(c['new'])}**",
         f"- `obsolete` (deleted): **{len(c['obsolete'])}**",
@@ -14139,6 +14402,23 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
             client.table("provisions").delete().in_("id", chunk).execute()
             print(f"  deleted {i + len(chunk)}/{len(c['obsolete'])}")
 
+    # Rows whose only change is an EssentialRegs note (classify_apply's
+    # notes_changed): the DB trigger logged a bare links_updated (or
+    # text_updated when the note adds letters, e.g. a transcribed equation);
+    # re-label this run's row for each as transcription_corrected with a
+    # note saying what was added, so /changelog shows the correction.
+    notes_changed = c.get("notes_changed") or {}
+    if notes_changed:
+        print(f"Re-labelling {len(notes_changed)} note-only change(s) as transcription_corrected...")
+        for pid, note in sorted(notes_changed.items()):
+            client.table("provision_changes").update(
+                {"change_type": "transcription_corrected", "note": note}
+            ).eq("provision_id", pid).in_("change_type", ["links_updated", "text_updated"]).is_(
+                "note", "null"
+            ).gte("created_at", now_iso).execute()
+
+    ensure_release_row(client, getattr(args, "reg", None) or "")
+
     # What this run tells /changelog: an agency version change is logged as
     # its own row and keeps the run's text/added/removed rows regulatory;
     # otherwise they are re-labelled as corrections of our own copy. Then
@@ -14167,6 +14447,9 @@ def main():
     p_parse.add_argument("--no-corpus-ids", action="store_true",
                          help="Ignore any corpus id index: cross-regulation citations link only the regulation name, "
                               "exactly as before deep links existed.")
+    p_parse.add_argument("--corpus-staged", default=None,
+                         help="JSON list of staged regulation keys (written by `dump-ids`) that this parse must not link to "
+                              "(default: corpus_staged.json beside --corpus-ids, when present).")
     p_parse.add_argument("--corpus-definitions", default=None,
                          help="Definitions index (JSON {reg key: {provision id: defined term}}, written by `dump-ids`) "
                               "used to verify a deep link into a definition against the term the citing sentence names. "
@@ -14190,10 +14473,21 @@ def main():
              "against). Requires SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY; makes no writes.",
     )
     p_dump.add_argument("--out", default=str(CORPUS_IDS_DEFAULT_PATH))
+    p_dump.add_argument("--staged-out", default=None,
+                        help="Where to write the staged (not yet released) regulation keys "
+                             "(default: corpus_staged.json beside --out).")
     p_dump.add_argument("--definitions-out", default=str(CORPUS_DEFINITIONS_DEFAULT_PATH),
                         help="Where to write the definitions index ({reg key: {id: defined term}}) read beside the id "
                              "index; '' to skip it.")
     p_dump.set_defaults(func=cmd_dump_ids)
+
+    p_release = sub.add_parser(
+        "release",
+        help="Flip a staged (newly imported) regulation to released so subscribers can see it and other documents may link to it.",
+    )
+    p_release.add_argument("--reg", required=True)
+    p_release.add_argument("--yes", action="store_true", help="Required: confirms the database write.")
+    p_release.set_defaults(func=cmd_release)
 
     p_diff = sub.add_parser("diff", help="Diff parsed output against an exported DB snapshot.")
     p_diff.add_argument("--reg", required=True)

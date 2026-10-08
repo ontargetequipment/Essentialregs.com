@@ -1168,3 +1168,17 @@ export function sampleCards<T extends Pick<Provision, "id" | "citation" | "title
 export function regulationCardHref(reg: string, hasAccess: boolean): string {
   return hasAccess ? `/regulations/${reg}` : `/regulations/${reg}/preview`;
 }
+
+/**
+ * Rows of released documents only: drops every row whose reg key (the
+ * second dash-separated field of its id, same as the database's reg_key)
+ * is in `staged` (src/lib/release.ts). Pure, so the index pages and the
+ * teaser can be proved to hide a staged document without a database.
+ */
+export function filterReleased<T extends { id: string }>(rows: T[], staged: Set<string>): T[] {
+  if (staged.size === 0) return rows;
+  return rows.filter((r) => {
+    const key = regKeyOf(r.id);
+    return key === null || !staged.has(key);
+  });
+}

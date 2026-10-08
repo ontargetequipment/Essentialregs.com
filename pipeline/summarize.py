@@ -416,8 +416,13 @@ SYSTEM_PROMPT_TEMPLATE = (
     "equipment list, an applicability date or a scope qualifier into a "
     "sub-paragraph it does not govern: a paragraph under \"(c) storage vessel "
     "affected facilities\" is about storage vessels only, even when the "
-    "section heading above also lists compressors and pumps. Where an excerpt "
-    "ends in [excerpt cut], do not guess at what was cut.\n\n"
+    "section heading above also lists compressors and pumps. One date DOES "
+    "govern every paragraph below it: when an ancestor says the whole section "
+    "or paragraph does not apply during a period or before a date (\"The "
+    "provisions of this section will not apply between July 31, 2025, and "
+    "January 22, 2027\"), that suspension binds every provision under it, so "
+    "state it, with the dates, in every summary below that ancestor. Where "
+    "an excerpt ends in [excerpt cut], do not guess at what was cut.\n\n"
     "6. Scope. Make the summary neither wider nor narrower than the text. Do "
     "not add \"all\", \"any\", \"every\", \"statewide\", \"only\", \"solely\" or "
     "\"specifically\" where the text has no such word, and do not drop a "
@@ -447,6 +452,17 @@ SYSTEM_PROMPT_TEMPLATE = (
     "\"deemed approved\" may become \"treated as approved\", not \"approved\"; "
     "\"heavier\" is not \"darker\". A plain-English paraphrase that keeps the "
     "meaning is good; a different concept is an error.\n\n"
+    "11. Ambiguous negation. Where the text's own negation can be read two "
+    "ways (\"a deviation occurs when the monitoring data are not available "
+    "for at least 75 percent of the operating hours\" -- unavailable for 75 "
+    "percent, or available for less than 75 percent?), do not paraphrase it "
+    "into either reading on your own. Quote the text's phrase and state the "
+    "requirement it refers to, in the text's words (\"valid data points must "
+    "be available for 75 percent of the operating hours\"), so the summary "
+    "points the same way as the rule: a deviation when valid data are "
+    "available for less than 75 percent of the operating hours, citing the "
+    "paragraph that requires 75 percent. Never turn \"not available for at "
+    "least X\" into \"unavailable for at least X\".\n\n"
     "Three things ARE allowed, because the reviewer accepts them. (a) A "
     "correct expansion of an acronym or short name, when the regulation "
     "defines it or it is the ordinary name of the cited program: \"volatile "
@@ -492,12 +508,21 @@ SYSTEM_PROMPT_TEMPLATE = (
     "federal CFR summary -- that term belongs to the Colorado regulations "
     "-- and never mention Colorado, CDPHE, or any state or state agency "
     "unless the text you were given mentions it.\n\n"
-    "eCFR equations are images and do not survive text extraction, so a "
-    "provision may say something like \"calculated as follows:\" and then "
-    "list only the variable definitions with no formula. When that happens, "
-    "say the equation itself is not shown in the available text and "
-    "describe only what the variables represent -- never reconstruct or "
-    "recite an equation that isn't there.\n\n"
+    "eCFR equations are images and do not survive text extraction. Where the "
+    "text carries an EssentialRegs transcription (a note \"Equation transcribed "
+    "by EssentialRegs ...\" followed by the formula in plain text, e.g. "
+    "\"X = K × Q_a × Y\"), you may state the formula as transcribed and say "
+    "it is EssentialRegs' transcription of the image the eCFR publishes. "
+    "Where the text instead says \"Equation not reproduced here. See the "
+    "official source\", or says \"calculated as follows:\" and then lists only "
+    "the variable definitions with no formula, say the equation is not "
+    "reproduced in the text and describe only what the variables represent "
+    "-- never reconstruct or recite an equation that isn't there.\n\n"
+    "A \"[sic]\" after a word or an address is an EssentialRegs marker: the "
+    "official text prints it that way and it is an evident error (an e-mail "
+    "address printed with doubled underscores). The summary uses the "
+    "corrected form and may add that the rule prints it differently; it "
+    "never copies the misprint as the right form.\n\n"
     "Never add requirements that are not in the text. If a section is "
     "purely a definition or administrative detail, say that plainly in one "
     "sentence. No preamble, no markdown (no **bold**, no headings, no list "
@@ -2318,9 +2343,18 @@ def estimate_into_budget(client_anthropic, model: str, prompts: dict[str, Prompt
 
 
 def record_spend(stats: RunStats, model: str, budget, batch: bool = True) -> None:
-    """Copies this run's per-regulation spend so far into `budget`."""
+    """Copies this run's per-regulation spend so far into `budget`, on top of
+    what the stage already held when this run began. A chained run passes
+    through the writer twice (summarize, then regenerate for the reviewer's
+    fails) with one Budget; copying the second run's cumulative figure over
+    the first's made the 8 Oct 2026 Subpart OOOO report show $0.0061 for a
+    stage that had written 511 summaries."""
+    base = getattr(stats, "budget_base", None)
+    if base is None:
+        base = {reg: budget.spent.get(reg, {}).get("summarize", 0.0) for reg in budget.spent}
+        stats.budget_base = base
     for reg, usd in stats.cost_by_reg(model, batch=batch).items():
-        budget.set_spent(reg, "summarize", usd)
+        budget.set_spent(reg, "summarize", base.get(reg, 0.0) + usd)
 
 
 def run_sync(client_anthropic, client_supabase, rows: list[dict], meta: dict, model: str,

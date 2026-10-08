@@ -309,8 +309,12 @@ REVIEW_SYSTEM_PROMPT = (
     "plain everyday wording is expected and is not a defect. The summary "
     "may describe the provision together with the provisions listed inside "
     "it; that is how it is meant to work. A summary that reports an "
-    "equation as not shown is correct when the text lists variables "
-    "without a formula. The regulation line and the block \"Text above this "
+    "equation as not shown or not reproduced is correct when the text lists "
+    "variables without a formula or carries \"Equation not reproduced here\"; "
+    "where the text carries an EssentialRegs transcription (\"Equation "
+    "transcribed by EssentialRegs ...\" and a plain-text formula), a summary "
+    "that states that formula is supported by it, and a summary that still "
+    "says the equation is not shown is corrected. The regulation line and the block \"Text above this "
     "provision\" -- the own text of every ancestor from the root down to the "
     "parent, each labelled with its id -- are part of the text you are "
     "given: a summary may say where the provision sits and connect it to "
@@ -332,7 +336,8 @@ REVIEW_SYSTEM_PROMPT = (
     "and a summary may say so, as long as it adds no number, date, party, "
     "threshold, exception or requirement of its own. Tense (\"is\" / \"will "
     "be\") and voice are style.\n\n"
-    "Three allowances. These are about plain English; nothing in them "
+    "Four allowances. These are about plain English and about the text's own "
+    "ambiguities; nothing in them "
     "loosens the rules above on numbers, dates, thresholds, citations, "
     "scope, parties, conditions and exceptions, which must still match the "
     "text, or on asserting what the text does not say.\n\n"
@@ -372,7 +377,21 @@ REVIEW_SYSTEM_PROMPT = (
     "3. Source typos. Never change a summary to reproduce an evident typo "
     "or misspelling in the official text (\"trionyl chloride\" for thionyl "
     "chloride, a doubled or dropped letter). The summary uses the correct "
-    "word; a summary that already does is not in error on that point.\n\n"
+    "word; a summary that already does is not in error on that point. A "
+    "\"[sic]\" in the text is EssentialRegs' marker for such a misprint (an "
+    "e-mail address printed with doubled underscores): a summary that gives "
+    "the corrected form, with or without a note that the rule prints it "
+    "differently, is correct; do not correct it back to the misprint.\n\n"
+    "4. Ambiguous negation. Where the text's own negation can be read two "
+    "ways (\"a deviation occurs when the monitoring data are not available "
+    "for at least 75 percent of the operating hours\"), a summary that "
+    "quotes the text's phrase and states the requirement it refers to, in "
+    "the text's words (\"valid data must be available for 75 percent of the "
+    "operating hours\", so a deviation when valid data are available for "
+    "less than 75 percent), is correct and must not be \"corrected\" to the "
+    "opposite reading. A summary that paraphrases such a phrase into the "
+    "opposite reading (\"unavailable for at least 75 percent\") is an error "
+    "to correct the same way: quote the phrase and name the requirement.\n\n"
     "Everything else is unchanged. Style-only rewrites are a pass.\n\n"
     "Context above the provision. The duty a nested item serves is often "
     "stated two or more levels up (\"A revised APEN must be filed:\" / "
@@ -384,7 +403,12 @@ REVIEW_SYSTEM_PROMPT = (
     "I.C. or I.D.\"), when, or under what condition -- binds the provision, "
     "so a summary that states the ancestor's duty for everyone, or without "
     "that condition, widens the scope and is corrected by adding the limit "
-    "in the ancestor's words. "
+    "in the ancestor's words. A suspension or applicability window an "
+    "ancestor states for the whole section or paragraph (\"The provisions of "
+    "this section will not apply between July 31, 2025, and January 22, "
+    "2027\") is such a limit on every provision under it: a summary below "
+    "that ancestor that does not carry it, with its dates, is corrected by "
+    "adding it. "
     "(b) Where an excerpt is marked cut -- it ends with [excerpt cut], or a "
     "note says the provision text or the ancestor list was truncated -- the "
     "missing part is not silence: do not remove or change a statement "
@@ -1366,8 +1390,16 @@ def estimate_into_budget(client_anthropic, reviews: list[ReviewInput], model: st
 
 
 def record_spend(stats: "RunStats", model: str, budget, batch: bool = True) -> None:
+    """This run's per-regulation spend so far, on top of what the stage held
+    when the run began: a chained run reviews twice (review, then review2
+    after the regeneration) with one Budget, and the second run must add to
+    the first, not replace it (see summarize.record_spend)."""
+    base = getattr(stats, "budget_base", None)
+    if base is None:
+        base = {reg: budget.spent.get(reg, {}).get("review", 0.0) for reg in budget.spent}
+        stats.budget_base = base
     for reg, usd in stats.cost_by_reg(model, batch=batch).items():
-        budget.set_spent(reg, "review", usd)
+        budget.set_spent(reg, "review", base.get(reg, 0.0) + usd)
 
 
 def count_tokens_many(client_anthropic, reviews: list[ReviewInput], model: str,

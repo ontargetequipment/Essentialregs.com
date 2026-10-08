@@ -2,19 +2,69 @@
  "_about": "Typos printed in the official documents. The text stays exactly as printed; import_ccr.py (apply_sic_markers) adds an EssentialRegs [sic] marker (span.er-sic, tooltip 'Printed this way in the official document.') directly after the printed string in the named provision. `printed` must occur exactly `expect` times (default 1) in that provision's text or the parse reports it for review. Only plain typos belong here, never unusual wording.",
  "provisions": {
   "sec-gp12-IV-A-6-b-(i)": [
-   {"printed": "Break Specific Fuel Consumption", "reason": "BSFC is brake specific fuel consumption; the PDF prints 'Break' (GP12.pdf page 18)."}
+   {
+    "printed": "Break Specific Fuel Consumption",
+    "reason": "BSFC is brake specific fuel consumption; the PDF prints 'Break' (GP12.pdf page 18)."
+   }
   ],
   "sec-gp12-ATTACHMENT-A-7-3-1": [
-   {"printed": "listed in the table are is subject", "reason": "Doubled verb 'are is' as printed (GP12.pdf page 88)."}
+   {
+    "printed": "listed in the table are is subject",
+    "reason": "Doubled verb 'are is' as printed (GP12.pdf page 88)."
+   }
   ],
   "sec-gp02-ATTACHMENT-A-5-3": [
-   {"printed": "listed in the table are is subject", "reason": "Doubled verb 'are is' as printed (GP02.pdf, Attachment A, same sentence as GP12)."}
+   {
+    "printed": "listed in the table are is subject",
+    "reason": "Doubled verb 'are is' as printed (GP02.pdf, Attachment A, same sentence as GP12)."
+   }
   ],
   "sec-gp01-II-A-1": [
-   {"printed": "co-located at a the same stationary source", "reason": "Doubled article 'a the' as printed (GP01.pdf, Condition II.A.1)."}
+   {
+    "printed": "co-located at a the same stationary source",
+    "reason": "Doubled article 'a the' as printed (GP01.pdf, Condition II.A.1)."
+   }
   ],
   "sec-gp12-VII-C-1": [
-   {"printed": "complete an site specific extended gas analysis", "reason": "'an' before 'site' as printed (GP12.pdf, Condition VII.C.1)."}
+   {
+    "printed": "complete an site specific extended gas analysis",
+    "reason": "'an' before 'site' as printed (GP12.pdf, Condition VII.C.1)."
+   }
+  ],
+  "sec-oooo-60.5413-(e)-(6)": [
+   {
+    "printed": "Oil__and__Gas__PT@EPA.GOV",
+    "reason": "EPA e-mail address printed as Oil__and__Gas__PT@EPA.GOV in the eCFR text of this subpart (XML and PDF, checked Oct 2026); OOOOb/OOOOc print Oil_and_Gas_PT@EPA.GOV.",
+    "tooltip": "The eCFR prints this address with doubled underscores, in the versioner XML as well as the PDF; Subparts OOOOb and OOOOc give the same EPA mailbox as Oil_and_Gas_PT@EPA.GOV."
+   }
+  ],
+  "sec-oooo-60.5420-(b)-(8)": [
+   {
+    "printed": "Oil____and____Gas____PT@EPA.GOV",
+    "reason": "EPA e-mail address printed as Oil____and____Gas____PT@EPA.GOV in the eCFR text of this subpart (XML and PDF, checked Oct 2026); OOOOb/OOOOc print Oil_and_Gas_PT@EPA.GOV.",
+    "tooltip": "The eCFR prints this address with doubled underscores, in the versioner XML as well as the PDF; Subparts OOOOb and OOOOc give the same EPA mailbox as Oil_and_Gas_PT@EPA.GOV."
+   }
+  ],
+  "sec-ooooa-60.5413a-(d)-(12)": [
+   {
+    "printed": "Oil__and__Gas__PT@EPA.GOV",
+    "reason": "EPA e-mail address printed as Oil__and__Gas__PT@EPA.GOV in the eCFR text of this subpart (XML and PDF, checked Oct 2026); OOOOb/OOOOc print Oil_and_Gas_PT@EPA.GOV.",
+    "tooltip": "The eCFR prints this address with doubled underscores, in the versioner XML as well as the PDF; Subparts OOOOb and OOOOc give the same EPA mailbox as Oil_and_Gas_PT@EPA.GOV."
+   }
+  ],
+  "sec-ooooa-60.5413a-(e)-(6)": [
+   {
+    "printed": "Oil____and____Gas____PT@EPA.GOV",
+    "reason": "EPA e-mail address printed as Oil____and____Gas____PT@EPA.GOV in the eCFR text of this subpart (XML and PDF, checked Oct 2026); OOOOb/OOOOc print Oil_and_Gas_PT@EPA.GOV.",
+    "tooltip": "The eCFR prints this address with doubled underscores, in the versioner XML as well as the PDF; Subparts OOOOb and OOOOc give the same EPA mailbox as Oil_and_Gas_PT@EPA.GOV."
+   }
+  ],
+  "sec-ooooa-60.5420a-(b)-(10)": [
+   {
+    "printed": "Oil__and__Gas__PT@EPA.GOV",
+    "reason": "EPA e-mail address printed as Oil__and__Gas__PT@EPA.GOV in the eCFR text of this subpart (XML and PDF, checked Oct 2026); OOOOb/OOOOc print Oil_and_Gas_PT@EPA.GOV.",
+    "tooltip": "The eCFR prints this address with doubled underscores, in the versioner XML as well as the PDF; Subparts OOOOb and OOOOc give the same EPA mailbox as Oil_and_Gas_PT@EPA.GOV."
+   }
   ]
  }
 }

@@ -52,6 +52,7 @@ export const SOURCE_DATES: Readonly<Record<string, SourceDate>> = {
   "gp12": { kind: "issued", date: "2026-05-28" },
   "iiii": { kind: "as_of", date: "2026-09-17" },
   "jjjj": { kind: "as_of", date: "2026-09-17" },
+  "oooo": { kind: "as_of", date: "2026-10-06" },
   "ooooa": { kind: "as_of", date: "2026-09-11" },
   "oooob": { kind: "as_of", date: "2026-09-10" },
   "ooooc": { kind: "as_of", date: "2026-09-11" },

@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { getAccessStatus } from "@/lib/access";
+import { isAdmin } from "@/lib/admin";
+import { isRegReleased } from "@/lib/release";
 import { fetchReaderVersion, fetchRegulationProvisions, fetchRenderedReader } from "@/lib/regulation";
 import { loadReaderPage } from "@/lib/reader-page";
 import { RegulationReader } from "@/components/RegulationReader";
@@ -21,6 +23,8 @@ const VALID_REG = /^[A-Za-z0-9]+$/;
 // per-user shell.
 const loadReader = cache((reg: string) =>
   loadReaderPage(reg, {
+    // A staged document is visible only to an admin (who checks it before release).
+    isVisible: async (r) => (await isRegReleased(r)) || isAdmin((await getAccessStatus()).user),
     hasAccess: async () => (await getAccessStatus()).hasAccess,
     fetchLive: fetchRegulationProvisions,
     fetchVersion: fetchReaderVersion,

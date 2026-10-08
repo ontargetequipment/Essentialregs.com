@@ -35,12 +35,23 @@ def _parse(reg: str):
 class CuratedFilesTests(unittest.TestCase):
     def test_equations_file_shape(self):
         eqs = ic.CURATED_EQUATIONS
-        self.assertEqual(set(eqs), {"sec-gp12-III-F-3", "sec-gp12-IV-A-6-b",
-                                    "sec-gp06-IV-C-1-b-(i)", "sec-gp06-IV-C-1-b-(ii)"})
+        gp = {pid for pid in eqs if pid.startswith("sec-gp")}
+        self.assertEqual(gp, {"sec-gp12-III-F-3", "sec-gp12-IV-A-6-b",
+                              "sec-gp06-IV-C-1-b-(i)", "sec-gp06-IV-C-1-b-(ii)"})
+        # eCFR entries (import_ecfr.insert_ecfr_image_notes): OOOO's nine
+        # equation images, each linking its official paragraph.
+        ecfr = {pid for pid in eqs if not pid.startswith("sec-gp")}
+        self.assertEqual(ecfr, {
+            "sec-oooo-60.5406-(b)-(1)", "sec-oooo-60.5406-(c)-(1)", "sec-oooo-60.5406-(c)-(3)",
+            "sec-oooo-60.5407-(e)", "sec-oooo-60.5413-(b)-(3)-(ii)-(A)", "sec-oooo-60.5413-(b)-(3)-(iii)",
+            "sec-oooo-60.5413-(b)-(4)-(ii)", "sec-oooo-60.5413-(b)-(4)-(iii)-(B)", "sec-oooo-60.5413-(d)-(9)-(vi)"})
         n = 0
         for pid, entry in eqs.items():
-            self.assertTrue(pid.startswith("sec-gp"), pid)
             self.assertIsInstance(entry["page"], int)
+            if pid in ecfr:
+                self.assertEqual(entry["source"], "OOOO.pdf", pid)
+                self.assertTrue(entry["url"].startswith("https://www.ecfr.gov/current/title-40/") and "#p-60." in entry["url"], pid)
+                self.assertIn("image", entry["reason"], pid)
             for e in entry["equations"]:
                 n += 1
                 self.assertTrue(e["html"] and e["text"], pid)
@@ -49,13 +60,17 @@ class CuratedFilesTests(unittest.TestCase):
                 # (the [sic] markers inside the markup are notes, not formula)
                 html_ld = ic._letters_digits(re.sub(r"<[^>]+>", "", ic._SIC_SPAN_RE.sub("", e["html"])))
                 self.assertEqual(html_ld, ic._letters_digits(e["text"].replace("^", "")), e["label"] or pid)
-        self.assertEqual(n, 12)
+        self.assertEqual(n, 12 + 10)
 
     def test_sic_file_shape(self):
         for pid, entries in ic.CURATED_SIC.items():
-            self.assertTrue(pid.startswith("sec-gp"), pid)
+            self.assertTrue(pid.startswith(("sec-gp", "sec-oooo-", "sec-ooooa-")), pid)
             for e in entries:
                 self.assertTrue(e["printed"] and e["reason"], pid)
+                if pid.startswith("sec-oooo"):
+                    # the EPA e-mail address the eCFR prints with doubled underscores
+                    self.assertRegex(e["printed"], r"^Oil_{2,}and_{2,}Gas_{2,}PT@EPA\.GOV$")
+                    self.assertIn("Oil_and_Gas_PT@EPA.GOV", e["tooltip"])
 
     def test_loaders_tolerate_a_missing_file(self):
         self.assertEqual(ic.load_curated_equations("/nonexistent/equations.json"), {})
