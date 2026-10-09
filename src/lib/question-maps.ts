@@ -1,5 +1,6 @@
 import { expandAcronyms } from "@/lib/acronyms";
-import { matchPremiseNote, premiseNoteForMapKey, type PremiseNote } from "@/lib/premise-notes";
+import { matchPremiseNote, premiseNoteForMapKey, type PremiseNote, type PremiseSentence } from "@/lib/premise-notes";
+import { regKeyOf } from "@/lib/regulation-names";
 
 /**
  * Question maps (Ask Track B, 1 Oct 2026).
@@ -184,13 +185,25 @@ export type MapProvision = {
   facets?: FacetTags;
 };
 
+/** A sentence of a map's introduction and the provisions that support it (see PremiseSentence). */
+export type IntroSentence = PremiseSentence;
+
+/** The introduction as one string: the sentences joined. */
+export function introText(map: Pick<QuestionMap, "factors">): string {
+  return map.factors.map((x) => x.text).join(" ");
+}
+
 export type QuestionMap = {
   key: string;
   name: string;
   /** Case-insensitive word-boundary patterns; any match routes the question here. */
   triggers: RegExp[];
-  /** One sentence naming what decides applicability. Shown above the groups. */
-  factors: string;
+  /**
+   * What decides applicability, as cited sentences (9 Oct 2026; one string
+   * until then). Shown above the groups, each sentence with its provisions
+   * as reader links, like a premise note.
+   */
+  factors: IntroSentence[];
   /** Canonical rows, in display order. Every id must exist in provisions (corpus_qa.sql check 20). */
   provisions: MapProvision[];
   /** The facets this map branches on, with the title to use when the question states one value. */
@@ -269,6 +282,45 @@ export function omittedLines(map: QuestionMap, stated: StatedFacets): OmittedLin
 }
 
 /**
+ * One intro sentence with the provisions that support it (9 Oct 2026). Same
+ * shape as a premise note's sentences: the page shows the ids as reader
+ * links beside the sentence. A sentence that states a date, a threshold or
+ * an applicability conclusion must carry at least one id
+ * (scripts/question-maps.test.ts checks the rule and that every id is in
+ * pipeline/out/corpus_ids.json).
+ */
+const s = (text: string, ...cites: string[]): IntroSentence => ({ text, cites });
+
+/**
+ * The four NSPS date windows, read from the subparts' own applicability
+ * sections (pipeline/sources/OOOO*.txt) and cited to them; shared by the maps
+ * that explain which subpart reaches a facility.
+ */
+const WINDOW_OOOO = s(
+  "Subpart OOOO reaches affected facilities that commence construction, modification or reconstruction after August 23, 2011, and on or before September 18, 2015.",
+  "sec-oooo-60.5360",
+  "sec-oooo-60.5365"
+);
+const WINDOW_OOOOA = s(
+  "Subpart OOOOa reaches those that commence construction, modification or reconstruction after September 18, 2015, and on or before December 6, 2022.",
+  "sec-ooooa-60.5360a-(a)",
+  "sec-ooooa-60.5365a"
+);
+const WINDOW_OOOOB = s(
+  "Subpart OOOOb reaches those that commence construction, modification or reconstruction after December 6, 2022.",
+  "sec-oooob-60.5365b"
+);
+const WINDOW_OOOOC = s(
+  "Subpart OOOOc is the emission guideline for existing facilities: a state or Tribal plan must address designated facilities that commenced construction, modification or reconstruction on or before December 6, 2022.",
+  "sec-ooooc-60.5375c-(a)-(1)"
+);
+const WINDOW_MODIFY = s(
+  "An affected facility under Subpart OOOO or OOOOa that modifies or reconstructs after December 6, 2022 becomes subject to Subpart OOOOb.",
+  "sec-oooo-60.5365",
+  "sec-ooooa-60.5365a"
+);
+
+/**
  * Matched first-match-wins in this order. The equipment maps come before the
  * APEN map on purpose: "do I need an APEN for my tank battery" routes to
  * storage-tanks (which carries the APEN rows for tanks), not to the generic
@@ -323,8 +375,13 @@ export const QUESTION_MAPS: QuestionMap[] = [
     // Not "compressor" alone: a centrifugal / reciprocating compressor
     // question is a different map.
     triggers: [/\b(?:engines?|rice|gen-?sets?|generators?|reciprocating|jjjj|iiii|zzzz|gp\s?0?2|gp\s?0?6|gp\s?12|gp\s?0?9|gp\s?10)\b/i],
-    factors:
-      "What applies depends on the fuel (natural gas or diesel), the site-rated horsepower, the date of manufacture, construction or modification, whether the engine is an emergency unit, whether the facility is a major or area source of hazardous air pollutants, and whether it sits in the 8-hour Ozone Control Area or Northern Weld County.",
+    factors: [
+      s("The fuel splits the rules: GP02 covers natural gas-fired reciprocating internal combustion engines and GP06 diesel fuel-fired ones, and the federal NSPS split the same way, Subpart JJJJ for spark-ignition engines and Subpart IIII for compression-ignition engines.", "sec-gp02-I-A", "sec-gp06-I-A", "sec-jjjj-60.4230", "sec-iiii-60.4200"),
+      s("Each NSPS turns on dates: Subpart JJJJ on the date the engine was manufactured, its maximum engine power and whether it is an emergency engine, and Subpart IIII on whether construction commenced after July 11, 2005, when the engine was manufactured, and whether it was modified or reconstructed after that date.", "sec-jjjj-60.4230", "sec-iiii-60.4200"),
+      s("Subpart IIII sets separate standards for emergency engines, and Regulation 3's construction permit exemption for engines covers power portable drilling rigs, emergency power generators that operate no more than 250 hours per year, and engines with uncontrolled actual emissions under 5 tons per year or a site-rated horsepower under 50.", "sec-iiii-60.4205", "sec-3-B-II-D-1-c", "sec-3-B-II-D-1-c-(i)", "sec-3-B-II-D-1-c-(ii)", "sec-3-B-II-D-1-c-(iii)"),
+      s("Subpart ZZZZ reaches a stationary reciprocating internal combustion engine at a major or area source of hazardous air pollutant emissions.", "sec-zzzz-63.6585"),
+      s("In Colorado, Regulation 26 Part B sets control requirements for engines (Section I) and for stationary and portable combustion equipment in the 8-Hour Ozone Control Area (Section II), including a nitrogen oxides allowance for engines of 1,000 horsepower or more in the 8-Hour Ozone Control Area or Northern Weld County.", "sec-26-B-I", "sec-26-B-II", "sec-26-B-I-D-4-c"),
+    ],
     provisions: [
       // Colorado permitting and APEN
       { id: "sec-3-A-II-B", group: "Colorado permitting and APEN", why: "APEN filing: when a notice is required and the reporting thresholds" },
@@ -383,8 +440,17 @@ export const QUESTION_MAPS: QuestionMap[] = [
     triggers: [
       /\b(?:storage (?:tanks?|vessels?)|tank batter(?:y|ies)|(?:condensate|produced[- ]water|crude[- ]oil|oil|hydrocarbon liquid) tanks?|thief hatch(?:es)?|gp\s?0?1|gp\s?0?5|gp\s?0?8|gp\s?0?7)\b/i,
     ],
-    factors:
-      "What applies depends on the tank's uncontrolled and controlled VOC emissions, what it stores (condensate, crude oil, intermediate hydrocarbon liquids or produced water), its throughput, when it was built or modified, whether it sits at a well production facility or a midstream or E&P site, whether that site is in the 8-hour Ozone Control Area or Northern Weld County, and — federally — which NSPS subpart reaches the tank battery: OOOOb if it was constructed, modified or reconstructed after December 6, 2022; OOOOa if that happened between September 18, 2015 and December 6, 2022; the original Subpart OOOO if it happened after August 23, 2011 and on or before September 18, 2015; and OOOOc for existing tank batteries, on the schedule in Colorado's state plan once that plan takes effect. A tank battery modified after a subpart's date moves into that subpart, and each subpart's own storage vessel threshold (potential VOC or methane emissions) decides whether the battery is covered at all.",
+    factors: [
+      s("Regulation 7 Part B Section I.D.3.a requires storage tanks with uncontrolled actual VOC emissions of 4 tons per year or more, or 2 tons per year or more where the first test does not reach them, on a rolling twelve-month total, to be controlled to 95% efficiency.", "sec-7-B-I-D-3-a-(i)", "sec-7-B-I-D-3-a-(ii)"),
+      s("Section II.C.1 sets control and monitoring requirements for storage tanks at oil and gas exploration and production operations, Class II disposal well facilities, well production facilities, natural gas compressor stations and natural gas processing plants.", "sec-7-B-II-C"),
+      s("What the tank stores matters to the general permits: GP01 covers condensate storage tank batteries, GP05 produced water storage tank batteries, and GP08 oil and gas industry storage tanks.", "sec-gp01-I-A", "sec-gp05-I-A", "sec-gp08-I-B"),
+      WINDOW_OOOO,
+      WINDOW_OOOOA,
+      WINDOW_OOOOB,
+      WINDOW_OOOOC,
+      WINDOW_MODIFY,
+      s("Each subpart sets its own storage vessel test in paragraph (e) of its applicability section: a single vessel with a potential for VOC emissions of 6 tons per year or more under Subparts OOOO and OOOOa, a tank battery with a potential for VOC emissions of 6 tons per year or more or for methane emissions of 20 tons per year or more under Subpart OOOOb, and a tank battery with a potential for methane emissions of 20 tons per year or more under Subpart OOOOc.", "sec-oooo-60.5365-(e)", "sec-ooooa-60.5365a-(e)", "sec-oooob-60.5365b-(e)-(1)", "sec-ooooc-60.5386c-(e)-(1)"),
+    ],
     provisions: [
       // Colorado permitting and APEN
       { id: "sec-3-A-II-A", group: "Colorado permitting and APEN", why: "APENs are required for new, modified and existing sources unless exempt under II.D" },
@@ -428,8 +494,16 @@ export const QUESTION_MAPS: QuestionMap[] = [
     triggers: [
       /\b(?:pneumatic (?:controllers?|devices?|pumps?)|process controllers?|(?:high|low|no|zero)[- ]bleed|natural gas[- ](?:driven|actuated) controllers?|intermittent (?:vent )?controllers?)\b/i,
     ],
-    factors:
-      "What applies depends on whether the controller or pump is driven by natural gas, whether it is continuous-bleed (high or low) or intermittent, when the facility was built or modified (after December 6, 2022 → OOOOb; September 18, 2015 to December 6, 2022 → OOOOa; August 23, 2011 to September 18, 2015 → the original OOOO; existing facilities → OOOOc, on the schedule in Colorado's 111(d) state plan once it takes effect), whether the site has access to electrical power, whether it is a natural gas processing plant, and whether it sits in the 8-hour Ozone Control Area or Northern Weld County.",
+    factors: [
+      s("Regulation 7 Part B Section III applies to pneumatic controllers that are actuated by natural gas and located at, or upstream of, natural gas processing plants.", "sec-7-B-III-A"),
+      s("Its requirements for continuous bleed, natural gas-driven controllers turn on where the controller sits and when it was placed in service: in the 8-Hour Ozone Control Area a controller placed in service on or after February 1, 2009 must emit no more than a low-bleed controller, and in northern Weld County the same holds for one placed in service on or after February 14, 2023.", "sec-7-B-III-C-1-a", "sec-7-B-III-C-1-c"),
+      s("Well production facilities that commence operations on or after February 14, 2023, and natural gas compressor stations that commence operations or increase compression horsepower on or after that date, must use only non-emitting controllers, except as Section III.C.1.e.(iv) provides.", "sec-7-B-III-C-1-e", "sec-7-B-III-C-1-e-(i)", "sec-7-B-III-C-1-e-(iii)", "sec-7-B-III-C-1-e-(iv)"),
+      WINDOW_OOOO,
+      WINDOW_OOOOA,
+      WINDOW_OOOOB,
+      WINDOW_OOOOC,
+      s("The affected facility differs by subpart: under Subpart OOOO a single continuous bleed natural gas-driven controller operating at a bleed rate greater than 6 standard cubic feet per hour, under Subparts OOOOa and OOOOb a pneumatic or process controller affected facility, and under Subpart OOOOc the collection of natural gas-driven process controllers at a well site, centralized production facility, onshore natural gas processing plant or compressor station.", "sec-oooo-60.5365-(d)", "sec-ooooa-60.5365a-(d)", "sec-oooob-60.5365b-(d)", "sec-ooooc-60.5386c-(d)"),
+    ],
     provisions: [
       // Colorado standards
       { id: "sec-7-B-III", group: "Colorado standards", why: "Reg 7 Part B III — natural gas-actuated pneumatic controllers and pumps (the section)" },
@@ -461,8 +535,13 @@ export const QUESTION_MAPS: QuestionMap[] = [
     key: "dehydrators",
     name: "Glycol natural gas dehydrators",
     triggers: [/\b(?:dehydrators?|dehy|glycol|still vents?|reboilers?)\b/i],
-    factors:
-      "What applies depends on the dehydrator's uncontrolled actual VOC and benzene emissions from the still vent and flash tank against the Reg 7 thresholds (per unit and facility-wide), when it was built or modified, whether it sits in the 8-hour Ozone Control Area or Northern Weld County, its distance from occupied buildings, and — federally — whether the facility is a major or area source of hazardous air pollutants under 40 CFR 63 Subpart HH (not yet in this corpus).",
+    factors: [
+      s("Regulation 7 Part B Section I.H requires still vents and flash tank vents on a glycol natural gas dehydrator in the 8-Hour Ozone Control Area to reduce uncontrolled actual VOC emissions by at least 90 percent, where the dehydrator's actual uncontrolled VOC emissions are 1 ton per year or more and the sum for a single dehydrator or grouping at a stationary source is 15 tons per year or more.", "sec-7-B-I-H-1", "sec-7-B-I-H-3", "sec-7-B-I-H-3-a", "sec-7-B-I-H-3-b"),
+      s("In northern Weld County, beginning February 14, 2023, a dehydrator constructed on or after that date with uncontrolled actual VOC emissions of 2 tons per year or more must reduce them by at least 95 percent.", "sec-7-B-I-H-4", "sec-7-B-I-H-4-a"),
+      s("Section II.D is a State Only provision with a similar test of 2 tons per year for a single dehydrator and 15 tons per year in total, and from May 1, 2015 a 95 percent reduction for a dehydrator constructed on or after that date with uncontrolled actual VOC emissions of 2 tons per year or more.", "sec-7-B-II-D-1", "sec-7-B-II-D-2", "sec-7-B-II-D-3", "sec-7-B-II-D-4", "sec-7-B-II-D-4-a"),
+      s("Section II.D.3 also turns on whether a building unit or designated outside activity area is located within 1,320 feet of the facility.", "sec-7-B-II-D-3", "sec-7-B-II-D-3-b"),
+      s("40 CFR 63 Subpart HH is not in this corpus, so this map has no federal NESHAP group."),
+    ],
     provisions: [
       // Colorado permitting and APEN
       { id: "sec-3-A-II-A", group: "Colorado permitting and APEN", why: "APENs are required for new, modified and existing sources unless exempt under II.D" },
@@ -488,8 +567,16 @@ export const QUESTION_MAPS: QuestionMap[] = [
     triggers: [
       /\b(?:flares?|flaring|enclosed combustion devices?|ecds?|combustors?|vapor combust(?:ors?|ion)|thermal oxidi[sz]ers?|control devices?|destruction efficiency|auto-?igniters?)\b/i,
     ],
-    factors:
-      "What applies depends on the kind of device (open flare, enclosed combustion device or other control device), what it controls (tanks, dehydrators, pneumatics, compressors, well completions), the design destruction efficiency it must meet and how that is shown (manufacturer test or an initial and periodic performance test), the auto-igniter, continuous-pilot and monitoring requirements, when the device was installed (Reg 7 Part B II.B.2.h performance tests apply from February 14, 2022), and federally which subpart the controlled affected facility falls under.",
+    factors: [
+      s("Regulation 7 Part B Section I.C.1 requires a flare or other combustion device that controls VOC emissions to comply with Sections I.D., I.J. and I.K. to be enclosed, have no visible emissions and be designed so that an observer can tell whether it is operating properly, and to be equipped with and operate an auto-igniter.", "sec-7-B-I-C-1-d", "sec-7-B-I-C-1-e"),
+      s("Beginning February 14, 2022, performance tests are required for each enclosed combustion device that Regulation 7 Part B requires to achieve at least 95% control efficiency for hydrocarbons.", "sec-7-B-II-B-2-h"),
+      s("The destruction efficiency depends on the rule that sends the emissions to the device: a combustion device used for storage tank emissions under Section I.D.3.a must have a design destruction efficiency of at least 98% for VOC, and one used for a dehydrator under Section II.D.3 at least 98% for hydrocarbons.", "sec-7-B-I-D-3-a", "sec-7-B-II-D-3"),
+      s("Federally, each NSPS subpart carries its own control device requirements, in Sections 60.5412 (OOOO), 60.5412a (OOOOa), 60.5412b (OOOOb) and 60.5412c (OOOOc), and which one applies follows the subpart that covers the controlled affected facility.", "sec-oooo-60.5412", "sec-ooooa-60.5412a", "sec-oooob-60.5412b", "sec-ooooc-60.5412c"),
+      WINDOW_OOOO,
+      WINDOW_OOOOA,
+      WINDOW_OOOOB,
+      WINDOW_OOOOC,
+    ],
     provisions: [
       // Colorado standards
       { id: "sec-7-B-II-B-1", group: "Colorado standards", why: "Reg 7 Part B II.B.1 — good air pollution control practices and prevention of emissions" },
@@ -519,8 +606,16 @@ export const QUESTION_MAPS: QuestionMap[] = [
     triggers: [
       /\b(?:ldar|leak detection|leak inspections?|leak surveys?|fugitive emissions?|fugitives|avo|audio,? visual|ogi|infra-?red camera|ir camera|method 21|component inspections?|compressor stations?)\b/i,
     ],
-    factors:
-      "What applies depends on the facility type (well production facility or natural gas compressor station), its estimated uncontrolled actual VOC emissions tier (which sets the Reg 7 inspection frequency), when it was constructed (October 15, 2014 for the state program; December 6, 2022 for OOOOb versus OOOOc), whether it sits in the 8-hour Ozone Control Area or within 1,000 feet of an occupied area, the monitoring method used (approved instrument monitoring method, OGI, Method 21 or AVO), and federally whether the site is an OOOOa or OOOOb affected facility or an OOOOc designated facility (the original Subpart OOOO has no fugitive emissions components standard; its leak rules reach only onshore natural gas processing plants).",
+    factors: [
+      s("Regulation 7 Part B Section II.E is a State Only leak detection and repair program for well production facilities and natural gas compressor stations that uses an approved instrument monitoring method: an infra-red camera, EPA Method 21 or another method the Division approves.", "sec-7-B-II-E", "sec-7-B-I-B-3", "sec-7-B-II-A-2"),
+      s("For a well production facility the first inspection depends on whether it was constructed on or after October 15, 2014 or before it.", "sec-7-B-II-E-4-a", "sec-7-B-II-E-4-b"),
+      s("The inspection frequency turns on the facility's estimated uncontrolled actual VOC emissions, for example at least semi-annually for 2 to 12 tons per year beginning calendar year 2020, and on whether it is within 1,000 feet of an occupied area.", "sec-7-B-II-E-4-c", "sec-7-B-II-E-4-d"),
+      s("Federally, Subparts OOOOa and OOOOb each cover the collection of fugitive emissions components at a well site and Subpart OOOOc a fugitive emissions components designated facility.", "sec-ooooa-60.5365a-(i)", "sec-oooob-60.5365b-(i)", "sec-ooooc-60.5386c-(h)"),
+      WINDOW_OOOOA,
+      WINDOW_OOOOB,
+      WINDOW_OOOOC,
+      s("The original Subpart OOOO has no fugitive emissions components standard; its equipment leak standards in Section 60.5400 reach equipment at an onshore natural gas processing plant.", "sec-oooo-60.5365-(f)", "sec-oooo-60.5365-(f)-(2)", "sec-oooo-60.5400"),
+    ],
     provisions: [
       // General Permit options
       { id: "sec-gp12-I-A", group: "General Permit options", why: "GP12 — well production facilities (replaced GP09/GP10 for new applicants)" },
@@ -563,8 +658,12 @@ export const QUESTION_MAPS: QuestionMap[] = [
     triggers: [
       /\b(?:civil penalt(?:y|ies)|penalt(?:y|ies)|noavs?|notices? of (?:alleged|probable) violation|enforcement(?: actions?| matters?| proceedings?)?|compliance advisor(?:y|ies)|orders? finding violation|ofvs?|cease[- ]and[- ]desist|consent orders?|administrative orders? on consent|aocs?)\b/i,
     ],
-    factors:
-      "What applies depends on whose rule was broken: an AQCC regulation, the SIP or an APCD permit (Common Provisions III — a civil penalty per day of violation up to the CPI-adjusted maximum, with the Division carrying the burden of proof in the hearing); an ECMC rule, order or permit (Rule 523 enforcement process, then Rule 525's penalty schedule by rule class and degree of harm, adjusted for aggravating and mitigating factors, days of violation and voluntary disclosure); or a PHMSA pipeline-safety regulation (49 CFR Part 190 Subpart B — notice of probable violation, response options, assessment considerations and the § 190.223 maximums).",
+    factors: [
+      s("For a violation of an AQCC regulation, the SIP or an APCD permit, Common Provisions III provides for a civil penalty per day of violation up to a maximum that the Commission adjusts annually by the Consumer Price Index.", "sec-cp-III-A", "sec-cp-III-B-1", "sec-cp-III-B-3"),
+      s("The Division has the burden of proof in proceedings regarding alleged violations of the Act.", "sec-proc-A-VI-D-1"),
+      s("For an ECMC rule, order or permit, the Director may begin an enforcement action with a notice of alleged violation (Rule 523.a), and Rule 525.c calculates the base penalty from the Penalty Schedule by rule class (Class 1, 2 or 3) and the degree of actual or threatened adverse impact, with a maximum of $15,000 per day per violation, after the days of violation (Rule 525.b) and voluntary disclosure (Rule 525.e) are considered.", "sec-ecmc-523-a", "sec-ecmc-525-b", "sec-ecmc-525-c", "sec-ecmc-525-e"),
+      s("For a PHMSA pipeline-safety regulation, 49 CFR Part 190 Subpart B begins with a notice of probable violation (Section 190.207), gives the respondent 30 days to answer it in the ways Section 190.208 lists, and sets the maximum penalties (Section 190.223) and the assessment considerations (Section 190.225).", "sec-p190-190.207", "sec-p190-190.208", "sec-p190-190.223", "sec-p190-190.225"),
+    ],
     provisions: [
       // General Permit options
       { id: "sec-gp12-XI-C-8", group: "General Permit options", why: "GP12 General Terms — violating a permit condition, the Act or an AQCC regulation can bring administrative, civil or criminal enforcement" },
@@ -580,7 +679,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
       { id: "sec-ecmc-523-c", group: "ECMC rules", why: "Rule 523.c — when the Director seeks penalties: the enforcement action" },
       { id: "sec-ecmc-525-a", group: "ECMC rules", why: "Rule 525.a — the Commission's authority to impose penalties and other remedies" },
       { id: "sec-ecmc-525-b", group: "ECMC rules", why: "Rule 525.b — days of violation and continuing violations" },
-      { id: "sec-ecmc-525-c", group: "ECMC rules", why: "Rule 525.c — the Penalty Schedule: rule class × degree of harm, aggravating and mitigating factors" },
+      { id: "sec-ecmc-525-c", group: "ECMC rules", why: "Rule 525.c — the Penalty Schedule: rule class × degree of harm" },
       { id: "sec-ecmc-525-e", group: "ECMC rules", why: "Rule 525.e — voluntary disclosure" },
       { id: "sec-ecmc-525-g", group: "ECMC rules", why: "Rule 525.g — paying the penalty (30 days, certified funds)" },
       // Federal PHMSA
@@ -601,8 +700,13 @@ export const QUESTION_MAPS: QuestionMap[] = [
     // "which general permit…" questions. The gp\d\d catch-all is reached only
     // when no earlier map claimed the number.
     triggers: [/\b(?:general permits?|which (?:gp|general permit)|gp\s?0?1|gp\s?0?3|gp\s?11|gp\s?\d\d|register(?:ing|ed)? under)\b/i],
-    factors:
-      "Which general permit fits depends on the equipment (condensate or produced-water tank batteries, other storage tanks, natural gas or diesel engines, liquid loadout, routine gas venting, a whole well production facility, or land-development dust), whether the facility can meet every condition of the permit including its emission caps and the Section I.B exclusion for Title V and major sources, where it sits (attainment areas versus the 8-hour Ozone Control Area), and whether the permit is still open to new registrations — GP09 and GP10 closed on July 15, 2026 and GP12 replaces them.",
+    factors: [
+      s("Which general permit fits starts with the equipment: GP01 covers condensate storage tank batteries, GP05 produced water storage tank batteries, GP08 oil and gas industry storage tanks, GP02 natural gas-fired and GP06 diesel fuel-fired reciprocating internal combustion engines, GP07 hydrocarbon liquid loadout, GP11 routine or predictable gas venting, GP12 well production facilities, and GP03 land development.", "sec-gp01-I-A", "sec-gp05-I-A", "sec-gp08-I-B", "sec-gp02-I-A", "sec-gp06-I-A", "sec-gp07-I-A", "sec-gp11-I-A", "sec-gp12-I-A", "sec-gp03-I-A"),
+      s("A facility may register only if it can comply with every condition of the permit.", "sec-gp12-I-B", "sec-gp08-I-B"),
+      s("The permits are open only to equipment at a true minor or synthetic minor source: GP12 applies only to a source that is a true minor or synthetic minor source for the Operating Permit, NSR, PSD and MACT programs.", "sec-gp12-I-E", "sec-gp02-I-A-1", "sec-gp06-I-A-1"),
+      s("GP09 applies only to well production facilities located in an attainment area for all criteria pollutants or in a marginal or moderate non-attainment area.", "sec-gp09-I-D"),
+      s("GP09 and GP10 closed to new registrations on July 15, 2026, and GP12 replaced them for new applicants.", "sec-gp09-top-REG-gp09", "sec-gp10-top-REG-gp10", "sec-gp12-I-A"),
+    ],
     provisions: [
       // Colorado permitting and APEN
       { id: "sec-3-B-II-A", group: "Colorado permitting and APEN", why: "Regulation 3 Part B II.A — construction permits: general considerations (a general permit is one route to one)" },
@@ -617,7 +721,7 @@ export const QUESTION_MAPS: QuestionMap[] = [
       { id: "sec-gp11-I-A", group: "General Permit options", why: "GP11 — routine or predictable gas venting emissions" },
       { id: "sec-gp12-I-A", group: "General Permit options", why: "GP12 — well production facilities (natural gas and diesel engines, tanks, loading, separator venting)" },
       { id: "sec-gp12-I-B", group: "General Permit options", why: "GP12 — who may register: a well production facility that can comply with every condition" },
-      { id: "sec-gp03-I-A", group: "General Permit options", why: "GP03 — land development projects (fugitive dust), not an oil and gas permit" },
+      { id: "sec-gp03-I-A", group: "General Permit options", why: "GP03 — land development projects (land clearing such as excavating or grading; fugitive dust control)" },
       { id: "sec-gp09-I-A", group: "General Permit options", why: "GP09 — well production facilities, attainment areas; closed to new registrations July 15, 2026" },
       { id: "sec-gp10-I-A", group: "General Permit options", why: "GP10 — well production facilities, nonattainment areas; closed to new registrations July 15, 2026" },
     ],
@@ -628,8 +732,13 @@ export const QUESTION_MAPS: QuestionMap[] = [
     // Last on purpose: an APEN question that names equipment with a map of
     // its own (a tank battery, an engine) routes to that map first.
     triggers: [/\b(?:apens?|air pollutant emission notices?|emission notices?)\b/i],
-    factors:
-      "Whether an APEN is required turns on each emission point's uncontrolled actual emissions against the reporting thresholds (which differ between attainment and nonattainment areas), whether the unit is on the Regulation 3 Part A II.D.1 exemption list, whether the source is new, modified or existing, and — for a revised APEN — whether emissions changed by more than the II.C thresholds. A construction-permit exemption is not an APEN exemption.",
+    factors: [
+      s("An Air Pollutant Emission Notice is required for the emissions of a stationary source unless the source is exempt under Regulation 3 Part A Section II.D.", "sec-3-A-II-A-1"),
+      s("For criteria pollutants it is required for each individual emission point with uncontrolled actual emissions of 1 ton per year or more of a pollutant for which the area is nonattainment, or 2 tons per year or more in an attainment or attainment/maintenance area, and for lead above 100 pounds per year wherever the source is located.", "sec-3-A-II-B-3", "sec-3-A-II-B-3-a"),
+      s("An APEN is valid for no more than five years.", "sec-3-A-II-B-2"),
+      s("A revised APEN is required, among other triggers, annually when a significant change in annual actual emissions occurs, when new control equipment is installed and before the APEN expires.", "sec-3-A-II-C-1", "sec-3-A-II-C-2"),
+      s("Section II.D.1 lists the emission units exempt from the APEN requirement, and a construction permit exemption under Part B Section II.D is a separate list that does not affect the applicability of other regulations.", "sec-3-A-II-D-1", "sec-3-B-II-D"),
+    ],
     provisions: [
       // Colorado permitting and APEN
       { id: "sec-3-A-II-A", group: "Colorado permitting and APEN", why: "APENs for new, modified and existing sources — the basic requirement (II.A.1)" },
@@ -748,21 +857,39 @@ export type GroupedHits<T extends GroupableHit> = {
  * Regulation 3 hit on the enforcement map used to open "Colorado permitting
  * and APEN" above the groups that answer the question.
  *
+ * `within` (9 Oct 2026) is the one document the question named (ask-scope.ts):
+ * a map may group the results but never widens them, so canonical rows and
+ * hits from any other document are dropped, and the per-group caps are lifted
+ * (the visitor asked about one document; "Method 21 under Subpart OOOO" has
+ * six sibling paragraphs of 60.5416(b), and a cap of three would hide half).
+ * Dropped rows are not "omitted" in the stated-fact sense: nothing is said
+ * about them, the chip above the results says what the search is limited to.
+ *
  * `stated` (7 Oct 2026) drops the canonical rows tagged with another value
  * of a stated facet and the retrieval hits from a reg key another value
  * owns; their ids come back in `omittedIds` so the page can say what was
  * left out. A premise map's own permit (`permitRegKey`) collects its
  * retrieval hits under "Permit applicability".
  */
-export function groupHits<T extends GroupableHit>(map: QuestionMap, hits: T[], canonicalIds?: Set<string>, stated: StatedFacets = {}): GroupedHits<T> {
-  const fetched = canonicalIds ? map.provisions.filter((p) => canonicalIds.has(p.id)) : map.provisions;
+export function groupHits<T extends GroupableHit>(
+  map: QuestionMap,
+  hits: T[],
+  canonicalIds?: Set<string>,
+  stated: StatedFacets = {},
+  within: string | null = null
+): GroupedHits<T> {
+  const inDocument = (id: string, regKey?: string | null) => !within || (regKey ?? regKeyOf(id) ?? "").toLowerCase() === within;
+  const maxPerGroup = within ? Infinity : MAX_HITS_PER_GROUP;
+  const maxOther = within ? Infinity : MAX_OTHER_HITS;
+  const available = canonicalIds ? map.provisions.filter((p) => canonicalIds.has(p.id)) : map.provisions;
+  const fetched = available.filter((p) => inDocument(p.id));
   const canonical = fetched.filter((p) => rowMatchesFacets(p, stated));
   const omittedIds = fetched.filter((p) => !rowMatchesFacets(p, stated)).map((p) => p.id);
   const canonicalSet = new Set(map.provisions.map((p) => p.id));
   const byGroup = new Map<MapGroup, T[]>();
   const other: T[] = [];
   for (const hit of hits) {
-    if (canonicalSet.has(hit.id)) continue;
+    if (canonicalSet.has(hit.id) || !inDocument(hit.id, hit.reg_key)) continue;
     if (!hitMatchesFacets(hit, stated)) {
       omittedIds.push(hit.id);
       continue;
@@ -770,11 +897,11 @@ export function groupHits<T extends GroupableHit>(map: QuestionMap, hits: T[], c
     const g: MapGroup | "Other" =
       map.permitRegKey && (hit.reg_key ?? "").toLowerCase() === map.permitRegKey ? "Permit applicability" : groupForHit(hit);
     if (g === "Other") {
-      if (other.length < MAX_OTHER_HITS) other.push(hit);
+      if (other.length < maxOther) other.push(hit);
       continue;
     }
     const list = byGroup.get(g) ?? [];
-    if (list.length < MAX_HITS_PER_GROUP) list.push(hit);
+    if (list.length < maxPerGroup) list.push(hit);
     byGroup.set(g, list);
   }
   const withCanonical: GroupedHits<T>["groups"] = [];
@@ -794,7 +921,10 @@ export type QuestionMapSummary = {
   name: string;
   /** The title the page shows: the map's name, or its title for a stated facet value. */
   title: string;
+  /** The introduction, joined (kept for API readers). */
   factors: string;
+  /** The introduction, sentence by sentence with the provisions that support each. */
+  intro: IntroSentence[];
   groups: { group: MapGroup | "Other"; provisions: string[] }[];
   /** The premise note shown above the results, when the question matched one. */
   note: { key: string; title: string; sentences: { text: string; cites: string[] }[] } | null;
@@ -817,7 +947,8 @@ export function summariseGroups<T extends GroupableHit>(map: QuestionMap, groupe
     key: map.key,
     name: map.name,
     title: mapTitle(map, stated),
-    factors: map.factors,
+    factors: introText(map),
+    intro: map.factors,
     groups,
     note: note ? { key: note.key, title: note.title, sentences: note.sentences } : null,
     stated: (Object.keys(stated) as FacetName[]).map((n) => `${n}=${stated[n]!.value}`),
@@ -833,18 +964,20 @@ export function summariseGroups<T extends GroupableHit>(map: QuestionMap, groupe
  * (what the visitor sees), the API route returns the summary, the page
  * renders the pieces. `canonicalIds` is what the caller could fetch;
  * `allFacets` is the "Show them" link (?facets=all), which turns the
- * stated-fact filter off.
+ * stated-fact filter off. `within` is the document the question named
+ * (askScope() in ask-scope.ts; null for none, or for a premise question).
  */
 export function layoutAsk<T extends GroupableHit>(
   rawQuestion: string,
   hits: T[],
   canonicalIds?: Set<string>,
-  allFacets = false
+  allFacets = false,
+  within: string | null = null
 ): { map: QuestionMap | null; note: PremiseNote | null; stated: StatedFacets; grouped: GroupedHits<T> | null; summary: QuestionMapSummary | null; shownIds: string[] } {
   const map = matchQuestionMap(rawQuestion);
   if (!map) return { map: null, note: null, stated: {}, grouped: null, summary: null, shownIds: hits.map((h) => h.id) };
   const stated = allFacets ? {} : detectFacets(rawQuestion, map);
-  const grouped = groupHits(map, hits, canonicalIds, stated);
+  const grouped = groupHits(map, hits, canonicalIds, stated, within);
   const summary = summariseGroups(map, grouped, stated);
   return { map, note: premiseNoteOf(map), stated, grouped, summary, shownIds: summary.groups.flatMap((g) => g.provisions) };
 }

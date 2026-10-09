@@ -80,6 +80,13 @@ export type EvalQuestion = {
   premise?: string | null;
   /** The title the page shows for the map ("Natural gas-fired engines" once the fuel is stated). */
   title?: string;
+  /**
+   * The document the question names and the search is limited to (askScope()
+   * in src/lib/ask-scope.ts; 9 Oct 2026). A string: the search must be
+   * limited to that reg key. null: it must not be. Absent: not checked. The
+   * eval runners pass the same limit to the search RPC as the Ask page does.
+   */
+  within?: string | null;
   /** Conditions on the ids the page shows, in page order (layoutAsk().shownIds). */
   shown?: ShownCheck[];
 };
@@ -94,14 +101,18 @@ export type ShownCheck =
   /** no shown id starts with one of the prefixes */
   | { none: string[] }
   /** each id is shown and belongs to a permit the site badges "Closed to new registrations" */
-  | { closedBadge: string[] };
+  | { closedBadge: string[] }
+  /** every id is shown (exactly, not as a prefix), within the first topN shown rows */
+  | { all: string[]; topN: number }
+  /** every shown id belongs to this document: nothing from another document may appear (a limit from a named document) */
+  | { onlyReg: string };
 
 /**
  * What the page shows for a question, for the `note`, `title` and `shown`
  * checks (layoutAsk()). `omittedIds` are the hits a stated fact left out:
  * the retrieval checks skip them, as the page does.
  */
-export type ShownContext = { ids: string[]; noteKey: string | null; title: string | null; omittedIds?: string[] };
+export type ShownContext = { ids: string[]; noteKey: string | null; title: string | null; omittedIds?: string[]; within?: string | null };
 
 /**
  * Questions that fail today and are allowed to: scripts/ask-eval.ts exits
@@ -192,12 +203,15 @@ export function evaluateQuestion(e: EvalQuestion, hits: EvalHit[], mapKey: strin
   // The shown-order checks (review 4, 7 Oct 2026). A question that sets any
   // of them needs the page's layout; a caller that passes none fails them
   // rather than skipping them.
-  if (e.premise !== undefined || e.title !== undefined || (e.shown && e.shown.length > 0)) {
+  if (e.premise !== undefined || e.title !== undefined || e.within !== undefined || (e.shown && e.shown.length > 0)) {
     if (!shown) {
       failures.push("no shown order given (layoutAsk) for the note / title / shown checks");
     } else {
       if (e.premise !== undefined && shown.noteKey !== e.premise) {
         failures.push(e.premise === null ? `premise note "${shown.noteKey}" shown; expected none` : `premise note ${shown.noteKey === null ? "missing" : `"${shown.noteKey}"`}; expected "${e.premise}"`);
+      }
+      if (e.within !== undefined && (shown.within ?? null) !== e.within) {
+        failures.push(e.within === null ? `search limited to "${shown.within}"; expected no limit` : `search ${shown.within ? `limited to "${shown.within}"` : "not limited to a document"}; expected "${e.within}"`);
       }
       if (e.title !== undefined && shown.title !== e.title) failures.push(`map titled "${shown.title}"; expected "${e.title}"`);
       for (const c of e.shown ?? []) {
@@ -207,6 +221,13 @@ export function evaluateQuestion(e: EvalQuestion, hits: EvalHit[], mapKey: strin
         } else if ("none" in c) {
           const bad = shown.ids.filter((id) => c.none.some((p) => id.startsWith(p)));
           if (bad.length > 0) failures.push(`shown but should not be: ${bad.join(", ")}`);
+        } else if ("all" in c) {
+          const window = shown.ids.slice(0, c.topN);
+          const missing = c.all.filter((id) => !window.includes(id));
+          if (missing.length > 0) failures.push(`not shown in the first ${c.topN}: ${missing.join(", ")}`);
+        } else if ("onlyReg" in c) {
+          const bad = shown.ids.filter((id) => !id.startsWith(`sec-${c.onlyReg}-`));
+          if (bad.length > 0) failures.push(`rows from other documents shown: ${bad.join(", ")}`);
         } else if ("closedBadge" in c) {
           for (const id of c.closedBadge) {
             if (!shown.ids.includes(id)) failures.push(`${id} not shown`);
@@ -356,7 +377,8 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
   {
     q: "Am I subject to the federal OOOOb rules if I modified a well after December 2022?",
     expect: ["sec-oooob-60.5365b", "sec-oooob-60.5370b"],
-    note: "OOOOb applicability and compliance dates",
+    within: "oooob",
+    note: "OOOOb applicability and compliance dates; the question names OOOOb, so (since 9 Oct 2026) the search is limited to it, which only narrows the candidates the expected rows come from",
   },
   {
     q: "ECD testing requirements",
@@ -517,5 +539,22 @@ export const EVAL_QUESTIONS: EvalQuestion[] = [
     premise: "gp02-diesel",
     shown: [{ any: ["sec-gp02-I-A"], topN: 1 }, { any: ["sec-gp06-I-A"], topN: 3 }, { any: ["sec-gp12-I-A-2"] }],
     note: "the GP02 diesel note (tried before the 'Is GP02 required?' note): GP02 I.A first, GP06 I.A in the first three, GP12 I.A.2 shown; retrieval finds a GP02, GP06 or GP12 applicability row in the top 10",
+  },
+  // ---- The outside reviewer's 8-9 Oct 2026 defect: a question map overrode a named document ----
+  {
+    q: "What test methods apply to a Method 21 inspection under Subpart OOOO?",
+    expect: ["sec-oooo-60.5416-(b)"],
+    topN: 10,
+    map: "ldar",
+    within: "oooo",
+    shown: [
+      { any: ["sec-oooo-60.5416-(b)"], topN: 3 },
+      {
+        all: ["sec-oooo-60.5416-(b)-(1)", "sec-oooo-60.5416-(b)-(2)", "sec-oooo-60.5416-(b)-(3)", "sec-oooo-60.5416-(b)-(4)", "sec-oooo-60.5416-(b)-(5)", "sec-oooo-60.5416-(b)-(6)"],
+        topN: 10,
+      },
+      { onlyReg: "oooo" },
+    ],
+    note: "the question names Subpart OOOO, so the search is limited to it (document filter on Any) although the LDAR map matches on Method 21: 60.5416(b) leads the shown rows, (b)(1) to (b)(6) are all shown, and no row of another document is (the 8-9 Oct 2026 defect: the map's Regulation 7 and general permit rows displaced them)",
   },
 ];

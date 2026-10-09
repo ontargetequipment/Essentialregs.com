@@ -29,9 +29,14 @@ export function mapIdRows(): [string, string][] {
     seen.add(k);
     out.push([key, id]);
   };
-  for (const m of QUESTION_MAPS) for (const p of m.provisions) add(m.key, p.id);
+  // Intro sentences (9 Oct 2026) are cited like a premise note's: under "<map key>:intro".
+  for (const m of QUESTION_MAPS) {
+    for (const p of m.provisions) add(m.key, p.id);
+    for (const x of m.factors) for (const id of x.cites) add(`${m.key}:intro`, id);
+  }
   for (const n of PREMISE_NOTES) {
     for (const p of n.map.provisions) add(n.map.key, p.id);
+    for (const x of n.map.factors) for (const id of x.cites) add(`${n.map.key}:intro`, id);
     for (const s of n.sentences) for (const id of s.cites) add(`${n.map.key}:note`, id);
   }
   return out;

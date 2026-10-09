@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import {
   buildSearchIndexFromDom,
   fillContainsBoxes,
+  fillApplicabilityContexts,
   fillSummaryBadges,
   fillSummaryLinks,
   readReaderModel,
@@ -130,6 +131,7 @@ export function RegulationReader() {
     const model = readReaderModel(doc);
     fillSummaryBadges(model);
     fillSummaryLinks(model);
+    fillApplicabilityContexts(model);
     fillContainsBoxes(model);
     let searchIndex: SearchRow[] | null = null;
     const getSearchIndex = () => (searchIndex ??= buildSearchIndexFromDom(model));

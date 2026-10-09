@@ -108,7 +108,7 @@ type PermitSpec = {
   applicability: { id: string; why: string }[];
   /** Rows listed under "Alternatives if the permit does not fit". */
   alternativeRows: Alternative[];
-  /** The one-sentence factors line of the premise map. */
+  /** The factors line of the premise map: two clauses separated by "; " (factorsFor cites each from the note's own sentences). */
   factors: string;
   /** Sentence the closed permits open with (GP09, GP10). */
   closed?: PremiseSentence;
@@ -531,6 +531,31 @@ const PERMITS: PermitSpec[] = [
   },
 ];
 
+/**
+ * The permit map's introduction as cited sentences (9 Oct 2026): the factors
+ * line split at its "; ". The Regulation 3 clause cites what the note's
+ * Regulation 3 sentence cites; the permit clause cites the note's own
+ * sentences about the permit (every id already verified for the note). For a
+ * closed permit the first clause is the closure and cites the closure
+ * sentence's ids, the second also cites GP12 I.A.
+ */
+function factorsFor(spec: PermitSpec): PremiseSentence[] {
+  const [first, ...rest] = spec.factors.split("; ");
+  const cap = (t: string) => (t[0].toUpperCase() + t.slice(1)).replace(/\.?$/, ".");
+  const second = cap(rest.join("; "));
+  const aboutCites = [...new Set(spec.about.flatMap((a) => a.cites))];
+  if (spec.closed) {
+    return [
+      { text: cap(first), cites: spec.closed.cites },
+      { text: second, cites: [...REG3_SENTENCE.cites, gp("12", "I-A")] },
+    ];
+  }
+  return [
+    { text: cap(first), cites: REG3_SENTENCE.cites },
+    { text: second, cites: aboutCites },
+  ];
+}
+
 function buildNote(spec: PermitSpec): PremiseNote {
   const permit = `GP${spec.num}`;
   const sentences: PremiseSentence[] = [
@@ -555,7 +580,7 @@ function buildNote(spec: PermitSpec): PremiseNote {
       key: `premise-gp${spec.num}`,
       name: `${permit}: when it applies, and what decides whether a permit is required`,
       triggers: [],
-      factors: spec.factors,
+      factors: factorsFor(spec),
       provisions,
       permitRegKey: `gp${spec.num}`,
     },
@@ -612,7 +637,9 @@ const TOPICS: TopicSpec[] = [
     map: {
       key: "premise-apen-every-point",
       name: "APENs: which emission points need one, and which are exempt",
-      factors: "Whether an emission point needs an APEN is decided under Regulation 3 Part A: Section II.A requires one and Section II.D lists the exemptions by emission rate and by equipment type.",
+      factors: [
+        { text: "Whether an emission point needs an APEN is decided under Regulation 3 Part A: Section II.A requires one and Section II.D lists the exemptions by emission rate and by equipment type.", cites: [REG3_APEN_REQUIRED, REG3_APEN_EXEMPTIONS, "sec-3-A-II-D-1-a", "sec-3-A-II-D-1-fff"] },
+      ],
       provisions: [
         ...REG3_ROWS.filter((r) => r.id !== REG3_GENERAL_PERMIT_DEFINITION),
         { id: "sec-3-A-II-D-1-a", group: "Colorado permitting and APEN", why: "Regulation 3 Part A II.D.1.a — the emission-rate exemption: under one ton per year (nonattainment) or two tons per year (attainment) of any criteria pollutant, uncontrolled actual" },
@@ -658,7 +685,10 @@ const TOPICS: TopicSpec[] = [
     map: {
       key: "premise-title-v-well-site",
       name: "Title V operating permits: which sources Regulation 3 Part C covers",
-      factors: "Title V applies to the source categories Regulation 3 Part C, Section II.A.1 lists, chiefly major sources; the general permits are open only to true minor or synthetic minor sources for the operating permit program.",
+      factors: [
+        { text: "Title V applies to the source categories Regulation 3 Part C, Section II.A.1 lists, chiefly major sources.", cites: ["sec-3-C-II-A-1", "sec-3-C-II-A-1-a", "sec-3-C-II-A-1-b", "sec-3-C-II-A-1-c", "sec-3-C-II-A-1-d"] },
+        { text: "The general permits are open only to true minor or synthetic minor sources for the operating permit program.", cites: ["sec-gp12-I-E", "sec-gp02-I-A-1", "sec-gp06-I-A-1"] },
+      ],
       provisions: [
         { id: "sec-3-C-II-A-1", group: "Colorado permitting and APEN", why: "Regulation 3 Part C II.A.1 — the sources that may not operate without an operating permit" },
         { id: "sec-3-C-II-A-1-a", group: "Colorado permitting and APEN", why: "Regulation 3 Part C II.A.1.a — any affected source" },
@@ -705,7 +735,9 @@ const TOPICS: TopicSpec[] = [
     map: {
       key: "premise-exempt-still-regulated",
       name: "Permit and APEN exemptions: what they do and do not change",
-      factors: "An exemption from a construction permit or an APEN under Regulation 3 removes that filing only; every other applicable requirement, state or federal, applies by its own terms.",
+      factors: [
+        { text: "An exemption from a construction permit or an APEN under Regulation 3 removes that filing only; every other applicable requirement, state or federal, applies by its own terms.", cites: [REG3_PERMIT_EXEMPTIONS, REG3_APEN_EXEMPTIONS] },
+      ],
       provisions: [
         ...REG3_ROWS.filter((r) => r.id !== REG3_GENERAL_PERMIT_DEFINITION),
         { id: "sec-3-B-II-D-1-a", group: "Colorado permitting and APEN", why: "Regulation 3 Part B II.D.1.a — the construction permit exemptions start from the APEN exemptions" },
@@ -752,7 +784,11 @@ const TOPICS: TopicSpec[] = [
     map: {
       key: "premise-oooob-existing-well",
       name: "NSPS OOOOb and existing facilities: construction, modification and reconstruction dates",
-      factors: "OOOOb applicability turns on when construction, modification or reconstruction commenced (after December 6, 2022); a facility from September 18, 2015 to December 6, 2022 is OOOOa's and one from August 23, 2011 to September 18, 2015 the original OOOO's; existing facilities fall under OOOOc's emission guidelines unless a later modification or reconstruction brings them into OOOOb.",
+      factors: [
+        { text: "OOOOb applicability turns on when construction, modification or reconstruction commenced, after December 6, 2022.", cites: ["sec-oooob-60.5365b"] },
+        { text: "A facility from September 18, 2015 to December 6, 2022 is OOOOa's and one from August 23, 2011 to September 18, 2015 the original OOOO's.", cites: ["sec-ooooa-60.5365a", "sec-oooo-60.5365"] },
+        { text: "Existing facilities fall under OOOOc's emission guidelines unless a later modification or reconstruction brings them into OOOOb.", cites: ["sec-ooooc-60.5360c", "sec-oooob-60.5365b-(a)-(1)", "sec-oooob-60.5365b-(e)-(3)"] },
+      ],
       provisions: [
         { id: "sec-oooob-60.5365b", group: "Federal NSPS", why: "§ 60.5365b — am I subject to this subpart: affected facilities with construction, modification or reconstruction after December 6, 2022" },
         { id: "sec-oooob-60.5365b-(a)-(1)", group: "Federal NSPS", why: "§ 60.5365b(a)(1) — when a modification of an existing well occurs, in addition to § 60.14" },
@@ -791,7 +827,10 @@ const TOPICS: TopicSpec[] = [
     map: {
       key: "premise-gp02-diesel",
       name: "Diesel engines and GP02: which general permit covers which fuel",
-      factors: "GP02 is written for natural gas fired engines and GP06 for diesel fuel-fired engines; GP12 covers both at a well production facility; whether a permit or an APEN is required at all is decided under Regulation 3.",
+      factors: [
+        { text: "GP02 is written for natural gas fired engines and GP06 for diesel fuel-fired engines; GP12 covers both at a well production facility.", cites: [gp("02", "I-A"), gp("06", "I-A"), gp("12", "I-A-1"), gp("12", "I-A-2")] },
+        { text: "Whether a permit or an APEN is required at all is decided under Regulation 3.", cites: REG3_SENTENCE.cites },
+      ],
       provisions: [
         { id: gp("02", "I-A"), group: PREMISE_GROUP_APPLICABILITY, why: "GP02 I.A — natural gas fired reciprocating internal combustion engines only" },
         { id: gp("06", "I-A"), group: PREMISE_GROUP_APPLICABILITY, why: "GP06 I.A — diesel fuel-fired reciprocating internal combustion engines, including portable units" },

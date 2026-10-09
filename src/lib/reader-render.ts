@@ -8,6 +8,7 @@ import {
   summaryPanelHtml,
   withItemIdBadge,
 } from "@/lib/regulation-pure";
+import { applicabilityContextKey } from "@/lib/applicability-context";
 import { deriveParents, type TreeRow } from "@/lib/reader-tree";
 import type { Provision } from "@/lib/types";
 
@@ -136,7 +137,8 @@ export function renderDocHtml(all: Provision[], tree?: Tree): string {
       root.source_url,
       kids && kids.length
         ? kids.map((c) => ({ id: c.id, citation: c.citation, snippet: snippetAfterCitation(c.full_text, c.citation, 60) }))
-        : undefined
+        : undefined,
+      applicabilityContextKey(p.id)
     );
 
     // Invisible attributes the browser rebuilds the furniture from.

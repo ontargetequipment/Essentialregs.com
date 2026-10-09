@@ -863,7 +863,8 @@ export function formatReviewedDate(iso: string | null | undefined): string {
 export function summaryPanelHtml(
   p: Pick<Provision, "ai_summary" | "summary_status" | "reviewed_at" | "source_url">,
   fallbackSourceUrl?: string | null,
-  children?: SummaryChild[]
+  children?: SummaryChild[],
+  contextKey?: string | null
 ): string {
   // A rejected summary is withheld from every reader entirely — it failed
   // human review, so showing it (even labeled "not yet reviewed") would be
@@ -915,10 +916,15 @@ export function summaryPanelHtml(
   // its wrapper (reader-render.ts) so the browser still uses that one.
   const sourceUrl = p.source_url ?? fallbackSourceUrl ?? null;
   const sourceLinkHtml = sourceUrl ? `<div class="summary-status"></div>` : "";
+  // Applicability context (9 Oct 2026, src/lib/applicability-context.ts): an
+  // empty marker under the badge for a row inside a subpart whose parent
+  // sets a date window; the browser writes the line (fillApplicabilityContexts)
+  // so the same 250 bytes are not shipped under thousands of panels.
+  const contextHtml = contextKey ? `<p class="summary-context" data-ctx="${escapeHtml(contextKey)}"></p>` : "";
   return (
     `<details class="summary-panel">` +
     `<summary>Plain-English summary</summary>` +
-    `<div class="summary-body">${badgeHtml}${body}</div>` +
+    `<div class="summary-body">${badgeHtml}${contextHtml}${body}</div>` +
     sourceLinkHtml +
     `</details>`
   );
