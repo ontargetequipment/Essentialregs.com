@@ -94,6 +94,12 @@ byte for byte, and the importer logged one `links_updated` change row per row
 embedding for p192/p193/p195 is newer than 7 Oct. p190, p191, p194, p196 and
 p199 have no affected row, so they were not re-imported.
 
-Rendered on production after the deploy: 192.611(a)(4)(ii)(A) reads
-"hydrogen sulfide (H<sub>2</sub>S)".
+Render check: the stored production `full_text` of 192.611(a)(4)(ii)(A)
+reads "hydrogen sulfide (H<sub>2</sub>S)", and the reader's own
+`sanitizeHtml` (`src/lib/regulation-pure.ts`, what `fetchRegulation` applies
+before rendering) keeps the `<sub>` unchanged. The reader reads `full_text`
+from the database on each request, so no deploy is needed for the change to
+show. The page itself is behind the subscriber gate and www.essentialregs.com
+is not reachable from the session that did this work, so nobody has looked
+at the rendered page in a browser.
 
