@@ -238,13 +238,14 @@ test.describe("anonymous", () => {
     await expect(page.getByRole("heading", { name: "Subscribe to open the full regulations" })).toBeVisible();
   });
 
-  test("the Regulations nav lists the two jurisdictions; General Permits hang off Colorado", async ({ page }) => {
+  test("the Regulations nav lists the two jurisdictions and Test Methods; General Permits hang off Colorado", async ({ page }) => {
     // The APCD General Permits are a Colorado category, not a jurisdiction,
     // so the header dropdown, the mobile drawer and the footer's Regulations
-    // column each carry exactly State regulations and Federal. The permits
-    // index keeps its URL (sitemap, external links) and is reached from the
-    // Colorado index's group heading.
-    const TWO = ["State regulations", "Federal"];
+    // column each carry exactly State regulations, Federal and (since 9 Oct
+    // 2026) the free Test Methods reference. The permits index keeps its URL
+    // (sitemap, external links) and is reached from the Colorado index's
+    // group heading.
+    const TWO = ["State regulations", "Federal", "Test Methods"];
     await page.goto("/states/colorado");
     const footer = page.getByRole("navigation", { name: "Footer" }).locator("ul").first();
     await expect(footer.getByRole("link")).toHaveText(TWO);
@@ -271,6 +272,28 @@ test.describe("anonymous", () => {
     await expect(page.getByRole("link", { name: "← Colorado regulations" })).toHaveAttribute("href", "/states/colorado");
     const sitemap = await page.request.get("/sitemap.xml", { headers: protectionBypassHeaders() });
     expect(await sitemap.text()).toContain("/general-permits</loc>");
+  });
+
+  test("/test-methods and a method page render for a logged-out visitor, no subscribe prompt", async ({ page }) => {
+    const index = await page.goto("/test-methods");
+    expect(index?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "Test Methods" })).toBeVisible();
+    await expect(page.getByRole("main").locator('a[href="/test-methods/method-21"]')).toHaveCount(1);
+
+    const res = await page.goto("/test-methods/method-21");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "Method 21" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Read the method on the eCFR →" })).toHaveAttribute(
+      "href",
+      /^https:\/\/www\.ecfr\.gov\/current\/title-40\//,
+    );
+    for (const heading of ["What it measures", "How it works", "Equipment", "When a rule cites it", "Cited by"]) {
+      await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
+    }
+    await expect(page.getByRole("heading", { name: "Subscribe to open the full regulations" })).toHaveCount(0);
+
+    const missing = await page.goto("/test-methods/method-7400");
+    expect(missing?.status()).toBe(404);
   });
 
   test("/regulations is a permanent redirect to /states/colorado", async ({ page, baseURL }) => {
