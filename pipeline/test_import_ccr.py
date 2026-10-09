@@ -12581,29 +12581,14 @@ class FederalSubpartLinkTests(XregBase):
 
 
 class Reg7RootTitleTests(unittest.TestCase):
-    """Fifth outside review (9 Oct 2026): the Secretary of State cover reads
-    "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS"; the stored
-    root carries the title the AQCC adopted, which ECMC's rules quote."""
+    """Fifth outside review (9 Oct 2026) read the Regulation 7 title as a
+    stutter. It is the title the current Secretary of State cover prints,
+    and the stored root must match that cover word for word."""
 
-    FULL = (
-        "CONTROL OF OZONE VIA OZONE PRECURSORS AND CONTROL OF HYDROCARBONS VIA "
-        "OIL AND GAS EMISSIONS (EMISSIONS OF VOLATILE ORGANIC COMPOUNDS AND "
-        "NITROGEN OXIDES) 5 CCR 1001-9"
-    )
-
-    def test_reg7_root_title_is_the_adopted_title_with_the_ccr_series(self):
-        self.assertEqual(ic.REG_META["7"]["root_title"], self.FULL)
-        self.assertNotIn("EMISSIONS OPERATIONS", ic.REG_META["7"]["root_title"])
-        self.assertEqual(ic.REG_META["7"]["root_citation"], "Regulation 7")
-
-    def test_the_adopted_title_is_quoted_verbatim_in_the_ecmc_source(self):
-        # Collapse the PDF-extraction line breaks, then compare case-insensitively.
-        ecmc = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "ECMC.txt")
-        with open(ecmc, encoding="utf-8") as fh:
-            text = re.sub(r"\s+", " ", fh.read()).lower()
-        quoted = (
-            "control of ozone via ozone precursors and control of hydrocarbons via oil and gas "
-            "emissions (emissions of volatile organic compounds and nitrogen oxides)"
-        )
-        self.assertIn(quoted, text)
-        self.assertTrue(self.FULL.lower().startswith(quoted))
+    def test_reg7_root_title_is_the_printed_cover_title(self):
+        src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "REG_7.txt")
+        with open(src, encoding="utf-8") as fh:
+            head = re.sub(r"\s+", " ", fh.read()[:4000])
+        self.assertIn("CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9", head)
+        self.assertEqual(ic.REG_META["7"]["root_title"],
+                         "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9")

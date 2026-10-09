@@ -52,10 +52,10 @@ test("Reg 7 card: the old placeholder title collapses to the label; the printed 
   const after = regulationCardInfo({
     id: "sec-7-top-REG-7",
     citation: "Regulation 7",
-    title: "CONTROL OF OZONE VIA OZONE PRECURSORS AND CONTROL OF HYDROCARBONS VIA OIL AND GAS EMISSIONS (EMISSIONS OF VOLATILE ORGANIC COMPOUNDS AND NITROGEN OXIDES) 5 CCR 1001-9",
+    title: "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9",
     issuing_body: "CDPHE-APCD",
   });
-  assert.equal(after.title, "Regulation Number 7 — CONTROL OF OZONE VIA OZONE PRECURSORS AND CONTROL OF HYDROCARBONS VIA OIL AND GAS EMISSIONS (EMISSIONS OF VOLATILE ORGANIC COMPOUNDS AND NITROGEN OXIDES)");
+  assert.equal(after.title, "Regulation Number 7 — CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS");
   assert.equal(after.subtitle, "5 CCR 1001-9");
 });
 
