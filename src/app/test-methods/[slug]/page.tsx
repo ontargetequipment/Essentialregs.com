@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import { TestMethodBody } from "@/components/TestMethodBody";
 import { TEST_METHODS, TEST_METHOD_BY_SLUG, type TestMethod } from "@/data/test-methods";
 import { fetchCitedBy, type CitedByGroup } from "@/lib/test-method-citations";
 
@@ -9,7 +9,9 @@ import { fetchCitedBy, type CitedByGroup } from "@/lib/test-method-citations";
  * One Test Methods reference page. Free and public: no getAccessStatus(),
  * no subscribe panel; an anonymous visitor and a subscriber get the same
  * page. The entry comes from the data file; the "Cited by" list is the one
- * database read (fetchCitedBy, service role, labels only).
+ * database read (fetchCitedBy, service role, labels only). The body
+ * (TestMethodBody) opens with sections 1.0-2.0 of the method as official
+ * text, then "EssentialRegs notes", our editorial copy.
  *
  * Prerendered for every slug at build (generateStaticParams, dynamicParams
  * false so an unknown slug is a 404 rather than a render) and refreshed
@@ -32,17 +34,6 @@ export async function generateMetadata(props: PageProps<"/test-methods/[slug]">)
     title: `${method.shortName} — Test Methods`,
     description: `${method.officialTitle}. ${method.measures}`,
   };
-}
-
-function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
-  return (
-    <section id={id} aria-labelledby={`${id}-heading`}>
-      <h2 id={`${id}-heading`} className="text-lg font-semibold text-ink">
-        {title}
-      </h2>
-      <div className="mt-2 font-serif text-[17px] leading-relaxed text-ink">{children}</div>
-    </section>
-  );
 }
 
 function CitedBy({ groups, method }: { groups: CitedByGroup[] | null; method: TestMethod }) {
@@ -130,25 +121,7 @@ export default async function TestMethodPage(props: PageProps<"/test-methods/[sl
           </a>
         </p>
 
-        <div className="mt-8 flex flex-col gap-8">
-          <Section id="measures" title="What it measures">
-            <p>{method.measures}</p>
-          </Section>
-          <Section id="principle" title="How it works">
-            <p>{method.principle}</p>
-          </Section>
-          <Section id="equipment" title="Equipment">
-            <p>{method.equipment}</p>
-          </Section>
-          <Section id="when-cited" title="When a rule cites it">
-            <p>{method.whenCited}</p>
-          </Section>
-          {method.readerNotes && (
-            <Section id="reader-notes" title="Notes for compliance staff">
-              <p>{method.readerNotes}</p>
-            </Section>
-          )}
-
+        <TestMethodBody method={method}>
           {related.length > 0 && (
             <section id="related" aria-labelledby="related-heading">
               <h2 id="related-heading" className="text-lg font-semibold text-ink">
@@ -179,11 +152,12 @@ export default async function TestMethodPage(props: PageProps<"/test-methods/[sl
             </p>
             <CitedBy groups={citedBy} method={method} />
           </section>
-        </div>
+        </TestMethodBody>
 
         <p className="mt-10 border-t border-line pt-6 text-sm text-muted">
-          This is an EssentialRegs reference page, not the method text. The
-          method as published in the CFR controls.
+          The sections marked as official text above are reproduced from the
+          CFR. Everything under ‘EssentialRegs notes’ is our reference copy,
+          not the method. The method as published in the CFR controls.
         </p>
       </div>
     </div>

@@ -1,0 +1,82 @@
+name: Test Methods official sections
+
+# Refreshes sections 1.0-2.0 of every EPA test method in
+# src/data/test-methods.json (officialText / officialTextSource /
+# officialTextRetrieved) from the eCFR versioner, with
+# scripts/fetch_method_sections.py, and commits the JSON to the branch it runs
+# on. www.ecfr.gov is not reachable from every environment this repo is
+# worked on in, so this is how the sections are fetched and refreshed.
+# Uploads the JSON, the report and the raw appendix XML as an artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "eCFR date (YYYY-MM-DD). Empty = today (UTC)."
+        required: false
+        default: ""
+      commit:
+        description: "Commit the refreshed JSON to this branch"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: method-sections-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch and extract sections 1.0-2.0
+        env:
+          INPUT_DATE: ${{ inputs.date }}
+        run: |
+          DATE="${INPUT_DATE:-$(date -u +%F)}"
+          echo "eCFR date: $DATE"
+          mkdir -p out/xml
+          set +e
+          python scripts/fetch_method_sections.py --date "$DATE" --save-xml out/xml --report out/report.md
+          rc=$?
+          set -e
+          cat out/report.md >> "$GITHUB_STEP_SUMMARY" || true
+          cp src/data/test-methods.json out/
+          exit $rc
+
+      - name: Idempotence check (second run on the saved XML must change nothing)
+        run: |
+          DATE=$(head -1 out/report.md | sed 's/^eCFR date: //')
+          cp src/data/test-methods.json out/first-run.json
+          python scripts/fetch_method_sections.py --date "$DATE" --xml-dir out/xml > /dev/null
+          cmp src/data/test-methods.json out/first-run.json
+          echo "Second run on $DATE: no diff."
+
+      - name: Upload JSON, report and XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: method-sections
+          path: out/
+
+      - name: Commit the JSON to this branch
+        if: github.event_name == 'push' || inputs.commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/test-methods.json
+          if git diff --cached --quiet; then echo "JSON unchanged -- nothing to commit."; exit 0; fi
+          DATE=$(head -1 out/report.md | sed 's/^eCFR date: //')
+          git commit -m "Test Methods: official sections 1.0–2.0 from the eCFR as of ${DATE}" \
+                     -m "Written by scripts/fetch_method_sections.py in the Test Methods official sections workflow (run ${{ github.run_id }})."
+          git pull --rebase -q origin "${{ github.ref_name }}" || true
+          git push origin "HEAD:${{ github.ref_name }}"
