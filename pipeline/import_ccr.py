@@ -45,6 +45,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 
+from method_links import (
+    extract_method_citations,
+    link_method_citations,
+    set_enabled as set_method_links_enabled,
+    write_method_links_report,
+)
+
 try:
     from zoneinfo import ZoneInfo
 except ImportError:  # pragma: no cover
@@ -11398,6 +11405,10 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
             escaped = escape_html_text(text)
             linked, buckets = link_citations(escaped, reg, known_ids, CORPUS_REGS, own_part, own_id)
             _merge(buckets)
+            # EPA test-method citations (method_links.py): after the
+            # cross-reference pass so it never links inside an xref span;
+            # a heading's own label is never linked.
+            linked, _ = link_method_citations(linked, skip_prefix=citation)
             provisions[pid]["full_text"] = linked + table_html + _item_figures_html(reg, pid)
         elif kindtag == "paras":
             _, paras, citation, table_html, own_part, own_id = entry
@@ -11424,6 +11435,7 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
                 escaped = escape_html_text(p)
                 linked, buckets = link_citations(escaped, reg, known_ids, CORPUS_REGS, ctx_part, own_id)
                 _merge(buckets)
+                linked, _ = link_method_citations(linked)
                 rendered.append(f"<p>{linked}</p>")
             provisions[pid]["full_text"] = "".join(rendered) + table_html + _item_figures_html(reg, pid)
         elif kindtag == "entry":
@@ -11439,6 +11451,7 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
                 escaped = escape_html_text(p)
                 linked, buckets = link_citations(escaped, reg, known_ids, CORPUS_REGS, own_part, own_id)
                 _merge(buckets)
+                linked, _ = link_method_citations(linked)
                 rendered.append(f"<p>{linked}</p>")
             provisions[pid]["full_text"] = table_html + "".join(rendered)
         elif kindtag == "appendix":
@@ -11456,6 +11469,7 @@ def build_provisions(reg: str, lines: list[str], markers: list[dict], tables_by_
                 escaped = escape_html_text(p)
                 linked, buckets = link_citations(escaped, reg, known_ids, CORPUS_REGS, own_part, own_id)
                 _merge(buckets)
+                linked, _ = link_method_citations(linked)
                 rendered.append(f"<p>{linked}</p>")
             body_html = "".join(rendered)
             escaped_title = escape_html_text(title)
@@ -12357,6 +12371,7 @@ def parse_reg_rule_series(reg: str, lines: list[str], tables_by_caption: dict[st
                 escaped = escape_html_text(p)
                 linked, b = link_citations_ecmc(escaped, known_ids, CORPUS_REGS, table_owner)
                 _merge(b)
+                linked, _ = link_method_citations(linked)
                 rendered.append(f"<p>{linked}</p>")
             provisions[pid]["full_text"] = "".join(rendered)
         elif kindtag == "heading":
@@ -12364,6 +12379,7 @@ def parse_reg_rule_series(reg: str, lines: list[str], tables_by_caption: dict[st
             escaped = escape_html_text(text)
             linked, b = link_citations_ecmc(escaped, known_ids, CORPUS_REGS, table_owner)
             _merge(b)
+            linked, _ = link_method_citations(linked, skip_prefix=provisions[pid].get("citation"))
             provisions[pid]["full_text"] = linked + table_html
         elif kindtag == "paras":
             _, paras, own_id, table_html = entry
@@ -12372,6 +12388,7 @@ def parse_reg_rule_series(reg: str, lines: list[str], tables_by_caption: dict[st
                 escaped = escape_html_text(p)
                 linked, b = link_citations_ecmc(escaped, known_ids, CORPUS_REGS, table_owner)
                 _merge(b)
+                linked, _ = link_method_citations(linked)
                 rendered.append(f"<p>{linked}</p>")
             provisions[pid]["full_text"] = "".join(rendered) + table_html
         elif kindtag == "heading_body":
@@ -12384,6 +12401,7 @@ def parse_reg_rule_series(reg: str, lines: list[str], tables_by_caption: dict[st
             escaped_heading = escape_html_text(heading_text)
             linked_heading, b = link_citations_ecmc(escaped_heading, known_ids, CORPUS_REGS, table_owner)
             _merge(b)
+            linked_heading, _ = link_method_citations(linked_heading, skip_prefix=provisions[pid].get("citation"))
             if not paras:
                 provisions[pid]["full_text"] = linked_heading + table_html
             else:
@@ -12392,6 +12410,7 @@ def parse_reg_rule_series(reg: str, lines: list[str], tables_by_caption: dict[st
                     escaped = escape_html_text(p)
                     linked, b = link_citations_ecmc(escaped, known_ids, CORPUS_REGS, table_owner)
                     _merge(b)
+                    linked, _ = link_method_citations(linked)
                     rendered.append(f"<p>{linked}</p>")
                 provisions[pid]["full_text"] = "".join(rendered) + table_html
         elif kindtag == "appendix":
@@ -12401,6 +12420,7 @@ def parse_reg_rule_series(reg: str, lines: list[str], tables_by_caption: dict[st
                 escaped = escape_html_text(p)
                 linked, b = link_citations_ecmc(escaped, known_ids, CORPUS_REGS, table_owner)
                 _merge(b)
+                linked, _ = link_method_citations(linked)
                 rendered.append(f"<p>{linked}</p>")
             body_html = "".join(rendered)
             escaped_title = escape_html_text(title)
@@ -12659,10 +12679,14 @@ def cmd_parse(args):
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
+    method_summary = write_method_links_report(out_path, result)
 
     kind_counts = Counter(r["kind"] for r in result)
     print(f"Parsed {len(result)} provisions for Reg {args.reg} -> {out_path}")
     print(f"  by kind: {dict(kind_counts)}")
+    print(f"  test-method links: {method_summary['anchors']} anchor(s) in {method_summary['rows_with_links']} row(s)"
+          + (f"; by method: {method_summary['by_slug']}" if method_summary["anchors"] else "")
+          + ("" if method_summary["enabled"] else "  (linker OFF: --no-method-links)"))
     if label_fixes_applied:
         print("  known label fixes applied:")
         for f in label_fixes_applied:
@@ -13828,6 +13852,52 @@ def build_provision_change_insert(ancestor_id: str, note: str) -> str:
     )
 
 
+def method_citation_rows(parsed_rows: list[dict]) -> list[dict]:
+    """The provision_method_citations rows a document's parsed rows imply,
+    read back from the xref-method anchors in their final full_text
+    (method_links.extract_method_citations), so the table can never
+    disagree with the stored text. One row per (provision, method); when a
+    provision cites the same method twice the first printed form is kept
+    as raw_text. Ordered by sort_order, then id."""
+    out: list[dict] = []
+    for r in sorted(parsed_rows, key=lambda r: (r.get("sort_order") or 0, r["id"])):
+        seen: set[str] = set()
+        for rec in extract_method_citations(r.get("full_text") or ""):
+            if rec["slug"] in seen:
+                continue
+            seen.add(rec["slug"])
+            out.append({"provision_id": r["id"], "method_slug": rec["slug"], "raw_text": rec["text"]})
+    return out
+
+
+def write_method_citation_rows(client, reg: str, parsed_rows: list[dict],
+                               chunk_size: int | None = None) -> int | None:
+    """Rewrites this document's provision_method_citations rows (migration
+    20261009005000): delete every row whose provision belongs to `reg`,
+    then insert the rows the parsed text implies (method_citation_rows).
+    The Test Methods pages' "Cited by" lists read this table. Returns the
+    number of rows written, or None when the table is not writable (a
+    database the migration has not reached yet) -- a warning, never an
+    abort, because the text itself is already in place."""
+    if not reg:
+        return None
+    if chunk_size is None:
+        chunk_size = EXECUTE_CHUNK  # defined below, with the other --execute constants
+    rows = method_citation_rows(parsed_rows)
+    try:
+        client.table("provision_method_citations").delete().like("provision_id", f"sec-{reg}-%").execute()
+        for i in range(0, len(rows), chunk_size):
+            client.table("provision_method_citations").insert(rows[i:i + chunk_size]).execute()
+    except Exception as exc:  # noqa: BLE001
+        print(f"  WARNING: provision_method_citations not written for {reg} ({exc!r}); "
+              "apply migration 20261009005000_test_method_citations.sql and re-run the import "
+              "(markup-only) to fill the Test Methods \"Cited by\" lists", file=sys.stderr)
+        return None
+    print(f"Method citations: {len(rows)} row(s) written for {reg} "
+          f"({len({r['provision_id'] for r in rows})} provision(s)).")
+    return len(rows)
+
+
 def ensure_release_row(client, reg: str) -> str | None:
     """The release state after an executed import: a reg_key with no
     regulation_releases row is a NEW document and is inserted `staged`
@@ -14139,6 +14209,11 @@ def cmd_apply(args):
         status = "OK" if not unbalanced else f"UNBALANCED TAGS: {unbalanced}"
         print(f"  {p.name}: {n_stmts} statement(s) {'(sqlparse)' if have_sqlparse else '(semicolon count)'} — {status}")
 
+    method_rows = method_citation_rows(parsed)
+    print(f"\nMethod citations (provision_method_citations): {len(method_rows)} row(s) in "
+          f"{len({r['provision_id'] for r in method_rows})} provision(s) of {reg}"
+          + (" -- rewritten by --execute." if args.execute else " -- would be rewritten by --execute."))
+
     if args.execute:
         cmd_apply_execute(args, c, ancestor_for, today)
 
@@ -14418,6 +14493,7 @@ def cmd_apply_execute(args, c: dict, ancestor_for: dict, today: str) -> None:
             ).gte("created_at", now_iso).execute()
 
     ensure_release_row(client, getattr(args, "reg", None) or "")
+    write_method_citation_rows(client, getattr(args, "reg", None) or "", list(c["parsed_by_id"].values()))
 
     # What this run tells /changelog: an agency version change is logged as
     # its own row and keeps the run's text/added/removed rows regulatory;
@@ -14444,6 +14520,10 @@ def main():
     p_parse.add_argument("--corpus-ids", default=None,
                          help="Corpus id index (JSON {reg key: [provision ids]}, written by `dump-ids`) used to deep-link "
                               "cross-regulation citations. Default: pipeline/out/corpus_ids.json when it exists.")
+    p_parse.add_argument("--no-method-links", action="store_true",
+                         help="Leave EPA test-method citations (\"Method 21\", \"Performance Specification 8\") as plain "
+                              "text instead of linking them to /test-methods/<slug> (pipeline/method_links.py). "
+                              "The regression proof parses every document both ways; the workflow never passes it.")
     p_parse.add_argument("--no-corpus-ids", action="store_true",
                          help="Ignore any corpus id index: cross-regulation citations link only the regulation name, "
                               "exactly as before deep links existed.")
@@ -14519,6 +14599,7 @@ def main():
     if args.cmd == "parse" and args.txt is None:
         args.txt = str(Path(args.pdf).with_suffix(".txt"))
     if args.cmd == "parse":
+        set_method_links_enabled(not args.no_method_links)
         if args.no_corpus_ids:
             args.corpus_ids = None
         elif args.corpus_ids is not None:
