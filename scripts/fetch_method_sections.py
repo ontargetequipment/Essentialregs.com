@@ -56,6 +56,7 @@ from every environment this repo is worked on in).
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime as _dt
 import gzip
 import json
@@ -402,7 +403,27 @@ def render_paragraph(el: ET.Element, url: str, label: str) -> str:
     return "".join(out)
 
 
+# GPO typeface codes on <E T="..">: 51 superscript, 52 subscript, 53
+# superscript italic, 54 subscript italic ("NO<E T="52">X</E>",
+# "n<E T="51">-0.2</E>" in the eCFR XML). The importer's emphasis table maps
+# 52 to <sup> and drops 51, which would print CO<sup>2</sup> for CO2; so
+# before its helpers run, these four become the <SU>/<SUB> elements it
+# renders correctly. Every other <E> keeps the importer's mapping.
+_GPO_SCRIPT = {"51": "SU", "52": "SUB", "53": "SU", "54": "SUB"}
+
+
+def normalize_scripts(el: ET.Element) -> ET.Element:
+    el = copy.deepcopy(el)
+    for d in el.iter("E"):
+        tag = _GPO_SCRIPT.get(d.get("T") or "")
+        if tag:
+            d.tag = tag
+            d.attrib.pop("T", None)
+    return el
+
+
 def render_blocks(blocks: list[ET.Element], url: str, label: str, unknown: list[str]) -> str:
+    blocks = [normalize_scripts(b) for b in blocks]
     out: list[str] = []
     for i, el in enumerate(blocks):
         tag = el.tag

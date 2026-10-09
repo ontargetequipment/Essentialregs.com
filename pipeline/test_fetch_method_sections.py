@@ -32,7 +32,7 @@ APPENDIX = f"""<?xml version="1.0"?>
 <P>2.1 A measurement site where the effluent stream is flowing in a known direction is selected. {FILLER}</P>
 <P>The area is computed using Equation 1-1:</P>
 <img src="/graphics/ec01.000.gif"/>
-<P>where A is the area, ft<SU>2</SU>.</P>
+<P>where A is the area, ft<SU>2</SU>, of CO<E T="52">2</E> at n<E T="51">&#x2212;0.2</E>.</P>
 <DIV><TABLE><THEAD><TR><TH>Diameter</TH><TH>Points</TH></TR></THEAD><TBODY><TR><TD>0.30 to 0.61</TD><TD>8</TD></TR></TBODY></TABLE></DIV>
 <HD1>3.0 Definitions [Reserved]</HD1>
 <P>3.1 Not part of the span.</P>
@@ -107,7 +107,7 @@ class FetchMethodSectionsTest(unittest.TestCase):
         self.assertIn("<h3>2.0 Summary of Method</h3>", html)
         self.assertNotIn("3.0", html)
         self.assertNotIn("Method 1A", html)
-        self.assertIn("ft<sup>2</sup>", html)
+        self.assertIn("ft<sup>2</sup>, of CO<sub>2</sub> at n<sup>\u22120.2</sup>.", html)
         self.assertIn('<table class="doc-table">', html)
         self.assertIn('<p class="figure-omitted">Equation not reproduced here. See the official source: '
                       '<a href="https://www.ecfr.gov/current/title-40/part-60/appendix-Appendix%20A-1%20to%20Part%2060">'
