@@ -3,6 +3,7 @@ import { SearchTabs } from "@/components/SearchTabs";
 import { askHref, keywordHref, SEARCH_BOX_ID } from "@/lib/search-hrefs";
 import { readerHrefFor } from "@/lib/provision-href";
 import { SummaryBadge } from "@/components/SummaryBadge";
+import { detectTestMethod } from "@/lib/test-method-search";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
 import {
@@ -346,6 +347,11 @@ export default async function SearchPage(props: PageProps<"/search">) {
   let searchError: string | null = null;
   let askError: { code: SemanticError["code"]; message: string } | null = null;
 
+  // A query that names a test method ("Method 21") gets the method's page as a
+  // card above the provisions (9 Oct 2026). The pages are public, so the card
+  // is shown to every visitor, signed in or not, whatever the access state.
+  const methodHit = q && mode === "keyword" ? detectTestMethod(q) : null;
+
   if (q && mode === "keyword") {
     try {
       hits = await searchProvisions(q, { includeBasis });
@@ -670,7 +676,24 @@ export default async function SearchPage(props: PageProps<"/search">) {
         </p>
       )}
 
-      {mode === "keyword" && q && !searchError && hits.length === 0 && (
+      {methodHit && (
+        <section aria-label="Test method" className="mt-6">
+          <Link
+            href={`/test-methods/${methodHit.slug}`}
+            data-testid="test-method-result"
+            className="block rounded-lg border border-line bg-panel p-5 shadow-sm transition hover:border-accent hover:shadow-md"
+          >
+            <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
+              <span className="font-mono text-eyebrow uppercase text-tag">Test method</span>
+              <span className="text-muted">{methodHit.source}</span>
+            </p>
+            <p className="mt-1 text-lg font-semibold text-ink">{methodHit.officialTitle}</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">{methodHit.measures}</p>
+          </Link>
+        </section>
+      )}
+
+      {mode === "keyword" && q && !searchError && hits.length === 0 && !methodHit && (
         <p className="mt-10 text-sm text-muted">
           No results for <span className="font-medium text-ink-soft">&ldquo;{q}&rdquo;</span>.
           Try fewer or different words{!user ? ", or log in to search beyond the sample" : ""}.

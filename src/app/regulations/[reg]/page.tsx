@@ -6,6 +6,7 @@ import { isRegReleased } from "@/lib/release";
 import { fetchReaderVersion, fetchRegulationProvisions, fetchRenderedReader } from "@/lib/regulation";
 import { loadReaderPage } from "@/lib/reader-page";
 import { RegulationReader } from "@/components/RegulationReader";
+import { jumpboxPlaceholder } from "@/lib/regulation-names";
 import "../reader.css";
 
 // `reg` goes straight into an `eq("reg_key", reg)` filter
@@ -73,7 +74,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
           <input
             id="jumpbox"
             type="text"
-            placeholder='Jump to a section (e.g. II.A.4 or "fugitive emissions")'
+            placeholder={jumpboxPlaceholder(reg)}
             autoComplete="off"
           />
           <div id="jump-results" />

@@ -90,6 +90,18 @@ export function escapeHtml(s: string): string {
 export const SNIPPET_LEN = 90;
 
 /**
+ * The form a jump-box query and a citation are both reduced to before the
+ * prefix comparison (9 Oct 2026): lowercase, no section sign, no whitespace.
+ * Federal citations print as "§ 60.5416(b)(1)", so a user who types
+ * "60.5416(b)(1)", "60.5416 (b)(1)" or "§60.5416(b)(1)" must all land on it;
+ * before this only the exact "§ " spelling matched. Colorado citations
+ * ("II.A.4.") have no § and lose nothing but spaces.
+ */
+export function normalizeJumpKey(s: string): string {
+  return s.toLowerCase().replace(/[\u00a7\s]+/g, "");
+}
+
+/**
  * [id, citation, snippet, topGroupId] tuples for the client-side jump/search
  * box. The 4th element (added for the collapsible sidebar -- see
  * RegulationReader.tsx) is the id of this provision's top-level ancestor

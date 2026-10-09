@@ -70,9 +70,30 @@ function CitedBy({ groups, method }: { groups: CitedByGroup[] | null; method: Te
             ))}
           </ul>
           {g.more > 0 && (
-            <p className="mt-1 text-sm text-muted">
-              +{g.more} more {g.more === 1 ? "provision" : "provisions"} in {g.name} cite {method.shortName}.
-            </p>
+            // Server-rendered disclosure (9 Oct 2026): the full list is already
+            // in the HTML, so "Show all" needs no script and no request, and
+            // the summary line is the "+N more" text that used to be static.
+            <details className="group mt-1 text-sm">
+              <summary className="inline-flex min-h-11 cursor-pointer items-center text-muted underline underline-offset-2 hover:text-accent sm:min-h-0">
+                <span className="group-open:hidden">
+                  +{g.more} more {g.more === 1 ? "provision" : "provisions"} in {g.name} cite {method.shortName}. Show all
+                </span>
+                <span className="hidden group-open:inline">Show fewer</span>
+              </summary>
+              <ul className="mt-1 flex flex-col leading-relaxed text-ink-soft">
+                {g.rest.map((r) => (
+                  <li key={r.id}>
+                    <Link
+                      href={r.href}
+                      className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
+                    >
+                      {r.citation}
+                    </Link>
+                    {r.title && <span> — {r.title}</span>}
+                  </li>
+                ))}
+              </ul>
+            </details>
           )}
         </div>
       ))}
