@@ -289,6 +289,19 @@ def _resolve_target_reg_49(part: str, num: str) -> str | None:
     return CFR_PART_TO_REGKEY.get(f"49-{part}")
 
 
+def _active_corpus_ids() -> dict:
+    """import_ccr's process-wide corpus id index. Read from the module that
+    actually holds it: the Import workflow runs `python import_ccr.py parse`,
+    so the index lives in `__main__`, and `import import_ccr` would load a
+    second, empty copy of the module (the first p192 dry run after PR #86
+    linked nothing for exactly that reason). Tests import it by name."""
+    for name in ("__main__", "import_ccr"):
+        ids = getattr(sys.modules.get(name), "_ACTIVE_CORPUS_IDS", None)
+        if ids:
+            return ids
+    return {}
+
+
 def _other_reg_target(target_reg: str, sec_num: str, parens: str) -> str | None:
     """The cited provision of ANOTHER corpus document ("§ 190.9" read from
     Part 192 -> "sec-p190-190.9"; "§ 60.5365b(e)" -> "sec-oooob-60.5365b-(e)"),
@@ -299,9 +312,7 @@ def _other_reg_target(target_reg: str, sec_num: str, parens: str) -> str | None:
     2026: the fifth review found every PHMSA cross-part link carried only
     "/regulations/<part>", so the reader could not land on the cited
     section)."""
-    import import_ccr as ic  # lazy: import_ccr.cmd_parse imports this module
-
-    ids = ic._ACTIVE_CORPUS_IDS.get(target_reg)
+    ids = _active_corpus_ids().get(target_reg)
     if not ids:
         return None
     base_id = f"sec-{target_reg}-{sec_num}"

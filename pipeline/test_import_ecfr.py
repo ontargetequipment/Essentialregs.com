@@ -2768,3 +2768,27 @@ class EcmcCfr49AnchorTests(unittest.TestCase):
             self.ic._cfr49_anchor("p192", "sec-p192-192.243", "x"),
             '<a class="xref-external-reg" href="/regulations/p192" data-provision-id="sec-p192-192.243">x</a>',
         )
+
+
+class CorpusIndexFromMainTests(unittest.TestCase):
+    """The Import workflow runs `python import_ccr.py parse`: the index lives
+    in `__main__`, not in an `import_ccr` module (a by-name import would be a
+    second, empty copy). The deep link must still resolve."""
+
+    def test_index_held_by_main_is_used(self):
+        main = sys.modules["__main__"]
+        had = hasattr(main, "_ACTIVE_CORPUS_IDS")
+        old = getattr(main, "_ACTIVE_CORPUS_IDS", None)
+        import import_ccr as ic
+        ic.set_corpus_ids(None)
+        main._ACTIVE_CORPUS_IDS = {"p190": frozenset({"sec-p190-190.9"})}
+        try:
+            unresolved = defaultdict(Counter)
+            out = ie.link_citations("under 49 CFR 190.9;", "p192", "sec-p192-x", "sec-p192-x",
+                                    {"sec-p192-top-REG-p192"}, ie.CORPUS_REGS, unresolved)
+            self.assertIn('href="/regulations/p190#sec-p190-190.9"', out)
+        finally:
+            if had:
+                main._ACTIVE_CORPUS_IDS = old
+            else:
+                del main._ACTIVE_CORPUS_IDS
