@@ -288,8 +288,8 @@ test.describe("anonymous", () => {
       /^https:\/\/www\.ecfr\.gov\/current\/title-40\//,
     );
     // Sections 1.0-2.0 as official text first, then our editorial copy.
-    await expect(page.getByText("From the method — official text")).toBeVisible();
-    await expect(page.getByText("EssentialRegs notes")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "From the method — official text", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "EssentialRegs notes", exact: true })).toBeVisible();
     const h2s = await page.getByRole("heading", { level: 2 }).allTextContents();
     expect(h2s.indexOf("From the method — official text")).toBeGreaterThanOrEqual(0);
     expect(h2s.indexOf("EssentialRegs notes")).toBeGreaterThan(h2s.indexOf("From the method — official text"));
