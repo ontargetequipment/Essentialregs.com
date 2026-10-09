@@ -511,6 +511,17 @@ def test_link_markup_is_unwrapped_without_a_space():
     assert "( Subpart" in embed.strip_html_legacy(linked)
 
 
+def test_method_anchor_is_unwrapped_so_a_relink_does_not_rehash():
+    # The Test Methods re-link (9 Oct 2026) wraps "Method 21" in an
+    # xref-method anchor; the embedded text, and so the hash, must not move.
+    before = '<p>Conduct annual EPA Method 21 (August 3, 2017) inspections; see Methods 1\u20134.</p>'
+    after = ('<p>Conduct annual <a class="xref-method" href="/test-methods/method-21">EPA Method 21</a> '
+             '(August 3, 2017) inspections; see <a class="xref-method" href="/test-methods/method-1">Methods 1</a>'
+             '\u2013<a class="xref-method" href="/test-methods/method-4">4</a>.</p>')
+    assert embed.strip_html(after) == embed.strip_html(before)
+    assert embed.strip_html(after) == "Conduct annual EPA Method 21 (August 3, 2017) inspections; see Methods 1\u20134."
+
+
 def test_sic_marker_span_is_unwrapped_and_other_tags_still_separate():
     html = ('<p>Break<span class="er-sic" title="Printed this way."> [sic]</span> specific fuel</p>'
             '<table><tr><td>NO<sub>X</sub></td><td>g/hp-hr</td></tr></table>')
