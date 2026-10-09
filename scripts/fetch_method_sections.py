@@ -143,7 +143,7 @@ def appendix_url(date: str, part: str, appendix: str | None = None) -> str:
 def http_get(url: str) -> bytes:
     last: Exception | None = None
     for attempt in range(4):
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/xml"})
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         try:
             with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as r:
                 return r.read()
