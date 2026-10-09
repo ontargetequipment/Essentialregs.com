@@ -99,7 +99,7 @@ SOURCE_RE = re.compile(r"^40 CFR Part (?P<part>\d+), Appendix (?P<apx>[A-Z](?:-\
 DASHES = "—–-"
 HEADING_TAG_RE = re.compile(r"^(?:HD\d*|HEAD)$")
 # Any method or performance specification heading: where the previous one ends.
-ANY_METHOD_HEADING_RE = re.compile(rf"^(?:Method\s+\d+[A-Z]*|Performance\s+Specification\s+\d+[A-Z]*)\s*[{DASHES}]")
+ANY_METHOD_HEADING_RE = re.compile(rf"^(?:(?:Test\s+)?Method\s+\d+[A-Z]*|Performance\s+Specification\s+\d+[A-Z]*)\s*[{DASHES}]")
 # A numbered section heading: "1.0 Scope and Application", or the older
 # "1. Principle and Applicability". "1.1 ..." is a sub-section, never this.
 SECTION_HEAD_RE = re.compile(r"^(?P<n>\d+)\.(?P<zero>0)?(?=\s|$)")
@@ -287,8 +287,10 @@ def is_heading(el: ET.Element) -> bool:
 
 
 def method_heading_re(short_name: str) -> re.Pattern:
+    # The eCFR prints Part 63's "Test Method 320—..." with "Test" in front.
     words = r"\s+".join(re.escape(w) for w in short_name.split())
-    return re.compile(rf"^{words}\s*[{DASHES}]")
+    test = r"(?:Test\s+)?" if short_name.startswith("Method ") else ""
+    return re.compile(rf"^{test}{words}\s*[{DASHES}]")
 
 
 def section_number(el: ET.Element) -> tuple[int, bool] | None:
@@ -447,17 +449,24 @@ def extract(entry: dict, src: AppendixSource) -> dict:
     }
 
 
-def headings_outline(src: AppendixSource, entry: dict) -> list[str]:
-    """Diagnostics for a failure: the headings of the method's appendix."""
+def headings_outline(src: AppendixSource, entry: dict, limit: int = 40) -> list[str]:
+    """Diagnostics for a failure: the first blocks of the method's own
+    region (its heading to the next method's), tag and opening words."""
     try:
         part, appendix = appendix_name(entry["source"])
-        div = src.get(part, appendix)
+        blocks = flatten_blocks(src.get(part, appendix))
     except Exception:  # noqa: BLE001
         return []
+    rx = method_heading_re(entry["shortName"])
+    starts = [i for i, b in enumerate(blocks) if is_heading(b) and rx.match(block_text(b))]
+    if not starts:
+        near = [block_text(b)[:70] for b in blocks if is_heading(b) and entry["shortName"].split()[-1] in block_text(b)[:40]]
+        return [f"    heading-like blocks naming {entry['shortName'].split()[-1]}: {near[:8]}"]
     lines = []
-    for b in flatten_blocks(div):
-        if is_heading(b) or section_number(b) is not None:
-            lines.append(f"    <{b.tag}> {block_text(b)[:90]}")
+    for b in blocks[starts[0] : starts[0] + limit]:
+        if lines and is_heading(b) and ANY_METHOD_HEADING_RE.match(block_text(b)):
+            break
+        lines.append(f"    <{b.tag}> {block_text(b)[:70]}")
     return lines
 
 
@@ -494,6 +503,7 @@ def main(argv: list[str] | None = None) -> int:
     entries = json.loads(args.data.read_text(encoding="utf-8"))
     src = AppendixSource(args.date, args.xml_dir, args.save_xml)
     failures: list[str] = []
+    outlines: list[str] = []
     rows: list[tuple[str, str, int]] = []
     titles: list[str] = []
     updated: list[dict] = []
@@ -502,7 +512,9 @@ def main(argv: list[str] | None = None) -> int:
             got = extract(entry, src)
         except (Failure, urllib.error.URLError, ET.ParseError) as e:
             failures.append(f"{entry['slug']} ({entry['shortName']}, {entry['source']}): {e}")
-            failures.extend(headings_outline(src, entry) if isinstance(e, Failure) else [])
+            if isinstance(e, Failure):
+                outlines.append(f"{entry['slug']}:")
+                outlines.extend(headings_outline(src, entry))
             updated.append(entry)
             continue
         new = dict(entry)
@@ -522,7 +534,7 @@ def main(argv: list[str] | None = None) -> int:
     report += [f"| {s} | {h} | {c:,} |" for s, h, c in rows]
     report += ["", f"officialTitle corrected: {len(titles)}"] + [f"- {t}" for t in titles]
     if failures:
-        report += ["", f"FAILURES ({sum(1 for f in failures if not f.startswith('    '))}):"] + failures
+        report += ["", f"FAILURES ({len(failures)}):"] + failures + ["", "Outline of each failed method:"] + outlines
     text = "\n".join(report) + "\n"
     print(text)
     if args.report:
