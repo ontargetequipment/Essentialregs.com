@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import gzip
 import json
 import re
 import sys
@@ -143,10 +144,15 @@ def appendix_url(date: str, part: str, appendix: str | None = None) -> str:
 def http_get(url: str) -> bytes:
     last: Exception | None = None
     for attempt in range(4):
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        # The versioner's /full/ endpoint refuses (406) a request that does
+        # not allow a compressed response.
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept-Encoding": "gzip"})
         try:
             with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as r:
-                return r.read()
+                data = r.read()
+                if r.headers.get("Content-Encoding", "").lower() == "gzip":
+                    data = gzip.decompress(data)
+                return data
         except urllib.error.HTTPError as e:
             if 400 <= e.code < 500 and e.code != 429:
                 raise
@@ -161,18 +167,21 @@ TITLES_URL = "https://www.ecfr.gov/api/versioner/v1/titles.json"
 
 
 def resolve_date(requested: str) -> tuple[str, str]:
-    """(the date to fetch, a note). The versioner answers 406 for a date past
-    Title 40's `up_to_date_as_of` (the eCFR is published a day or two
-    behind), so a requested date later than that is brought back to it: the
-    text served for that date is the current text."""
+    """(the date to fetch, a note). The requested date (today by default) is
+    used when the versioner serves it. The eCFR is published a day or two
+    behind, so if the versioner refuses the date, the run falls back to Title
+    40's `up_to_date_as_of`, whose text is the current text."""
+    try:
+        http_get(appendix_url(requested, "60", "Appendix B to Part 60"))
+        return requested, ""
+    except urllib.error.HTTPError as e:
+        refused = e
     try:
         titles = json.loads(http_get(TITLES_URL))
         latest = next(t["up_to_date_as_of"] for t in titles["titles"] if t["number"] == 40)
     except Exception as e:  # noqa: BLE001
-        return requested, f"could not read Title 40's up_to_date_as_of ({e}); using {requested}"
-    if requested > latest:
-        return latest, f"requested {requested}; Title 40 is up to date as of {latest}, so {latest} is used"
-    return requested, f"Title 40 is up to date as of {latest}"
+        return requested, f"the versioner refused {requested} ({refused}) and Title 40's up_to_date_as_of could not be read ({e})"
+    return latest, f"the versioner refused {requested} ({refused}); Title 40 is up to date as of {latest}, so {latest} is used"
 
 
 def find_appendix_div(root: ET.Element, appendix: str) -> ET.Element | None:
@@ -480,7 +489,7 @@ def main(argv: list[str] | None = None) -> int:
     date_note = ""
     if args.xml_dir is None:
         args.date, date_note = resolve_date(args.date)
-        print(f"eCFR date: {args.date} ({date_note})", file=sys.stderr)
+        print(f"eCFR date: {args.date} {date_note}".rstrip(), file=sys.stderr)
 
     entries = json.loads(args.data.read_text(encoding="utf-8"))
     src = AppendixSource(args.date, args.xml_dir, args.save_xml)
