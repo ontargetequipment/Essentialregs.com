@@ -327,23 +327,37 @@ def locate(blocks: list[ET.Element], short_name: str) -> tuple[str, list[ET.Elem
     body = blocks[start + 1 : end]
     numbered = [(i, section_number(b)) for i, b in enumerate(body)]
     numbered = [(i, n) for i, n in numbered if n is not None]
-    one = next((i for i, n in numbered if n[0] == 1), None)
-    if one is None:
+    nums = dict(numbered)
+    ones = [i for i, n in numbered if n[0] == 1]
+    if not ones:
         raise Failure("section 1.0 not found")
-    two = next((i for i, n in numbered if n[0] == 2 and i > one), None)
-    if two is None:
-        raise Failure("section 2.0 not found")
-    three = next((i for i, n in numbered if i > two), None)
-    if three is not None and dict(numbered)[three][0] != 3:
-        raise Failure(f"the section after 2.0 is numbered {dict(numbered)[three][0]}, not 3")
-    span = body[one : three if three is not None else len(body)]
+    span = None
+    for one in ones:
+        two = next((i for i, n in numbered if i > one), None)
+        if two is None or nums[two][0] != 2:
+            continue
+        three = next((i for i, n in numbered if i > two), None)
+        if three is not None and nums[three][0] != 3:
+            raise Failure(f"the section after 2.0 is numbered {nums[three][0]}, not 3")
+        candidate = body[one : three if three is not None else len(body)]
+        # A method that opens with a table of contents (Method 301 prints its
+        # section headings once as a list, then again with their text) has a
+        # 1.0 / 2.0 / 3.0 run of bare headings first: skip it for the run
+        # that carries text.
+        if all(is_heading(b) for b in candidate):
+            continue
+        span = candidate
+        break
+    if span is None:
+        raise Failure("section 2.0 not found (no 1.0 heading is followed by a 2.0 heading and text)")
+    one = body.index(span[0])
     # Nothing numbered 3.x or higher may sit inside the span (a missed
     # boundary would otherwise pull section 3 onwards in silently).
     for b in span:
         m = ANY_NUMBERED_RE.match(block_text(b))
         if m and int(m.group("n")) >= 3 and (is_heading(b) or b.tag in PARAGRAPH_TAGS):
             raise Failure(f"span contains a block numbered {m.group(0)}: {block_text(b)[:80]!r}")
-    zero = dict(numbered)[one][1]
+    zero = nums[one][1]
     return heading, span, zero
 
 

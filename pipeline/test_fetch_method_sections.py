@@ -62,6 +62,16 @@ APPENDIX = f"""<?xml version="1.0"?>
 <HD1>2. Procedure</HD1>
 <P>2.1 Procedure. The observer qualified in accordance with section 3 of this method shall stand at a distance.</P>
 <HD1>3. Qualifications and testing</HD1>
+<HD1>Method 9A&#x2014;A method that opens with a table of contents</HD1>
+<HD2>1.0 What is the purpose of Method 9A?</HD2>
+<HD2>2.0 What approval must I have?</HD2>
+<HD2>3.0 What does it include?</HD2>
+<HD1>Using Method 9A</HD1>
+<HD2>1.0 What is the purpose of Method 9A?</HD2>
+<P>Method 9A provides a set of procedures. {FILLER}</P>
+<HD2>2.0 What approval must I have?</HD2>
+<P>If you want to use a candidate test method, you must get approval.</P>
+<HD2>3.0 What does it include?</HD2>
 </DIV9>
 """
 
@@ -127,6 +137,12 @@ class FetchMethodSectionsTest(unittest.TestCase):
         self.assertNotIn("Many stationary sources", got["officialText"])
         self.assertNotIn("Qualifications", got["officialText"])
         self.assertTrue(got["officialTextSource"].endswith("sections 1–2"))
+
+    def test_a_table_of_contents_is_skipped(self):
+        got = fms.extract(entry("method-9a", "Method 9A", "x"), self.src)
+        self.assertTrue(got["officialText"].startswith("<h4>1.0 What is the purpose of Method 9A?</h4><p>Method 9A provides"))
+        self.assertIn("you must get approval.</p>", got["officialText"])
+        self.assertNotIn("3.0", got["officialText"])
 
     def _write(self, entries):
         self.data.write_text(fms.dump(entries), encoding="utf-8")
