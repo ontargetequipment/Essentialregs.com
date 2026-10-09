@@ -298,6 +298,7 @@ test.describe("anonymous", () => {
       await expect(page.getByRole("heading", { level: 3, name: heading })).toBeVisible();
     }
     await expect(page.getByRole("heading", { level: 2, name: "Cited by" })).toBeVisible();
+    await expect(page.getByText("Everything under ‘EssentialRegs notes’ is our reference copy, not the method.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Subscribe to open the full regulations" })).toHaveCount(0);
 
     const missing = await page.goto("/test-methods/method-7400");

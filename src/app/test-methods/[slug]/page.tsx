@@ -155,8 +155,9 @@ export default async function TestMethodPage(props: PageProps<"/test-methods/[sl
         </TestMethodBody>
 
         <p className="mt-10 border-t border-line pt-6 text-sm text-muted">
-          This is an EssentialRegs reference page, not the method text. The
-          method as published in the CFR controls.
+          The sections marked as official text above are reproduced from the
+          CFR. Everything under ‘EssentialRegs notes’ is our reference copy,
+          not the method. The method as published in the CFR controls.
         </p>
       </div>
     </div>
