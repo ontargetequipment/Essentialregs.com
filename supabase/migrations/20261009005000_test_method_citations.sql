@@ -25,13 +25,15 @@
 -- as "Method 21"), never provision text, and the Test Methods pages are
 -- free. The citing provision itself stays behind the provisions policies;
 -- a staged (unreleased) document's rows are hidden the same way its
--- provisions are (reg_is_released, migration 20261008040000).
--- service_role (the pipeline) is the only writer.
+-- provisions are (reg_is_released: recorded in schema_migrations as
+-- 20261008031550 and 20261008031623, the connector's versions of the
+-- release-state change the file 20261008040000_regulation_release_state.sql
+-- replays). service_role (the pipeline) is the only writer.
 --
--- NOT applied by the pull request that adds it. The CEO chat applies it
--- through the Supabase connector after merge and records this file's
--- version, 20261009005000, in supabase_migrations.schema_migrations; the
--- corpus re-link that fills the table is a separate job after that.
+-- Applied to the live project on 9 Oct 2026 by the CEO chat through the
+-- Supabase connector and recorded in supabase_migrations.schema_migrations
+-- under this file's version, 20261009005000. The corpus re-link that fills
+-- the table is a separate job after that.
 
 create table if not exists public.provision_method_citations (
   provision_id text not null references public.provisions(id) on delete cascade,
