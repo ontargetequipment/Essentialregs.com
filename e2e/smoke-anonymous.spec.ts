@@ -287,9 +287,17 @@ test.describe("anonymous", () => {
       "href",
       /^https:\/\/www\.ecfr\.gov\/current\/title-40\//,
     );
-    for (const heading of ["What it measures", "How it works", "Equipment", "When a rule cites it", "Cited by"]) {
-      await expect(page.getByRole("heading", { level: 2, name: heading })).toBeVisible();
+    // Sections 1.0-2.0 as official text first, then our editorial copy.
+    await expect(page.getByText("From the method — official text")).toBeVisible();
+    await expect(page.getByText("EssentialRegs notes")).toBeVisible();
+    const h2s = await page.getByRole("heading", { level: 2 }).allTextContents();
+    expect(h2s.indexOf("From the method — official text")).toBeGreaterThanOrEqual(0);
+    expect(h2s.indexOf("EssentialRegs notes")).toBeGreaterThan(h2s.indexOf("From the method — official text"));
+    await expect(page.locator("#official-text .method-text")).toContainText("1.0");
+    for (const heading of ["What it measures", "How it works", "Equipment", "When a rule cites it"]) {
+      await expect(page.getByRole("heading", { level: 3, name: heading })).toBeVisible();
     }
+    await expect(page.getByRole("heading", { level: 2, name: "Cited by" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Subscribe to open the full regulations" })).toHaveCount(0);
 
     const missing = await page.goto("/test-methods/method-7400");

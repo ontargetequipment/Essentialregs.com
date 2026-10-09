@@ -36,6 +36,16 @@ export type TestMethod = {
   readerNotes?: string;
   relatedSlugs: string[];
   category: TestMethodCategory;
+  /**
+   * Sections 1.0 and 2.0 of the method, verbatim from the eCFR versioner XML
+   * (official text, HTML in the importer's conventions). Written only by
+   * scripts/fetch_method_sections.py; never edited by hand.
+   */
+  officialText: string;
+  /** e.g. "40 CFR Part 60, Appendix A-7, Method 21, sections 1.0–2.0". */
+  officialTextSource: string;
+  /** The eCFR date the official text was fetched for (YYYY-MM-DD). */
+  officialTextRetrieved: string;
 };
 
 export const TEST_METHOD_CATEGORY_LABELS: Record<TestMethodCategory, string> = {

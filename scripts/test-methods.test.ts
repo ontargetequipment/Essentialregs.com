@@ -10,6 +10,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { JSDOM } from "jsdom";
+import { MethodOfficialText, TestMethodBody } from "../src/components/TestMethodBody";
 import {
   TEST_METHODS,
   TEST_METHOD_BY_SLUG,
@@ -88,6 +92,81 @@ test("the prose fields are present and prose-only (no formulas, no markup)", () 
 test("the JSON file is exactly what the wrapper exports (one source of truth for TypeScript and Python)", () => {
   const raw = JSON.parse(readFileSync(path.join(__dirname, "..", "src", "data", "test-methods.json"), "utf8"));
   assert.deepEqual(raw, TEST_METHODS);
+});
+
+// ---- official text: sections 1.0-2.0 (scripts/fetch_method_sections.py) ----
+
+// What the script emits: the importer's provision-text HTML. Anything else in
+// officialText means the file was edited by hand or the script changed.
+const OFFICIAL_TAGS = new Set(["p", "h3", "h4", "i", "b", "sup", "sub", "br", "a", "div", "table", "thead", "tbody", "tfoot", "tr", "th", "td"]);
+const OFFICIAL_ATTRS: Record<string, Set<string>> = {
+  a: new Set(["href"]),
+  td: new Set(["colspan", "rowspan"]),
+  th: new Set(["colspan", "rowspan"]),
+};
+
+test("every entry carries its official sections 1.0-2.0, source and retrieval date", () => {
+  for (const m of TEST_METHODS) {
+    assert.equal(typeof m.officialText, "string", `${m.slug}: officialText missing`);
+    assert.ok(m.officialText.length >= 200 && m.officialText.length <= 20000, `${m.slug}: officialText is ${m.officialText.length} characters`);
+    assert.equal(typeof m.officialTextSource, "string", `${m.slug}: officialTextSource missing`);
+    assert.ok(
+      m.officialTextSource.startsWith(`${m.source}, ${m.shortName}, sections 1`),
+      `${m.slug}: officialTextSource "${m.officialTextSource}" does not name ${m.source}, ${m.shortName}`
+    );
+    assert.match(m.officialTextRetrieved, /^\d{4}-\d{2}-\d{2}$/, `${m.slug}: officialTextRetrieved is not YYYY-MM-DD`);
+    const d = new Date(`${m.officialTextRetrieved}T00:00:00Z`);
+    assert.ok(!Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === m.officialTextRetrieved, `${m.slug}: officialTextRetrieved is not a real date`);
+    assert.equal(m.titleVerified, true, `${m.slug}: titleVerified is still false`);
+  }
+});
+
+test("officialText parses as HTML with only the importer's tags and attributes", () => {
+  for (const m of TEST_METHODS) {
+    const doc = new JSDOM(`<body>${m.officialText}</body>`).window.document;
+    const els = Array.from(doc.body.querySelectorAll("*"));
+    assert.ok(els.length > 0, `${m.slug}: officialText has no elements`);
+    for (const el of els) {
+      const tag = el.tagName.toLowerCase();
+      assert.ok(OFFICIAL_TAGS.has(tag), `${m.slug}: officialText has a <${tag}>`);
+      for (const attr of Array.from(el.attributes)) {
+        const ok = attr.name === "class" ? ["p", "div", "table"].includes(tag) : OFFICIAL_ATTRS[tag]?.has(attr.name);
+        assert.ok(ok, `${m.slug}: <${tag} ${attr.name}> is not an attribute the script emits`);
+      }
+    }
+    for (const a of Array.from(doc.body.querySelectorAll("a"))) {
+      assert.ok(a.getAttribute("href")?.startsWith("https://www.ecfr.gov/"), `${m.slug}: a link in officialText leaves the eCFR`);
+    }
+    assert.ok(/^1\.0?\s/.test(doc.body.textContent ?? ""), `${m.slug}: officialText does not open with section 1`);
+  }
+});
+
+test("the method-21 page shows the official text, then EssentialRegs notes", () => {
+  const m = TEST_METHOD_BY_SLUG.get("method-21")!;
+  const html = renderToStaticMarkup(createElement(TestMethodBody, { method: m }));
+  const official = html.indexOf(">From the method — official text</h2>");
+  const notes = html.indexOf(">EssentialRegs notes</h2>");
+  const measures = html.indexOf(">What it measures</h3>");
+  assert.ok(official >= 0, "no official-text heading");
+  assert.ok(notes > official, "EssentialRegs notes does not follow the official text");
+  assert.ok(measures > notes, "the editorial sections are not under EssentialRegs notes");
+  const body = new JSDOM(html).window.document;
+  const section = body.getElementById("official-text")!;
+  assert.ok(section, "no #official-text section");
+  const caption = section.querySelector("p")!.textContent!;
+  assert.ok(caption.includes(`of ${m.officialTitle}, as published at ${m.source}.`), caption);
+  assert.ok(caption.includes("The full method is on the eCFR."), caption);
+  const text = section.querySelector(".method-text")!.textContent!;
+  assert.ok(text.startsWith("1.0"), `official text starts "${text.slice(0, 40)}"`);
+  assert.ok(text.includes("2.0"), "section 2.0 missing from the rendered official text");
+  assert.ok(html.indexOf("1.0") < html.indexOf(">EssentialRegs notes<"));
+});
+
+test("the official text is rendered through the reader's sanitizer", () => {
+  const m = { ...TEST_METHOD_BY_SLUG.get("method-21")!, officialText: '<p>1.0 x<script>alert(1)</script><img src=x onerror="alert(1)"></p>' };
+  const html = renderToStaticMarkup(createElement(MethodOfficialText, { method: m }));
+  assert.ok(!html.includes("<script"), "a script survived");
+  assert.ok(!html.includes("onerror"), "an event handler survived");
 });
 
 // ---- the generated slug list (corpus_qa.sql check 26) -----------------------

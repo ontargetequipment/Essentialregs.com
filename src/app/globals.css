@@ -138,6 +138,65 @@
   vertical-align: top;
 }
 
+/* Sections 1.0-2.0 of a test method, verbatim from the eCFR, on
+   /test-methods/<slug> (TestMethodBody.tsx). Official text in the
+   importer's HTML: paragraphs, h3/h4 section headings, and the reader's
+   doc-table tables (the same rules as .reg-reader in reader.css, which is
+   not loaded on these pages). */
+.method-text p {
+  margin: 0 0 0.75em;
+}
+.method-text h3,
+.method-text h4 {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  margin: 1.1em 0 0.4em;
+}
+.method-text h3 {
+  font-size: 1em;
+}
+.method-text h4 {
+  font-size: 0.92em;
+}
+.method-text > :first-child {
+  margin-top: 0;
+}
+.method-text .doc-table-wrap {
+  margin: 14px 0 18px;
+  max-width: 100%;
+  overflow-x: auto;
+  font-family: var(--font-sans);
+}
+.method-text .doc-table-caption {
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.method-text table.doc-table {
+  border-collapse: collapse;
+  width: 100%;
+  overflow-wrap: normal;
+  font-size: 12.5px;
+  line-height: 1.4;
+  background: #fff;
+  border: 1px solid var(--line);
+}
+.method-text table.doc-table th,
+.method-text table.doc-table td {
+  border: 1px solid var(--line);
+  padding: 6px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+.method-text table.doc-table thead th {
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+.method-text table.doc-table tbody tr:nth-child(even) {
+  background: #faf9f5;
+}
+
 /* ---------------------------------------------------------------------------
    EssentialRegs notes inside official text (Sprint 3). Both are emitted by
    the importer and are NOT official text, so they are set apart from it:
