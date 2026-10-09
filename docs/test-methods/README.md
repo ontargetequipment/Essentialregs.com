@@ -23,6 +23,30 @@ provisions whose text links the method).
 - **Build record.** `docs/imports/2026-10-09/test_methods_linker.md` (PR #80),
   and PR #81 for the embedder change that lets a re-link re-embed nothing.
 
+## Official text: sections 1.0–2.0
+
+Each page opens with "From the method — official text": sections 1.0 and 2.0
+of the method (the "1." and "2." sections for the older Methods 3C and 9),
+verbatim from the eCFR versioner XML, above the editorial copy, which sits
+under "EssentialRegs notes".
+
+- **Fields.** `officialText` (HTML in the importer's conventions),
+  `officialTextSource`, `officialTextRetrieved` on every entry. Written only
+  by `scripts/fetch_method_sections.py`; never edit them by hand.
+- **Refresh.** Run the "Test Methods official sections" workflow
+  (`.github/workflows/method-sections.yml`, `workflow_dispatch`) on a branch.
+  It fetches every appendix for one eCFR date (today, or Title 40's
+  `up_to_date_as_of` when the versioner has not published today yet),
+  rewrites the JSON, proves a second run on the saved XML changes nothing,
+  commits the JSON to that branch and uploads the JSON, report and XML as
+  an artifact. Any method whose heading, 1.0 or 2.0 is missing, whose span
+  holds a 3.x-numbered block, or whose text is outside 200–20,000
+  characters fails the run, and nothing is written.
+- **Titles.** The script corrects `officialTitle` to the heading the eCFR
+  prints and sets `titleVerified: true`.
+- **First run.** eCFR date 2026-10-07 (PR "Test Methods: official sections
+  1.0–2.0 on every page").
+
 ## Re-link executed (9 Oct 2026)
 
 Owner-approved re-link of the 25 regulations whose text cites a method, run

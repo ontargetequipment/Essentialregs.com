@@ -19,14 +19,6 @@ on:
         description: "Commit the refreshed JSON to this branch"
         type: boolean
         default: true
-  # TEMPORARY bootstrap: workflow_dispatch only works once this file is on
-  # the default branch, so the first run is triggered by a push to the PR
-  # branch that adds it. Remove this trigger before merging.
-  push:
-    branches: ["claude/eloquent-davinci-6zyzrq"]
-    paths:
-      - "scripts/fetch_method_sections.py"
-      - ".github/workflows/method-sections.yml"
 
 permissions:
   contents: write
