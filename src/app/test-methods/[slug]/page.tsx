@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TestMethodBody } from "@/components/TestMethodBody";
-import { TEST_METHODS, TEST_METHOD_BY_SLUG, type TestMethod } from "@/data/test-methods";
+import { TEST_METHODS, TEST_METHOD_BY_SLUG, titleWithoutMethodName, type TestMethod } from "@/data/test-methods";
 import { fetchCitedBy, type CitedByGroup } from "@/lib/test-method-citations";
 
 /**
@@ -129,7 +129,7 @@ export default async function TestMethodPage(props: PageProps<"/test-methods/[sl
           </Link>
         </p>
         <h1 className="mt-2 font-serif text-section font-bold tracking-tight text-ink">{method.shortName}</h1>
-        <p className="mt-2 text-base leading-relaxed text-ink-soft">{method.officialTitle}</p>
+        <p className="mt-2 text-base leading-relaxed text-ink-soft">{titleWithoutMethodName(method.shortName, method.officialTitle)}</p>
         <p className="mt-1 text-sm text-muted">{method.source}</p>
         <p className="mt-4">
           <a
@@ -176,7 +176,7 @@ export default async function TestMethodPage(props: PageProps<"/test-methods/[sl
         </TestMethodBody>
 
         <p className="mt-10 border-t border-line pt-6 text-sm text-muted">
-          The sections marked as official text above are reproduced from the
+          The sections marked as regulatory text above are reproduced from the
           CFR. Everything under ‘EssentialRegs notes’ is our reference copy,
           not the method. The method as published in the CFR controls.
         </p>

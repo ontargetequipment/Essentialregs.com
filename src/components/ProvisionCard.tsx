@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cache } from "react";
 import { getAccessStatus } from "@/lib/access";
-import { sanitizeCardHtml, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
+import { regKeyOf, sanitizeCardHtml, sourceLinkTextFor, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
 import { SummaryBadge } from "@/components/SummaryBadge";
 import type { Provision } from "@/lib/types";
 
@@ -116,7 +116,7 @@ export async function ProvisionCard({ provision }: { provision: Provision }) {
             rel="noopener noreferrer"
             className="inline-flex min-h-11 items-center underline hover:text-ink sm:inline sm:min-h-0"
           >
-            View official source ↗
+            {sourceLinkTextFor(regKeyOf(provision.id))} ↗
           </a>
         )}
       </div>

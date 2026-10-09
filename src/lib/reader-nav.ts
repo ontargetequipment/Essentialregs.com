@@ -195,6 +195,36 @@ export function documentDateLine(key: string | null | undefined, dates: Readonly
 }
 
 /**
+ * The line under a reader page's title (trust copy pass, 9 Oct 2026):
+ * "Current through 07/15/2026 · source checked 10/08/2026".
+ *
+ *   Current through  the version date of the document we hold, the same
+ *                    manifest-generated SOURCE_DATES the previews use
+ *                    (documentDateLine): a rule's effective date, a general
+ *                    permit's issue date, an eCFR as-of date.
+ *   source checked   the root row's last_verified_date, which the importer
+ *                    writes as the day it last imported (and so compared) the
+ *                    corpus copy with the source. freshness.py's weekly check
+ *                    only reports; it does not write a per-document date, so
+ *                    this column is the one record of when a copy was last
+ *                    checked.
+ *
+ * Either half is left out when its date is not held; null when neither is.
+ */
+export function sourceStatusLine(
+  key: string | null | undefined,
+  lastVerified: string | null | undefined,
+  dates: Readonly<Record<string, SourceDate>> = SOURCE_DATES
+): string | null {
+  const held = key ? dates[key.toLowerCase()] : undefined;
+  const through = held ? `Current through ${formatUsDate(held.date)}` : null;
+  const v = (lastVerified ?? "").trim().slice(0, 10);
+  const checked = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v) ? `${through ? "source checked" : "Source checked"} ${formatUsDate(v)}` : null;
+  const parts = [through, checked].filter((x): x is string => x !== null);
+  return parts.length ? parts.join(" \u00b7 ") : null;
+}
+
+/**
  * "/regulations/<reg>#<id>", with `?from=<origin>` between them when the
  * origin is known and `cited=<printed section>` when the link is a
  * renumbered definition citation (see citedParamOf).

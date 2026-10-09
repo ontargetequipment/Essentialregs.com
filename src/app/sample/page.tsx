@@ -8,6 +8,7 @@ import {
   regKeyOf,
   rootIdOf,
   sampleCards,
+  withReviewerKind,
 } from "@/lib/regulation";
 import type { Provision } from "@/lib/types";
 
@@ -53,11 +54,11 @@ export default async function SamplePage() {
     fetchPendingSummaryCounts(regKeys),
   ]);
 
-  // A summary is public only once it is AI reviewed and its regulation's
+  // A summary is public only once it has had the automated check and its regulation's
   // review run has finished (gatePublicSummaries, owner decision 5 Oct 2026).
   const provisions = sampleCards(
     gatePublicSummaries(
-      (data ?? []).map((p) => ({ ...p, cross_references: p.cross_references ?? [] })),
+      (data ?? []).map((p) => ({ ...withReviewerKind(p as Provision & { reviewed_by?: string | null }), cross_references: p.cross_references ?? [] })),
       pendingByReg
     ),
     roots,
@@ -72,7 +73,7 @@ export default async function SamplePage() {
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
           A few sections exactly as subscribers see them: the official text, an
-          AI-reviewed plain-English summary, and the cross-references resolved. The
+          AI-generated plain-English summary, and the cross-references resolved. The
           full corpus covers the Colorado AQCC regulations, the ECMC rules, the
           APCD general permits, and the federal rules they cite, in the same
           format.
@@ -88,7 +89,7 @@ export default async function SamplePage() {
           {provisions.map((provision) => (
             <div key={provision.id} className="flex flex-col gap-3">
               <ProvisionCard provision={provision} />
-              {/* Public teaser: citation/title/AI-reviewed summary only, links to /preview. */}
+              {/* Public teaser: citation/title/AI-generated summary only, links to /preview. */}
               <RelatedProvisions provisionId={provision.id} teaser />
             </div>
           ))}

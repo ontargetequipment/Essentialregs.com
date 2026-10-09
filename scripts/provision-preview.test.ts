@@ -127,7 +127,7 @@ test("a whole-document preview carries the root's title and the two-sentence ove
   assert.equal(body.title, "CONTROL OF HAZARDOUS AIR POLLUTANTS 5 CCR 1001-10");
   assert.deepEqual(body.summary, {
     overview: "Regulation 8 sets Colorado's hazardous air pollutant rules. It adopts the federal NESHAPs by reference.",
-    badge: { kind: "reviewed", label: "AI reviewed · Oct 5, 2026" },
+    badge: { kind: "reviewed", label: "AI-generated · automated check against source text · Oct 5, 2026" },
   });
   // No reviewer, no other metadata.
   assert.doesNotMatch(JSON.stringify(body), /reviewed_by|summary_original|Claude/);

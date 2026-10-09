@@ -60,7 +60,7 @@
 -- names (src/lib/question-maps.ts) exists: the ids arrive through the
 -- generated scripts/question-map-ids.sql, which must be loaded first (CI
 -- passes it as the first -f; in the SQL editor paste it ahead of this file
--- in the same run). Check 21 (4 Oct 2026) guards the "AI reviewed" label:
+-- in the same run). Check 21 (4 Oct 2026) guards the AI-generated label (reworded 9 Oct 2026):
 -- an approved or edited summary whose reviewed_by was not stamped by the AI
 -- second pass is a human-only approval the site would mislabel, so it fails
 -- the qa job until the pass runs on it. Checks 22-24 (Sprint 3, Oct 2026)
@@ -602,14 +602,14 @@ checks as (
 
   union all
   select 19, 'GUARD', 'approved_without_review_date', count(*), 0,
-         'Trust badge (1 Oct 2026; "AI reviewed" since 4 Oct 2026; ReviewBuiltIn guard since 6 Oct 2026). Every summary in the reader and on the Ask, keyword and related cards carries "AI reviewed · <reviewed_at>" for summary_status approved/edited (summaryStatusBadge in src/lib/regulation-pure.ts). An approved or edited row with a null reviewed_at was not stamped by the review step, and renders "AI reviewed" with no date. Counts rows with summary_status in (approved, edited) and reviewed_at null. Expect 0 (the trigger provisions_summary_approval_only_by_pipeline refuses the write). When above 0, send the rows through pipeline/review.py; never edit reviewed_at by hand.'
+         'Trust badge (1 Oct 2026; AI-generated label since 9 Oct 2026; ReviewBuiltIn guard since 6 Oct 2026). Every summary in the reader and on the Ask, keyword and related cards carries "AI-generated · automated check against source text" (with " · <reviewed_at>" in the reader) for summary_status approved/edited (summaryStatusBadge in src/lib/regulation-pure.ts). An approved or edited row with a null reviewed_at was not stamped by the review step, and renders the label with no date. Counts rows with summary_status in (approved, edited) and reviewed_at null. Expect 0 (the trigger provisions_summary_approval_only_by_pipeline refuses the write). When above 0, send the rows through pipeline/review.py; never edit reviewed_at by hand.'
          || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where summary_status in ('approved', 'edited') and reviewed_at is null order by id limit 30) r), '')
   from provisions
   where summary_status in ('approved', 'edited') and reviewed_at is null
 
   union all
   select 21, 'GUARD', 'approved_outside_pipeline', count(*), 0,
-         'AI reviewed label (owner decision, 4 Oct 2026; tightened 6 Oct 2026, ReviewBuiltIn). The badge reads "AI reviewed" for every approved or edited summary and depends on summary_status alone, so it is only true when pipeline/review.py has actually run on the row. Both of its stamps contain ''automated pipeline''. Counts rows with summary_status in (approved, edited) whose reviewed_by is null or does not contain ''automated pipeline'': each one is an approval made outside the pipeline (a hand pass, a script, the old admin Approve button) that the site would mislabel. Expect 0 (the trigger provisions_summary_approval_only_by_pipeline refuses the write; this check is the loud failure if the trigger is ever dropped). When above 0, set the rows back to pending and let the next review run stamp them; never edit reviewed_by by hand.'
+         'AI-generated label (owner decision, 4 Oct 2026, reworded 9 Oct 2026; tightened 6 Oct 2026, ReviewBuiltIn). The badge reads "AI-generated · automated check against source text" for every approved or edited summary whose reviewed_by carries the pipeline stamp ("Reviewed" only when a person approved it), so the AI label is only true when pipeline/review.py has actually run on the row. Both of its stamps contain ''automated pipeline''. Counts rows with summary_status in (approved, edited) whose reviewed_by is null or does not contain ''automated pipeline'': each one is an approval made outside the pipeline (a hand pass, a script, the old admin Approve button) that the site would mislabel. Expect 0 (the trigger provisions_summary_approval_only_by_pipeline refuses the write; this check is the loud failure if the trigger is ever dropped). When above 0, set the rows back to pending and let the next review run stamp them; never edit reviewed_by by hand.'
          || coalesce(' Rows: ' || (select string_agg(id, ', ' order by id) from (select id from provisions where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not ilike '%automated pipeline%') order by id limit 30) r), '')
   from provisions
   where summary_status in ('approved', 'edited') and (reviewed_by is null or reviewed_by not ilike '%automated pipeline%')

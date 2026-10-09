@@ -144,7 +144,7 @@ test("officialText parses as HTML with only the importer's tags and attributes",
 test("the method-21 page shows the official text, then EssentialRegs notes", () => {
   const m = TEST_METHOD_BY_SLUG.get("method-21")!;
   const html = renderToStaticMarkup(createElement(TestMethodBody, { method: m }));
-  const official = html.indexOf(">From the method — official text</h2>");
+  const official = html.indexOf(">From the method — regulatory text</h2>");
   const notes = html.indexOf(">EssentialRegs notes</h2>");
   const measures = html.indexOf(">What it measures</h3>");
   assert.ok(official >= 0, "no official-text heading");

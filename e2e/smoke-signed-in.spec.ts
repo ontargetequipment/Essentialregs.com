@@ -193,7 +193,7 @@ test.describe("signed in", () => {
       await expect(body.locator(".summary-overview")).toHaveCount(1);
       await expect(body.locator(".summary-overview")).not.toBeEmpty();
       await expect(body.locator(".doc-preview-empty")).toHaveCount(0);
-      await expect(body.locator(".summary-badge")).toHaveText(/^AI reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?$/);
+      await expect(body.locator(".summary-badge")).toHaveText(/^(AI-generated · automated check against source text|Reviewed)( · [A-Z][a-z]+ \d{1,2}, \d{4})?$/);
       const open = page.locator("#popup-goto");
       await expect(open).toHaveText("Open Regulation 8 →");
       await expect(open).toHaveAttribute("href", "/regulations/8?from=sec-gp12-XII-E#sec-8-top-REG-8");
@@ -329,12 +329,12 @@ test.describe("signed in", () => {
     const badges = page.locator("#doc details.summary-panel > .summary-body > .summary-badge");
     expect(await badges.count()).toBeGreaterThan(0);
     const texts = await badges.allTextContents();
-    for (const text of texts) expect(text).toMatch(/^(AI reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/);
+    for (const text of texts) expect(text).toMatch(/^(AI-generated · automated check against source text( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed|Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?)$/);
     // Never a bare "Reviewed" (owner decision, 4 Oct 2026): no summary claims human review.
     for (const text of texts) expect(text).not.toMatch(/^Reviewed\b/);
-    expect(texts.some((t) => t.startsWith("AI reviewed") || t.startsWith("AI-generated"))).toBe(true);
+    expect(texts.some((t) => t.startsWith("AI-generated"))).toBe(true);
     // The tooltip is added after hydration (reader-client.ts, fillSummaryBadges).
-    await expect(badges.first()).toHaveAttribute("title", /Disclaimer page|Read the official text/);
+    await expect(badges.first()).toHaveAttribute("title", /Disclaimer page|Read the source text/);
     // No panel without a badge, and no reviewer named anywhere in the body.
     expect(await page.locator("#doc details.summary-panel").count()).toBe(texts.length);
     expect(await page.locator("#doc").innerText()).not.toMatch(/reviewed by/i);
@@ -389,8 +389,8 @@ test.describe("signed in", () => {
     );
     const badge = first.locator(".summary-badge");
     await expect(badge).toHaveCount(1);
-    await expect(badge).toHaveText(/^(AI reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/);
-    await expect(badge).toHaveAttribute("title", /Disclaimer page|Read the official text/);
+    await expect(badge).toHaveText(/^(AI-generated · automated check against source text( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed|Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?)$/);
+    await expect(badge).toHaveAttribute("title", /Disclaimer page|Read the source text/);
   });
 
   test("an engine question renders grouped under its question map; ?flat=1 shows the flat list", async ({ page }) => {

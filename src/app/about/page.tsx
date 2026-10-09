@@ -139,7 +139,7 @@ export default function AboutPage() {
           The plain-English summaries are generated with the help of AI
           tools and then checked against the official text by a separate
           automated review; no summary on this site is presented as reviewed
-          by a person. AI reviewed or not, a summary
+          by a person. Checked or not, a summary
           is an orientation aid — it tells you what a section is about so
           you can decide whether to read it, not what the section requires
           of you. Always read the regulatory text before acting on it, and

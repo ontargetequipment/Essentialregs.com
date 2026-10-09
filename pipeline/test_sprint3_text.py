@@ -67,7 +67,10 @@ class CuratedFilesTests(unittest.TestCase):
             self.assertTrue(pid.startswith(("sec-gp", "sec-oooo-", "sec-ooooa-")), pid)
             for e in entries:
                 self.assertTrue(e["printed"] and e["reason"], pid)
-                if pid.startswith("sec-oooo"):
+                if pid == "sec-oooo-60.5371-(b)-(3)":
+                    # the eCFR's garbled attestation sentence, noted as published
+                    self.assertEqual(e["tooltip"], "Reproduced as published in eCFR.")
+                elif pid.startswith("sec-oooo"):
                     # the EPA e-mail address the eCFR prints with doubled underscores
                     self.assertRegex(e["printed"], r"^Oil_{2,}and_{2,}Gas_{2,}PT@EPA\.GOV$")
                     self.assertIn("Oil_and_Gas_PT@EPA.GOV", e["tooltip"])

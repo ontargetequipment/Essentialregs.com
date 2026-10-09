@@ -13,6 +13,7 @@
  */
 import { applicabilityContextFor, applicabilityContextHtml } from "@/lib/applicability-context";
 import { deriveParents, topGroupResolver, type ReaderKind } from "@/lib/reader-tree";
+import { isFederalKey, regKeyOf } from "@/lib/regulation-names";
 import {
   containsBoxFromRows,
   SNIPPET_LEN,
@@ -169,7 +170,7 @@ export function fillSummaryLinks(model: ReaderModel): void {
     const status = row.el.querySelector(":scope > details.summary-panel > .summary-status");
     if (!status || status.firstChild) continue;
     const url = row.el.getAttribute("data-src") ?? model.rootSourceUrl;
-    if (url) status.innerHTML = summarySourceLinkHtml(url);
+    if (url) status.innerHTML = summarySourceLinkHtml(url, isFederalKey(regKeyOf(row.id)));
   }
 }
 

@@ -66,7 +66,7 @@ export async function sendBackToPending(formData: FormData): Promise<void> {
 /**
  * Save an edited text as PENDING. The edit is not approved here: the
  * reviewer checks it against the official text in the next chained run,
- * and only then does the row read "AI reviewed".
+ * and only then does the row read "AI-generated · automated check against source text".
  */
 export async function saveEditForReview(formData: FormData): Promise<void> {
   const admin = await requireAdmin();

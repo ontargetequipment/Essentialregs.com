@@ -45,6 +45,13 @@
     "tooltip": "The eCFR prints this address with doubled underscores, in the versioner XML as well as the PDF; Subparts OOOOb and OOOOc give the same EPA mailbox as Oil_and_Gas_PT@EPA.GOV."
    }
   ],
+  "sec-oooo-60.5371-(b)-(3)": [
+   {
+    "printed": "You must sign the following attestation must be signed by the owner or operator into when",
+    "reason": "The sentence is printed this way in the eCFR text of this paragraph (XML and PDF, checked Oct 2026): 'You must sign the following attestation must be signed by the owner or operator into when submitting data'. Source note requested in the trust copy pass of 9 Oct 2026 (fifth outside review).",
+    "tooltip": "Reproduced as published in eCFR."
+   }
+  ],
   "sec-ooooa-60.5413a-(d)-(12)": [
    {
     "printed": "Oil__and__Gas__PT@EPA.GOV",

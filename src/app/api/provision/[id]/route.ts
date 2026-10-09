@@ -28,7 +28,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         const supabase = await createClient();
         const { data, error } = await supabase
           .from("provisions")
-          .select("id, citation, title, full_text, ai_summary, summary_status, reviewed_at")
+          .select("id, citation, title, full_text, ai_summary, summary_status, reviewed_at, reviewed_by")
           .eq("id", rowId)
           .maybeSingle();
         if (error) throw new Error(error.message);

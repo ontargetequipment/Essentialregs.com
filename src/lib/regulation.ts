@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Provision } from "@/lib/types";
-import { filterReleased, sanitizeHtml } from "@/lib/regulation-pure";
+import { filterReleased, sanitizeHtml, withReviewerKind } from "@/lib/regulation-pure";
 import { fetchStagedRegKeys, isRegReleased } from "@/lib/release";
 import { renderReaderBody, type RenderedReader } from "@/lib/reader-render";
 
@@ -16,10 +16,13 @@ import { teaserSummariesVisible } from "@/lib/regulation-pure";
 const PAGE_SIZE = 1000;
 
 // reviewed_at is the date on the summary badge (summaryStatusBadge).
-// reviewed_by is NOT here and must not be added: it holds an email on some
-// rows and this list feeds the reader body every subscriber receives.
+// reviewed_by is selected only so the badge can tell a person's approval from
+// the pipeline's (isHumanReviewer). It holds an email on some rows, so it is
+// reduced to the boolean reviewed_by_human the moment the page comes back
+// (fetchRegulationProvisions) and never stays on a Provision: this list
+// feeds the reader body every subscriber receives.
 const PROVISION_COLUMNS =
-  "id, citation, title, jurisdiction_level, issuing_body, parent_id, full_text, ai_summary, summary_status, reviewed_at, source_url, last_verified_date, is_public, sort_order";
+  "id, citation, title, jurisdiction_level, issuing_body, parent_id, full_text, ai_summary, summary_status, reviewed_at, reviewed_by, source_url, last_verified_date, is_public, sort_order";
 
 /**
  * Fetches every provision belonging to a regulation (stored `reg_key`, the
@@ -60,7 +63,8 @@ export async function fetchRegulationProvisions(
   const all: Provision[] = [];
   for (const result of [first, ...(await Promise.all(rest))]) {
     if (result.error) throw new Error(result.error.message);
-    for (const p of (result.data ?? []) as Provision[]) {
+    for (const raw of (result.data ?? []) as (Provision & { reviewed_by?: string | null })[]) {
+      const p = withReviewerKind(raw);
       all.push({ ...p, full_text: sanitizeHtml(p.full_text) });
     }
   }
@@ -107,8 +111,10 @@ const CACHE_CHUNK_CHARS = 800_000;
  * panel builders in regulation-pure.ts change what they emit.
  *
  *   2: the review-status badge in every summary panel (1 Oct 2026).
+ *   3: trust copy pass (9 Oct 2026): the badge wording, "Verify on eCFR" on
+ *      federal documents, the dateLine in the meta entry.
  */
-const READER_RENDER_VERSION = "2";
+const READER_RENDER_VERSION = "3";
 
 /**
  * The rendered reader body for a regulation, cached across requests and
@@ -143,6 +149,7 @@ export async function fetchRenderedReader(
       return {
         title: r.title,
         blurb: r.blurb,
+        dateLine: r.dateLine,
         navHtml: r.navHtml,
         chunks: Math.ceil(r.docHtml.length / CACHE_CHUNK_CHARS),
       };
@@ -164,7 +171,7 @@ export async function fetchRenderedReader(
       )()
     )
   );
-  return { title: meta.title, blurb: meta.blurb, navHtml: meta.navHtml, docHtml: chunks.join("") };
+  return { title: meta.title, blurb: meta.blurb, dateLine: meta.dateLine ?? null, navHtml: meta.navHtml, docHtml: chunks.join("") };
 }
 
 /** Every top-level regulation currently in the corpus (for a regulation index). */

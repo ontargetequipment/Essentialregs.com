@@ -27,11 +27,12 @@ async function expectPlanCtas(scope: import("@playwright/test").Locator | import
 }
 
 /**
- * What a review-status badge says (summaryStatusBadge): a dated "AI
- * reviewed", or the pending line. Never a bare "Reviewed" (owner decision,
- * 4 Oct 2026): no summary on the site claims human review.
+ * What a review-status badge says (summaryStatusBadge): "AI-generated ·
+ * automated check against source text" (dated in the reader), the pending
+ * line, or "Reviewed" only for a person's approval (9 Oct 2026; none exist
+ * today, the DB trigger refuses non-pipeline approvals).
  */
-const BADGE_TEXT = /^(AI reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed)$/;
+const BADGE_TEXT = /^(AI-generated · automated check against source text( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed|Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?)$/;
 
 /** Each /sample card's heading, in SAMPLE_ORDER: regulation label · citation [— title]. */
 const SAMPLE_HEADINGS = [
@@ -288,11 +289,11 @@ test.describe("anonymous", () => {
       /^https:\/\/www\.ecfr\.gov\/current\/title-40\//,
     );
     // Sections 1.0-2.0 as official text first, then our editorial copy.
-    await expect(page.getByRole("heading", { level: 2, name: "From the method — official text", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "From the method — regulatory text", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { level: 2, name: "EssentialRegs notes", exact: true })).toBeVisible();
     const h2s = await page.getByRole("heading", { level: 2 }).allTextContents();
-    expect(h2s.indexOf("From the method — official text")).toBeGreaterThanOrEqual(0);
-    expect(h2s.indexOf("EssentialRegs notes")).toBeGreaterThan(h2s.indexOf("From the method — official text"));
+    expect(h2s.indexOf("From the method — regulatory text")).toBeGreaterThanOrEqual(0);
+    expect(h2s.indexOf("EssentialRegs notes")).toBeGreaterThan(h2s.indexOf("From the method — regulatory text"));
     await expect(page.locator("#official-text .method-text")).toContainText("1.0");
     for (const heading of ["What it measures", "How it works", "Equipment", "When a rule cites it"]) {
       await expect(page.getByRole("heading", { level: 3, name: heading })).toBeVisible();
@@ -457,7 +458,7 @@ test.describe("anonymous", () => {
     // The summary toggle carries the review-status badge after its label
     // (SummaryBadge.tsx); this row has been approved since 15 Sep 2026.
     await expect(page.locator("article details > summary")).toHaveText([
-      /^Plain-English summary\s*AI reviewed · [A-Z][a-z]+ \d{1,2}, \d{4}$/,
+      /^Plain-English summary\s*AI-generated · automated check against source text$/,
       "Original regulatory text",
     ]);
     await expect(page.locator("article .summary-badge")).toHaveAttribute("title", /Disclaimer page/);

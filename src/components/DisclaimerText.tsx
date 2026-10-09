@@ -156,23 +156,28 @@ export function DisclaimerSections() {
         </p>
       </LegalSection>
 
-      {/* Owner decisions, 29 Sep and 4 Oct 2026: every summary carries a
-          review-status badge ("AI reviewed · <date>" or "AI-generated · not
-          yet reviewed"), no summary is presented as reviewed by a person,
-          and this section is the definition the badge's tooltip points at. */}
-      <LegalSection number={9} title={"What \u201cAI reviewed\u201d means"} id={REVIEWED_SECTION_ID}>
+      {/* Owner decisions, 29 Sep, 4 Oct and 9 Oct 2026 (trust copy pass after
+          the fifth outside review): every summary carries a review-status
+          badge ("AI-generated · automated check against source text" or
+          "AI-generated · not yet reviewed"), no summary is presented as
+          reviewed by a person unless a person approved it, and this section
+          is the definition the badge's tooltip points at. The anchor id stays
+          "what-reviewed-means" so older links keep working. */}
+      <LegalSection number={9} title={"What \u201cAI-generated\u201d means"} id={REVIEWED_SECTION_ID}>
         <p>
           Every plain-English summary on EssentialRegs carries a label. A
-          summary marked &ldquo;AI reviewed&rdquo; with a date was written by
-          an artificial-intelligence model from the official regulation text
-          and was then checked against that text by a separate automated
-          review, which corrected the errors it found. No summary on this
-          site is presented as having been reviewed by a person. A summary
-          marked &ldquo;AI-generated &middot; not yet reviewed&rdquo; was
-          written from the official text but has not had that second check,
-          and should be read with that in mind. In every case the official
-          text controls, a label is not a guarantee of accuracy, and the
-          summary is not legal advice.
+          summary marked &ldquo;AI-generated &middot; automated check against
+          source text&rdquo; was written by an artificial-intelligence model
+          from the regulation text and was then checked against that text by
+          a separate automated review, which corrected the errors it found.
+          No person reviewed it. The date, where shown, is when that
+          automated check ran. A summary marked &ldquo;AI-generated &middot;
+          not yet reviewed&rdquo; was written from the regulation text but
+          has not had that second check, and should be read with that in
+          mind. A summary marked &ldquo;Reviewed&rdquo; with a date has been
+          reviewed by a person; none are marked that way today. In every
+          case the regulation text controls, a label is not a guarantee of
+          accuracy, and the summary is not legal advice.
         </p>
       </LegalSection>
     </>

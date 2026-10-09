@@ -115,6 +115,26 @@ export function regBadge(regKey: string | null, jurisdiction: string): string {
   return jurisdiction === "federal" ? "Federal" : "Colorado";
 }
 
+/** True for a federal document's reg key (see FEDERAL_KEY); case-insensitive, false for null. */
+export function isFederalKey(regKey: string | null | undefined): boolean {
+  return !!regKey && FEDERAL_KEY.test(regKey.toLowerCase());
+}
+
+/**
+ * The label above a provision's own text where a summary sits beside it
+ * (the reader popup). A federal document is the eCFR's rendering, which is
+ * not the official edition, so it is "Regulatory text"; a Colorado
+ * document keeps "Official text" (trust copy pass, 9 Oct 2026).
+ */
+export function textLabelFor(regKey: string | null | undefined): string {
+  return isFederalKey(regKey) ? "Regulatory text" : "Official text";
+}
+
+/** The source link's text: "Verify on eCFR" for a federal document, "View official source" for a Colorado one. */
+export function sourceLinkTextFor(regKey: string | null | undefined): string {
+  return isFederalKey(regKey) ? "Verify on eCFR" : "View official source";
+}
+
 /** "state" | "federal" from the reg key alone (for rows that don't carry jurisdiction_level). */
 export function jurisdictionOfKey(regKey: string | null): "state" | "federal" {
   return regKey && FEDERAL_KEY.test(regKey) ? "federal" : "state";

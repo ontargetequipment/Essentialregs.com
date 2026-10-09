@@ -4,6 +4,7 @@ import {
   TEST_METHOD_CATEGORY_LABELS,
   TEST_METHOD_CATEGORY_ORDER,
   testMethodsInCategory,
+  titleWithoutMethodName,
 } from "@/data/test-methods";
 
 export const metadata: Metadata = {
@@ -51,7 +52,7 @@ export default function TestMethodsIndexPage() {
                   >
                     <p className="font-serif text-card font-semibold text-ink group-hover:text-accent">
                       {m.shortName}
-                      <span className="font-normal text-ink-soft"> — {m.officialTitle}</span>
+                      <span className="font-normal text-ink-soft"> — {titleWithoutMethodName(m.shortName, m.officialTitle)}</span>
                     </p>
                     <p className="mt-1 text-sm leading-relaxed text-ink-soft">{m.measures}</p>
                   </Link>

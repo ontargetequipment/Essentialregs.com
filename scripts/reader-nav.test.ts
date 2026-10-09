@@ -845,7 +845,7 @@ test("cross-regulation preview through /api/provision", async (t) => {
       html: "GENERAL PERMIT 12 (GP12) — Well Production Facilities — GP12 Issuance 1, May 28, 2026",
       summary: {
         overview: "GP12 is the general permit for well production facilities. It replaced GP09 and GP10 for new registrations.",
-        badge: { kind: "reviewed", label: "AI reviewed · Oct 5, 2026" },
+        badge: { kind: "reviewed", label: "AI-generated · automated check against source text · Oct 5, 2026" },
       },
     };
     const f = stubFetch(async () => okJson(DOC));
@@ -865,7 +865,7 @@ test("cross-regulation preview through /api/provision", async (t) => {
       // The overview under the reader's own panel markup, open, with the badge.
       const panel = $("#popup-body details.summary-panel") as HTMLDetailsElement;
       assert.equal(panel.open, true);
-      assert.equal($("#popup-body .summary-badge").textContent, "AI reviewed · Oct 5, 2026");
+      assert.equal($("#popup-body .summary-badge").textContent, "AI-generated · automated check against source text · Oct 5, 2026");
       assert.ok($("#popup-body .summary-badge").classList.contains("is-reviewed"));
       assert.equal($("#popup-body .summary-overview").textContent, DOC.summary.overview);
       assert.doesNotMatch($("#popup-body").textContent ?? "", /GENERAL PERMIT 12/, "the root's text is its title again: not repeated");
@@ -888,8 +888,8 @@ test("cross-regulation preview through /api/provision", async (t) => {
         id: "sec-7-top-REG-7",
         reg_key: "7",
         citation: "Code of Colorado Regulations · Regulation Number 7",
-        title: "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9",
-        html: "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9",
+        title: "CONTROL OF OZONE VIA OZONE PRECURSORS AND CONTROL OF HYDROCARBONS VIA OIL AND GAS EMISSIONS (EMISSIONS OF VOLATILE ORGANIC COMPOUNDS AND NITROGEN OXIDES) 5 CCR 1001-9",
+        html: "CONTROL OF OZONE VIA OZONE PRECURSORS AND CONTROL OF HYDROCARBONS VIA OIL AND GAS EMISSIONS (EMISSIONS OF VOLATILE ORGANIC COMPOUNDS AND NITROGEN OXIDES) 5 CCR 1001-9",
         summary: null,
       })
     );
@@ -898,7 +898,7 @@ test("cross-regulation preview through /api/provision", async (t) => {
       assert.deepEqual(f.calls, ["/api/provision/sec-7-top-REG-7"]);
       assert.equal(isShown(), true);
       assert.equal($("#popup-eyebrow").textContent, "Regulation 7");
-      assert.equal($("#popup-title").textContent, "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9");
+      assert.equal($("#popup-title").textContent, "CONTROL OF OZONE VIA OZONE PRECURSORS AND CONTROL OF HYDROCARBONS VIA OIL AND GAS EMISSIONS (EMISSIONS OF VOLATILE ORGANIC COMPOUNDS AND NITROGEN OXIDES) 5 CCR 1001-9");
       assert.equal(($("#popup-note") as HTMLElement).hidden, false);
       assert.equal($("#popup-note").textContent, "Code of Colorado Regulations · Regulation Number 7");
       assert.equal($("#popup-version-note").textContent, `Effective ${formatUsDate(SOURCE_DATES["7"].date)}`);

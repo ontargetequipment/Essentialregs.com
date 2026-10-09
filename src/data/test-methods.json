@@ -116,7 +116,7 @@
     "titleVerified": true,
     "source": "40 CFR Part 60, Appendix A-2",
     "ecfrUrl": "https://www.ecfr.gov/current/title-40/part-60/appendix-Appendix%20A-2%20to%20Part%2060",
-    "measures": "The carbon dioxide and oxygen content of a stack gas, and from them the dry molecular weight of the gas..",
+    "measures": "The carbon dioxide and oxygen content of a stack gas, and from them the dry molecular weight of the gas.",
     "principle": "A gas sample is pulled from the stack, either as a single grab sample or as a sample collected over the test period, and analyzed for carbon dioxide and oxygen with an Orsat or Fyrite-type absorption analyzer. The analyzer works by chemical absorption: the sample is passed through reagents that take up each gas in turn, and the volume lost shows the share of each. The remainder of the dry gas is treated as nitrogen. The result is used to calculate the dry molecular weight of the stack gas.",
     "equipment": "A sampling probe and collection bag or container, and an Orsat or Fyrite-type absorption analyzer with absorbing reagents.",
     "whenCited": "Performance tests, where the dry molecular weight of the gas is needed to calculate stack gas velocity and flow rate. It is also the way a rule gets oxygen and carbon dioxide values to convert a concentration to a stated reference oxygen level or to a combustion-based emission factor.",

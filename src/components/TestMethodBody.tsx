@@ -6,7 +6,7 @@ import { sanitizeHtml } from "@/lib/regulation-pure";
 /**
  * The body of a /test-methods/<slug> page, in two clearly separated parts:
  *
- *   1. "From the method — official text": sections 1.0 and 2.0 of the method,
+ *   1. "From the method — regulatory text": sections 1.0 and 2.0 of the method,
  *      verbatim from the eCFR (officialText, written by
  *      scripts/fetch_method_sections.py), with its source and retrieval date.
  *      Rendered through the reader's sanitizer, with the reader's table styles
@@ -40,7 +40,7 @@ export function MethodOfficialText({ method }: { method: TestMethod }) {
       className="rounded-md border border-line bg-panel px-5 py-5"
     >
       <h2 id="official-text-heading" className="text-lg font-semibold text-ink">
-        From the method — official text
+        From the method — regulatory text
       </h2>
       <p className="mt-1 text-sm text-muted">
         {sectionsLabel(method.officialTextSource)} of {method.officialTitle}, as published at {method.source}.

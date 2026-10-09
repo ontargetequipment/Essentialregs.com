@@ -116,7 +116,7 @@ test("summaryPanelHtml with children: badge, two-sentence overview, expander, ch
   assert.equal(
     html,
     `<details class="summary-panel"><summary>Plain-English summary</summary>` +
-      `<div class="summary-body"><p class="summary-badge is-reviewed">AI reviewed · Sept 17, 2026</p>` +
+      `<div class="summary-body"><p class="summary-badge is-reviewed">AI-generated · automated check against source text · Sept 17, 2026</p>` +
       `<p class="summary-overview">First sentence here. Second sentence here.</p>` +
       `<details class="summary-more"><summary>Show full summary</summary><p>Third sentence here. Fourth sentence here.</p></details>` +
       `<div class="summary-children-label">In this provision</div><ul class="summary-children">` +

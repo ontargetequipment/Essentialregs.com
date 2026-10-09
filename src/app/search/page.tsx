@@ -12,6 +12,7 @@ import {
   isClosedPermit,
   isHeadingOnlyText,
   normalizeCitationLabel,
+  isFederalKey,
   regKeyOf,
   regulationDisplayName,
   summaryParagraphs,
@@ -92,8 +93,20 @@ function first(v: string | string[] | undefined): string {
 
 // keywordHref / askHref live in src/lib/search-hrefs.ts (shared with the client tablist, SearchTabs).
 
+/** "regulatory text" for a federal document, "official text" for a Colorado one (trust copy pass, 9 Oct 2026). */
+function textNoun(regKey: string | null): string {
+  return isFederalKey(regKey) ? "regulatory text" : "official text";
+}
+
 /** The review state of a summary, for the badge beside it (and, on the keyword page, the summary itself). */
-type ReviewRow = { id: string; ai_summary: string | null; summary_status: string | null; reviewed_at: string | null };
+type ReviewRow = {
+  id: string;
+  ai_summary: string | null;
+  summary_status: string | null;
+  reviewed_at: string | null;
+  /** Server only: read to tell a person's approval from the pipeline's; never rendered or serialised. */
+  reviewed_by: string | null;
+};
 
 /**
  * One row on the Ask page: a retrieval hit, or a question map's canonical
@@ -196,7 +209,7 @@ function AskCard({
         ) : headingChildren.has(row.id) ? (
           <p className="mt-2 text-sm text-muted">{headingLine(headingChildren.get(row.id) ?? null)}</p>
         ) : (
-          <p className="mt-2 text-sm italic text-muted">No plain-English summary yet — read the official text.</p>
+          <p className="mt-2 text-sm italic text-muted">No plain-English summary yet — read the {textNoun(row.reg_key)}.</p>
         )}
       </Link>
     </li>
@@ -449,14 +462,15 @@ export default async function SearchPage(props: PageProps<"/search">) {
   // does not return, so a keyword card can show the summary under its badge.
   // A failed read leaves the map empty: the Ask cards then show their
   // summary with no badge and the keyword cards show no summary, never a
-  // wrong badge. reviewed_by is never selected.
+  // wrong badge. reviewed_by is selected only for the kind of the badge
+  // (isHumanReviewer) and never rendered.
   const reviewOf = new Map<string, ReviewRow>();
   {
     const ids = mode === "ask" ? askRows.map((h) => h.id) : hits.map((h) => h.id);
     if (ids.length > 0) {
       const { data: rows, error: rowsErr } = await supabase
         .from("provisions")
-        .select("id, ai_summary, summary_status, reviewed_at")
+        .select("id, ai_summary, summary_status, reviewed_at, reviewed_by")
         .in("id", ids);
       if (rowsErr) console.error("search: review-status lookup failed", rowsErr.message);
       for (const r of (rows ?? []) as ReviewRow[]) reviewOf.set(r.id, r);
@@ -793,7 +807,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                     )}
                     {snippet && (
                       <>
-                        <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>From the official text</p>
+                        <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>From the {textNoun(hit.reg_key)}</p>
                         <p
                           className="mt-1 text-sm leading-relaxed text-ink-soft [&_mark]:rounded-sm [&_mark]:bg-amber-100 [&_mark]:px-0.5 [&_mark]:text-ink"
                           dangerouslySetInnerHTML={{ __html: snippet }}

@@ -29,11 +29,15 @@ export type Provision = {
    * When ai_summary was last approved, edited or rejected (timestamptz, ISO
    * string from PostgREST); null for a summary nobody has reviewed. Absent
    * wherever a caller hasn't selected it. Shown as the date on the
-   * "AI reviewed" badge (summaryStatusBadge). reviewed_by is deliberately NOT
+   * review-status badge (summaryStatusBadge). reviewed_by is deliberately NOT
    * on this type: it holds an email on some rows and is never rendered
-   * outside /admin.
+   * outside /admin. Where a row's badge needs to know whether a person
+   * reviewed it, the server reduces reviewed_by to the boolean below
+   * (withReviewerKind) and drops the name.
    */
   reviewed_at?: string | null;
+  /** True when a person (not the pipeline) approved the summary; see isHumanReviewer. Never the name. */
+  reviewed_by_human?: boolean;
   cross_references?: CrossReference[];
 };
 
