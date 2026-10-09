@@ -36,6 +36,8 @@ const nextConfig: NextConfig = {
       // /regulations/<reg> and /regulations/<reg>/preview are untouched.
       // permanent: a 308.
       { source: "/regulations", destination: "/states/colorado", permanent: true },
+      // Old bookmarks of the Colorado index (fifth review, 9 Oct 2026).
+      { source: "/colorado", destination: "/states/colorado", permanent: true },
     ];
   },
   async headers() {

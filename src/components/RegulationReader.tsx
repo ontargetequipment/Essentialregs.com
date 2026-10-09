@@ -15,9 +15,11 @@ import {
   documentShortName,
   foreignOriginOf,
   hashTargetOf,
+  isUsablePreview,
   originTrailLabel,
   popupEyebrow,
   printedEffectiveDate,
+  type ProvisionPreviewPayload,
   regulationHref,
   renumberedNote,
   ReturnTrail,
@@ -28,7 +30,7 @@ import {
   versionNote,
 } from "@/lib/reader-nav";
 import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
-import { summaryBadgeClass, type SummaryBadgeKind } from "@/lib/snippet";
+import { summaryBadgeClass } from "@/lib/snippet";
 import { readRecentVisits, recentListHtml, recordRecentVisit } from "@/lib/reader-client";
 import type { SearchRow } from "@/lib/snippet";
 
@@ -60,14 +62,6 @@ type ReaderHistoryState = { readerAnchor?: string; readerReturnFrom?: string } |
 /** The popup footer link's default text; a cross-regulation preview swaps it for "Open in <name> →". */
 const GOTO_LABEL = "Go to full section →";
 
-/** The fields of /api/provision/<id> the preview uses (src/lib/provision-preview.ts). */
-type ProvisionPreviewPayload = {
-  id: string;
-  citation: string;
-  title?: string;
-  html: string;
-  summary?: { overview: string; badge: { kind: SummaryBadgeKind; label: string } | null } | null;
-};
 
 /**
  * Viewport y of "the top of the reading pane": just under the sticky site
@@ -308,9 +302,15 @@ export function RegulationReader() {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         data = (await res.json()) as ProvisionPreviewPayload;
-        if (!data || data.id !== targetId || typeof data.html !== "string") throw new Error("bad payload");
+        if (!isUsablePreview(data, targetId)) throw new Error("bad payload");
       } catch {
-        if (seq === previewSeq) fallBack();
+        // An unknown target (404), a refusal or an empty payload never
+        // opens an empty preview (the fifth review's PHMSA links): close
+        // whatever popup is showing and follow the link instead.
+        if (seq === previewSeq) {
+          closePopup();
+          fallBack();
+        }
         return;
       }
       if (seq !== previewSeq || !backdrop || !popupBody || !popupTitle) return;

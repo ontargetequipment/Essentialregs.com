@@ -56,6 +56,7 @@ import {
   foreignOriginOf,
   formatUsDate,
   hashTargetOf,
+  isUsablePreview,
   originTrailLabel,
   popupEyebrow,
   printedEffectiveDate,
@@ -1167,4 +1168,15 @@ test("?from= another regulation: return link, stripped from the URL", async (t) 
       await unmount();
     });
   }
+});
+
+test("isUsablePreview: only the requested row, with a heading, fills a preview", () => {
+  const ok = { id: "sec-p190-190.9", citation: "§ 190.9", title: "Petitions", html: "<p>x</p>" };
+  assert.equal(isUsablePreview(ok, "sec-p190-190.9"), true);
+  assert.equal(isUsablePreview({ ...ok, citation: "", title: "Petitions" }, "sec-p190-190.9"), true);
+  assert.equal(isUsablePreview({ ...ok, id: "sec-p190-190.11" }, "sec-p190-190.9"), false);
+  assert.equal(isUsablePreview({ ...ok, citation: "", title: "  " }, "sec-p190-190.9"), false);
+  assert.equal(isUsablePreview({ id: "sec-p190-190.9", citation: "x" }, "sec-p190-190.9"), false);
+  assert.equal(isUsablePreview(null, "sec-p190-190.9"), false);
+  assert.equal(isUsablePreview({ error: "Not found." }, "sec-p190-190.9"), false);
 });

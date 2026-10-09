@@ -289,6 +289,42 @@ def _resolve_target_reg_49(part: str, num: str) -> str | None:
     return CFR_PART_TO_REGKEY.get(f"49-{part}")
 
 
+def _other_reg_target(target_reg: str, sec_num: str, parens: str) -> str | None:
+    """The cited provision of ANOTHER corpus document ("§ 190.9" read from
+    Part 192 -> "sec-p190-190.9"; "§ 60.5365b(e)" -> "sec-oooob-60.5365b-(e)"),
+    looked up in the live corpus id index (`dump-ids`, installed by
+    import_ccr.cmd_parse): the deepest printed paragraph that exists, else
+    the section itself. None when no index is active or the target is not
+    in it -- the caller then links the document as before (Sprint 3, 9 Oct
+    2026: the fifth review found every PHMSA cross-part link carried only
+    "/regulations/<part>", so the reader could not land on the cited
+    section)."""
+    import import_ccr as ic  # lazy: import_ccr.cmd_parse imports this module
+
+    ids = ic._ACTIVE_CORPUS_IDS.get(target_reg)
+    if not ids:
+        return None
+    base_id = f"sec-{target_reg}-{sec_num}"
+    cand = re.findall(r"\([a-zA-Z0-9]{1,4}\)", parens)
+    while True:
+        tid = base_id + "".join(f"-{p}" for p in cand)
+        if tid in ids:
+            return tid
+        if not cand:
+            return None
+        cand = cand[:-1]
+
+
+def _other_reg_link(target_reg: str, text: str, tid: str | None = None) -> str:
+    """An `xref-external-reg` anchor: to the cited provision when `tid` is
+    known (hash + data-provision-id, the same shape import_ccr writes for a
+    Colorado cross-regulation deep link), else to the whole document."""
+    if tid:
+        return (f'<a class="xref-external-reg" data-provision-id="{tid}" '
+                f'href="/regulations/{target_reg}#{tid}">{text}</a>')
+    return f'<a class="xref-external-reg" href="/regulations/{target_reg}">{text}</a>'
+
+
 # --------------------------------------------------------------------------
 # Page furniture stripping
 # --------------------------------------------------------------------------
@@ -1668,9 +1704,9 @@ def _link_citations_part(
                     out.append(matched_text)
                     unresolved[BUCKET_UNPARSEABLE][matched_text.strip()] += 1
             elif target_reg in corpus_regs:
-                out.append(
-                    f'<a class="xref-external-reg" href="/regulations/{target_reg}">{matched_text}</a>'
-                )
+                out.append(_other_reg_link(
+                    target_reg, matched_text, _other_reg_target(target_reg, f"{part}.{num}", parens)
+                ))
             else:
                 out.append(matched_text)
                 unresolved[BUCKET_CFR][matched_text.strip()] += 1
@@ -1849,9 +1885,9 @@ def link_citations(
                         out.append(matched_text)
                         unresolved[BUCKET_UNPARSEABLE][matched_text.strip()] += 1
                 elif target_reg in corpus_regs:
-                    out.append(
-                        f'<a class="xref-external-reg" href="/regulations/{target_reg}">{matched_text}</a>'
-                    )
+                    out.append(_other_reg_link(
+                        target_reg, matched_text, _other_reg_target(target_reg, sec_num, parens)
+                    ))
                 else:
                     out.append(matched_text)
                     unresolved[BUCKET_OTHER_SUBPART][matched_text.strip()] += 1

@@ -9,6 +9,7 @@
 import type { ReaderModel, ReaderRow } from "@/lib/reader-client";
 import { regKeyOf, regulationDisplayName, rootIdOf } from "@/lib/regulation-names";
 import { SOURCE_DATES, type SourceDate } from "@/lib/source-dates.generated";
+import type { SummaryBadgeKind } from "@/lib/snippet";
 import { PROVISION_ID } from "@/lib/types";
 
 /** Ancestor labels the popup eyebrow prints before eliding the middle. */
@@ -410,4 +411,28 @@ export function citationLabelFromId(id: string): string | null {
  */
 export function originTrailLabel(originId: string): string {
   return [documentShortName(regKeyOf(originId)), citationLabelFromId(originId)].filter(Boolean).join(" · ");
+}
+
+/** The fields of /api/provision/<id> the reader's preview uses (src/lib/provision-preview.ts). */
+export type ProvisionPreviewPayload = {
+  id: string;
+  citation: string;
+  title?: string;
+  html: string;
+  summary?: { overview: string; badge: { kind: SummaryBadgeKind; label: string } | null } | null;
+};
+
+/**
+ * Whether a /api/provision payload can fill the preview: the row asked for,
+ * with a heading (citation or title) and text. Anything else -- the wrong
+ * id, a payload with no heading and no text -- must not open a popup; the
+ * reader follows the link instead (the fifth review, 9 Oct 2026, found PHMSA
+ * cross-part links opening an empty preview with "Go to full section" on "#").
+ */
+export function isUsablePreview(data: unknown, targetId: string): data is ProvisionPreviewPayload {
+  if (!data || typeof data !== "object") return false;
+  const d = data as Partial<ProvisionPreviewPayload>;
+  if (d.id !== targetId || typeof d.html !== "string") return false;
+  const heading = `${d.citation ?? ""}${d.title ?? ""}`.trim();
+  return heading.length > 0;
 }
