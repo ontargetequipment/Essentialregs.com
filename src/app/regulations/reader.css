@@ -602,6 +602,31 @@
   font-size: 0.8em;
   vertical-align: super;
 }
+/* A citation of an EPA test method, linked by the importer
+   (pipeline/method_links.py) to its /test-methods/<slug> reference page:
+   the same colour and dotted underline as a same-document .xref, plus a
+   small superscript M so a reader can tell it from a section link before
+   clicking. It is a plain link (no popup): RegulationReader's click
+   delegation only handles .xref and a.xref-external-reg. */
+.reg-reader a.xref-method {
+  color: var(--accent);
+  border-bottom: 1.5px dotted var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+.reg-reader a.xref-method:hover {
+  background: var(--accent-soft);
+}
+.reg-reader a.xref-method::after {
+  content: "M";
+  display: inline-block;
+  margin-left: 1px;
+  font-family: var(--sans);
+  font-size: 0.62em;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: super;
+}
 .reg-reader .contains-link {
   margin-right: 4px;
 }
