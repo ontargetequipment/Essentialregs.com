@@ -79,8 +79,21 @@ Dry run, then execute, one part at a time; `skip_summaries` on, no
 
 | part | dry run | plan | execute |
 |---|---|---|---|
-| p192 | 37953670212 | 3 changed, all markup-only; 0 new, 0 obsolete, 0 to summarize | EXEC_P192 |
-| p193 | 37953782208 | 1 changed, markup-only; 0 new, 0 obsolete | EXEC_P193 |
-| p195 | 37953915145 | 1 changed, markup-only; 0 new, 0 obsolete | EXEC_P195 |
+| p192 | 37953670212 | 3 changed, all markup-only; 0 new, 0 obsolete, 0 to summarize | 37954034341 |
+| p193 | 37953782208 | 1 changed, markup-only; 0 new, 0 obsolete | 37955171912 |
+| p195 | 37953915145 | 1 changed, markup-only; 0 new, 0 obsolete | 37955531896 |
 
-AFTER_EXECUTE
+After each execute, read back from production for the five rows:
+`summary_status` (approved), `reviewed_by`, `summary_original`, `ai_summary`
+and `reviewed_at` are identical to the snapshot taken before the first write
+(compared by md5). Each row's `full_text` now equals the fixed local parse
+byte for byte, and the importer logged one `links_updated` change row per row
+(the markup-only class). The embed step re-embedded **0 chunks** in every run
+($0.00): `embed.strip_html` turns every non-link tag into a space, so
+`CO<sup>2</sup>` and `CO<sub>2</sub>` strip to the same text and hash. No
+embedding for p192/p193/p195 is newer than 7 Oct. p190, p191, p194, p196 and
+p199 have no affected row, so they were not re-imported.
+
+Rendered on production after the deploy: 192.611(a)(4)(ii)(A) reads
+"hydrogen sulfide (H<sub>2</sub>S)".
+
