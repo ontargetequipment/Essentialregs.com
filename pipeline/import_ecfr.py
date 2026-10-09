@@ -1247,12 +1247,21 @@ _XML_INLINE_TAGS = {"sup", "sub", "br"}
 # (every non-sup/sub/br tag dropped, its text kept) so their byte-identical
 # table HTML is untouched -- see the `emphasis` parameter below.
 #   <I>            italic (defined terms, "see", math variables)
-#   <E T="nn">     GPO typographic code: 01/03/04/7462 italic, 52 superscript
-#                  (footnote reference), 54 subscript (variable subscript)
+#   <E T="nn">     GPO typographic code: 01/03/04/7462 italic; 51 superscript
+#                  and 53 superscript italic -> <sup>; 52 subscript and 54
+#                  subscript italic -> <sub>. The eCFR XML uses 51 for
+#                  exponents ("10<E T="51">-3</E>") and 52 for chemical
+#                  subscripts ("CO<E T="52">2</E>", "H<E T="52">2</E>S").
+#                  Until 9 Oct 2026 this table mapped 52 to <sup> and had no
+#                  51, so whole-part rows printed CO<sup>2</sup>.
 #   <SU>           superscript (ft<SU>3</SU>)
 #   <FR>           printed fraction ("10 <FR>3/4</FR> inches") -- plain text
 _XML_EMPHASIS_TAGS = {"I": "i", "SU": "sup", "SUB": "sub"}
-_XML_E_TYPE_TO_TAG = {"01": "i", "03": "i", "04": "i", "7462": "i", "52": "sup", "54": "sub"}
+_XML_E_TYPE_TO_TAG = {
+    "01": "i", "03": "i", "04": "i", "7462": "i",
+    "51": "sup", "53": "sup",
+    "52": "sub", "54": "sub",
+}
 
 
 def _xml_inline_html(el, emphasis: bool = False) -> str:

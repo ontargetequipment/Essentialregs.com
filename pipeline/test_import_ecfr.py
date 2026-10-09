@@ -1232,7 +1232,18 @@ class PartInlineHtmlTests(unittest.TestCase):
 
     def test_italic_and_e_codes_become_i_sup_sub(self):
         el = self._el('<P><I>Term</I> means <E T="03">x</E><E T="52">2</E><E T="54">r</E>.</P>')
-        self.assertEqual(ie._part_inline_html(el), "<i>Term</i> means <i>x</i><sup>2</sup><sub>r</sub>.")
+        self.assertEqual(ie._part_inline_html(el), "<i>Term</i> means <i>x</i><sub>2</sub><sub>r</sub>.")
+
+    def test_gpo_51_is_superscript_and_52_is_subscript_in_one_paragraph(self):
+        # GPO typeface codes: 51 superscript, 52 subscript (53/54 their
+        # italic forms). Until 9 Oct 2026 52 rendered as <sup>, so 49 CFR
+        # rows printed CO<sup>2</sup> for the source's CO-subscript-2.
+        el = self._el('<P>Fluid with CO<E T="52">2</E> at 1.9 &#xD7; 10<E T="51">&#x2212;3</E> and '
+                      'n<E T="53">a</E>, T<E T="54">r</E>.</P>')
+        self.assertEqual(ie._part_inline_html(el),
+                         "Fluid with CO<sub>2</sub> at 1.9 \u00d7 10<sup>\u22123</sup> and n<sup>a</sup>, T<sub>r</sub>.")
+        self.assertEqual(ie._xml_inline_html(el, emphasis=True),
+                         "Fluid with CO<sub>2</sub> at 1.9 \u00d7 10<sup>\u22123</sup> and n<sup>a</sup>, T<sub>r</sub>.")
 
     def test_su_becomes_superscript_with_no_leading_space(self):
         el = self._el("<P>100 ft\n<SU>3</SU> of gas</P>")
@@ -2598,6 +2609,73 @@ class AllEightPartsByteIdenticalTests(unittest.TestCase):
     def test_p195(self): self._check("p195")
     def test_p196(self): self._check("p196")
     def test_p199(self): self._check("p199")
+
+
+# ---------------------------------------------------------------------------
+# Regression: GPO <E T="52"> is a subscript (fixed 9 Oct 2026)
+# ---------------------------------------------------------------------------
+
+# The emphasis table as it was before the fix: 52 -> <sup>, no 51/53.
+_E_TYPE_BEFORE_SUBSCRIPT_FIX = {"01": "i", "03": "i", "04": "i", "7462": "i", "52": "sup", "54": "sub"}
+_GPO_SCRIPT_DEFAULT_KEYS = ("p192", "p193", "p195", "jjjj")
+_SUP_OR_SUB_RE = re.compile(r"<(sup|sub)>((?:(?!</?su[bp]>).)*)</\1>", re.S)
+
+
+def _as_sup(html: str) -> str:
+    return html.replace("<sub>", "<sup>").replace("</sub>", "</sup>")
+
+
+class GpoSubscriptRegressionTests(unittest.TestCase):
+    """Parses each document in pipeline/sources/ with the emphasis table as
+    it was before the fix and as it is now. The only difference allowed is
+    <sup> -> <sub> on text that came from an <E T="52"> in the source XML:
+    the rows must be equal once every <sub> is read as <sup>, and the inner
+    texts of the swapped spans, over the document, must be exactly the
+    inner texts of its E T="52" elements. Documents with no E T="52" on a
+    path that renders emphasis (every 40 CFR subpart, every CCR document)
+    must parse byte-identical. Default: the three 49 CFR parts that carry
+    E T="52" plus JJJJ (an XML table path); ER_FULL_CORPUS=1 runs every
+    document (about 20 minutes). Prints rows changed per document."""
+
+    def test_only_e52_spans_change_from_sup_to_sub(self):
+        from unittest import mock
+        import xml.etree.ElementTree as ET
+
+        from test_method_links import SOURCES, _dump, _parse, _source_pairs
+
+        if not SOURCES.exists():
+            self.skipTest("pipeline/sources not present")
+        pairs = _source_pairs()
+        if not os.environ.get("ER_FULL_CORPUS"):
+            pairs = [p for p in pairs if p[0] in _GPO_SCRIPT_DEFAULT_KEYS]
+        if not pairs:
+            self.skipTest("no regression sources present")
+        for key, name in pairs:
+            with self.subTest(reg=key):
+                with mock.patch.dict(ie._XML_E_TYPE_TO_TAG, _E_TYPE_BEFORE_SUBSCRIPT_FIX, clear=True):
+                    before = _parse(key, name)
+                after = _parse(key, name)
+                self.assertEqual([r["id"] for r in after], [r["id"] for r in before], f"{key}: row ids differ")
+                changed, swapped = [], Counter()
+                for a, b in zip(after, before):
+                    if a == b:
+                        continue
+                    a_norm = dict(a, full_text=_as_sup(a["full_text"]))
+                    b_norm = dict(b, full_text=_as_sup(b["full_text"]))
+                    self.assertEqual(_dump([a_norm]), _dump([b_norm]), f"{key} {a['id']}: differs by more than sup -> sub")
+                    subs_after = Counter(m.group(2) for m in _SUP_OR_SUB_RE.finditer(a["full_text"]) if m.group(1) == "sub")
+                    subs_before = Counter(m.group(2) for m in _SUP_OR_SUB_RE.finditer(b["full_text"]) if m.group(1) == "sub")
+                    swapped += subs_after - subs_before
+                    changed.append(a["id"])
+                expected = Counter()
+                xml_path = SOURCES / f"{name}.xml"
+                import import_ccr as ic
+
+                if key in ic.ECFR_REGS and ie.SUBPART_META[key].get("document") == "part" and xml_path.exists():
+                    expected = Counter(ie._xml_inline_html(e, emphasis=True)
+                                       for e in ET.parse(xml_path).getroot().iter("E") if e.get("T") == "52")
+                self.assertEqual(swapped, expected, f"{key}: swapped spans are not the source's E T=52 spans")
+                print(f"\n  {key}: {len(changed)} row(s) changed, {sum(swapped.values())} span(s) sup -> sub {dict(swapped)}: {changed}")
 
 
 if __name__ == "__main__":
