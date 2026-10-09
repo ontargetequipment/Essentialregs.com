@@ -157,6 +157,24 @@ def http_get(url: str) -> bytes:
     raise last  # type: ignore[misc]
 
 
+TITLES_URL = "https://www.ecfr.gov/api/versioner/v1/titles.json"
+
+
+def resolve_date(requested: str) -> tuple[str, str]:
+    """(the date to fetch, a note). The versioner answers 406 for a date past
+    Title 40's `up_to_date_as_of` (the eCFR is published a day or two
+    behind), so a requested date later than that is brought back to it: the
+    text served for that date is the current text."""
+    try:
+        titles = json.loads(http_get(TITLES_URL))
+        latest = next(t["up_to_date_as_of"] for t in titles["titles"] if t["number"] == 40)
+    except Exception as e:  # noqa: BLE001
+        return requested, f"could not read Title 40's up_to_date_as_of ({e}); using {requested}"
+    if requested > latest:
+        return latest, f"requested {requested}; Title 40 is up to date as of {latest}, so {latest} is used"
+    return requested, f"Title 40 is up to date as of {latest}"
+
+
 def find_appendix_div(root: ET.Element, appendix: str) -> ET.Element | None:
     if root.tag == "DIV9" and root.get("N") == appendix:
         return root
@@ -175,6 +193,7 @@ class AppendixSource:
         self.save_dir = save_dir
         self.cache: dict[str, ET.Element] = {}
         self.parts: dict[str, ET.Element] = {}
+        self.part_errors: dict[str, Exception] = {}
         self.used_url: dict[str, str] = {}
 
     @staticmethod
@@ -207,11 +226,18 @@ class AppendixSource:
                 else:
                     print(f"note: {url} has no <DIV9 N={appendix!r}>; slicing the whole part instead", file=sys.stderr)
             except (urllib.error.HTTPError, ET.ParseError) as e:
-                print(f"note: {url} -> {e}; slicing the whole part instead", file=sys.stderr)
+                body = e.read()[:300].decode("utf-8", "replace") if isinstance(e, urllib.error.HTTPError) else ""
+                print(f"note: {url} -> {e} {body}; slicing the whole part instead", file=sys.stderr)
             if div is None:
+                if part in self.part_errors:
+                    raise self.part_errors[part]
                 if part not in self.parts:
                     purl = appendix_url(self.date, part)
-                    data = http_get(purl)
+                    try:
+                        data = http_get(purl)
+                    except urllib.error.URLError as e:
+                        self.part_errors[part] = e
+                        raise
                     self._save(f"part_{part}.xml", data)
                     self.parts[part] = ET.fromstring(data)
                 div = find_appendix_div(self.parts[part], appendix)
@@ -451,6 +477,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--check", action="store_true", help="extract and validate only; do not write the JSON")
     args = ap.parse_args(argv)
     _dt.date.fromisoformat(args.date)
+    date_note = ""
+    if args.xml_dir is None:
+        args.date, date_note = resolve_date(args.date)
+        print(f"eCFR date: {args.date} ({date_note})", file=sys.stderr)
 
     entries = json.loads(args.data.read_text(encoding="utf-8"))
     src = AppendixSource(args.date, args.xml_dir, args.save_xml)
@@ -477,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
         updated.append(ordered(new))
         rows.append((entry["slug"], got["heading"], got["chars"]))
 
-    report = [f"eCFR date: {args.date}", ""]
+    report = [f"eCFR date: {args.date}"] + ([f"({date_note})"] if date_note else []) + [""]
     report += ["Appendix XML used:"] + [f"- {a}: {u}" for a, u in sorted(src.used_url.items())] + [""]
     report += ["| slug | heading found | characters of official text |", "|---|---|---|"]
     report += [f"| {s} | {h} | {c:,} |" for s, h, c in rows]
