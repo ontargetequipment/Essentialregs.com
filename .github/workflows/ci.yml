@@ -205,12 +205,13 @@ jobs:
 
       - name: Run corpus QA
         # Reads only; its writes are session temp tables (Step 0's results,
-        # the question-map ids). scripts/question-map-ids.sql goes first so
-        # check 20 can see the ids. Fails when any ERROR or GUARD check reads
-        # "*** CHECK ***".
+        # the question-map ids, the test-method slugs). scripts/question-map-ids.sql
+        # goes first so check 20 can see the ids, and scripts/test-method-slugs.sql
+        # so checks 26 and 27 can see the Test Methods slugs. Fails when any
+        # ERROR or GUARD check reads "*** CHECK ***".
         if: steps.gate.outputs.run == 'true'
         run: |
-          psql "$SUPABASE_DB_URL" -X -q -v ON_ERROR_STOP=1 --csv -f scripts/question-map-ids.sql -f scripts/corpus_qa.sql > qa.csv
+          psql "$SUPABASE_DB_URL" -X -q -v ON_ERROR_STOP=1 --csv -f scripts/question-map-ids.sql -f scripts/test-method-slugs.sql -f scripts/corpus_qa.sql > qa.csv
           {
             echo "### Corpus QA"
             echo '```'
