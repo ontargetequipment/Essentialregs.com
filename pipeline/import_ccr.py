@@ -6248,6 +6248,24 @@ def _link_part_clause(html_text: str, letter_start: int, letter_end: int, letter
     _emit_section_list(html_text, kw_start, keyword, seclist_start, seclist_text, [letter], pieces, buckets, reg, known_ids)
 
 
+def _cfr49_anchor(regkey: str, deep: str | None, text: str) -> str:
+    """The link `_link_cfr49_citations` writes. Without a corpus id index:
+    the reg page, with the cited id as data-provision-id (the shape it has
+    always had). With one: the id goes in the href hash too -- the app's
+    sanitizer strips data-provision-id, so the hash is what lands the reader
+    on the cited section -- and only when the id exists; an id the index
+    does not hold links the document instead (the fifth review, 9 Oct 2026:
+    a 49 CFR link must never name a target the reader cannot find)."""
+    ids = _ACTIVE_CORPUS_IDS.get(regkey)
+    if ids:
+        if deep and deep in ids:
+            return (f'<a class="xref-external-reg" data-provision-id="{deep}" '
+                    f'href="/regulations/{regkey}#{deep}">{text}</a>')
+        return f'<a class="xref-external-reg" href="/regulations/{regkey}">{text}</a>'
+    attr = f' data-provision-id="{deep}"' if deep else ""
+    return f'<a class="xref-external-reg" href="/regulations/{regkey}"{attr}>{text}</a>'
+
+
 def _link_cfr49_citations(
     text: str,
     corpus_regs: set[str],
@@ -6296,9 +6314,8 @@ def _link_cfr49_citations(
                 sub_text = text[g_start:g_end]
                 regkey = CFR_TITLE_PART_TO_REGKEY.get((title, part_num))
                 if regkey and regkey in corpus_regs:
-                    deep = f' data-provision-id="sec-{regkey}-{part_num}.{sec_num}"'
                     pieces.append((g_start, g_end,
-                                   f'<a class="xref-external-reg" href="/regulations/{regkey}"{deep}>{sub_text}</a>'))
+                                   _cfr49_anchor(regkey, f"sec-{regkey}-{part_num}.{sec_num}", sub_text)))
                 else:
                     buckets[BUCKET_CFR][sub_text] += 1
             continue
@@ -6313,9 +6330,9 @@ def _link_cfr49_citations(
             # or ECMC's "49 C.F.R. § 195 Subpart A" once 195 is ever in the
             # corpus) just links to the reg page, as every other cross-reg
             # link does.
-            deep = ""
+            deep = None
             if m.group("secnum"):
-                deep = f' data-provision-id="sec-{regkey}-{part_num}.{m.group("secnum")}"'
+                deep = f"sec-{regkey}-{part_num}.{m.group('secnum')}"
             elif m.group("barepart") and m.group("baresub"):
                 # "49 C.F.R. § 195 Subpart A" -- a whole-part document's
                 # subpart rows are `sec-<reg>-PART-<LETTER>` (import_ecfr's
@@ -6325,9 +6342,8 @@ def _link_cfr49_citations(
                 # letter "subpart") just links to the reg page.
                 sub = m.group("baresub")
                 if len(sub) == 1 and sub.isalpha():
-                    deep = f' data-provision-id="sec-{regkey}-PART-{sub.upper()}"'
-            pieces.append((m.start(), m.end(),
-                           f'<a class="xref-external-reg" href="/regulations/{regkey}"{deep}>{m.group(0)}</a>'))
+                    deep = f"sec-{regkey}-PART-{sub.upper()}"
+            pieces.append((m.start(), m.end(), _cfr49_anchor(regkey, deep, m.group(0))))
         else:
             buckets[BUCKET_CFR][m.group(0)] += 1
 

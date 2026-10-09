@@ -215,6 +215,50 @@ test.describe("signed in", () => {
     }
   });
 
+  // Fifth review (9 Oct 2026), P1: from 49 CFR Part 192, "49 CFR 190.9" and
+  // "part 191 of this chapter" opened an empty preview with "Go to full
+  // section" on "#". Every cross-part link must either preview its target
+  // (a heading, text, and an "Open ..." link into that part) or, when it
+  // cannot, leave the page for the target -- never an empty popup.
+  for (const [rowId, partKey, label] of [
+    ["sec-p192-192.1-(b)-(2)", "p190", "49 CFR 190.9"],
+    ["sec-p192-192.8-(c)", "p191", "part 191 of this chapter"],
+  ] as const) {
+    test(`a PHMSA cross-part link previews or opens its target (${label} in ${rowId})`, async ({ page }, testInfo) => {
+      test.setTimeout(180_000);
+      const res = await page.goto(`/regulations/p192#${rowId}`);
+      if (res) expect(res.status()).toBe(200);
+      const link = page.locator(`#doc [id="${rowId}"] a.xref-external-reg[href^="/regulations/${partKey}"]`).first();
+      await expect(link).toHaveCount(1);
+      await expect(link).toHaveText(label);
+      const statuses: string[] = [];
+      page.on("response", (r) => {
+        if (r.url().includes("/api/provision/")) statuses.push(`${r.status()} ${r.url()}`);
+      });
+      // The click handler is attached after hydration; retry until it takes
+      // (a popup opens, or the page leaves for the target).
+      await expect(async () => {
+        if (new URL(page.url()).pathname === "/regulations/p192") await link.click();
+        await expect
+          .poll(
+            async () =>
+              new URL(page.url()).pathname === `/regulations/${partKey}` ||
+              /\bshow\b/.test((await page.locator("#backdrop").getAttribute("class")) ?? ""),
+            { timeout: 5_000 }
+          )
+          .toBe(true);
+      }).toPass({ timeout: 60_000 });
+      await shot(page, testInfo, `phmsa-${partKey}`);
+      testInfo.annotations.push({ type: "api/provision", description: statuses.join(" | ") || "(none)" });
+      if (new URL(page.url()).pathname === `/regulations/${partKey}`) return; // fell back to navigation
+      await expect(page.locator("#popup-title")).not.toBeEmpty();
+      await expect(page.locator("#popup-body")).not.toBeEmpty();
+      const goto = page.locator("#popup-goto");
+      await expect(goto).toHaveAttribute("href", new RegExp(`^/regulations/${partKey}[?#]`));
+      await expect(goto).not.toHaveText(/Go to full section/);
+    });
+  }
+
   for (const reg of ["7", "8", "gp12"]) {
     test(`/regulations/${reg} does not scroll sideways at 390 and 526 px`, async ({ page }, testInfo) => {
       // 6 Oct 2026 review: at 526px /regulations/8 was 129px wider than the

@@ -2680,3 +2680,91 @@ class GpoSubscriptRegressionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CrossDocumentDeepLinkTests(unittest.TestCase):
+    """Sprint 3 (fifth review, 9 Oct 2026): a cross-document section cite
+    ("49 CFR 190.9" in Part 192, "§ 60.5365b(e)" in OOOOa) links to the cited
+    provision when the live corpus id index holds it -- href hash plus
+    data-provision-id -- and to the whole document otherwise. With no index
+    the output is exactly what it was before."""
+
+    INDEX = {
+        "p190": {"sec-p190-top-REG-p190", "sec-p190-190.9", "sec-p190-190.9-(a)", "sec-p190-190.206"},
+        "p191": {"sec-p191-top-REG-p191", "sec-p191-191.3"},
+        "oooob": {"sec-oooob-top-REG-oooob", "sec-oooob-60.5365b", "sec-oooob-60.5365b-(e)"},
+    }
+
+    def setUp(self):
+        import import_ccr as ic
+        self.ic = ic
+        ic.set_corpus_ids(self.INDEX)
+
+    def tearDown(self):
+        self.ic.set_corpus_ids(None)
+
+    def _link(self, text, reg="p192", known=frozenset({"sec-p192-top-REG-p192"})):
+        unresolved = defaultdict(Counter)
+        own = f"sec-{reg}-x"
+        return ie.link_citations(text, reg, own, own, set(known), ie.CORPUS_REGS, unresolved)
+
+    def test_49_cfr_section_cite_gets_the_exact_anchor(self):
+        out = self._link("under 49 CFR 190.9;")
+        self.assertIn('<a class="xref-external-reg" data-provision-id="sec-p190-190.9" '
+                      'href="/regulations/p190#sec-p190-190.9">49 CFR 190.9</a>', out)
+
+    def test_paragraph_chain_falls_back_to_the_deepest_existing_id(self):
+        out = self._link("see § 190.9(a)(3) of this chapter")
+        self.assertIn('href="/regulations/p190#sec-p190-190.9-(a)"', out)
+        out2 = self._link("see § 190.9(c) of this chapter")
+        self.assertIn('href="/regulations/p190#sec-p190-190.9"', out2)
+
+    def test_section_missing_from_the_index_links_the_document(self):
+        out = self._link("see § 190.999 of this chapter")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/p190">', out)
+        self.assertNotIn("data-provision-id", out)
+
+    def test_whole_part_cite_links_the_document(self):
+        out = self._link("For purposes of part 191 of this chapter and")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/p191">part 191 of this chapter</a>', out)
+
+    def test_40_cfr_subpart_cite_gets_the_exact_anchor(self):
+        unresolved = defaultdict(Counter)
+        out = ie.link_citations("as in § 60.5365b(e)(1) of this subpart", "ooooa",
+                                "sec-ooooa-60.5365a", "sec-ooooa-60.5365a", set(), ie.CORPUS_REGS, unresolved)
+        self.assertIn('href="/regulations/oooob#sec-oooob-60.5365b-(e)"', out)
+
+    def test_no_index_keeps_the_old_document_link(self):
+        self.ic.set_corpus_ids(None)
+        out = self._link("under 49 CFR 190.9;")
+        self.assertIn('<a class="xref-external-reg" href="/regulations/p190">49 CFR 190.9</a>', out)
+
+
+class EcmcCfr49AnchorTests(unittest.TestCase):
+    """import_ccr._cfr49_anchor: index-verified deep link, else the document."""
+
+    def setUp(self):
+        import import_ccr as ic
+        self.ic = ic
+
+    def tearDown(self):
+        self.ic.set_corpus_ids(None)
+
+    def test_with_index(self):
+        self.ic.set_corpus_ids({"p192": {"sec-p192-192.243"}})
+        self.assertEqual(
+            self.ic._cfr49_anchor("p192", "sec-p192-192.243", "49 C.F.R. § 192.243"),
+            '<a class="xref-external-reg" data-provision-id="sec-p192-192.243" '
+            'href="/regulations/p192#sec-p192-192.243">49 C.F.R. § 192.243</a>',
+        )
+        self.assertEqual(
+            self.ic._cfr49_anchor("p192", "sec-p192-192.9999", "x"),
+            '<a class="xref-external-reg" href="/regulations/p192">x</a>',
+        )
+
+    def test_without_index_unchanged(self):
+        self.ic.set_corpus_ids(None)
+        self.assertEqual(
+            self.ic._cfr49_anchor("p192", "sec-p192-192.243", "x"),
+            '<a class="xref-external-reg" href="/regulations/p192" data-provision-id="sec-p192-192.243">x</a>',
+        )

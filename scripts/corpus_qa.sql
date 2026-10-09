@@ -383,6 +383,25 @@ repeated_text_allowlist (id, reason) as (
     ('sec-iiii-60.4210-(c)',  'IIII s 60.4210(c): sub-items reopen "Stationary CI internal combustion engine manufacturers must meet the requirements of 40 CFR..."'),
     ('sec-ecmc-803-d-(1)',    'ECMC 803.d.(1): sub-items each reopen "Form 31, Underground Injection Formation Permit Application..."')
 ),
+-- Check 28: every cross-reference target in the text, by kind.
+xref_targets as (
+  select p.id as src, 'data-target' as kind, m[1] as target
+  from provisions p, regexp_matches(p.full_text, 'data-target="([^"]+)"', 'g') m
+  union all
+  select p.id, 'data-provision-id', m[1]
+  from provisions p, regexp_matches(p.full_text, 'data-provision-id="([^"]+)"', 'g') m
+  union all
+  select p.id, 'href-hash', m[1]
+  from provisions p, regexp_matches(p.full_text, 'href="/regulations/[^"#?]*(?:\?[^"#]*)?#([^"]+)"', 'g') m
+  union all
+  select p.id, 'href-document', 'sec-' || m[1] || '-top-REG-' || m[1]
+  from provisions p, regexp_matches(p.full_text, 'href="/regulations/([A-Za-z0-9]+)"', 'g') m
+),
+xref_targets_missing as (
+  select distinct t.src, t.kind, t.target
+  from xref_targets t
+  where not exists (select 1 from provisions x where x.id = t.target)
+),
 checks as (
 
   -- ---- ERRORS: investigate every hit ------------------------------------
@@ -646,6 +665,12 @@ checks as (
          || coalesce(' Dangling: ' || (select string_agg(q.provision_id || ' -> ' || q.slug, ', ' order by q.provision_id, q.slug) from (select provision_id, slug from pg_temp.test_method_citation_problems where provision_id is not null order by provision_id, slug limit 30) q), '')
          || coalesce(' Problems: ' || (select string_agg(q.note, '; ') from pg_temp.test_method_citation_problems q where q.note is not null), '')
   from pg_temp.test_method_citation_problems
+
+  union all
+  select 28, 'GUARD', 'xref_targets_exist', count(*), 0,
+         'Sprint 3 (fifth review, 9 Oct 2026). Every cross-reference target written into provisions.full_text must exist: a same-document data-target, a cross-document data-provision-id or /regulations/<key>#<id> hash, and the root row of every whole-document /regulations/<key> link. The reviewer found PHMSA cross-part links opening an empty preview; a link to a row that does not exist is the data side of that defect (the reader now follows the link instead of previewing it). Counts (provision, kind, target) triples with no such row. Expect 0. When above 0: re-import the citing document (markup-only) after the target is restored, or fix the importer''s resolver.'
+         || coalesce(' Missing: ' || (select string_agg(q.src || ' ' || q.kind || ' ' || q.target, ', ' order by q.src, q.target) from (select * from xref_targets_missing order by src, target limit 30) q), '')
+  from xref_targets_missing
 )
 select severity, check_name, n,
        case when severity in ('ERROR','GUARD') and n <> expected then '*** CHECK ***'
