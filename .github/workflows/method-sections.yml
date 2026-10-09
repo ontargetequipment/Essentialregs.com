@@ -61,6 +61,14 @@ jobs:
           cp src/data/test-methods.json out/
           exit $rc
 
+      - name: Idempotence check (second run on the saved XML must change nothing)
+        run: |
+          DATE=$(head -1 out/report.md | sed 's/^eCFR date: //')
+          cp src/data/test-methods.json out/first-run.json
+          python scripts/fetch_method_sections.py --date "$DATE" --xml-dir out/xml > /dev/null
+          cmp src/data/test-methods.json out/first-run.json
+          echo "Second run on $DATE: no diff."
+
       - name: Upload JSON, report and XML
         if: always()
         uses: actions/upload-artifact@v4
