@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
 import { fetchRegulationRoots } from "@/lib/regulation";
 import { STATES } from "@/lib/states";
+import { TEST_METHODS } from "@/data/test-methods";
 
 /**
  * Static, public routes only. The gated full reader (/regulations/[reg])
@@ -23,6 +24,7 @@ const STATIC_ROUTES: Array<{
   { path: "/states", changeFrequency: "weekly", priority: 0.8 },
   { path: "/general-permits", changeFrequency: "weekly", priority: 0.8 },
   { path: "/federal", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/test-methods", changeFrequency: "monthly", priority: 0.7 },
   { path: "/changelog", changeFrequency: "daily", priority: 0.5 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: "/contact", changeFrequency: "yearly", priority: 0.4 },
@@ -56,6 +58,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));
+  // Every Test Methods reference page (public, from the data file).
+  const methodEntries: MetadataRoute.Sitemap = TEST_METHODS.map((m) => ({
+    url: `${SITE_URL}/test-methods/${m.slug}`,
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
 
   // A transient DB/config problem here should degrade to "the static routes
   // still get crawled" rather than take the whole sitemap down with a 500.
@@ -78,5 +86,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error("sitemap: failed to enumerate regulation preview pages", error);
   }
 
-  return [...staticEntries, ...stateEntries, ...previewEntries];
+  return [...staticEntries, ...stateEntries, ...methodEntries, ...previewEntries];
 }

@@ -543,6 +543,37 @@ links to the part root), and the first section of a list carries the
   old code> --out pipeline/out/sprint2_link_changes.md` (the importer has no
   link-only mode; this compares old and new parses of the same sources).
 
+### EPA test-method links (the Test Methods section, Oct 2026)
+
+A citation of an EPA test method or performance specification in a
+provision's text ("Method 21", "EPA Method 5", "Methods 1 through 4",
+"Performance Specification 8") links to the site's free reference page for
+it, `/test-methods/<slug>`, as `<a class="xref-method" href="/test-methods/
+method-21">Method 21</a>`. `pipeline/method_links.py` does it, one function
+both importers call on every paragraph after their own cross-reference pass
+(so it never links inside an xref span). The allowlist is the data file the
+pages are built from, `src/data/test-methods.json` (slugs `method-<n><letter>`
+and `ps-<n>`): a method the file does not carry (Method 7400, CARB Method
+310, Method 5G, PS 12) stays plain text, and adding an entry there is all it
+takes for the next import to link it. The rules (prefixes kept as printed,
+lists and ranges, what is never linked) are in the module docstring;
+`pipeline/test_method_links.py` holds the cases and a regression that parses
+Regulation 1, Subpart OOOOb and Subpart JJJJ with the linker off and on
+(`ER_FULL_CORPUS=1` for every document).
+
+- `parse` prints `test-method links: N anchor(s) in M row(s); by method:
+  {...}` and writes `<out>_method_links.json` beside the rows.
+  `--no-method-links` leaves every citation as text (the regression proof;
+  the workflow never passes it).
+- `apply --execute` rewrites the document's rows in
+  `provision_method_citations` (migration 20261009005000) from the anchors
+  in the final text -- the "Cited by" lists on the Test Methods pages read
+  that table. Until the migration is applied it warns and continues.
+- Adding anchors is a markup-only change (`links_updated`, no summary
+  regeneration), so linking the corpus is a markup-only re-import of every
+  document that cites a listed method; `docs/imports/2026-10-09/
+  test_methods_linker.md` lists them with the counts.
+
 ### Official text, EssentialRegs notes and the text checks (Sprint 3, Oct 2026)
 
 The official text is never altered. Three curated files and two checks keep

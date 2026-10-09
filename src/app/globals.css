@@ -107,10 +107,24 @@
   margin-bottom: 0;
 }
 .card-text .xref,
-.card-text a.xref-external-reg {
+.card-text a.xref-external-reg,
+.card-text a.xref-method {
   color: var(--accent);
   text-decoration: underline dotted;
   text-underline-offset: 2px;
+}
+/* A linked EPA test-method citation (a.xref-method, pipeline/method_links.py)
+   carries a small superscript M here as in the reader (reader.css), so the
+   two kinds of link read differently on a card too. */
+.card-text a.xref-method::after {
+  content: "M";
+  display: inline-block;
+  margin-left: 1px;
+  font-family: var(--font-sans);
+  font-size: 0.62em;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: super;
 }
 .card-text table {
   border-collapse: collapse;

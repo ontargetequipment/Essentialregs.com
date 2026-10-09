@@ -41,6 +41,8 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from method_links import link_method_citations, set_enabled as set_method_links_enabled, write_method_links_report
+
 try:
     import pdfplumber  # only required when a SUBPART_META entry uses table_algorithm="pdfplumber"
 except ImportError:  # pragma: no cover
@@ -2832,11 +2834,21 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
             # Heading-type rows' full_text is plain text = their title (per
             # IMPORTER_SPEC "heading-type rows: plain text, no tags"); it
             # often IS the row's own citation, which must not self-link.
-            # Table HTML is already rendered and not prose to re-scan.
+            # Table HTML is already rendered and not prose to re-scan for
+            # cross-references -- but the performance-test tables (Table 2
+            # to JJJJ, Table 7 to IIII, Table 4 to ZZZZ: kind "appendix",
+            # sec-<reg>-TABLE-n) are where a subpart names its test
+            # methods, so those cells get the method linker alone; it skips
+            # the table's caption and the row's label itself.
+            if row["kind"] == "appendix":
+                row["full_text"], _ = link_method_citations(row["full_text"], skip_prefix=row.get("citation"))
             continue
         row["full_text"] = link_citations(
             row["full_text"], reg, own_section_id, row["id"], known_ids, CORPUS_REGS, unresolved
         )
+        # EPA test-method citations (method_links.py), after the
+        # cross-reference pass so an xref span is never linked inside.
+        row["full_text"], _ = link_method_citations(row["full_text"], skip_prefix=row.get("citation"))
 
     missing_sections = sorted(toc_seen_nums - body_seen_nums)
     extra_sections = sorted(body_seen_nums - toc_seen_nums)
@@ -3750,6 +3762,7 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
         row["full_text"] = link_citations(
             before, reg, own_section_id, row["id"], known_ids, CORPUS_REGS, unresolved
         )
+        row["full_text"], _ = link_method_citations(row["full_text"], skip_prefix=row.get("citation"))
         link_counts["same_doc"] += row["full_text"].count('<span class="xref"')
         link_counts["cross_doc"] += row["full_text"].count('class="xref-external-reg"')
 
@@ -3838,8 +3851,12 @@ def cmd_parse_part(args):
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
+    method_summary = write_method_links_report(out_path, rows)
 
     print(f"Parsed {len(rows)} provisions for {args.reg} ({meta['root_citation']}) -> {out_path}")
+    print(f"  test-method links: {method_summary['anchors']} anchor(s) in {method_summary['rows_with_links']} row(s)"
+          + (f"; by method: {method_summary['by_slug']}" if method_summary["anchors"] else "")
+          + ("" if method_summary["enabled"] else "  (linker OFF: --no-method-links)"))
     print(f"  by kind: {report['kinds']}")
     print(f"  subparts: {len(report['subparts'])}, sections: {report['n_sections']}, "
           f"definitions: {report['n_definitions']}, tables: {len(report['tables'])}, "
@@ -3876,9 +3893,13 @@ def cmd_parse(args):
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
+    method_summary = write_method_links_report(out_path, rows)
 
     kind_counts = Counter(r["kind"] for r in rows)
     print(f"Parsed {len(rows)} provisions for {args.reg} -> {out_path}")
+    print(f"  test-method links: {method_summary['anchors']} anchor(s) in {method_summary['rows_with_links']} row(s)"
+          + (f"; by method: {method_summary['by_slug']}" if method_summary["anchors"] else "")
+          + ("" if method_summary["enabled"] else "  (linker OFF: --no-method-links)"))
     print(f"  by kind: {dict(kind_counts)}")
     print(f"  sections: TOC {report['n_sections_toc']}, body {report['n_sections_body']}")
     if report["missing_sections"]:
@@ -3941,9 +3962,12 @@ def main():
     p_parse.add_argument("--txt", default=None, help="Defaults to --pdf with .txt extension.")
     p_parse.add_argument("--xml", default=None, help="Primary source for a whole-PART reg (p191/p192).")
     p_parse.add_argument("--out", required=True)
+    p_parse.add_argument("--no-method-links", action="store_true",
+                         help="Leave EPA test-method citations as plain text (see pipeline/method_links.py).")
     p_parse.set_defaults(func=cmd_parse)
 
     args = ap.parse_args()
+    set_method_links_enabled(not args.no_method_links)
     args.func(args)
 
 

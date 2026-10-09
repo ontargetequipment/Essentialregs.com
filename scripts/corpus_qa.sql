@@ -28,6 +28,13 @@
 -- trigger provisions_summary_approval_only_by_pipeline (migration
 -- 20261006090000), which refuses an approval outside the pipeline outright.
 --
+-- Checks 26 and 27 (Test Methods, 9 Oct 2026) guard the method links the
+-- importers write into the text (every /test-methods/<slug> href names an
+-- entry in src/data/test-methods.json, through the generated
+-- scripts/test-method-slugs.sql loaded ahead of this file, Step 0d) and the
+-- provision_method_citations rows the "Cited by" lists read (no dangling
+-- provision or slug; 0 while the table's migration is not applied yet).
+--
 -- Every check here corresponds to a defect that has ALREADY happened once and
 -- is recorded in EssentialRegs_Known_Issues_and_Fixes.md. This file exists so
 -- the next one is caught by a query instead of by somebody noticing.
@@ -290,6 +297,54 @@ begin
   where not exists (select 1 from public.provisions p where p.id = m.id);
 end
 $maps$;
+
+-- ============================================================================
+-- Step 0d — Test Methods slugs (runs BEFORE the main query)
+-- ============================================================================
+-- scripts/test-method-slugs.sql (generated from src/data/test-methods.json
+-- by scripts/test-method-slugs.ts; npm test fails while it is stale) creates
+-- pg_temp.test_method_slugs: the slugs the Test Methods pages exist for and
+-- the only ones the importers' linker (pipeline/method_links.py) may write.
+-- Check 26 reads pg_temp.test_method_link_problems: one row per
+-- (provision, slug) whose full_text carries href="/test-methods/<slug>" for
+-- a slug the data file does not have (a link that 404s), or one "not
+-- loaded" row when the generated file was not run first. Check 27 reads
+-- pg_temp.test_method_citation_problems: rows of provision_method_citations
+-- (migration 20261009005000) whose provision_id or method_slug dangles --
+-- or nothing, with a note, while the table does not exist yet (the
+-- migration is applied after the pull request that adds it merges), so the
+-- suite never fails on a table it cannot see.
+drop table if exists pg_temp.test_method_link_problems;
+create temp table test_method_link_problems (id text, slug text, note text);
+drop table if exists pg_temp.test_method_citation_problems;
+create temp table test_method_citation_problems (provision_id text, slug text, note text);
+
+do $methods$
+begin
+  if to_regclass('pg_temp.test_method_slugs') is null then
+    insert into test_method_link_problems (note)
+    values ('test_method_slugs not loaded: run scripts/test-method-slugs.sql before this file');
+    insert into test_method_citation_problems (note)
+    values ('test_method_slugs not loaded: run scripts/test-method-slugs.sql before this file');
+    return;
+  end if;
+  insert into test_method_link_problems (id, slug)
+  select distinct p.id, m[1]
+  from public.provisions p,
+       regexp_matches(coalesce(p.full_text, ''), 'href="/test-methods/([^"]*)"', 'g') m
+  where not exists (select 1 from pg_temp.test_method_slugs s where s.slug = m[1]);
+  if to_regclass('public.provision_method_citations') is null then
+    -- The table arrives with migration 20261009005000; until then there is
+    -- nothing to dangle. Not counted as a problem (see check 27).
+    return;
+  end if;
+  insert into test_method_citation_problems (provision_id, slug)
+  select c.provision_id, c.method_slug
+  from public.provision_method_citations c
+  where not exists (select 1 from public.provisions p where p.id = c.provision_id)
+     or not exists (select 1 from pg_temp.test_method_slugs s where s.slug = c.method_slug);
+end
+$methods$;
 
 -- ============================================================================
 -- Main query — one row per check
@@ -577,6 +632,20 @@ checks as (
          || coalesce(' Missing: ' || (select string_agg(q.map_key || ' ' || q.id, ', ' order by q.map_key, q.id) from pg_temp.question_map_missing q where q.id is not null), '')
          || coalesce(' Problems: ' || (select string_agg(q.note, '; ') from pg_temp.question_map_missing q where q.note is not null), '')
   from pg_temp.question_map_missing
+
+  union all
+  select 26, 'GUARD', 'test_method_links_resolve', count(*), 0,
+         'Test Methods (9 Oct 2026). Every href="/test-methods/<slug>" the importers wrote into provisions.full_text (pipeline/method_links.py, class xref-method) must name a slug in src/data/test-methods.json -- the data file is the linker''s allowlist, so a mismatch means a page was renamed or removed after the corpus was linked, and the link 404s in the reader. The slugs come from the generated scripts/test-method-slugs.sql (Step 0d), loaded ahead of this file. Counts distinct (provision, slug) pairs with no such entry, plus 1 when the generated file was not loaded. Expect 0. When above 0: restore the entry or re-link the corpus (the Import workflow, markup-only).'
+         || coalesce(' Dangling: ' || (select string_agg(q.id || ' -> ' || q.slug, ', ' order by q.id, q.slug) from (select id, slug from pg_temp.test_method_link_problems where id is not null order by id, slug limit 30) q), '')
+         || coalesce(' Problems: ' || (select string_agg(q.note, '; ') from pg_temp.test_method_link_problems q where q.note is not null), '')
+  from pg_temp.test_method_link_problems
+
+  union all
+  select 27, 'GUARD', 'test_method_citations_dangle', count(*), 0,
+         'Test Methods (9 Oct 2026). provision_method_citations (migration 20261009005000; the "Cited by" lists on /test-methods/<slug>) must have no row whose provision_id has no provision (the foreign key cascades, so this means the constraint was dropped) or whose method_slug is not in src/data/test-methods.json (a page the list would link that does not exist). Rows are rewritten per document by every executed import (import_ccr.write_method_citation_rows). Counts dangling rows, plus 1 when the generated slug file was not loaded; 0 while the table does not exist yet. Expect 0.'
+         || coalesce(' Dangling: ' || (select string_agg(q.provision_id || ' -> ' || q.slug, ', ' order by q.provision_id, q.slug) from (select provision_id, slug from pg_temp.test_method_citation_problems where provision_id is not null order by provision_id, slug limit 30) q), '')
+         || coalesce(' Problems: ' || (select string_agg(q.note, '; ') from pg_temp.test_method_citation_problems q where q.note is not null), '')
+  from pg_temp.test_method_citation_problems
 )
 select severity, check_name, n,
        case when severity in ('ERROR','GUARD') and n <> expected then '*** CHECK ***'

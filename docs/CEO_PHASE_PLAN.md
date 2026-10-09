@@ -235,3 +235,33 @@ The fourth outside review asked for the original 40 CFR Part 60 Subpart OOOO (co
 5. **Spot-check follow-up (same day).** The Cowork session found 33 of 40 summaries fine, 6 minor, 1 wrong, three faults in our copy of the official text and one process gap. Fixed on the branch (record: `docs/imports/2026-10-08/oooo_import_readiness.md`, "Follow-up"): Tables 1–3 now come from the eCFR versioner XML (new `ecfr_xml` workflow input; Table 3's page-break header was fused into the body); the EPA e-mail address with doubled underscores is what the eCFR itself prints in OOOO and OOOOa (XML checked), so the text stays as printed with a `[sic]` note and the summaries give `Oil_and_Gas_PT@EPA.GOV`; the equations the eCFR publishes only as images are transcribed for OOOO (9) and marked with a visible "Equation not reproduced here" line with the source link for OOOOa (30 images), OOOOb (37) and OOOOc (7); the source text check gained three corpus-side checks; the ten "75 percent" summaries read the rule's way with writer and reviewer rules on ambiguous negation; every summary under § 60.5371 / 60.5371a / 60.5371b (78) carries the July 31, 2025 – January 22, 2027 suspension and the ancestor rules say why it must.
 6. **The gate.** `is_public` only decides which four rows anonymous visitors may read on `/sample`; it never hid a document from subscribers, so OOOO was in the reader, keyword search, Ask and the Federal index from the import on. Migration `20261008040000` adds `regulation_releases` (staged | released): a first import lands staged, invisible to subscribers everywhere (RLS, the Ask functions, the public changelog, the app's service-role reads) and unlinked by other documents (`dump-ids` / `corpus_staged.json`), until Actions → **Release regulation**. Every existing document, OOOO included, is seeded released (hiding OOOO now would break the links eleven documents carry to it). Checklist step 4 in `pipeline/README.md`.
 7. **Not public yet.** The Cowork session re-checks production, then says "make OOOO public" (the `/sample` and `/preview` summaries gate, `teaserSummariesVisible`).
+
+## Test Methods section, Oct 9 2026 (branch `claude/intelligent-gauss-oel2hj`)
+
+A free, public reference section beside State and Federal: `/test-methods`
+(30 EPA methods and performance specifications, grouped by category) and
+`/test-methods/<slug>` (what it measures, how it works, equipment, when a rule
+cites it, notes for compliance staff, related methods, the eCFR link, and
+"Cited by": every provision whose text cites the method, grouped by
+regulation). Content written and owner-approved on Oct 8 (`src/data/
+test-methods.json`, review record in `docs/test-methods/`); no formulas, no
+access gate. Build record with every count: `docs/imports/2026-10-09/
+test_methods_linker.md`.
+
+1. **Linker.** `pipeline/method_links.py`, called by both importers: 806
+   anchors in 477 rows across 25 documents (Method 21 ×266, Method 22 ×75,
+   Method 25A ×47 ...); every one of the 30 entries is cited somewhere.
+   Proof: all 58 documents parse byte-identical to `main` with the linker
+   off, and differ only by `xref-method` anchors with it on.
+2. **Cited by** reads a new table, `provision_method_citations` (the
+   importers never maintained `cross_references`), written by every
+   executed import from the anchors in the final text. Migration
+   `20261009005000_test_method_citations.sql` is in the pull request and
+   NOT applied: the CEO chat applies it through the connector after merge
+   and records the version, then schedules the re-link (markup-only
+   re-import of the 25 documents; 0 summaries regenerated), then the qa
+   suite (checks 26 and 27, with `scripts/test-method-slugs.sql` loaded).
+3. **Reader.** A method link looks like a section link with a small
+   superscript M and opens the reference page (plain navigation, no popup).
+   A link from a reference page back into a regulation hits the normal
+   reader gate.

@@ -1,0 +1,253 @@
+[
+ {
+  "slug": "method-1",
+  "verdict": "FLAG",
+  "issues": [
+   {
+    "field": "readerNotes",
+    "quote": "A test site that cannot meet the distance-from-disturbance criteria needs approval from the regulatory agency for an alternative approach.",
+    "problem": "Method 1 contains its own alternative site-selection procedure for sites that cannot meet the distance criteria, so 'needs approval ... for an alternative approach' misstates it as always requiring agency approval; not certain of the exact approval wording.",
+    "fix": "A test site that cannot meet the distance-from-disturbance criteria is addressed by an alternative site-selection procedure within Method 1 itself.",
+    "confidence": "probable"
+   }
+  ]
+ },
+ {
+  "slug": "method-1a",
+  "verdict": "FLAG",
+  "issues": [
+   {
+    "field": "principle",
+    "quote": "It exists because the Method 1 layout puts too many probes, or too large a probe, in a small cross-section and disturbs the flow it is trying to measure.",
+    "problem": "'Too many probes' is not the rationale; the concern is probe/pitot blockage and flow disturbance in a small cross-section.",
+    "fix": "It exists because the probe and the Method 1 point layout would block too much of a small cross-section and disturb the flow being measured.",
+    "confidence": "probable"
+   },
+   {
+    "field": "relatedSlugs",
+    "quote": "method-2a, method-2d",
+    "problem": "Methods 2A and 2D are in-line meter methods that do not use traverse points (the entries for 2A and 2D say so), so pairing them with a traverse method is inconsistent. The usual small-stack velocity companion, Method 2C, is not in the set.",
+    "fix": "Remove method-2a and method-2d (or add method-2c if added to the set).",
+    "confidence": "probable"
+   }
+  ]
+ },
+ {
+  "slug": "method-2",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-2a",
+  "verdict": "FLAG",
+  "issues": [
+   {
+    "field": "relatedSlugs",
+    "quote": "method-1a",
+    "problem": "The entry's own readerNotes say Method 2A does not traverse and does not need Method 1 traverse points, yet it lists Method 1A as related.",
+    "fix": "Remove method-1a.",
+    "confidence": "probable"
+   }
+  ]
+ },
+ {
+  "slug": "method-2d",
+  "verdict": "FLAG",
+  "issues": [
+   {
+    "field": "readerNotes",
+    "quote": "Method 2D reads a flow rate from a meter, while Method 2A reads a totalized volume.",
+    "problem": "Oversimplified: Method 2D covers both rate meters and volume meters (it lists turbine and positive-displacement type devices), so the clean contrast with 2A is not safe.",
+    "fix": "Method 2D is written for meters installed in small pipes and ducts and covers flow-rate meters such as rotameters and orifice meters; Method 2A is the direct gas volume meter method.",
+    "confidence": "probable"
+   },
+   {
+    "field": "relatedSlugs",
+    "quote": "method-1a",
+    "problem": "Same inconsistency as Method 2A: the entry says the Method 1 traverse points do not apply.",
+    "fix": "Remove method-1a.",
+    "confidence": "probable"
+   }
+  ]
+ },
+ {
+  "slug": "method-3",
+  "verdict": "FLAG",
+  "issues": [
+   {
+    "field": "measures",
+    "quote": "and from them the dry molecular weight of the gas and its excess air",
+    "problem": "Method 3's stated result is dry molecular weight; excess air is the headline result of Method 3B (title: 'emission rate correction factor or excess air'). Not certain whether Method 3 text includes an excess-air equation, but it is not what the method is for.",
+    "fix": "and from them the dry molecular weight of the gas.",
+    "confidence": "probable"
+   }
+  ]
+ },
+ {
+  "slug": "method-3a",
+  "verdict": "FLAG",
+  "issues": [
+   {
+    "field": "readerNotes",
+    "quote": "It does not report the dry molecular weight by itself, and a test that also needs a velocity or flow rate still runs the other stack-sampling methods.",
+    "problem": "Misleading: rules and Method 2 accept Method 3A oxygen and carbon dioxide data as the basis for dry molecular weight; the statement is unsupported and contradicts the use described elsewhere in the set.",
+    "fix": "A test that also needs a velocity or flow rate still runs the other stack-sampling methods.",
+    "confidence": "probable"
+   }
+  ]
+ },
+ {
+  "slug": "method-3b",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-3c",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-4",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-5",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-6",
+  "verdict": "FLAG",
+  "issues": [
+   {
+    "field": "readerNotes",
+    "quote": "A concentration from Method 6 becomes an emission rate only when it is combined with a gas flow measurement from Methods 1 through 4.",
+    "problem": "'Only when' is false: a concentration can also be converted to an emission rate with an F-factor and an oxygen or carbon dioxide reading under Method 19 (which the set itself describes), or from fuel data.",
+    "fix": "A concentration from Method 6 becomes an emission rate when it is combined with a gas flow measurement from Methods 1 through 4, or with an oxygen or carbon dioxide reading and an F-factor under Method 19.",
+    "confidence": "certain"
+   }
+  ]
+ },
+ {
+  "slug": "method-7e",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-9",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-10",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-15",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-16",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-16a",
+  "verdict": "FLAG",
+  "issues": [
+   {
+    "field": "whenCited",
+    "quote": "Tests of total reduced sulfur emissions from sulfur recovery units and related process equipment.",
+    "problem": "Method 16A's stated applicability is total reduced sulfur from kraft pulp mill sources (recovery furnaces, lime kilns, smelt dissolving tanks); naming only sulfur recovery units is misleading, since sulfur recovery units are generally tested with Methods 15 and 15A.",
+    "fix": "Tests of total reduced sulfur emissions from sources such as kraft pulp mill recovery furnaces, lime kilns and smelt dissolving tanks, and other process equipment.",
+    "confidence": "probable"
+   },
+   {
+    "field": "equipment",
+    "quote": "a citrate buffer impinger",
+    "problem": "Method 16A uses a citrate buffer scrubber that may consist of more than one impinger; singular is not safe.",
+    "fix": "a citrate buffer impinger set",
+    "confidence": "probable"
+   }
+  ]
+ },
+ {
+  "slug": "method-18",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-19",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-21",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-22",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-24",
+  "verdict": "FLAG",
+  "issues": [
+   {
+    "field": "principle",
+    "quote": "Results are expressed as mass of VOC per volume of coating, which can be compared with a coating VOC content limit.",
+    "problem": "Imprecise: Method 24 results are expressed as mass of VOC per volume of coating less water and exempt compounds, or per volume of solids, depending on the rule's basis.",
+    "fix": "Results are expressed as mass of VOC per volume of coating, with water and exempt compounds treated as the rule specifies, or per volume of solids, which can be compared with a coating VOC content limit.",
+    "confidence": "probable"
+   }
+  ]
+ },
+ {
+  "slug": "method-25a",
+  "verdict": "FLAG",
+  "issues": [
+   {
+    "field": "whenCited",
+    "quote": "control devices such as flares, enclosed combustors and thermal oxidizers",
+    "problem": "Open flares cannot be sampled with a probe-fed analyzer for inlet/outlet destruction efficiency; only enclosed flares can.",
+    "fix": "control devices such as enclosed flares, enclosed combustors and thermal oxidizers",
+    "confidence": "probable"
+   }
+  ]
+ },
+ {
+  "slug": "method-27",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-301",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "method-320",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "ps-2",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "ps-8",
+  "verdict": "PASS",
+  "issues": []
+ },
+ {
+  "slug": "ps-9",
+  "verdict": "PASS",
+  "issues": []
+ }
+]
