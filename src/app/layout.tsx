@@ -59,6 +59,7 @@ const FOOTER_GROUPS = [
       // category, reached from /states/colorado rather than listed here.
       { href: "/states", label: "State regulations" },
       { href: "/federal", label: "Federal" },
+      { href: "/test-methods", label: "Test Methods" },
     ],
   },
   {

@@ -69,6 +69,19 @@ export default async function Home() {
           reference. Coming soon: more states, plus OSHA, DOT (FMCSA) and FAA
           regulations.
         </p>
+        {/* The free Test Methods reference, one sentence beside the two
+            regulation indexes above. */}
+        <p className="mt-3 max-w-reading text-sm text-ink-soft">
+          The EPA test methods those rules cite — Method 21, Method 22,
+          Method 25A and more — each have a free reference page under{" "}
+          <Link
+            href="/test-methods"
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
+          >
+            Test Methods
+          </Link>
+          .
+        </p>
       </section>
 
       <section aria-labelledby="features-heading" className="border-t border-line py-14">
