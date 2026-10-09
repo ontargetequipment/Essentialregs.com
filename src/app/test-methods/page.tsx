@@ -3,7 +3,6 @@ import Link from "next/link";
 import {
   TEST_METHOD_CATEGORY_LABELS,
   TEST_METHOD_CATEGORY_ORDER,
-  TEST_METHODS,
   testMethodsInCategory,
 } from "@/data/test-methods";
 
@@ -31,13 +30,11 @@ export default function TestMethodsIndexPage() {
       <div className="max-w-reading">
         <h1 className="font-serif text-section font-bold tracking-tight text-ink">Test Methods</h1>
         <p className="mt-4 text-base leading-relaxed text-ink-soft">
-          EssentialRegs reference pages describing the EPA test methods the
-          regulations on this site cite: {TEST_METHODS.length} methods and
-          performance specifications from 40 CFR Part 60 and Part 63. Each
-          page says what the method measures, how it works, what it needs
-          and when a rule calls for it, and links to the authoritative text
-          on the eCFR. These pages are not the method text; the method as
-          published in the CFR controls.
+          Reference pages for the EPA test methods the regulations on this
+          site cite. Each page opens with the method’s own Scope and Summary
+          sections, reproduced from the CFR, followed by EssentialRegs notes
+          and the provisions that cite it. The full text of each method is on
+          the eCFR.
         </p>
 
         {groups.map((g) => (
