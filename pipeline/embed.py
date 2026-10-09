@@ -111,11 +111,12 @@ TAG_RE = re.compile(r"<[^>]+>")
 NBSP_RE = re.compile(r"&nbsp;")
 WS_RE = re.compile(r"\s+")
 # The importer's link markup: a cross-regulation anchor, a same-document
-# xref span, the [sic] marker span. Unwrapped (tags removed, inner text
+# xref span, the [sic] marker span and (9 Oct 2026) the EPA test-method
+# anchor (pipeline/method_links.py). Unwrapped (tags removed, inner text
 # kept, no space added) before the generic tag rule below, so that linking
 # an existing citation leaves the embedded text, and its hash, unchanged.
 LINK_MARKUP_RE = re.compile(
-    r'<(a|span)\s+class="(?:xref-external-reg|xref|er-sic)"[^>]*>(.*?)</\1>', re.S)
+    r'<(a|span)\s+class="(?:xref-external-reg|xref-method|xref|er-sic)"[^>]*>(.*?)</\1>', re.S)
 
 
 # --------------------------------------------------------------------------
