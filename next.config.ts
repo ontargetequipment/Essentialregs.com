@@ -29,6 +29,19 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // (Sprint 5, 10 Oct 2026) A tab left open across a production deploy
+  // sometimes changed the URL and kept the old page on screen (Home ->
+  // /sample, /sample -> a Reg 7 preview): its prefetched, client-side
+  // navigations came from the previous deployment's build, which the new one
+  // cannot render. Vercel Skew Protection is not available on this project's
+  // plan, and with no deploymentId Next has nothing to compare. VERCEL_DEPLOYMENT_ID
+  // (a Vercel system variable, present at build and at runtime) gives every
+  // deploy its own id: the client sends it as x-deployment-id, the server
+  // answers with x-nextjs-deployment-id, and on a mismatch the client does a
+  // hard navigation (a full reload of the new deploy) instead of a client-side
+  // one. Undefined outside Vercel (local builds, CI), where Next behaves as
+  // before; NEXT_DEPLOYMENT_ID in the environment still wins if it is set.
+  deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
   async redirects() {
     return [
       // The Colorado index moved to /states/colorado (28 Sep 2026). The
