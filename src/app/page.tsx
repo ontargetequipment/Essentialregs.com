@@ -5,13 +5,18 @@ import { PlanChoice } from "@/components/PlanChoice";
 import { SubscribeControl } from "@/components/SubscribeControl";
 
 // Hero buttons. Full-width 44px rows below `sm` (tap targets), inline from
-// `sm` up. The state button lands on the /states picker and the federal one
-// on the federal list, whether or not the visitor is signed in (the index
-// pages read the roots through the anonymous-safe fetchRegulationRoots).
+// `sm` up (wrapping onto a second row where four don't fit). The federal
+// button lands on the federal list and the state button on the /states
+// picker, whether or not the visitor is signed in (the index pages read the
+// roots through the anonymous-safe fetchRegulationRoots).
 const BUTTON =
-  "inline-flex min-h-11 items-center justify-center rounded-md px-5 py-3 text-sm font-semibold";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-semibold";
 const BUTTON_PRIMARY = `${BUTTON} bg-accent text-white hover:bg-accent/90`;
 const BUTTON_OUTLINE = `${BUTTON} border border-line bg-panel text-ink hover:bg-accent-soft`;
+// The "FREE" pill inside the Test Methods button: existing accent tokens
+// only, so it reads as free at a glance without a new colour.
+const FREE_PILL =
+  "rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-accent";
 
 // The six things the reader does. `lead` is a short serif label; `detail`
 // is the reviewer-approved sentence, kept word for word.
@@ -50,11 +55,15 @@ export default async function Home() {
         </p>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <Link href="/states" className={BUTTON_PRIMARY}>
-            State regulations
+          <Link href="/federal" className={BUTTON_PRIMARY}>
+            Federal Regulations
           </Link>
-          <Link href="/federal" className={BUTTON_OUTLINE}>
-            Federal regulations
+          <Link href="/states" className={BUTTON_OUTLINE}>
+            State Regulations
+          </Link>
+          <Link href="/test-methods" className={BUTTON_OUTLINE}>
+            Test Methods
+            <span className={FREE_PILL}>Free</span>
           </Link>
           <Link href="/sample" className={BUTTON_OUTLINE}>
             See a sample entry
@@ -69,18 +78,18 @@ export default async function Home() {
           reference. Coming soon: more states, plus OSHA, DOT (FMCSA) and FAA
           regulations.
         </p>
-        {/* The free Test Methods reference, one sentence beside the two
+        {/* The free Test Methods reference, one sentence beside the
             regulation indexes above. */}
         <p className="mt-3 max-w-reading text-sm text-ink-soft">
           The EPA test methods those rules cite — Method 21, Method 22,
-          Method 25A and more — each have a free reference page under{" "}
+          Method 25A and more — each have a reference page under{" "}
           <Link
             href="/test-methods"
             className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
           >
             Test Methods
           </Link>
-          .
+          , free to read without an account.
         </p>
       </section>
 

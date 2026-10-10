@@ -6,14 +6,14 @@ import { usePathname } from "next/navigation";
 
 /**
  * The two regulation indexes behind the "Regulations" header entry, one per
- * jurisdiction, then the Test Methods reference (free, public: the EPA test
- * methods those regulations cite). The APCD General Permits are a Colorado
+ * jurisdiction (federal first), then the Test Methods reference (free,
+ * public: the EPA test methods those regulations cite). The APCD General Permits are a Colorado
  * category, not a jurisdiction: /general-permits stays reachable from
  * /states/colorado (its group heading there links out), not from here.
  */
 const REGULATION_LINKS = [
-  { href: "/states", label: "State regulations" },
-  { href: "/federal", label: "Federal" },
+  { href: "/federal", label: "Federal Regulations" },
+  { href: "/states", label: "State Regulations" },
   { href: "/test-methods", label: "Test Methods" },
 ] as const;
 

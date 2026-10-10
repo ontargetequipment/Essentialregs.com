@@ -3,7 +3,7 @@ import { fetchRegulationRoots } from "@/lib/regulation";
 import { STATES, coverageLabel, stateCoverage, stateRoots } from "@/lib/states";
 
 export const metadata = {
-  title: "State regulations",
+  title: "State Regulations",
 };
 
 export default async function StatesIndexPage() {
@@ -18,7 +18,7 @@ export default async function StatesIndexPage() {
     <div className="mx-auto max-w-shell px-6 py-12">
       <div className="max-w-reading">
         <h1 className="font-serif text-section font-bold tracking-tight text-ink">
-          State regulations
+          State Regulations
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
           Choose a state to browse its air-quality and oil &amp; gas

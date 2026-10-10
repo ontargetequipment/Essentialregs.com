@@ -55,10 +55,11 @@ const FOOTER_GROUPS = [
   {
     label: "Regulations",
     links: [
-      // One entry per jurisdiction; the APCD General Permits are a Colorado
-      // category, reached from /states/colorado rather than listed here.
-      { href: "/states", label: "State regulations" },
-      { href: "/federal", label: "Federal" },
+      // One entry per jurisdiction, federal first; the APCD General Permits
+      // are a Colorado category, reached from /states/colorado rather than
+      // listed here. Same order and labels as REGULATION_LINKS (MobileNav).
+      { href: "/federal", label: "Federal Regulations" },
+      { href: "/states", label: "State Regulations" },
       { href: "/test-methods", label: "Test Methods" },
     ],
   },

@@ -43,9 +43,23 @@ const SAMPLE_HEADINGS = [
 ];
 
 test.describe("anonymous", () => {
-  test("home page returns 200", async ({ page }) => {
+  test("home page returns 200 with the four hero buttons, Test Methods marked free", async ({ page }) => {
     const res = await page.goto("/");
     expect(res?.status()).toBe(200);
+    // The hero's four buttons, in order: the federal and state indexes,
+    // the free Test Methods reference, the sample. The Test Methods link
+    // carries a FREE pill so it reads as free at a glance.
+    const hero = page.locator("h1 ~ div").first();
+    const buttons = hero.getByRole("link");
+    await expect(buttons).toHaveText([
+      "Federal Regulations",
+      "State Regulations",
+      /^Test Methods\s*Free$/,
+      "See a sample entry",
+    ]);
+    const hrefs = await buttons.evaluateAll((els) => els.map((a) => a.getAttribute("href")));
+    expect(hrefs).toEqual(["/federal", "/states", "/test-methods", "/sample"]);
+    await expect(page.locator('a[href="/test-methods"]', { hasText: /free/i }).first()).toBeVisible();
   });
 
   test("the pricing card offers both prices, each with its own call to action", async ({ page }) => {
@@ -218,7 +232,7 @@ test.describe("anonymous", () => {
   test("/states lists Colorado with live counts and links to its index", async ({ page }) => {
     const res = await page.goto("/states");
     expect(res?.status()).toBe(200);
-    await expect(page.getByRole("heading", { name: "State regulations" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "State Regulations" })).toBeVisible();
     // The card is the only link to /states/colorado (the header and footer
     // link to /states); its counts come from the same roots the index lists.
     const card = page.getByRole("main").locator('a[href="/states/colorado"]');
@@ -242,11 +256,11 @@ test.describe("anonymous", () => {
   test("the Regulations nav lists the two jurisdictions and Test Methods; General Permits hang off Colorado", async ({ page }) => {
     // The APCD General Permits are a Colorado category, not a jurisdiction,
     // so the header dropdown, the mobile drawer and the footer's Regulations
-    // column each carry exactly State regulations, Federal and (since 9 Oct
-    // 2026) the free Test Methods reference. The permits index keeps its URL
-    // (sitemap, external links) and is reached from the Colorado index's
-    // group heading.
-    const TWO = ["State regulations", "Federal", "Test Methods"];
+    // column each carry exactly Federal Regulations, State Regulations and
+    // (since 9 Oct 2026) the free Test Methods reference, in that order. The
+    // permits index keeps its URL (sitemap, external links) and is reached
+    // from the Colorado index's group heading.
+    const TWO = ["Federal Regulations", "State Regulations", "Test Methods"];
     await page.goto("/states/colorado");
     const footer = page.getByRole("navigation", { name: "Footer" }).locator("ul").first();
     await expect(footer.getByRole("link")).toHaveText(TWO);
