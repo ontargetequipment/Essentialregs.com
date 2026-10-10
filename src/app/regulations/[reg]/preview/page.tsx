@@ -13,6 +13,7 @@ import { getAccessStatus } from "@/lib/access";
 import { LockedDestination } from "@/components/LockedDestination";
 import { isPublicReaderReg } from "@/lib/destination";
 import { PRICE_SUMMARY } from "@/lib/pricing";
+import { displayCitation } from "@/lib/federal-citation";
 import { PROVISION_ID } from "@/lib/types";
 
 // `reg` goes straight into an `eq("reg_key", reg)` filter
@@ -46,8 +47,8 @@ export async function generateMetadata(
   const focused = id ? await fetchProvisionTeaser(reg, id) : null;
   if (focused) {
     return {
-      title: `${focused.citation} — ${root.citation}`,
-      description: `${focused.citation} of ${root.citation} is in the full EssentialRegs corpus. Start a trial to open it in the cross-referenced reader.`,
+      title: `${displayCitation(reg, focused.citation)} — ${root.citation}`,
+      description: `${displayCitation(reg, focused.citation)} of ${root.citation} is in the full EssentialRegs corpus. Start a trial to open it in the cross-referenced reader.`,
       // A per-provision URL for every id in the corpus is not worth indexing.
       robots: { index: false },
     };
@@ -94,7 +95,7 @@ export default async function RegulationPreviewPage(
         <div className="mb-10 border-b border-line pb-10">
           <p className="text-sm text-ink-soft">{regName}</p>
           <h1 className="mt-1 font-serif text-section font-bold tracking-tight text-ink">
-            {focused.citation}
+            {displayCitation(reg, focused.citation)}
           </h1>
           {titleWithoutCitation(focused.title, focused.citation) && (
             <p className="mt-1 text-lg text-ink-soft">
@@ -106,7 +107,7 @@ export default async function RegulationPreviewPage(
           )}
           <LockedDestination
             regName={regName}
-            citation={focused.citation}
+            citation={displayCitation(reg, focused.citation)}
             title={titleWithoutCitation(focused.title, focused.citation)}
             readerHref={`/regulations/${reg}#${focused.id}`}
           />
@@ -179,7 +180,7 @@ export default async function RegulationPreviewPage(
                   className="rounded-lg border border-line bg-panel p-5 shadow-sm"
                 >
                   <p className="font-mono text-eyebrow uppercase text-tag">
-                    {s.citation}
+                    {displayCitation(reg, s.citation)}
                   </p>
                   {heading && <p className="mt-1 font-semibold text-ink">{heading}</p>}
                   {summaryParagraphs(s.ai_summary ?? "").map((para, i) => (

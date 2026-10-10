@@ -1,3 +1,4 @@
+import { federalIdLabel } from "@/lib/federal-citation";
 import type { MapGroup, MapProvision, QuestionMap } from "@/lib/question-maps";
 
 /**
@@ -943,8 +944,12 @@ export function premiseNoteForMapKey(mapKey: string | null | undefined): Premise
  * A short label for a cited provision id, for the links beside a note's
  * sentence: "GP01 I.A.1", "Regulation 3 Part A II.A.1", "GP09 (document)".
  * Pure string work on the id (the page has no row for every cite).
+ * A federal document's id goes through the one federal formatter (Sprint 5,
+ * 10 Oct 2026): "OOOOb § 60.5365b(a)(1)", never "OOOOB 60.5365b.(a).(1)".
  */
 export function citeLabel(id: string): string {
+  const federal = federalIdLabel(id);
+  if (federal) return federal;
   const m = id.match(/^sec-([^-]+)-(.+)$/);
   if (!m) return id;
   const [, reg, rest] = m;

@@ -7,6 +7,7 @@ import { ProvisionCard, cardAccess } from "@/components/ProvisionCard";
 import { RelatedProvisions } from "@/components/RelatedProvisions";
 import { regKeyOf, regulationCardHref, regulationDisplayName, withReviewerKind } from "@/lib/regulation-pure";
 import { isPublicReaderReg } from "@/lib/destination";
+import { displayCitation } from "@/lib/federal-citation";
 import { PROVISION_ID, type Provision } from "@/lib/types";
 
 // One read per request, shared by generateMetadata and the page. Row Level
@@ -33,7 +34,7 @@ const fetchProvision = cache(async (id: string): Promise<Provision | null> => {
 /** "I.D.3.a.(i). · Regulation 7": the provision's citation and its regulation's display name. */
 function pageTitle(provision: Provision): string {
   const regKey = regKeyOf(provision.id);
-  return regKey ? `${provision.citation} · ${regulationDisplayName(regKey)}` : provision.citation;
+  return regKey ? `${displayCitation(regKey, provision.citation)} · ${regulationDisplayName(regKey)}` : provision.citation;
 }
 
 export async function generateMetadata(props: PageProps<"/regs/[id]">): Promise<Metadata> {

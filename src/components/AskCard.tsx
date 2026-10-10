@@ -9,6 +9,7 @@ import {
   titleWithoutCitation,
   type SummaryBadgeInput,
 } from "@/lib/regulation-pure";
+import { displayCitation } from "@/lib/federal-citation";
 import { regBadge } from "@/lib/regulation-names";
 import type { SemanticHit } from "@/lib/semantic";
 
@@ -146,7 +147,7 @@ export function AskCard({
         </div>
         {row.path && <p className="mt-2 text-xs leading-snug text-muted">{row.path}</p>}
         <p className="mt-1 font-mono text-eyebrow uppercase text-tag">
-          {row.citation}
+          {displayCitation(row.reg_key, row.citation)}
         </p>
         {heading && (
           <p className="mt-1 font-semibold text-ink">{heading}</p>

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { provisionDestination } from "@/lib/destination";
+import { displayCitation } from "@/lib/federal-citation";
 
 type Item = {
   id: string;
@@ -49,10 +50,10 @@ export function RelatedProvisionsLoader({ currentReg, publicMode = false }: { cu
         .map((it) => {
           const sameReg = it.reg_key === currentReg;
           const link = sameReg
-            ? `<span class="xref related-link" data-target="${esc(it.id)}">${esc(it.citation)}</span>`
+            ? `<span class="xref related-link" data-target="${esc(it.id)}">${esc(displayCitation(it.reg_key, it.citation))}</span>`
             : `<a class="related-link" href="${esc(
                 provisionDestination({ id: it.id, reg_key: it.reg_key }, { hasAccess: !publicMode })
-              )}">${esc(it.citation)}</a>`;
+              )}">${esc(displayCitation(it.reg_key, it.citation))}</a>`;
           const title = it.title ? `<span class="related-title">${esc(it.title)}</span>` : "";
           const path = it.path ? `<span class="related-path">${esc(it.path)}</span>` : "";
           // Same "Plain-English summary" label as the Ask cards (backlog #16), so the

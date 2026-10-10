@@ -196,7 +196,7 @@ test("a whole-document preview carries the root's title and the two-sentence ove
     full_text: "CONTROL OF HAZARDOUS AIR POLLUTANTS 5 CCR 1001-10",
     ai_summary: "Regulation 8 sets Colorado's hazardous air pollutant rules. It adopts the federal NESHAPs by reference. It also covers asbestos abatement.\n\nPart D covers lead.",
     summary_status: "approved",
-    reviewed_at: "2026-10-05T04:45:29.910Z",
+    reviewed_at: "2026-10-05T04:45:29.910Z", // 22:45 on 4 Oct in Colorado (Sprint 5: the badge reads America/Denver)
   };
   const { d } = deps({ row: root });
   const res = await loadProvisionPreview("sec-8-top-REG-8", d);
@@ -205,7 +205,7 @@ test("a whole-document preview carries the root's title and the two-sentence ove
   assert.equal(body.title, "CONTROL OF HAZARDOUS AIR POLLUTANTS 5 CCR 1001-10");
   assert.deepEqual(body.summary, {
     overview: "Regulation 8 sets Colorado's hazardous air pollutant rules. It adopts the federal NESHAPs by reference.",
-    badge: { kind: "reviewed", label: "AI-generated · automated check against source text · Oct 5, 2026" },
+    badge: { kind: "reviewed", label: "AI-generated · automated check against source text · Oct 4, 2026" },
   });
   // No reviewer, no other metadata.
   assert.doesNotMatch(JSON.stringify(body), /reviewed_by|summary_original|Claude/);

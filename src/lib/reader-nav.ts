@@ -6,6 +6,7 @@
  * them under jsdom against a rendered regulation. Dependency-free: this is
  * in the client bundle.
  */
+import { publicDateKey } from "@/lib/dates";
 import type { ReaderModel, ReaderRow } from "@/lib/reader-client";
 import { regKeyOf, regulationDisplayName, rootIdOf } from "@/lib/regulation-names";
 import { SOURCE_DATES, type SourceDate } from "@/lib/source-dates.generated";
@@ -246,8 +247,11 @@ export function sourceStatusLine(
 ): string | null {
   const held = key ? dates[key.toLowerCase()] : undefined;
   const through = held ? `Current through ${formatUsDate(held.date)}` : null;
-  const v = (lastVerified ?? "").trim().slice(0, 10);
-  const checked = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(v) ? `${through ? "source checked" : "Source checked"} ${formatUsDate(v)}` : null;
+  // last_verified_date is a `date` column ("2026-10-08"): a calendar day, printed
+  // as written. A value that carries a time is an instant and reads on the
+  // America/Denver calendar (Sprint 5, 10 Oct 2026; publicDateKey).
+  const v = publicDateKey(lastVerified);
+  const checked = v ? `${through ? "source checked" : "Source checked"} ${formatUsDate(v)}` : null;
   const parts = [through, checked].filter((x): x is string => x !== null);
   return parts.length ? parts.join(" \u00b7 ") : null;
 }
