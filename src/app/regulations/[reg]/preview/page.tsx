@@ -1,14 +1,34 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { fetchRegulationTeaser, sourceLinkTextFor, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
+import {
+  fetchProvisionTeaser,
+  fetchRegulationTeaser,
+  sourceLinkTextFor,
+  summaryParagraphs,
+  titleWithoutCitation,
+} from "@/lib/regulation";
+import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
+import { getAccessStatus } from "@/lib/access";
+import { LockedDestination } from "@/components/LockedDestination";
 import { PRICE_SUMMARY } from "@/lib/pricing";
+import { PROVISION_ID } from "@/lib/types";
 
 // `reg` goes straight into an `eq("reg_key", reg)` filter
 // (fetchRegulationTeaser) -- restricting it to alphanumerics before it ever
 // reaches that query closes off PostgREST filter-syntax injection via the
 // URL segment, same as the gated reader at ../page.tsx.
 const VALID_REG = /^[A-Za-z0-9]+$/;
+
+/**
+ * The provision a `?p=<id>` asks for, or null to render the plain preview:
+ * only a string that passes PROVISION_ID and belongs to this regulation
+ * (regKeyOf) is used, so the value never reaches a query unchecked.
+ */
+function focusedId(p: string | string[] | undefined, reg: string): string | null {
+  if (typeof p !== "string" || p.length > 200 || !PROVISION_ID.test(p)) return null;
+  return regKeyOf(p) === reg ? p : null;
+}
 
 export async function generateMetadata(
   props: PageProps<"/regulations/[reg]/preview">
@@ -20,6 +40,16 @@ export async function generateMetadata(
   const { root } = await fetchRegulationTeaser(reg);
   if (!root) {
     notFound();
+  }
+  const id = focusedId((await props.searchParams).p, reg);
+  const focused = id ? await fetchProvisionTeaser(reg, id) : null;
+  if (focused) {
+    return {
+      title: `${focused.citation} — ${root.citation}`,
+      description: `${focused.citation} of ${root.citation} is in the full EssentialRegs corpus. Start a trial to open it in the cross-referenced reader.`,
+      // A per-provision URL for every id in the corpus is not worth indexing.
+      robots: { index: false },
+    };
   }
   const rootTitle = titleWithoutCitation(root.title, root.citation) || root.title;
   return {
@@ -36,13 +66,49 @@ export default async function RegulationPreviewPage(
     notFound();
   }
 
+  // Focused preview (Sprint 4, 10 Oct 2026): a result or related-provision
+  // link for a provision the visitor cannot open lands here with ?p=<id>.
+  // A subscriber is sent on to the exact provision (stale links included);
+  // anyone else sees which provision it is and the offer to open it.
+  const id = focusedId((await props.searchParams).p, reg);
+  let focused = null;
+  if (id) {
+    const { hasAccess } = await getAccessStatus();
+    if (hasAccess) redirect(`/regulations/${reg}#${id}`);
+    focused = await fetchProvisionTeaser(reg, id);
+  }
+
   const { root, headings, summaries, pendingSummaries } = await fetchRegulationTeaser(reg);
   if (!root) {
     notFound();
   }
+  const regName = regulationDisplayName(reg, root);
+  const rootHeading = titleWithoutCitation(root.title, root.citation) || root.citation;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
+      {focused && (
+        <div className="mb-10 border-b border-line pb-10">
+          <p className="text-sm text-ink-soft">{regName}</p>
+          <h1 className="mt-1 font-serif text-section font-bold tracking-tight text-ink">
+            {focused.citation}
+          </h1>
+          {titleWithoutCitation(focused.title, focused.citation) && (
+            <p className="mt-1 text-lg text-ink-soft">
+              {titleWithoutCitation(focused.title, focused.citation)}
+            </p>
+          )}
+          {focused.context_path && (
+            <p className="mt-2 text-xs leading-snug text-muted">{focused.context_path}</p>
+          )}
+          <LockedDestination
+            regName={regName}
+            citation={focused.citation}
+            title={titleWithoutCitation(focused.title, focused.citation)}
+            readerHref={`/regulations/${reg}#${focused.id}`}
+          />
+        </div>
+      )}
       <p className="font-mono text-eyebrow uppercase text-tag">
         {root.citation}
       </p>
@@ -50,9 +116,12 @@ export default async function RegulationPreviewPage(
           carries only what the title adds. When the title is nothing but the
           citation, repeat the citation rather than ship an empty <h1> -- this
           page is the public SEO surface. */}
-      <h1 className="mt-1 font-serif text-section font-bold tracking-tight text-ink">
-        {titleWithoutCitation(root.title, root.citation) || root.citation}
-      </h1>
+      {/* One <h1> per page: the provision's citation owns it when focused. */}
+      {focused ? (
+        <h2 className="mt-1 font-serif text-section font-bold tracking-tight text-ink">{rootHeading}</h2>
+      ) : (
+        <h1 className="mt-1 font-serif text-section font-bold tracking-tight text-ink">{rootHeading}</h1>
+      )}
       {root.source_url && (
         <a
           href={root.source_url}

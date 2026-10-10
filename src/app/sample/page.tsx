@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAccessStatus } from "@/lib/access";
 import { ProvisionCard } from "@/components/ProvisionCard";
 import { RelatedProvisions } from "@/components/RelatedProvisions";
 import {
@@ -28,16 +29,20 @@ const SAMPLE_ORDER = [
 ];
 
 export default async function SamplePage() {
-  const supabase = await createClient();
+  const [supabase, access] = await Promise.all([createClient(), getAccessStatus()]);
 
   // RLS lets an anonymous visitor read only `is_public` rows, so this is the
   // same query a subscriber would run -- it just returns the public subset.
+  // Restricted to the SAMPLE_ORDER ids as well (Sprint 4, 10 Oct 2026): a
+  // whole regulation can be marked is_public for its open reader (GP05), and
+  // the sample page must not grow with it.
   const { data, error } = await supabase
     .from("provisions")
     .select(
       "*, cross_references!cross_references_from_provision_id_fkey(id, raw_text, target_type, target_provision_id, target_url)"
     )
-    .eq("is_public", true);
+    .eq("is_public", true)
+    .in("id", SAMPLE_ORDER);
 
   // Each sample row is labelled with its regulation's name (the root row's
   // citation, e.g. "Code of Colorado Regulations · Regulation Number 7"), so
@@ -89,8 +94,8 @@ export default async function SamplePage() {
           {provisions.map((provision) => (
             <div key={provision.id} className="flex flex-col gap-3">
               <ProvisionCard provision={provision} />
-              {/* Public teaser: citation/title/AI-generated summary only, links to /preview. */}
-              <RelatedProvisions provisionId={provision.id} teaser />
+              {/* Public teaser: citation/title/AI-generated summary only; links open the provision by viewer access. */}
+              <RelatedProvisions provisionId={provision.id} teaser hasAccess={access.hasAccess} />
             </div>
           ))}
         </div>

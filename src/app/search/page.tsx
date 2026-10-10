@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SearchTabs } from "@/components/SearchTabs";
 import { askHref, keywordHref, SEARCH_BOX_ID } from "@/lib/search-hrefs";
-import { readerHrefFor } from "@/lib/provision-href";
+import { provisionDestination } from "@/lib/destination";
 import { SummaryBadge } from "@/components/SummaryBadge";
 import { detectTestMethod } from "@/lib/test-method-search";
 import { createClient } from "@/lib/supabase/server";
@@ -54,9 +54,13 @@ export const metadata = {
 
 type Mode = "keyword" | "ask";
 
-/** Where a keyword hit links: the reader (scroll + flash on the hash) when the id belongs to a regulation, else the standalone card. */
-function hrefFor(hit: SearchHit): string {
-  return readerHrefFor(hit);
+/**
+ * Where a keyword hit links: the reader (scroll + flash on the hash) for a
+ * subscriber, the focused preview for a visitor the reader would 404 for, the
+ * standalone card for a row with no regulation (provisionDestination).
+ */
+function hrefFor(hit: SearchHit, hasAccess: boolean): string {
+  return provisionDestination(hit, { hasAccess });
 }
 
 /**
@@ -767,7 +771,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
               return (
                 <li key={hit.id}>
                   <Link
-                    href={hrefFor(hit)}
+                    href={hrefFor(hit, access.hasAccess)}
                     className="block rounded-lg border border-line bg-panel p-5 shadow-sm transition hover:border-accent hover:shadow-md"
                   >
                     <p className="flex flex-wrap items-baseline gap-x-2 text-xs">
@@ -856,7 +860,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                       {sentence.cites.map((id, j) => (
                         <span key={id}>
                           {j > 0 && ", "}
-                          <Link href={readerHrefFor({ id, reg_key: citeRegKey(id) })} className="underline hover:text-accent">
+                          <Link href={provisionDestination({ id, reg_key: citeRegKey(id) }, { hasAccess: access.hasAccess })} className="underline hover:text-accent">
                             {citeLabel(id)}
                           </Link>
                         </span>
@@ -891,7 +895,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                     {sentence.cites.map((id, j) => (
                       <span key={id}>
                         {j > 0 && ", "}
-                        <Link href={readerHrefFor({ id, reg_key: citeRegKey(id) })} className="underline hover:text-accent">
+                        <Link href={provisionDestination({ id, reg_key: citeRegKey(id) }, { hasAccess: access.hasAccess })} className="underline hover:text-accent">
                           {citeLabel(id)}
                         </Link>
                       </span>

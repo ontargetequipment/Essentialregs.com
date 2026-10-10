@@ -340,6 +340,31 @@ test.describe("signed in", () => {
     expect(await page.locator("#doc").innerText()).not.toMatch(/reviewed by/i);
   });
 
+  test("a /sample related link opens the exact provision in the reader (GP12 VI.A.1)", async ({ page }) => {
+    // Sprint 4, 10 Oct 2026: for a subscriber the teaser link is the
+    // provision itself, not the whole-document preview.
+    await page.goto("/sample");
+    const card = page
+      .locator("div")
+      .filter({ has: page.getByRole("heading", { name: "Related provisions" }) })
+      .filter({ hasText: "Regulation 7 · I.D.3.a.(i)." })
+      .last();
+    const related = card.locator("section").filter({ has: page.getByRole("heading", { name: "Related provisions" }) });
+    const link = related.getByRole("link").filter({ hasText: "VI.A.1" }).first();
+    await expect(link).toHaveAttribute("href", "/regulations/gp12#sec-gp12-VI-A-1");
+    await link.click();
+    await page.waitForURL((url) => url.pathname === "/regulations/gp12" && url.hash === "#sec-gp12-VI-A-1");
+    // Attribute selector: the id has no characters that need escaping here,
+    // but this form is safe for the parenthesised ids too.
+    await expect(page.locator('[id="sec-gp12-VI-A-1"]')).toBeInViewport({ timeout: 30_000 });
+  });
+
+  test("a stale focused-preview link sends a subscriber to the provision in the reader", async ({ page }) => {
+    await page.goto("/regulations/gp12/preview?p=sec-gp12-VI-A-1");
+    await page.waitForURL((url) => url.pathname === "/regulations/gp12" && url.hash === "#sec-gp12-VI-A-1");
+    await expect(page.locator('[id="sec-gp12-VI-A-1"]')).toBeInViewport({ timeout: 30_000 });
+  });
+
   test("/search shows a subscriber the Keyword / Ask tabs; the Ask tab carries the query", async ({ page }) => {
     // Ask is a first-class mode again (3 Oct 2026): the tablist from before
     // the keyword-first layout of 30 Sep, for every visitor.

@@ -1,5 +1,5 @@
 import "server-only";
-import { readerHrefFor } from "@/lib/provision-href";
+import { provisionDestination } from "@/lib/destination";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAccessStatus } from "@/lib/access";
@@ -96,9 +96,13 @@ export function regLabel(regKey: string | null): string {
   return regKey ? regulationDisplayName(regKey) : "";
 }
 
-/** Reader link for a hit (readerHrefFor in provision-href.ts, shared with the keyword search page). */
+/**
+ * Reader link for a hit. Ask is subscriber-only, so the viewer always has
+ * access here; provisionDestination (destination.ts) is the one place that
+ * also decides the link for everyone else (Sprint 4, 10 Oct 2026).
+ */
 export function hrefForHit(hit: Pick<SemanticHit, "id" | "reg_key">): string {
-  return readerHrefFor(hit);
+  return provisionDestination(hit, { hasAccess: true });
 }
 
 /**

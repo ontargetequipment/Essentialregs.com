@@ -6,6 +6,7 @@ import { escapeHtml, summaryParagraphs, summaryStatusBadge, titleWithoutCitation
 import { regBadge } from "@/lib/semantic";
 import { regulationDisplayName } from "@/lib/regulation-pure";
 import { PROVISION_ID } from "@/lib/types";
+import { provisionDestination } from "@/lib/destination";
 
 /**
  * "Related provisions" — Phase 4 of the semantic-search plan.
@@ -161,10 +162,14 @@ export async function fetchRelatedTeaser(provisionId: string): Promise<RelatedIt
   return orderForDisplay(items);
 }
 
-/** Reader link for a related item. */
-export function hrefForRelated(item: Pick<RelatedItem, "id" | "reg_key">, teaser = false): string {
-  if (!item.reg_key) return `/regs/${item.id}`;
-  return teaser ? `/regulations/${item.reg_key}/preview` : `/regulations/${item.reg_key}#${item.id}`;
+/**
+ * Link for a related item, by who is looking (provisionDestination,
+ * destination.ts). Sprint 4, 10 Oct 2026: the teaser used to link to the
+ * whole-document /preview whatever the viewer could open; now a subscriber
+ * lands on the exact provision and anyone else on the focused preview.
+ */
+export function hrefForRelated(item: Pick<RelatedItem, "id" | "reg_key">, hasAccess: boolean): string {
+  return provisionDestination(item, { hasAccess });
 }
 
 /**
