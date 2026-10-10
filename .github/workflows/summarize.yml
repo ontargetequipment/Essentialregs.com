@@ -108,7 +108,7 @@ jobs:
           LABEL="${{ inputs.reg }}"
           if [ -z "$LABEL" ]; then LABEL="all"; fi
           ARGS+=(--model "${{ inputs.model }}" --review-model "${{ inputs.review_model }}")
-          ARGS+=(--label "$LABEL" --sample-dir "../docs/imports/$(date -u +%Y-%m-%d)")
+          ARGS+=(--label "$LABEL" --sample-dir "../docs/imports/$(python denver_date.py)")
           echo "Running: python run_chain.py ${ARGS[*]}"
           python run_chain.py "${ARGS[@]}"
 

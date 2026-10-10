@@ -13,7 +13,8 @@ words, above the EssentialRegs editorial copy.
 
 For each entry it
   * fetches the appendix named by `source` from the versioner, one <date>
-    for the whole run (today unless --date is given):
+    for the whole run (today in America/Denver unless --date is given; it is
+    also the "Retrieved" date the Test Methods page prints):
       /api/versioner/v1/full/<date>/title-40.xml?part=60&appendix=Appendix%20A-7%20to%20Part%2060
     falling back to the whole part (?part=60, fetched once) sliced to the
     appendix's <DIV9> if the appendix filter does not answer;
@@ -70,6 +71,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
+from denver_date import today_denver  # noqa: E402  (the Colorado calendar day; see pipeline/denver_date.py)
 from import_ecfr import (  # noqa: E402  (the importer's helpers; importing it has no side effects)
     _part_inline_html,
     _part_table_caption,
@@ -501,7 +503,7 @@ def dump(entries: list[dict]) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--date", default=_dt.date.today().isoformat(), help="eCFR date (YYYY-MM-DD); default today")
+    ap.add_argument("--date", default=today_denver(), help="eCFR date (YYYY-MM-DD); default today in America/Denver")
     ap.add_argument("--data", type=Path, default=DATA_FILE)
     ap.add_argument("--xml-dir", type=Path, help="read <Appendix_X_to_Part_N>.xml from here instead of fetching")
     ap.add_argument("--save-xml", type=Path, help="save every fetched XML document here")

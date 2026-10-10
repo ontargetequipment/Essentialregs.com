@@ -45,17 +45,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 
+from denver_date import today_denver
 from method_links import (
     extract_method_citations,
     link_method_citations,
     set_enabled as set_method_links_enabled,
     write_method_links_report,
 )
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:  # pragma: no cover
-    ZoneInfo = None  # type: ignore
 
 FF = "\x0c"  # form-feed: pdftotext -layout emits exactly one per PDF page
 
@@ -13969,8 +13965,9 @@ def cmd_release(args) -> None:
     if rows and rows[0].get("status") == "released":
         print(f"{reg} is already released.")
         return
+    # released_at is the instant (UTC); the note names the day, on the Colorado calendar.
     payload = {"reg_key": reg, "status": "released", "released_at": now_iso,
-               "note": f"released by import_ccr.py release ({now_iso[:10]})"}
+               "note": f"released by import_ccr.py release ({today_denver()})"}
     if rows:
         client.table("regulation_releases").update(payload).eq("reg_key", reg).execute()
     else:
@@ -14001,10 +13998,10 @@ def cmd_apply(args):
     parsed_by_id, db_by_id = c["parsed_by_id"], c["db_by_id"]
     surviving_ids = c["parsed_ids"]  # obsolete ids are removed; every parsed id survives
 
-    if ZoneInfo is not None:
-        today = datetime.now(ZoneInfo("America/Denver")).date().isoformat()
-    else:  # pragma: no cover
-        today = datetime.utcnow().date().isoformat()
+    # The day every calendar-day stamp of this run names (last_verified_date of
+    # a new row, the day in the added/removed notes): Colorado's, not the
+    # runner's UTC day. No UTC fallback -- see denver_date.py.
+    today = today_denver()
 
     # ---- Build the per-id plan -------------------------------------------------
     plan: list[dict] = []

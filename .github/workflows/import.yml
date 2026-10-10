@@ -402,7 +402,7 @@ jobs:
         run: |
           ARGS=(--ids-file "out/apply_reg${REG}/summary_regen_ids.txt"
                 --ancestor-ids-file "out/apply_reg${REG}/summary_regen_ancestor_ids.txt"
-                --label "import-reg${REG}" --sample-dir "../docs/imports/$(date -u +%Y-%m-%d)")
+                --label "import-reg${REG}" --sample-dir "../docs/imports/$(python denver_date.py)")
           if [ -n "${{ inputs.approved_budget }}" ]; then ARGS+=(--approved-budget "${{ inputs.approved_budget }}"); fi
           echo "Running: python run_chain.py ${ARGS[*]}"
           python run_chain.py "${ARGS[@]}"

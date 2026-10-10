@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       date:
-        description: "eCFR date (YYYY-MM-DD). Empty = today (UTC)."
+        description: "eCFR date (YYYY-MM-DD). Empty = today in America/Denver."
         required: false
         default: ""
       commit:
@@ -42,7 +42,7 @@ jobs:
         env:
           INPUT_DATE: ${{ inputs.date }}
         run: |
-          DATE="${INPUT_DATE:-$(date -u +%F)}"
+          DATE="${INPUT_DATE:-$(python pipeline/denver_date.py)}"
           echo "eCFR date: $DATE"
           mkdir -p out/xml
           set +e
