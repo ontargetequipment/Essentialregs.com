@@ -32,8 +32,14 @@ export type CitedByGroup = {
   /** regulationDisplayName: "Regulation 7", "40 CFR Part 60 Subpart OOOOb", ... */
   name: string;
   rows: CitedByRow[];
-  /** How many citing provisions of this regulation are not in `rows` (the cap). */
+  /** How many citing provisions of this regulation are not in `rows` (the cap). Always `rest.length`. */
   more: number;
+  /**
+   * The provisions past the cap, in the same order, for the "Show all"
+   * disclosure under the capped list (9 Oct 2026). Rendered on the server
+   * inside a <details>, so the full list needs no extra request.
+   */
+  rest: CitedByRow[];
 };
 
 /** The most provisions listed per regulation; the rest become a "+N more" line. */
@@ -86,16 +92,19 @@ export function groupCitedBy(rows: CitingProvision[], cap = CITED_BY_CAP): Cited
     .sort(([a], [b]) => compareRegulationKeys(a, b))
     .map(([regKey, list]) => {
       const sorted = [...list].sort((a, b) => a.sort_order - b.sort_order || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+      const toRow = (p: CitingProvision): CitedByRow => ({
+        id: p.id,
+        href: readerHrefFor({ id: p.id, reg_key: p.reg_key }),
+        citation: p.citation,
+        title: titleWithoutCitation(p.title, p.citation),
+      });
+      const rest = sorted.slice(cap).map(toRow);
       return {
         regKey,
         name: regulationDisplayName(regKey),
-        rows: sorted.slice(0, cap).map((p) => ({
-          id: p.id,
-          href: readerHrefFor({ id: p.id, reg_key: p.reg_key }),
-          citation: p.citation,
-          title: titleWithoutCitation(p.title, p.citation),
-        })),
-        more: Math.max(0, sorted.length - cap),
+        rows: sorted.slice(0, cap).map(toRow),
+        more: rest.length,
+        rest,
       };
     });
 }

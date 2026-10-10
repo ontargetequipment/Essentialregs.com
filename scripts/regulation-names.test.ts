@@ -9,6 +9,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { regulationCardInfo, regulationDisplayName, rootIdOf } from "../src/lib/regulation-pure";
+import { jumpboxPlaceholder } from "../src/lib/regulation-names";
+import { normalizeJumpKey } from "../src/lib/snippet";
 
 // ---- /regulations index cards ----
 
@@ -149,4 +151,24 @@ test("no display name is a bare reg key or a 'Reg <key>' label", () => {
     assert.doesNotMatch(name, /^Reg /, key);
     assert.doesNotMatch(name, new RegExp(`^${key}$`, "i"), key);
   }
+});
+
+// ---- jump-box placeholder and key (9 Oct 2026) ----
+
+test("jumpboxPlaceholder: a federal example on federal readers, the Colorado one elsewhere", () => {
+  assert.equal(jumpboxPlaceholder("oooo"), 'Jump to a section (e.g. 60.5416(b)(1) or "fugitive emissions")');
+  assert.match(jumpboxPlaceholder("p192"), /e\.g\. 192\.605\(b\)/);
+  assert.match(jumpboxPlaceholder("p190"), /e\.g\. 190\.1 /);
+  assert.match(jumpboxPlaceholder("OOOOb"), /e\.g\. 60\.5416b\(b\)\(1\)/);
+  for (const k of ["3", "7", "gp12", "ecmc", "aqs"]) {
+    assert.match(jumpboxPlaceholder(k), /e\.g\. II\.A\.4 /, k);
+  }
+});
+
+test("normalizeJumpKey: the section sign, spaces and case do not matter", () => {
+  const want = "60.5416(b)(1)";
+  for (const s of ["§ 60.5416(b)(1)", "§60.5416(b)(1)", "60.5416 (b)(1)", " 60.5416( B )( 1 ) "]) {
+    assert.equal(normalizeJumpKey(s), want, s);
+  }
+  assert.equal(normalizeJumpKey("II.A.4."), "ii.a.4.");
 });

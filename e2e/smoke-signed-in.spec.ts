@@ -355,6 +355,22 @@ test.describe("signed in", () => {
     expect(await page.locator("body").innerText()).not.toMatch(/\bbeta\b/i);
   });
 
+  test("keyword search for 'Method 21' puts the test-method page above the provisions", async ({ page }) => {
+    // 9 Oct 2026: a query that names a test method shows its page as the first
+    // result (detectTestMethod), ahead of the provisions that cite it.
+    const res = await page.goto("/search?q=" + encodeURIComponent("Method 21"));
+    expect(res?.status()).toBe(200);
+    const card = page.getByTestId("test-method-result");
+    await expect(card).toBeVisible();
+    await expect(card).toHaveAttribute("href", "/test-methods/method-21");
+    const cardBox = await card.boundingBox();
+    const firstHit = page.locator("main ol a").first();
+    if (await firstHit.count()) {
+      const hitBox = await firstHit.boundingBox();
+      expect(cardBox!.y).toBeLessThan(hitBox!.y);
+    }
+  });
+
   test("an Ask card carries the review-status badge beside its summary", async ({ page }) => {
     // The smoke account is a subscriber (Ask is part of the subscription);
     // the first hit for this question has carried a summary since Phase 0.

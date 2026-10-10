@@ -31,7 +31,7 @@ import {
   versionNote,
 } from "@/lib/reader-nav";
 import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
-import { summaryBadgeClass } from "@/lib/snippet";
+import { normalizeJumpKey, summaryBadgeClass } from "@/lib/snippet";
 import { readRecentVisits, recentListHtml, recordRecentVisit } from "@/lib/reader-client";
 import type { SearchRow } from "@/lib/snippet";
 
@@ -712,11 +712,13 @@ export function RegulationReader() {
         hideResults();
         return;
       }
+      // Citations match on the normalized key (no §, no spaces), the text on
+      // the query as typed: "60.5416 (b)(1)" finds "§ 60.5416(b)(1)".
+      const qKey = normalizeJumpKey(qRaw);
       const idMatches: SearchRow[] = [];
       const textMatches: SearchRow[] = [];
       for (const row of getSearchIndex()) {
-        const idLower = row[1].toLowerCase();
-        if (idLower.indexOf(q) === 0) {
+        if (qKey && normalizeJumpKey(row[1]).indexOf(qKey) === 0) {
           idMatches.push(row);
         } else if (row[2].toLowerCase().indexOf(q) !== -1) {
           textMatches.push(row);
@@ -764,7 +766,7 @@ export function RegulationReader() {
 
     // What an exact entry names -- a provision id as typed, or a citation
     // ("II.B.4" == "II.B.4.") -- for Enter when no result is on screen.
-    const normCitation = (s: string) => s.trim().toLowerCase().replace(/\.+$/, "");
+    const normCitation = (s: string) => normalizeJumpKey(s).replace(/\.+$/, "");
     function exactMatch(value: string): string | null {
       const v = value.trim();
       if (!v) return null;

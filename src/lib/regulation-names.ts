@@ -119,3 +119,30 @@ export function regBadge(regKey: string | null, jurisdiction: string): string {
 export function jurisdictionOfKey(regKey: string | null): "state" | "federal" {
   return regKey && FEDERAL_KEY.test(regKey) ? "federal" : "state";
 }
+
+/**
+ * The example in the reader's jump-box placeholder (9 Oct 2026). A federal
+ * reader shows a citation of its own kind ("60.5416(b)(1)", no section sign
+ * needed since the jump box normalizes it); Colorado documents keep the
+ * Part/Section example. Derived from the reg key alone.
+ */
+const FEDERAL_JUMP_EXAMPLE: Record<string, string> = {
+  oooo: "60.5416(b)(1)",
+  ooooa: "60.5416a(b)(1)",
+  oooob: "60.5416b(b)(1)",
+  ooooc: "60.5397c(a)",
+  jjjj: "60.4243(b)",
+  iiii: "60.4205(b)",
+  zzzz: "63.6603(a)",
+  p192: "192.605(b)",
+  p195: "195.452(h)",
+  // Part 193 numbers its sections from 193.2001; there is no 193.1.
+  p193: "193.2007",
+};
+
+export function jumpboxPlaceholder(regKey: string): string {
+  const k = regKey.toLowerCase();
+  if (!FEDERAL_KEY.test(k)) return 'Jump to a section (e.g. II.A.4 or "fugitive emissions")';
+  const ex = FEDERAL_JUMP_EXAMPLE[k] ?? (k.startsWith("p") ? `${k.slice(1)}.1` : "60.5416(b)(1)");
+  return `Jump to a section (e.g. ${ex} or "fugitive emissions")`;
+}

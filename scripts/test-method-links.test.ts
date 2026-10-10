@@ -108,7 +108,11 @@ test("groupCitedBy caps each regulation at CITED_BY_CAP rows and counts the rest
   assert.equal(g.rows.length, CITED_BY_CAP);
   assert.equal(g.more, 7);
   assert.equal(g.rows[0].id, "sec-7-B-I-0");
+  // "Show all": the rest follows the capped rows in the same order.
+  assert.equal(g.rest.length, 7);
+  assert.equal(g.rest[0].id, `sec-7-B-I-${CITED_BY_CAP}`);
   const [small] = groupCitedBy(rows.slice(0, 3), 3);
   assert.equal(small.more, 0);
+  assert.deepEqual(small.rest, []);
   assert.deepEqual(groupCitedBy([]), []);
 });

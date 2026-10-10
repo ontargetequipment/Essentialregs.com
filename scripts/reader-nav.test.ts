@@ -1180,3 +1180,38 @@ test("isUsablePreview: only the requested row, with a heading, fills a preview",
   assert.equal(isUsablePreview(null, "sec-p190-190.9"), false);
   assert.equal(isUsablePreview({ error: "Not found." }, "sec-p190-190.9"), false);
 });
+
+// Federal jump box (9 Oct 2026): federal citations print with a section sign
+// ("§ 60.5416(b)(1)"); the box used to match only that exact spelling.
+const FED_ROOT = "sec-oooo-top-REG-oooo";
+const fedRows: Provision[] = [
+  row(FED_ROOT, "40 CFR Part 60 Subpart OOOO", null, "<p>Standards of performance for crude oil and natural gas</p>"),
+  row("sec-oooo-60.5416", "§ 60.5416", FED_ROOT, "<p>What are the initial and continuous cover and closed vent system inspection and monitoring requirements?</p>"),
+  row("sec-oooo-60.5416-(b)", "§ 60.5416(b)", "sec-oooo-60.5416", "<p>Cover and closed vent system inspections.</p>"),
+  row("sec-oooo-60.5416-(b)-(1)", "§ 60.5416(b)(1)", "sec-oooo-60.5416-(b)", "<p>Visually inspect each closed vent system.</p>"),
+];
+const fedReader = renderReaderBody(fedRows)!;
+
+test("jump box: a federal citation matches with or without the section sign and with stray spaces", async (t) => {
+  const r = await bootReader(makeDom("", "", undefined, fedReader, "oooo"));
+  const { $, document, mount, unmount, type, key, window } = r;
+  await mount();
+  const hit = () => document.querySelector<HTMLElement>('#jump-results [data-slug="sec-oooo-60.5416-(b)-(1)"]');
+  for (const typed of ["60.5416(b)(1)", "60.5416 (b)(1)", "§60.5416(b)(1)", "§ 60.5416(b)(1)", " 60.5416 ( b ) ( 1 ) "]) {
+    await t.test(`"${typed}" finds § 60.5416(b)(1)`, async () => {
+      await type(typed);
+      assert.ok(hit(), `no result for ${JSON.stringify(typed)}`);
+      assert.equal(
+        ($("#jump-results .jr-item[data-slug]") as HTMLElement).dataset.slug,
+        "sec-oooo-60.5416-(b)-(1)",
+        "the exact citation is the first result"
+      );
+    });
+  }
+  await t.test("Enter on an exact entry typed without the sign opens it", async () => {
+    await type("60.5416(b)(1)");
+    await key($("#jumpbox") as HTMLInputElement, "Enter");
+    assert.equal(window.location.hash, "#sec-oooo-60.5416-(b)-(1)");
+  });
+  await unmount();
+});
