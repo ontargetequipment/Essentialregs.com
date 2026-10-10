@@ -843,7 +843,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           </p>
           {/* The introduction, sentence by sentence with the provisions that
               support each (9 Oct 2026), the way a premise note shows them. */}
-          <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+          <p data-testid="map-intro" className="mt-2 text-sm leading-relaxed text-ink-soft">
             {askMap.factors.map((sentence, i) => (
               <span key={i}>
                 {i > 0 && " "}

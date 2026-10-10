@@ -395,10 +395,13 @@ test.describe("signed in", () => {
     await expect(page.getByText("Not shown because you said natural gas:", { exact: false })).toHaveCount(1);
     await expect(page.getByText("diesel engine provisions (GP06, Subpart IIII)", { exact: false })).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Show them" })).toHaveAttribute("href", /[?&]facets=all/);
-    expect(await page.locator('a[href*="/regulations/gp06"]').count()).toBe(0);
-    expect(await page.locator('a[href*="/regulations/iiii"]').count()).toBe(0);
-    expect(await page.locator('a[href*="/regulations/jjjj"]').count()).toBeGreaterThan(0);
-    expect(await page.locator('a[href*="/regulations/gp09"]').count()).toBeGreaterThan(0);
+    // The result rows, not the introduction: its fuel-split sentence cites
+    // GP06 and Subpart IIII on purpose (sentence-level citations, 9 Oct 2026).
+    const rows = (href: string) => page.locator(`a[href*="${href}"]:not([data-testid="map-intro"] a)`);
+    expect(await rows("/regulations/gp06").count()).toBe(0);
+    expect(await rows("/regulations/iiii").count()).toBe(0);
+    expect(await rows("/regulations/jjjj").count()).toBeGreaterThan(0);
+    expect(await rows("/regulations/gp09").count()).toBeGreaterThan(0);
     const groups = ["Colorado permitting and APEN", "General Permit options", "Colorado standards", "Federal NSPS", "Federal NESHAP", "Definitions"];
     const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
     expect(headings.length).toBeGreaterThan(0);
