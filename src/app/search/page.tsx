@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { SearchTabs } from "@/components/SearchTabs";
+import { TRIAL_DAYS } from "@/lib/pricing";
 import { askHref, keywordHref, SEARCH_BOX_ID } from "@/lib/search-hrefs";
+import { displayCitation } from "@/lib/federal-citation";
 import { provisionDestination } from "@/lib/destination";
 import { SummaryBadge } from "@/components/SummaryBadge";
 import { MapIntro } from "@/components/MapIntro";
@@ -380,7 +382,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
 
       {mode === "keyword" ? (
         <p className="mt-3 text-sm text-ink-soft">
-          Full-text search across the whole corpus. Use quotes for
+          {access.hasAccess ? "Full-text search across the whole corpus." : "Full-text search of the free sample."} Use quotes for
           an exact phrase, a leading <code className="font-mono">-</code> to
           exclude a word, and <code className="font-mono">or</code> between
           alternatives.
@@ -417,12 +419,25 @@ export default async function SearchPage(props: PageProps<"/search">) {
             autoFocus={!q}
             className="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
           />
-          <button
-            type="submit"
-            className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90"
-          >
-            {mode === "ask" ? "Ask" : "Search"}
-          </button>
+          {mode === "ask" && !access.hasAccess ? (
+            // Ask is part of the subscription: a visitor gets the way in, not a
+            // button that answers with a notice (Sprint 5, 10 Oct 2026). A
+            // logged-in account with no plan has already signed up, so it goes
+            // to the plans.
+            <Link
+              href={user ? "/pricing" : "/signup"}
+              className="inline-flex shrink-0 items-center rounded-md bg-accent px-4 py-2 text-center text-sm font-medium text-white hover:bg-accent/90"
+            >
+              Start a {TRIAL_DAYS}-day trial to use Ask
+            </Link>
+          ) : (
+            <button
+              type="submit"
+              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90"
+            >
+              {mode === "ask" ? "Ask" : "Search"}
+            </button>
+          )}
         </div>
 
         {mode === "ask" && access.hasAccess && (
@@ -496,6 +511,10 @@ export default async function SearchPage(props: PageProps<"/search">) {
           <Link href="/login" className="font-medium underline hover:text-amber-950">
             Log in
           </Link>{" "}
+          or{" "}
+          <Link href="/signup" className="font-medium underline hover:text-amber-950">
+            start your {TRIAL_DAYS}-day trial
+          </Link>{" "}
           to search the full corpus.
         </p>
       )}
@@ -508,9 +527,15 @@ export default async function SearchPage(props: PageProps<"/search">) {
               Subscribe
             </Link>
           ) : (
-            <Link href="/login" className="font-medium underline hover:text-amber-950">
-              Log in
-            </Link>
+            <>
+              <Link href="/login" className="font-medium underline hover:text-amber-950">
+                Log in
+              </Link>{" "}
+              or{" "}
+              <Link href="/signup" className="font-medium underline hover:text-amber-950">
+                start your {TRIAL_DAYS}-day trial
+              </Link>
+            </>
           )}{" "}
           to search the full corpus by meaning. Keyword search of the free sample is still
           available on the Keyword tab.
@@ -644,7 +669,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                           <span className="text-muted">·</span>
                         </>
                       )}
-                      <span className="font-mono text-eyebrow uppercase text-tag">{hit.citation}</span>
+                      <span className="font-mono text-eyebrow uppercase text-tag">{displayCitation(hit.reg_key, hit.citation)}</span>
                       {hit.is_basis && (
                         <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
                           Statement of basis
