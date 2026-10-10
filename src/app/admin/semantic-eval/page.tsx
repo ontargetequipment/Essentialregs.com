@@ -5,6 +5,7 @@ import { embedQueries, hrefForHit, regLabel, type SemanticHit } from "@/lib/sema
 import { expandAcronyms, keywordQuery } from "@/lib/acronyms";
 import { layoutAsk } from "@/lib/question-maps";
 import { askScope } from "@/lib/ask-scope";
+import { completeListRows } from "@/lib/list-completion";
 import { DEFAULT_TOP_N, EVAL_QUESTIONS, KNOWN_FAILURES, evaluateQuestion, rowsNeeded } from "@/lib/semantic-eval";
 
 export const metadata = { title: "Ask acceptance test" };
@@ -66,7 +67,8 @@ export default async function SemanticEvalPage() {
           keyword_query: keywordQuery(e.q) || null,
         });
         if (error) throw new Error(`${e.q}: ${error.message}`);
-        const hits = (data ?? []) as SemanticHit[];
+        // A limited search lists a printed list whole, as the page does (list-completion.ts).
+        const hits = (await completeListRows(admin, (data ?? []) as SemanticHit[], scopes[i].within)) as SemanticHit[];
         // Same pure routing and layout calls the Ask page makes; the map key
         // is checked by questions that set `map`, the shown order by those
         // that set `premise`, `title` or `shown` (review 4, 7 Oct 2026).

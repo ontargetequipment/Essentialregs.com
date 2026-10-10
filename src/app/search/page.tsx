@@ -44,6 +44,7 @@ import {
 } from "@/lib/question-maps";
 import { citeLabel, citeRegKey } from "@/lib/premise-notes";
 import { askScope } from "@/lib/ask-scope";
+import { completeListRows } from "@/lib/list-completion";
 
 export const metadata = {
   title: "Search",
@@ -340,7 +341,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
     askHref(q, basis, j, reg, flatList, facetsAll, unconstrained);
 
   let hits: SearchHit[] = [];
-  let askHits: SemanticHit[] = [];
+  let askHits: (SemanticHit & { retrieved?: boolean })[] = [];
   let askMap: QuestionMap | null = null;
   let searchError: string | null = null;
   let askError: { code: SemanticError["code"]; message: string } | null = null;
@@ -361,6 +362,8 @@ export default async function SearchPage(props: PageProps<"/search">) {
         jurisdiction,
         includeBasis,
       }));
+      // A limited search lists a printed list whole (9 Oct 2026, list-completion.ts).
+      askHits = await completeListRows(supabase, askHits, scope.within);
     } catch (e) {
       askError =
         e instanceof SemanticError
@@ -404,7 +407,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
     for (const r of kept) {
       const hit = hitById.get(r.id);
       if (hit) {
-        mapRows.set(r.id, { ...hit, retrieved: true });
+        mapRows.set(r.id, { ...hit, retrieved: hit.retrieved !== false });
         continue;
       }
       mapRows.set(r.id, {
@@ -423,7 +426,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
   // The rows the Ask page shows: the hits, plus the canonical rows retrieval
   // did not return. The review and heading lookups below cover all of them.
   const askRows: AskRow[] = [
-    ...askHits.map((h) => ({ ...h, retrieved: true })),
+    ...askHits.map((h) => ({ ...h, retrieved: h.retrieved !== false })),
     ...Array.from(mapRows.values()).filter((r) => !r.retrieved),
   ];
   const stated: StatedFacets = askMap && !allFacets ? detectFacets(q, askMap) : {};
@@ -893,7 +896,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                   ) : null;
                 })}
                 {g.hits.map((hit) => (
-                  <AskCard key={hit.id} row={{ ...hit, retrieved: true }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+                  <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
                 ))}
               </ol>
             </section>
@@ -903,7 +906,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
               <h2 className="font-serif text-lg font-bold tracking-tight text-ink">{OTHER_GROUP}</h2>
               <ol className="mt-3 flex flex-col gap-3">
                 {grouped.other.map((hit) => (
-                  <AskCard key={hit.id} row={{ ...hit, retrieved: true }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+                  <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
                 ))}
               </ol>
             </section>
@@ -969,7 +972,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           </p>
           <ol className="mt-3 flex flex-col gap-3">
             {askHits.map((hit) => (
-              <AskCard key={hit.id} row={{ ...hit, retrieved: true }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+              <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
             ))}
           </ol>
           <p className="mt-6 text-xs text-muted">

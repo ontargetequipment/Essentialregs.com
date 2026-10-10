@@ -7,6 +7,8 @@ import {
 } from "@/lib/semantic";
 import { layoutAsk } from "@/lib/question-maps";
 import { askScope } from "@/lib/ask-scope";
+import { completeListRows } from "@/lib/list-completion";
+import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
@@ -61,7 +63,9 @@ export async function POST(req: Request) {
   const scope = askScope(q, { reg: regs && regs.length === 1 ? regs[0].toLowerCase() : null, unconstrained: body.within === "any" });
 
   try {
-    const { hits } = await semanticSearch(q, { regFilter: regs && regs.length > 0 ? regs : scope.regFilter ? [scope.regFilter] : regs, jurisdiction, count, includeBasis });
+    const { hits: found } = await semanticSearch(q, { regFilter: regs && regs.length > 0 ? regs : scope.regFilter ? [scope.regFilter] : regs, jurisdiction, count, includeBasis });
+    // A limited search lists a printed list whole, like the page (list-completion.ts).
+    const hits = await completeListRows(await createClient(), found, scope.within);
     // The same pure layout the page and the eval use (semanticSearch's own
     // map is the same matchQuestionMap() result; layoutAsk re-derives it).
     return NextResponse.json({ hits, within: scope.within, map: layoutAsk(q, hits, undefined, allFacets, scope.within).summary });

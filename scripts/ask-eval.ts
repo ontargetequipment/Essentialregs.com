@@ -27,6 +27,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expandAcronyms, keywordQuery } from "../src/lib/acronyms";
 import { layoutAsk } from "../src/lib/question-maps";
 import { askScope } from "../src/lib/ask-scope";
+import { completeListRows } from "../src/lib/list-completion";
 import { EVAL_QUESTIONS, KNOWN_FAILURES, evaluateQuestion, rowsNeeded, type EvalHit } from "../src/lib/semantic-eval";
 
 // Mirrors EMBED_MODEL / EMBED_DIMS in src/lib/semantic.ts, which cannot be
@@ -115,7 +116,7 @@ async function main(): Promise<void> {
   const askExpanded = askQuestions.map(expandAcronyms);
   for (let i = 0; i < askQuestions.length; i++) {
     const askWithin = askScope(askQuestions[i]);
-    const hits = await hybrid(supabase, {
+    const found = await hybrid(supabase, {
       query_text: askExpanded[i],
       query_embedding: await embedQuery(askExpanded[i], voyageKey),
       match_count: askCount,
@@ -124,6 +125,7 @@ async function main(): Promise<void> {
       include_basis: false,
       keyword_query: keywordQuery(askQuestions[i]) || null,
     }, askQuestions[i]);
+    const hits = (await completeListRows(supabase, found, askWithin.within)) as Hit[];
     out.push(`**${askQuestions[i]}**`, "");
     hits.forEach((h, j) => out.push(line(h, j)));
     const seen = WATCH.filter((w) => hits.some((h) => h.id === w || h.id.startsWith(`${w}-`)));
@@ -149,7 +151,7 @@ async function main(): Promise<void> {
     const e = EVAL_QUESTIONS[i];
     // A document the question names limits the search, as on the Ask page.
     const scope = askScope(e.q);
-    const hits = await hybrid(supabase, {
+    const found = await hybrid(supabase, {
       query_text: expanded[i],
       query_embedding: await embedQuery(expanded[i], voyageKey),
       match_count: rowsNeeded(e),
@@ -158,6 +160,8 @@ async function main(): Promise<void> {
       include_basis: e.includeBasis ?? false,
       keyword_query: keywordQuery(e.q) || null,
     }, e.q);
+    // A limited search lists a printed list whole, as the page does (list-completion.ts).
+    const hits = (await completeListRows(supabase, found, scope.within)) as Hit[];
     // Same routing and layout calls the page makes (pure); the map key is
     // looked at by questions that set `map`, the shown order by those that
     // set `premise`, `title` or `shown`.
