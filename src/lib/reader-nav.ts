@@ -11,6 +11,8 @@ import { regKeyOf, regulationDisplayName, rootIdOf } from "@/lib/regulation-name
 import { SOURCE_DATES, type SourceDate } from "@/lib/source-dates.generated";
 import type { SummaryBadgeKind } from "@/lib/snippet";
 import { PROVISION_ID } from "@/lib/types";
+import { provisionDestination } from "@/lib/destination";
+import { TRIAL_DAYS } from "@/lib/pricing";
 
 /** Ancestor labels the popup eyebrow prints before eliding the middle. */
 export const EYEBROW_MAX_LEVELS = 4;
@@ -451,6 +453,82 @@ export type ProvisionPreviewPayload = {
   html: string;
   summary?: { overview: string; badge: { kind: SummaryBadgeKind; label: string } | null } | null;
 };
+
+/**
+ * What /api/provision/<id> answers for a viewer the corpus is closed to
+ * (Sprint 4, 10 Oct 2026; src/lib/provision-preview.ts): not a refusal but a
+ * label -- which provision it is and where it sits -- so the reader can say
+ * "this is in the full corpus" instead of sending the click into a 404.
+ * Never any text or summary.
+ */
+export type LockedPreviewPayload = {
+  locked: true;
+  id: string;
+  reg_key: string;
+  citation: string;
+  title: string;
+  path: string | null;
+};
+
+/** Whether a payload is the locked label for `targetId` (checked before isUsablePreview, which needs html). */
+export function isLockedPreview(data: unknown, targetId: string): data is LockedPreviewPayload {
+  if (!data || typeof data !== "object") return false;
+  const d = data as Partial<LockedPreviewPayload>;
+  return (
+    d.locked === true &&
+    d.id === targetId &&
+    typeof d.citation === "string" &&
+    typeof d.title === "string" &&
+    `${d.citation}${d.title}`.trim().length > 0
+  );
+}
+
+function escapeLockedHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
+ * The popup for a locked cross-regulation target (Sprint 4, 10 Oct 2026):
+ * the regulation's name as the eyebrow, the citation as the title, the
+ * provision's own title on the line below (the popup's note line), and a
+ * panel that says it is in the full corpus with the two ways forward -- the
+ * trial, and the focused preview (what the provision is, where it sits, no
+ * text). For a whole document (a root row) the title is the document's
+ * title, the citation moves to the note line, and "See what's in it" is the
+ * regulation's preview page. Every string from the payload is escaped here;
+ * `panelHtml` is the only markup, and nothing in it comes unescaped from
+ * the network. Pure, so scripts/reader-nav.test.ts can check it.
+ */
+export function lockedPopup(
+  data: LockedPreviewPayload,
+  asDocument: boolean
+): { eyebrow: string; title: string; note: string | null; panelHtml: string } {
+  const key = regKeyOf(data.id) ?? data.reg_key;
+  const name = key ? regulationDisplayName(key) : data.id;
+  // The title with its own citation taken off the front is the caller's
+  // business (the API sends the stored title); show it only when it adds
+  // something to the citation.
+  const title = data.title && data.title !== data.citation ? data.title : "";
+  const previewHref = asDocument
+    ? `/regulations/${encodeURIComponent(key)}/preview`
+    : provisionDestination({ id: data.id, reg_key: key }, { hasAccess: false, publicRegs: [] });
+  const what = asDocument ? name : `${name} ${data.citation}`;
+  const panelHtml =
+    `<section class="locked-destination" data-testid="locked-destination">` +
+    (data.path && !asDocument ? `<p class="locked-path">${escapeLockedHtml(data.path)}</p>` : "") +
+    `<p class="locked-heading">${escapeLockedHtml(what)} is in the full corpus.</p>` +
+    `<p class="locked-sub">Start your ${TRIAL_DAYS}-day trial to open it.</p>` +
+    `<div class="locked-actions">` +
+    `<a class="locked-primary" href="/signup">Start your ${TRIAL_DAYS}-day trial</a>` +
+    `<a class="locked-secondary" href="${escapeLockedHtml(previewHref)}">See what&#39;s in it</a>` +
+    `</div></section>`;
+  if (asDocument) {
+    const heading = title || data.citation || name;
+    const citation = data.citation && data.citation !== name && data.citation !== heading ? data.citation : null;
+    return { eyebrow: name, title: heading, note: citation, panelHtml };
+  }
+  return { eyebrow: name, title: data.citation || data.id, note: title || null, panelHtml };
+}
 
 /**
  * Whether a /api/provision payload can fill the preview: the row asked for,

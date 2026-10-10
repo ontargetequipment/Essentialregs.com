@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ProvisionCard, cardAccess } from "@/components/ProvisionCard";
 import { RelatedProvisions } from "@/components/RelatedProvisions";
 import { regKeyOf, regulationCardHref, regulationDisplayName, withReviewerKind } from "@/lib/regulation-pure";
+import { isPublicReaderReg } from "@/lib/destination";
 import { PROVISION_ID, type Provision } from "@/lib/types";
 
 // One read per request, shared by generateMetadata and the page. Row Level
@@ -53,16 +54,19 @@ export default async function ProvisionPage(
   }
 
   // The four public sample rows came from /sample, so they go back there.
-  // Any other row is a corpus provision reached from search or a link, and
-  // its home is the reader, at its own anchor (or the public teaser when
-  // the visitor is not entitled to the reader, which 404s for them).
+  // A row of a regulation whose reader is open to everyone (GP05, Sprint 4,
+  // 10 Oct 2026) is public too, but its home is the reader. Any other row is
+  // a corpus provision reached from search or a link, and its home is the
+  // reader, at its own anchor (or the public teaser when the visitor is not
+  // entitled to the reader, which 404s for them).
   const regKey = regKeyOf(provision.id);
   const { hasAccess } = await cardAccess();
+  const readerOpen = !!regKey && isPublicReaderReg(regKey);
   const back =
-    provision.is_public || !regKey
+    (provision.is_public && !readerOpen) || !regKey
       ? { href: "/sample", label: "← Back to sample" }
       : {
-          href: hasAccess ? `/regulations/${regKey}#${provision.id}` : regulationCardHref(regKey, false),
+          href: hasAccess || readerOpen ? `/regulations/${regKey}#${provision.id}` : regulationCardHref(regKey, false),
           label: `← Back to ${regulationDisplayName(regKey)}`,
         };
 
@@ -73,7 +77,14 @@ export default async function ProvisionPage(
       </Link>
       <div className="mt-4 flex flex-col gap-3">
         <ProvisionCard provision={provision} />
-        <RelatedProvisions provisionId={provision.id} hasAccess={hasAccess} />
+        {/* A subscriber's related provisions are read through RLS (every
+            neighbour). Anyone else gets the teaser (Sprint 4, 10 Oct 2026):
+            the same neighbours as citation and title only (no summary, no
+            path, no text outside GP05; teaserItem), each linking to its
+            focused preview, so a visitor sees that related material exists
+            without reading it. /sample used to carry this teaser;
+            it now lives on the card pages. */}
+        <RelatedProvisions provisionId={provision.id} teaser={!hasAccess} hasAccess={hasAccess} />
       </div>
     </div>
   );

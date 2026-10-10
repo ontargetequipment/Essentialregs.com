@@ -66,7 +66,7 @@ export default async function Home() {
             <span className={FREE_PILL}>Free</span>
           </Link>
           <Link href="/sample" className={BUTTON_OUTLINE}>
-            See a sample entry
+            See a sample answer
           </Link>
         </div>
 

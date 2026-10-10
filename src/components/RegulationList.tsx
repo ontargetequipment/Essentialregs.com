@@ -67,7 +67,7 @@ export function RegulationList({
             {!access.stripeSubscriptionId && `, with ${TRIAL_DAYS} days free to start`}. Not sure
             yet?{" "}
             <Link href="/sample" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
-              See a free sample entry
+              See a free sample answer
             </Link>{" "}
             first.
           </p>

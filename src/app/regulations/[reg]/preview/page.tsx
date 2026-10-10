@@ -11,6 +11,7 @@ import {
 import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
 import { getAccessStatus } from "@/lib/access";
 import { LockedDestination } from "@/components/LockedDestination";
+import { isPublicReaderReg } from "@/lib/destination";
 import { PRICE_SUMMARY } from "@/lib/pricing";
 import { PROVISION_ID } from "@/lib/types";
 
@@ -73,8 +74,10 @@ export default async function RegulationPreviewPage(
   const id = focusedId((await props.searchParams).p, reg);
   let focused = null;
   if (id) {
+    // GP05's reader is open to everyone (PUBLIC_READER_REGS), so a link here
+    // for one of its provisions goes straight to it, visitor or not.
     const { hasAccess } = await getAccessStatus();
-    if (hasAccess) redirect(`/regulations/${reg}#${id}`);
+    if (hasAccess || isPublicReaderReg(reg)) redirect(`/regulations/${reg}#${id}`);
     focused = await fetchProvisionTeaser(reg, id);
   }
 

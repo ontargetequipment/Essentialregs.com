@@ -24,8 +24,13 @@ async function shot(page: Page, testInfo: TestInfo, name: string): Promise<void>
   await testInfo.attach(name, { path: file, contentType: "image/png" });
 }
 
-/** The four is_public rows; a signed-in search must find something else. */
+/**
+ * The is_public rows: the four hand-picked sample rows and, since 10 Oct 2026
+ * (migration 20261010120000_gp05_public_sample.sql), every row of GP05. A
+ * signed-in search must find something else.
+ */
 const PUBLIC_IDS = ["sec-7-B-I-D-3-a-(i)", "sec-gp02-II-A-2", "sec-ecmc-604-a-(1)", "sec-cp-I-G-90"];
+const isPublicId = (id: string) => PUBLIC_IDS.includes(id) || id.startsWith("sec-gp05-");
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -340,16 +345,13 @@ test.describe("signed in", () => {
     expect(await page.locator("#doc").innerText()).not.toMatch(/reviewed by/i);
   });
 
-  test("a /sample related link opens the exact provision in the reader (GP12 VI.A.1)", async ({ page }) => {
-    // Sprint 4, 10 Oct 2026: for a subscriber the teaser link is the
-    // provision itself, not the whole-document preview.
-    await page.goto("/sample");
-    const card = page
-      .locator("div")
-      .filter({ has: page.getByRole("heading", { name: "Related provisions" }) })
-      .filter({ hasText: "Regulation 7 · I.D.3.a.(i)." })
-      .last();
-    const related = card.locator("section").filter({ has: page.getByRole("heading", { name: "Related provisions" }) });
+  test("a related link on a card page opens the exact provision in the reader (GP12 VI.A.1)", async ({ page }) => {
+    // Sprint 4, 10 Oct 2026: for a subscriber the related link is the
+    // provision itself, not the whole-document preview. /sample no longer
+    // carries related blocks; the public card page does.
+    await page.goto("/regs/sec-7-B-I-D-3-a-(i)");
+    const related = page.locator("section").filter({ has: page.getByRole("heading", { name: "Related by meaning, not cited" }) });
+    await expect(related).toBeVisible();
     const link = related.getByRole("link").filter({ hasText: "VI.A.1" }).first();
     await expect(link).toHaveAttribute("href", "/regulations/gp12#sec-gp12-VI-A-1");
     await link.click();
@@ -357,6 +359,25 @@ test.describe("signed in", () => {
     // Attribute selector: the id has no characters that need escaping here,
     // but this form is safe for the parenthesised ids too.
     await expect(page.locator('[id="sec-gp12-VI-A-1"]')).toBeInViewport({ timeout: 30_000 });
+  });
+
+  test("/sample shows a subscriber nothing locked: every result opens in the reader", async ({ page }) => {
+    const res = await page.goto("/sample");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByTestId("locked-result")).toHaveCount(0);
+    const hrefs = await page
+      .getByTestId("sample-keyword")
+      .locator("ol > li > a")
+      .evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
+    expect(hrefs.length).toBe(10);
+    for (const href of hrefs) expect(href, href).toMatch(/^\/regulations\/[^/]+#/);
+  });
+
+  test("GP05 shows a subscriber the reader without the visitor banner", async ({ page }) => {
+    const res = await page.goto("/regulations/gp05");
+    expect(res?.status()).toBe(200);
+    await expect(page.locator("#sidebar")).toBeVisible();
+    await expect(page.getByTestId("visitor-banner")).toHaveCount(0);
   });
 
   test("a stale focused-preview link sends a subscriber to the provision in the reader", async ({ page }) => {
@@ -564,7 +585,7 @@ test.describe("signed in", () => {
     await expect(page.getByText("You're not logged in")).toHaveCount(0);
     await expect(page.getByText("Search isn't available right now")).toHaveCount(0);
     const hrefs = await page.locator("ol > li > a").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""));
-    const nonPublic = hrefs.map(idFromHref).filter((id) => id && !PUBLIC_IDS.includes(id));
+    const nonPublic = hrefs.map(idFromHref).filter((id) => id && !isPublicId(id));
     expect(nonPublic.length, `hits: ${hrefs.join(", ")}`).toBeGreaterThan(0);
   });
 });

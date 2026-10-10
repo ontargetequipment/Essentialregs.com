@@ -13,7 +13,7 @@ const BADGE_CLASS: Record<string, string> = {
 };
 
 /**
- * "Related provisions" block for the card pages (/sample, /regs/[id]): the
+ * "Related by meaning, not cited" block for the card pages (/regs/[id]): the
  * five provisions whose meaning is closest to this one, corpus-wide, with
  * cross-regulation matches first when they're as good. Server component —
  * it does its own fetch. `teaser` switches to the RLS-bypassing,
@@ -42,9 +42,13 @@ export async function RelatedProvisions({
 
   return (
     <section className="rounded-lg border border-line bg-panel p-5 shadow-sm">
-      <h3 className="font-mono text-eyebrow uppercase text-tag">Related provisions</h3>
+      {/* Named for what it is (Sprint 4, 10 Oct 2026): these come from
+          embeddings, not from the text's own cross-references, so the label
+          says "by meaning, not cited" wherever semantic neighbours appear
+          (the reader's panel, relatedPanelHtml, says the same). */}
+      <h3 className="font-mono text-eyebrow uppercase text-tag">Related by meaning, not cited</h3>
       <p className="mt-1 text-xs text-muted">
-        Closest in meaning across the corpus — not necessarily cited by this one.
+        The provisions closest in meaning across the corpus. This one does not cite them.
       </p>
       <ol className="mt-3 divide-y divide-line">
         {items.map((item) => (

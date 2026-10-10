@@ -5,7 +5,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { PUBLIC_READER_REGS, provisionDestination } from "../src/lib/destination";
+import { PUBLIC_READER_REGS, isPublicReaderReg, provisionDestination } from "../src/lib/destination";
 
 const PAREN_IDS = ["sec-7-B-I-D-3-a-(i)", "sec-ecmc-604-a-(1)"];
 
@@ -63,4 +63,21 @@ test("ids with parentheses are percent-encoded in ?p= and left as-is in the hash
     assert.equal(p, id, "round-trips through the query string");
     assert.equal(provisionDestination(hit, { hasAccess: true }), `/regulations/${hit.reg_key}#${id}`);
   }
+});
+
+test("GP05 is the one regulation whose reader is open to a visitor (Sprint 4, 10 Oct 2026)", () => {
+  assert.deepEqual([...PUBLIC_READER_REGS], ["gp05"]);
+  assert.equal(isPublicReaderReg("gp05"), true);
+  assert.equal(isPublicReaderReg("GP05"), true);
+  for (const other of ["gp12", "7", "3", "ecmc", "gp050", "", null, undefined]) {
+    assert.equal(isPublicReaderReg(other), false, String(other));
+  }
+  assert.equal(
+    provisionDestination({ id: "sec-gp05-II-D", reg_key: "gp05" }, { hasAccess: false }),
+    "/regulations/gp05#sec-gp05-II-D"
+  );
+  assert.equal(
+    provisionDestination({ id: "sec-7-B-V-C-2-w", reg_key: "7" }, { hasAccess: false }),
+    "/regulations/7/preview?p=sec-7-B-V-C-2-w"
+  );
 });

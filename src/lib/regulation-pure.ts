@@ -1,5 +1,6 @@
 import sanitizeHtmlLib from "sanitize-html";
 import type { Provision } from "@/lib/types";
+import { isPublicReaderReg } from "@/lib/destination";
 import {
   containsBoxFromRows,
   escapeHtml,
@@ -157,7 +158,7 @@ export function sanitizeCardHtml(html: string, hasAccess: boolean): string {
         const m = /(^|\s)xref-external-reg(\s|$)/.test(attribs.class ?? "")
           ? EXTERNAL_REG_HREF.exec(attribs.href ?? "")
           : null;
-        if (m) out.href = regulationCardHref(m[1], hasAccess) + (hasAccess ? (m[2] ?? "") : "");
+        if (m) out.href = regulationCardHref(m[1], hasAccess) + (hasAccess || isPublicReaderReg(m[1]) ? (m[2] ?? "") : "");
         return { tagName, attribs: out };
       },
     },
@@ -1216,7 +1217,8 @@ export function sampleCards<T extends Pick<Provision, "id" | "citation" | "title
  * page is marketing to.
  */
 export function regulationCardHref(reg: string, hasAccess: boolean): string {
-  return hasAccess ? `/regulations/${reg}` : `/regulations/${reg}/preview`;
+  // GP05's reader is open to everyone (PUBLIC_READER_REGS, Sprint 4, 10 Oct 2026).
+  return hasAccess || isPublicReaderReg(reg) ? `/regulations/${reg}` : `/regulations/${reg}/preview`;
 }
 
 /**
