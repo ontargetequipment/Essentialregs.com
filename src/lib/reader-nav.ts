@@ -45,8 +45,9 @@ export function regulationNameOf(model: ReaderModel, id: string): string {
  * The short label of one row: the regulation's display name for the root,
  * otherwise its citation as stored ("II.B.4."), a heading word re-cased
  * ("Part A"). Never a long title, never an id. Goes by the citation, not
- * the row's kind: Regulation 3's parts are "sec-3-P-A", which kindOf files
- * under item, and their citation is still "PART A".
+ * the row's kind: Regulation 3's parts are "sec-3-P-A", which the reader's markup
+ * keeps as items (readerKindOf; kindOf calls them parts), and their citation
+ * is still "PART A".
  */
 export function rowLabel(model: ReaderModel, row: ReaderRow): string {
   if (row.kind === "reg") return regulationNameOf(model, row.id);

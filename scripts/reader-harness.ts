@@ -35,7 +35,7 @@ import {
   buildSearchIndex,
   buildTree,
   containsBoxHtml,
-  kindOf,
+  readerKindOf,
   promoteHeadingParagraph,
   sanitizeHtml,
   summaryPanelHtml,
@@ -97,7 +97,7 @@ for (const p of all) {
   for (const m of p.full_text.match(XREF_TAG) ?? []) xrefBytes += bytes(m) + bytes("</span>");
   add(shipped, "sanitised full_text", bytes(p.full_text), flightBytes(p.full_text));
 
-  if (kindOf(p.id) === "item") {
+  if (readerKindOf(p.id) === "item") {
     const promoted = timed("promoteHeadingParagraph", () => promoteHeadingParagraph(p.full_text));
     const badged = timed("withItemIdBadge", () => withItemIdBadge(promoted, p.citation));
     add(shipped, "badges + heading promotion", bytes(badged) - bytes(p.full_text), flightBytes(badged) - flightBytes(p.full_text));

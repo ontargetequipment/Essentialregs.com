@@ -11,7 +11,7 @@ import { renderReaderBody, type RenderedReader } from "@/lib/reader-render";
 // (so scripts/ and tests can import it without a Supabase client, `next/headers`
 // or `server-only`); it is re-exported here so callers keep one import path.
 export * from "@/lib/regulation-pure";
-import { teaserSummariesVisible } from "@/lib/regulation-pure";
+import { teaserHeadingFilter, teaserSummariesVisible } from "@/lib/regulation-pure";
 
 const PAGE_SIZE = 1000;
 
@@ -246,9 +246,12 @@ export async function fetchRegulationTeaser(
     scopedToReg().like("id", "%-top-REG-%").limit(1),
     // Top-level Part/Appendix headings only -- every such row's parent_id is
     // the regulation root itself (verified against the live corpus), so no
-    // section body ever matches this filter.
+    // section body ever matches this filter. Since Sprint 5 (10 Oct 2026)
+    // that includes the "sec-<reg>-P-<X>" parts of Regulations 2, 3, 4, 6, 7,
+    // 8, 11, 12, 19-31 and the Procedural Rules, which the old filter missed
+    // (Regulation 7's page listed only Appendix A); see teaserHeadingFilter.
     scopedToReg()
-      .or("id.like.%-PART-%,id.like.%-APPENDIX-%")
+      .or(teaserHeadingFilter(regNumber))
       .order("sort_order", { ascending: true }),
     // A capped teaser of already-reviewed, non-empty plain-English summaries.
     scopedToReg()
