@@ -79,9 +79,10 @@ export default async function ProvisionPage(
         <ProvisionCard provision={provision} />
         {/* A subscriber's related provisions are read through RLS (every
             neighbour). Anyone else gets the teaser (Sprint 4, 10 Oct 2026):
-            the same neighbours as labels and checked summaries, each linking
-            to its focused preview, so a visitor sees that related material
-            exists without reading it. /sample used to carry this teaser;
+            the same neighbours as citation and title only (no summary, no
+            path, no text outside GP05; teaserItem), each linking to its
+            focused preview, so a visitor sees that related material exists
+            without reading it. /sample used to carry this teaser;
             it now lives on the card pages. */}
         <RelatedProvisions provisionId={provision.id} teaser={!hasAccess} hasAccess={hasAccess} />
       </div>

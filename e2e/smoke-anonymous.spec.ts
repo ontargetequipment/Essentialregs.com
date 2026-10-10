@@ -276,6 +276,9 @@ test.describe("anonymous", () => {
     await expect(related).toBeVisible();
     const link = related.getByRole("link").filter({ hasText: "VI.A.1" }).first();
     await expect(link).toHaveAttribute("href", "/regulations/gp12/preview?p=sec-gp12-VI-A-1");
+    // Locked neighbours are citation and title only: no summary prose, no breadcrumb.
+    await expect(link).not.toContainText("Plain-English summary");
+    await expect(link.locator("p.line-clamp-2")).toHaveCount(0);
     await link.click();
     await page.waitForURL(/\/regulations\/gp12\/preview\?p=/);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("VI.A.1");

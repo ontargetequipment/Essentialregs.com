@@ -7,6 +7,7 @@ import { regBadge } from "@/lib/semantic";
 import { regulationDisplayName } from "@/lib/regulation-pure";
 import { PROVISION_ID } from "@/lib/types";
 import { provisionDestination } from "@/lib/destination";
+import { teaserItem } from "@/lib/related-teaser";
 
 /**
  * "Related by meaning, not cited" — Phase 4 of the semantic-search plan
@@ -21,10 +22,12 @@ import { provisionDestination } from "@/lib/destination";
  *   fetchRelated()        — as the visitor. RLS on provision_neighbors and on
  *                           provisions decides what comes back (subscribers:
  *                           everything; anonymous: public↔public only).
- *   fetchRelatedTeaser()  — service role, for /sample: citation + title + an
- *                           already-reviewed summary, never full_text, linking
- *                           to the public /preview pages. Same idea as
- *                           fetchRegulationTeaser() in lib/regulation.ts.
+ *   fetchRelatedTeaser()  — service role, for the /regs/<id> card pages seen
+ *                           without access: citation + title only for a
+ *                           neighbour outside PUBLIC_READER_REGS (teaserItem),
+ *                           never full_text, linking to the focused preview.
+ *                           Same idea as fetchRegulationTeaser() in
+ *                           lib/regulation.ts.
  */
 
 export type RelatedItem = {
@@ -137,10 +140,13 @@ export async function fetchRelated(provisionId: string): Promise<RelatedItem[]> 
 }
 
 /**
- * Teaser variant for the public /sample page: bypasses RLS with the service
- * role but only ever returns citation/title/reviewed-summary — no full_text —
- * so an anonymous visitor sees *that* related material exists (and can go to
- * the /preview page) without reading it. Keep the column list as is.
+ * Teaser variant for a visitor without access (the /regs/<id> card pages):
+ * bypasses RLS with the service role, so what it returns is the whole
+ * safety. A neighbour in a regulation the visitor cannot open is its
+ * citation, title and regulation name only -- no summary, no breadcrumb, no
+ * full_text (teaserItem, Sprint 4, 10 Oct 2026) -- so the visitor sees *that*
+ * related material exists and can go to its focused preview without reading
+ * it. A GP05 neighbour keeps its reviewed summary, as GP05's reader shows.
  */
 export async function fetchRelatedTeaser(provisionId: string): Promise<RelatedItem[]> {
   if (!RELATED_ID.test(provisionId)) return [];
@@ -161,7 +167,9 @@ export async function fetchRelatedTeaser(provisionId: string): Promise<RelatedIt
     })
     .filter((i): i is RelatedItem => i !== null)
     // a staged document is not shown to anyone (src/lib/release.ts)
-    .filter((i) => !i.reg_key || !staged.has(i.reg_key));
+    .filter((i) => !i.reg_key || !staged.has(i.reg_key))
+    // outside the public regulations: citation and title only (related-teaser.ts)
+    .map((i) => teaserItem(i));
   return orderForDisplay(items);
 }
 
