@@ -3,8 +3,8 @@ import {
   depthOf,
   escapeHtml,
   isFederalKey,
-  kindOf,
   promoteHeadingParagraph,
+  readerKindOf,
   regKeyOf,
   snippetAfterCitation,
   summaryPanelHtml,
@@ -78,10 +78,10 @@ export function renderNavHtml(all: Provision[], tree?: Pick<Tree, "childrenOf" |
   // topLevel[0], since an appendix (or any node with no children) never
   // gets one (see the zero-children branch below).
   const firstDetailsIndex = topLevel.findIndex(
-    (n) => kindOf(n.id) !== "appendix" && (childrenOf.get(n.id)?.length ?? 0) > 0
+    (n) => readerKindOf(n.id) !== "appendix" && (childrenOf.get(n.id)?.length ?? 0) > 0
   );
   const parts = topLevel.map((node, i) => {
-    const kind = kindOf(node.id);
+    const kind = readerKindOf(node.id);
     const link = `<a href="#${escapeHtml(node.id)}" class="nav-link nav-part-link">${escapeHtml(node.citation)}</a>`;
     if (kind === "appendix") {
       // node.title is frequently just the bare citation itself, in which
@@ -126,7 +126,7 @@ export function renderDocHtml(all: Provision[], tree?: Tree): string {
   // Which rows need an explicit data-parent: those where the document-order
   // rule the browser applies (reader-tree.ts) disagrees with parent_id.
   const treeRows: TreeRow[] = all.map((p) => {
-    const kind = kindOf(p.id);
+    const kind = readerKindOf(p.id);
     return { id: p.id, kind, depth: kind === "item" ? depthOf(p.id, byId, depthCache) : 0 };
   });
   const derived = deriveParents(treeRows);

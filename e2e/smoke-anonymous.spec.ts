@@ -468,6 +468,39 @@ test.describe("anonymous", () => {
     expect(missing?.status()).toBe(404);
   });
 
+  test("every 'Cited by' link on Method 21 opens for a logged-out visitor (none is a 404)", async ({ page, baseURL }) => {
+    // Sprint 5 (10 Oct 2026): the citations used to link to the full reader,
+    // /regulations/<reg>#<id>, which 404s for a visitor outside GP05. Now they
+    // go through provisionDestination: the focused preview, or the GP05 reader.
+    // Method 21 has a few hundred citing provisions, so the links are requested
+    // (redirects followed, a few at a time), not opened in a page.
+    test.setTimeout(240_000);
+    const res = await page.goto("/test-methods/method-21");
+    expect(res?.status()).toBe(200);
+    // Expand every "Show all" disclosure; the full list is already in the HTML.
+    await page.locator("#cited-by details").evaluateAll((els) => els.forEach((d) => ((d as HTMLDetailsElement).open = true)));
+    await expect(page.locator("#cited-by details:not([open])")).toHaveCount(0);
+    const hrefs = await page.locator("#cited-by ul a[href]").evaluateAll((els) => els.map((a) => a.getAttribute("href") ?? ""));
+    expect(hrefs.length).toBeGreaterThan(0);
+
+    // One request per path + query; the #fragment is never sent.
+    const targets = new Map<string, string>();
+    for (const href of hrefs) {
+      const url = new URL(href, baseURL);
+      targets.set(url.pathname + url.search, url.pathname + url.search);
+    }
+    const failures: string[] = [];
+    const queue = [...targets.keys()];
+    const worker = async () => {
+      for (let target = queue.shift(); target !== undefined; target = queue.shift()) {
+        const r = await page.request.get(target, { headers: protectionBypassHeaders() });
+        if (r.status() === 404) failures.push(`${target} -> 404`);
+      }
+    };
+    await Promise.all(Array.from({ length: 6 }, worker));
+    expect(failures, `${failures.length} of ${targets.size} Cited by links 404 for a visitor:\n${failures.join("\n")}`).toEqual([]);
+  });
+
   test("/regulations is a permanent redirect to /states/colorado", async ({ page, baseURL }) => {
     // Unfollowed, so the status and Location can be read. page.request
     // bypasses context.route (fixtures.ts), so it carries the

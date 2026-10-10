@@ -45,8 +45,9 @@ export function regulationNameOf(model: ReaderModel, id: string): string {
  * The short label of one row: the regulation's display name for the root,
  * otherwise its citation as stored ("II.B.4."), a heading word re-cased
  * ("Part A"). Never a long title, never an id. Goes by the citation, not
- * the row's kind: Regulation 3's parts are "sec-3-P-A", which kindOf files
- * under item, and their citation is still "PART A".
+ * the row's kind: Regulation 3's parts are "sec-3-P-A", which the reader's markup
+ * keeps as items (readerKindOf; kindOf calls them parts), and their citation
+ * is still "PART A".
  */
 export function rowLabel(model: ReaderModel, row: ReaderRow): string {
   if (row.kind === "reg") return regulationNameOf(model, row.id);
@@ -130,6 +131,31 @@ export function rowAtViewportTop(rows: readonly ReaderRow[], anchorY: number): R
     else lo = mid + 1;
   }
   return rows[lo];
+}
+
+/**
+ * The row the "Back to ..." bar should name when the reader jumps away
+ * (Sprint 5, 10 Oct 2026). The viewport-top row (rowAtViewportTop) is only a
+ * guess at what the visitor was reading: on a long page it is often a row
+ * they scrolled past, so the bar offered "Back to V.B.6" for a visitor who
+ * started somewhere else. The row they last clicked in or focused is the
+ * better answer, as long as it is still on screen -- a row clicked minutes
+ * ago and scrolled far away is not where they are now.
+ *
+ *   touchedId  the row (id) the visitor most recently clicked in or moved
+ *              focus into, or null when they have not touched any
+ *   topId      the viewport-top row, the fallback
+ *   onScreen   whether a row is currently in the reading pane
+ *
+ * Returns null only when there is neither.
+ */
+export function originRowId(
+  touchedId: string | null | undefined,
+  topId: string | null | undefined,
+  onScreen: (id: string) => boolean
+): string | null {
+  if (touchedId && onScreen(touchedId)) return touchedId;
+  return topId ?? null;
 }
 
 // ---------------------------------------------------------------------------

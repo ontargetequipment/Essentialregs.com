@@ -16,8 +16,11 @@ import { fetchCitedBy, type CitedByGroup } from "@/lib/test-method-citations";
  * Prerendered for every slug at build (generateStaticParams, dynamicParams
  * false so an unknown slug is a 404 rather than a render) and refreshed
  * every hour (ISR), which is how a re-link of the corpus reaches the
- * cited-by lists without a deploy. A citation link into a regulation goes
- * to the gated reader, which applies the normal entitlement check.
+ * cited-by lists without a deploy. The page is the same HTML for everyone,
+ * so a citation link is the one a visitor can open (Sprint 5, 10 Oct 2026):
+ * the focused preview of the provision (/regulations/<reg>/preview?p=<id>),
+ * or the reader itself for GP05. A subscriber who follows it is redirected by
+ * the preview page to the exact provision in the reader.
  */
 export const revalidate = 3600;
 export const dynamicParams = false;
@@ -168,8 +171,9 @@ export default async function TestMethodPage(props: PageProps<"/test-methods/[sl
               Cited by
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
-              Provisions in the corpus whose text cites {method.shortName}. Each
-              opens in the regulation reader.
+              Provisions in the corpus whose text cites {method.shortName}.
+              Subscribers land on the provision in the regulation reader;
+              visitors see a preview of it (the GP05 sample opens in full).
             </p>
             <CitedBy groups={citedBy} method={method} />
           </section>

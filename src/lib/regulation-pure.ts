@@ -21,7 +21,7 @@ export * from "@/lib/snippet";
 
 // Likewise the regulation-name helpers (regulationDisplayName, regKeyOf,
 // ...): the reader popup's eyebrow prints the display name in the browser.
-import { GP_KEY, regKeyOf, regulationLabel } from "@/lib/regulation-names";
+import { GP_KEY, regKeyOf, regulationLabel, rootIdOf } from "@/lib/regulation-names";
 export * from "@/lib/regulation-names";
 
 export type ProvisionKind = "reg" | "part" | "appendix" | "item";
@@ -201,6 +201,37 @@ function sanitizeOptions(): sanitizeHtmlLib.IOptions {
  * derive it from the id the same way the importer did.
  */
 export function kindOf(id: string): ProvisionKind {
+  // (Sprint 5, 10 Oct 2026) A top-level Part stored as "sec-<reg>-P-<X>"
+  // ("PART A"), the shape of Regulations 2, 3, 4, 6, 7, 8, 11, 12, 19-31 and
+  // the Procedural Rules, is a part exactly like the "-PART-" ids of the
+  // federal documents. Until now it fell through to "item", so the preview
+  // page's "What's inside" (fetchRegulationTeaser) found only Regulation 7's
+  // Appendix A. Anything after the letter ("sec-25-P-A-...") is a deeper
+  // row and stays an item.
+  if (isTopLevelPartId(id)) return "part";
+  return readerKindOf(id);
+}
+
+/** "sec-<reg>-P-<X>": the whole id, one segment after -P- (checked against production: 27 regulations, all children of the root). */
+const TOP_LEVEL_PART_ID = /^sec-[^-]+-P-[A-Za-z0-9]+$/;
+export function isTopLevelPartId(id: string): boolean {
+  return TOP_LEVEL_PART_ID.test(id);
+}
+
+/**
+ * The kind the reader's markup and tree are built on: kindOf as it was before
+ * Sprint 5 (10 Oct 2026), in which a "sec-<reg>-P-<X>" part is an item. The
+ * reader's look is tuned to that: the part is a `depth-1` item with the
+ * citation already opening its text, and its sections are `depth-2`
+ * (reader.css margins). Rendering it as a part-block would print "PART A"
+ * twice (the tag, then the text) and move every section under it one
+ * indentation step left in twenty-odd regulations, so renderDocHtml, depthOf
+ * and the reader harness keep this kind and the reader's HTML is unchanged
+ * (no READER_RENDER_VERSION bump). Restyling those parts is a separate,
+ * deliberate change; when it is made, switch the callers to kindOf and bump
+ * the version.
+ */
+export function readerKindOf(id: string): ProvisionKind {
   if (id.includes("-top-REG-")) return "reg";
   if (id.includes("-PART-")) return "part";
   // "-ATTACHMENT-" is the GP02/GP12 general-permit importer's name for the
@@ -209,6 +240,24 @@ export function kindOf(id: string): ProvisionKind {
   // identically here rather than as its own ProvisionKind.
   if (id.includes("-APPENDIX-") || id.includes("-ATTACHMENT-")) return "appendix";
   return "item";
+}
+
+/**
+ * The PostgREST `or` filter of the preview page's "What's inside" headings
+ * (fetchRegulationTeaser), for one regulation key (alphanumeric, validated by
+ * the caller): the "-PART-" and "-APPENDIX-" ids as before, plus the
+ * "sec-<reg>-P-<X>" parts (Sprint 5, 10 Oct 2026; see kindOf). The pattern
+ * `sec-<reg>-P-%` also matches deeper rows (Regulations 8 and 25 have some),
+ * so it is ANDed with parent_id = the regulation root: only a part that sits
+ * directly under the root is a heading.
+ */
+export function teaserHeadingFilter(regKey: string): string {
+  const filters = ["id.like.%-PART-%", "id.like.%-APPENDIX-%"];
+  // The key goes into a PostgREST filter string: letters and digits only.
+  if (/^[A-Za-z0-9]+$/.test(regKey)) {
+    filters.push(`and(id.like.sec-${regKey}-P-%,parent_id.eq.${rootIdOf(regKey)})`);
+  }
+  return filters.join(",");
 }
 
 /** Strip tags for use in search snippets / <title> text — not for display. */
@@ -598,7 +647,7 @@ export function depthOf(
     return 0;
   }
 
-  const parentKind = kindOf(p.parent_id);
+  const parentKind = readerKindOf(p.parent_id);
   const depth =
     parentKind === "part" || parentKind === "appendix" || parentKind === "reg"
       ? 1

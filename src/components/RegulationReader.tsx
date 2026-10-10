@@ -19,6 +19,7 @@ import {
   isLockedPreview,
   isUsablePreview,
   lockedPopup,
+  originRowId,
   originTrailLabel,
   popupEyebrow,
   printedEffectiveDate,
@@ -48,7 +49,9 @@ import type { SearchRow } from "@/lib/snippet";
  *         for a deep link on load and for popstate, which move without
  *         touching history.
  *   from  the provision the user is leaving, pushed onto the return trail
- *         (push only). Omitted: the row at the top of the reading pane.
+ *         (push only). Omitted: the row the user last clicked in or focused
+ *         while it is still on screen, else the row at the top of the
+ *         reading pane (originRowId).
  *         null: record nothing -- the return bar's own Back button, a deep
  *         link, popstate.
  */
@@ -434,8 +437,30 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       );
     }
 
+    // The row the visitor last clicked in or moved focus into (Sprint 5,
+    // 10 Oct 2026). A jump that names no origin records this row when it is
+    // still on screen (originRowId), so the return bar says where the visitor
+    // was reading, not whichever row happened to be at the top of the pane.
+    // The jump box, the sidebar and the Recent list leave focus outside the
+    // document, which is why this is remembered rather than read from
+    // document.activeElement when the jump happens. A click, not a
+    // pointerdown, so a touch-scroll across rows does not count.
+    let touchedId: string | null = null;
+    function onRowTouch(e: Event) {
+      const row = e.target instanceof Element ? e.target.closest("#doc > [id]") : null;
+      if (row && model.byId.has(row.id)) touchedId = row.id;
+    }
+    doc.addEventListener("click", onRowTouch, true);
+    doc.addEventListener("focusin", onRowTouch);
+    function rowOnScreen(id: string): boolean {
+      const el = rowEl(id);
+      if (!el) return false;
+      const rect = el.getBoundingClientRect();
+      return rect.bottom > PANE_TOP_Y && rect.top < window.innerHeight;
+    }
+
     function currentProvisionId(): string | null {
-      return rowAtViewportTop(model.rows, PANE_TOP_Y)?.id ?? null;
+      return originRowId(touchedId, rowAtViewportTop(model.rows, PANE_TOP_Y)?.id, rowOnScreen);
     }
 
     // The provision of another regulation this page was opened from
@@ -915,6 +940,8 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       if (trailBack) trailBack.hidden = false;
       if (idle !== null) window.cancelIdleCallback(idle);
       if (deepLink !== null) clearTimeout(deepLink);
+      doc.removeEventListener("click", onRowTouch, true);
+      doc.removeEventListener("focusin", onRowTouch);
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onKeydown);
       trailBack?.removeEventListener("click", onTrailBack);
