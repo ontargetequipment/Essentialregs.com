@@ -65,6 +65,7 @@ import {
   regulationHref,
   renumberedNote,
   ReturnTrail,
+  originRowId,
   rowLabel,
   sourceDateOf,
   stripReaderParams,
@@ -227,6 +228,22 @@ test("eyebrow, labels and trail (pure)", () => {
   assert.equal(trail.peek(), undefined);
 });
 
+test("originRowId: the row last clicked or focused wins while it is on screen; the viewport-top row is the fallback (pure)", () => {
+  const visible = new Set(["sec-7-B-V-B-6", "sec-7-B-I-A"]);
+  const onScreen = (id: string) => visible.has(id);
+  // Started in I.A (touched, on screen); the top of the pane is V.B.6.
+  assert.equal(originRowId("sec-7-B-I-A", "sec-7-B-V-B-6", onScreen), "sec-7-B-I-A");
+  // Nothing touched: the viewport-top row.
+  assert.equal(originRowId(null, "sec-7-B-V-B-6", onScreen), "sec-7-B-V-B-6");
+  assert.equal(originRowId(undefined, "sec-7-B-V-B-6", onScreen), "sec-7-B-V-B-6");
+  // Touched but scrolled out of the pane: the viewport-top row again.
+  assert.equal(originRowId("sec-7-B-III-C", "sec-7-B-V-B-6", onScreen), "sec-7-B-V-B-6");
+  // Neither.
+  assert.equal(originRowId(null, null, onScreen), null);
+  assert.equal(originRowId("sec-7-B-III-C", undefined, onScreen), null);
+  assert.equal(originRowId("", "sec-7-B-V-B-6", () => true), "sec-7-B-V-B-6", "an empty id is no id");
+});
+
 test("RegulationReader: go to full section, return trail, Back", async (t) => {
   // Loaded with a deep link, like /regulations/3#sec-3-A-II-B-3 after a search.
   const dom = makeDom("#sec-3-A-II-B-3");
@@ -357,6 +374,37 @@ test("RegulationReader: go to full section, return trail, Back", async (t) => {
 
     await click($("#return-trail-dismiss"));
     assert.equal(bar().hidden, true);
+  });
+
+  await t.test("Back names the row the visitor last clicked in while it is on screen, else the viewport-top row (Sprint 5)", async () => {
+    // A stacked layout: row `topIdx` sits at the top of the pane (bottom 200),
+    // each row below it is 100px further down, rows above it are off the top.
+    const rows = Array.from(document.querySelectorAll<HTMLElement>("#doc > [id]"));
+    const layout = (topIdx: number) =>
+      rows.forEach((row, i) => {
+        const top = (i - topIdx) * 100 + 100;
+        row.getBoundingClientRect = () => ({ top, bottom: top + 100, left: 0, right: 0, width: 0, height: 100, x: 0, y: top, toJSON() {} }) as DOMRect;
+      });
+    const idx = (id: string) => rows.findIndex((r) => r.id === id);
+    const backLabel = () => $("#return-trail-back").textContent?.replace(/\s+/g, " ").trim();
+    // The visitor clicked into II.B.3, one row below the top of the pane, and
+    // II.B.3 is still on screen; the viewport-top guess is the row above it.
+    const b3 = idx("sec-3-A-II-B-3");
+    assert.ok(b3 > 0);
+    layout(b3 - 1);
+    await click(docRow("sec-3-A-II-B-3"));
+    await click($('#sidebar a.nav-link[href="#sec-3-A-II"]'));
+    assert.equal(backLabel(), "← Back to II.B.3.", "the clicked row, not the row at the top of the pane");
+    await click($("#return-trail-dismiss"));
+
+    // Clicked, then scrolled away (the pane's top is now ten rows below it):
+    // the clicked row is no longer where the visitor is, so the top row it is.
+    const far = Math.min(rows.length - 1, b3 + 10);
+    layout(far);
+    await click($('#sidebar a.nav-link[href="#sec-3-A-II"]'));
+    assert.notEqual(backLabel(), "← Back to II.B.3.", "a row scrolled out of the pane is not where the visitor is");
+    assert.equal(window.location.hash, "#sec-3-A-II");
+    await click($("#return-trail-dismiss"));
   });
 
   await act(async () => {
