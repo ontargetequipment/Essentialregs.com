@@ -391,14 +391,17 @@ test.describe("signed in", () => {
     expect(res?.status()).toBe(200);
     await expect(page.getByText("Ask is part of the subscription")).toHaveCount(0);
     await expect(page.getByText("Mapped question: Natural gas-fired engines")).toHaveCount(1);
-    await expect(page.getByText(/What applies depends on the fuel/)).toHaveCount(1);
+    await expect(page.getByText(/The fuel splits the rules/)).toHaveCount(1);
     await expect(page.getByText("Not shown because you said natural gas:", { exact: false })).toHaveCount(1);
     await expect(page.getByText("diesel engine provisions (GP06, Subpart IIII)", { exact: false })).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Show them" })).toHaveAttribute("href", /[?&]facets=all/);
-    expect(await page.locator('a[href*="/regulations/gp06"]').count()).toBe(0);
-    expect(await page.locator('a[href*="/regulations/iiii"]').count()).toBe(0);
-    expect(await page.locator('a[href*="/regulations/jjjj"]').count()).toBeGreaterThan(0);
-    expect(await page.locator('a[href*="/regulations/gp09"]').count()).toBeGreaterThan(0);
+    // The result rows, not the introduction: its fuel-split sentence cites
+    // GP06 and Subpart IIII on purpose (sentence-level citations, 9 Oct 2026).
+    const rows = (href: string) => page.locator(`a[href*="${href}"]:not([data-testid="map-intro"] a)`);
+    expect(await rows("/regulations/gp06").count()).toBe(0);
+    expect(await rows("/regulations/iiii").count()).toBe(0);
+    expect(await rows("/regulations/jjjj").count()).toBeGreaterThan(0);
+    expect(await rows("/regulations/gp09").count()).toBeGreaterThan(0);
     const groups = ["Colorado permitting and APEN", "General Permit options", "Colorado standards", "Federal NSPS", "Federal NESHAP", "Definitions"];
     const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
     expect(headings.length).toBeGreaterThan(0);
@@ -445,9 +448,9 @@ test.describe("signed in", () => {
     await expect(page.getByText("GP01 is not automatically required", { exact: false })).toHaveCount(1);
     // The note's Regulation 3 sentence and the premise map's factors line both say it.
     expect(await page.getByText("decided under Regulation 3", { exact: false }).count()).toBeGreaterThan(0);
-    // exact: a result card below carries the same words in its accessible name.
-    await expect(page.getByRole("link", { name: "GP01 VIII.D.3", exact: true })).toHaveAttribute("href", "/regulations/gp01#sec-gp01-VIII-D-3");
-    await expect(page.getByRole("link", { name: "Regulation 3 Part A II.A.1", exact: true })).toHaveAttribute("href", "/regulations/3#sec-3-A-II-A-1");
+    // exact: a result card below carries the same words in its accessible name; first(): the premise map's introduction (9 Oct 2026) cites the same provisions.
+    await expect(page.getByRole("link", { name: "GP01 VIII.D.3", exact: true }).first()).toHaveAttribute("href", "/regulations/gp01#sec-gp01-VIII-D-3");
+    await expect(page.getByRole("link", { name: "Regulation 3 Part A II.A.1", exact: true }).first()).toHaveAttribute("href", "/regulations/3#sec-3-A-II-A-1");
     await expect(page.getByText("Mapped question: Storage tanks and tank batteries")).toHaveCount(0);
     const headings = await page.getByRole("heading", { level: 2 }).allInnerTexts();
     expect(headings.slice(0, 4)).toEqual(["Is GP01 required?", "Permit applicability", "Colorado permitting and APEN", "Alternatives if the permit does not fit"]);
@@ -481,7 +484,7 @@ test.describe("signed in", () => {
     const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
     expect(res?.status()).toBe(200);
     await expect(page.getByText("Mapped question: Storage tanks and tank batteries")).toHaveCount(1);
-    await expect(page.getByText(/What applies depends on the tank's uncontrolled/)).toHaveCount(1);
+    await expect(page.getByText(/Regulation 7 Part B Section I\.D\.3\.a requires storage tanks/)).toHaveCount(1);
     expect(await page.getByRole("heading", { level: 2 }).count()).toBeGreaterThan(0);
     // Subpart HH is not in the corpus: the tanks map has no Federal NESHAP row, and an
     // empty group is not rendered.
@@ -497,7 +500,7 @@ test.describe("signed in", () => {
     const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
     expect(res?.status()).toBe(200);
     await expect(page.getByText("Mapped question: Leak detection and repair at well production facilities and compressor stations")).toHaveCount(1);
-    await expect(page.getByText(/What applies depends on the facility type/)).toHaveCount(1);
+    await expect(page.getByText(/Regulation 7 Part B Section II\.E is a State Only leak detection/)).toHaveCount(1);
     expect(await page.getByRole("heading", { level: 2 }).count()).toBeGreaterThan(0);
     await expect(page.getByRole("heading", { level: 2, name: "Colorado standards" })).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 2, name: "Federal NESHAP" })).toHaveCount(0);

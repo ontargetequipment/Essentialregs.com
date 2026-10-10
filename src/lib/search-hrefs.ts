@@ -23,9 +23,19 @@ export function keywordHref(q: string, includeBasis: boolean): string {
  * Ask-tab URL keeping the jurisdiction / regulation chips, ?basis=1 only
  * when it is on, ?flat=1 only when the visitor asked for the flat list, and
  * ?facets=all only when they asked to see the rows a stated fact left out
- * (the "Show them" link, 7 Oct 2026).
+ * (the "Show them" link, 7 Oct 2026), and ?within=any only when they removed
+ * the "Searching within: ..." chip (9 Oct 2026): a question that names one
+ * document is searched within it unless this is set.
  */
-export function askHref(q: string, includeBasis: boolean, jurisdiction: string | null = null, reg = "", flat = false, allFacets = false): string {
+export function askHref(
+  q: string,
+  includeBasis: boolean,
+  jurisdiction: string | null = null,
+  reg = "",
+  flat = false,
+  allFacets = false,
+  unconstrained = false
+): string {
   const params = new URLSearchParams({ mode: "ask" });
   if (q) params.set("q", q);
   if (jurisdiction) params.set("j", jurisdiction);
@@ -33,6 +43,7 @@ export function askHref(q: string, includeBasis: boolean, jurisdiction: string |
   if (includeBasis) params.set("basis", "1");
   if (flat) params.set("flat", "1");
   if (allFacets) params.set("facets", "all");
+  if (unconstrained) params.set("within", "any");
   return `/search?${params.toString()}`;
 }
 

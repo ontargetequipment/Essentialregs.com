@@ -11,6 +11,7 @@
  * rendered DOM instead of the stored full_text. See fullTextHtml for why
  * those agree.
  */
+import { applicabilityContextFor, applicabilityContextHtml } from "@/lib/applicability-context";
 import { deriveParents, topGroupResolver, type ReaderKind } from "@/lib/reader-tree";
 import {
   containsBoxFromRows,
@@ -169,6 +170,20 @@ export function fillSummaryLinks(model: ReaderModel): void {
     if (!status || status.firstChild) continue;
     const url = row.el.getAttribute("data-src") ?? model.rootSourceUrl;
     if (url) status.innerHTML = summarySourceLinkHtml(url);
+  }
+}
+
+/**
+ * Writes each summary panel's applicability-context line (applicability-
+ * context.ts) into the empty marker the server left under the badge.
+ * Idempotent.
+ */
+export function fillApplicabilityContexts(model: ReaderModel): void {
+  for (const row of model.rows) {
+    const marker = row.el.querySelector(":scope > details.summary-panel > .summary-body > p.summary-context");
+    if (!marker || marker.firstChild) continue;
+    const context = applicabilityContextFor(marker.getAttribute("data-ctx") ?? "");
+    if (context) marker.innerHTML = applicabilityContextHtml(context);
   }
 }
 

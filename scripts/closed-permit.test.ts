@@ -129,7 +129,7 @@ test("noBasis and minFederal checks", () => {
 });
 
 test("the list carries the original 24 questions unchanged, the maps batch 3 and 4 questions, then the three reviewer questions, the three review-4 rows and the five topic-note rows", () => {
-  assert.equal(EVAL_QUESTIONS.length, 37);
+  assert.equal(EVAL_QUESTIONS.length, 38);
   const plain = EVAL_QUESTIONS.slice(0, 26);
   for (const e of plain) {
     assert.equal(e.topN, undefined, e.q);
@@ -150,6 +150,7 @@ test("the list carries the original 24 questions unchanged, the maps batch 3 and
       "If my tank battery is exempt from a construction permit, does Regulation 7 still apply?",
       "Does OOOOb apply to an existing well drilled before 2022?",
       "Can I register a diesel engine under GP02?",
+      "What test methods apply to a Method 21 inspection under Subpart OOOO?",
     ]
   );
   // the measured 30 Sep production top 10 for each passes its own question

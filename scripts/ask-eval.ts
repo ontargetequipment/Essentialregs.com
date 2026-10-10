@@ -26,6 +26,8 @@ import { appendFileSync } from "node:fs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expandAcronyms, keywordQuery } from "../src/lib/acronyms";
 import { layoutAsk } from "../src/lib/question-maps";
+import { askScope } from "../src/lib/ask-scope";
+import { completeListRows } from "../src/lib/list-completion";
 import { EVAL_QUESTIONS, KNOWN_FAILURES, evaluateQuestion, rowsNeeded, type EvalHit } from "../src/lib/semantic-eval";
 
 // Mirrors EMBED_MODEL / EMBED_DIMS in src/lib/semantic.ts, which cannot be
@@ -113,15 +115,17 @@ async function main(): Promise<void> {
   out.push(`### Ask top ${askCount} (hybrid, Statements of Basis hidden)`, "");
   const askExpanded = askQuestions.map(expandAcronyms);
   for (let i = 0; i < askQuestions.length; i++) {
-    const hits = await hybrid(supabase, {
+    const askWithin = askScope(askQuestions[i]);
+    const found = await hybrid(supabase, {
       query_text: askExpanded[i],
       query_embedding: await embedQuery(askExpanded[i], voyageKey),
       match_count: askCount,
-      reg_filter: null,
+      reg_filter: askWithin.regFilter ? [askWithin.regFilter] : null,
       jurisdiction_filter: null,
       include_basis: false,
       keyword_query: keywordQuery(askQuestions[i]) || null,
     }, askQuestions[i]);
+    const hits = (await completeListRows(supabase, found, askWithin.within)) as Hit[];
     out.push(`**${askQuestions[i]}**`, "");
     hits.forEach((h, j) => out.push(line(h, j)));
     const seen = WATCH.filter((w) => hits.some((h) => h.id === w || h.id.startsWith(`${w}-`)));
@@ -129,7 +133,7 @@ async function main(): Promise<void> {
     // The page's routing is pure, so the same call tells us which map the
     // Ask tab would lay these hits out under, with the premise note, the
     // stated facets and what they left out (review 4, 7 Oct 2026).
-    const layout = layoutAsk(askQuestions[i], hits);
+    const layout = layoutAsk(askQuestions[i], hits, undefined, false, askWithin.within);
     const map = layout.map;
     out.push(`question map: ${map ? `${map.key} (${map.name})` : "none"}`);
     if (layout.summary) {
@@ -145,25 +149,30 @@ async function main(): Promise<void> {
   const rows: { q: string; pass: boolean; known: boolean; matchRank: number | null; failures: string[]; ids: string[]; omittedIds: string[]; top: number | null }[] = [];
   for (let i = 0; i < EVAL_QUESTIONS.length; i++) {
     const e = EVAL_QUESTIONS[i];
-    const hits = await hybrid(supabase, {
+    // A document the question names limits the search, as on the Ask page.
+    const scope = askScope(e.q);
+    const found = await hybrid(supabase, {
       query_text: expanded[i],
       query_embedding: await embedQuery(expanded[i], voyageKey),
       match_count: rowsNeeded(e),
-      reg_filter: null,
+      reg_filter: scope.regFilter ? [scope.regFilter] : null,
       jurisdiction_filter: null,
       include_basis: e.includeBasis ?? false,
       keyword_query: keywordQuery(e.q) || null,
     }, e.q);
+    // A limited search lists a printed list whole, as the page does (list-completion.ts).
+    const hits = (await completeListRows(supabase, found, scope.within)) as Hit[];
     // Same routing and layout calls the page makes (pure); the map key is
     // looked at by questions that set `map`, the shown order by those that
     // set `premise`, `title` or `shown`.
-    const layout = layoutAsk(e.q, hits);
+    const layout = layoutAsk(e.q, hits, undefined, false, scope.within);
     const omittedIds = layout.summary?.omittedIds ?? [];
     const r = evaluateQuestion(e, hits, layout.map?.key ?? null, {
       ids: layout.shownIds,
       noteKey: layout.note?.key ?? null,
       title: layout.summary?.title ?? null,
       omittedIds,
+      within: scope.within,
     });
     rows.push({ q: e.q, pass: r.pass, known: KNOWN_FAILURES.includes(e.q), matchRank: r.matchRank, failures: r.failures, ids: hits.map((h) => h.id), omittedIds, top: hits[0]?.score ?? null });
   }

@@ -436,6 +436,21 @@
 .reg-reader .summary-body p.summary-badge.is-pending {
   color: #92400e;
 }
+/* Applicability context (9 Oct 2026): one curated line under the badge of a
+   row inside a subpart whose applicability section sets a date window,
+   written by the browser (fillApplicabilityContexts). */
+.reg-reader .summary-body p.summary-context {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.reg-reader .summary-body p.summary-context:empty {
+  display: none;
+}
+.reg-reader .summary-context-label {
+  font-weight: 600;
+  color: var(--ink);
+}
 /* Sprint 3: a parent's summary shows two sentences, the rest behind
    "Show full summary", then its direct children (citation + first words). */
 .reg-reader .summary-body p.summary-overview {

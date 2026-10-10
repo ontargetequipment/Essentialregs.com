@@ -21,6 +21,7 @@ import {
   QUESTION_MAPS,
   groupForHit,
   groupHits,
+  introText,
   layoutAsk,
   matchQuestionMap,
   summariseGroups,
@@ -253,7 +254,7 @@ test("every map has a unique key, a trigger, a factors sentence and rows in MAP_
   assert.equal(new Set(keys).size, keys.length);
   for (const m of QUESTION_MAPS) {
     assert.ok(m.triggers.length > 0, `${m.key}: no trigger`);
-    assert.ok(m.factors.length > 20, `${m.key}: no factors sentence`);
+    assert.ok(introText(m).length > 20, `${m.key}: no factors sentence`);
     assert.ok(m.provisions.length > 0, `${m.key}: no rows`);
     const ids = m.provisions.map((p) => p.id);
     assert.equal(new Set(ids).size, ids.length, `${m.key}: duplicate id`);
@@ -412,7 +413,8 @@ test("groupHits: canonical rows lead, hits follow in retrieval order, caps hold,
   const summary = summariseGroups(engines, g);
   assert.equal(summary.key, "engines");
   assert.equal(summary.name, engines.name);
-  assert.equal(summary.factors, engines.factors);
+  assert.equal(summary.factors, introText(engines));
+  assert.deepEqual(summary.intro, engines.factors);
   assert.deepEqual(summary.groups[0], {
     group: "General Permit options",
     provisions: ["sec-gp12-I-A", "sec-gp09-I-A", "sec-gp12-I-A-1", "sec-gp02-II-A", "sec-gp06-II-A"],
@@ -560,10 +562,10 @@ test("rowsNeeded fetches FACET_FETCH_FACTOR times the window when the question s
   assert.equal(rowsNeeded(apen), 5);
 });
 
-test("the twenty-six map-checked eval questions route as pinned (37 questions), and KNOWN_FAILURES is empty", () => {
-  assert.equal(EVAL_QUESTIONS.length, 37);
+test("the twenty-seven map-checked eval questions route as pinned (38 questions), and KNOWN_FAILURES is empty", () => {
+  assert.equal(EVAL_QUESTIONS.length, 38);
   const pinned = EVAL_QUESTIONS.filter((e) => e.map !== undefined);
-  assert.equal(pinned.length, 26);
+  assert.equal(pinned.length, 27);
   assert.deepEqual(
     pinned.map((e) => [e.q, e.map]),
     [
@@ -593,6 +595,7 @@ test("the twenty-six map-checked eval questions route as pinned (37 questions), 
       ["If my tank battery is exempt from a construction permit, does Regulation 7 still apply?", "premise-exempt-still-regulated"],
       ["Does OOOOb apply to an existing well drilled before 2022?", "premise-oooob-existing-well"],
       ["Can I register a diesel engine under GP02?", "premise-gp02-diesel"],
+      ["What test methods apply to a Method 21 inspection under Subpart OOOO?", "ldar"],
     ]
   );
   // The general-permits question and the new per-day-maximum question (the 29th) close the original block, before the reviewer questions.

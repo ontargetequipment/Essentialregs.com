@@ -27,6 +27,7 @@ import {
   detectFacets,
   groupHits,
   hitMatchesFacets,
+  introText,
   layoutAsk,
   mapTitle,
   matchQuestionMap,
@@ -134,7 +135,7 @@ test("there is one note per general permit (the eleven) and five topic notes; ev
       assert.ok(!keys.has(p.id), `${n.key}: ${p.id} listed twice`);
       keys.add(p.id);
     }
-    assert.ok(n.map.factors.length > 40, `${n.key}: no factors line`);
+    assert.ok(introText(n.map).length > 40, `${n.key}: no factors line`);
   }
   // Map keys are unique across every note and the ordinary maps.
   const mapKeys = PREMISE_NOTES.map((n) => n.map.key);
@@ -165,7 +166,7 @@ test("GP09 and GP10 open with the closure, cite their document row and GP12; the
     assert.match(first.text, /GP12 replaced GP09 and GP10 for new applicants/);
     assert.deepEqual(first.cites, [`sec-${k}-top-REG-${k}`, "sec-gp12-I-A"]);
     assert.ok(isClosedPermit(k));
-    assert.match(byKey[k].map.factors, /closed to new registrations/);
+    assert.match(introText(byKey[k].map), /closed to new registrations/);
   }
   for (const k of ["gp01", "gp02", "gp03", "gp05", "gp06", "gp07", "gp08", "gp11", "gp12"]) assert.doesNotMatch(byKey[k].sentences[0].text, /closed/);
   const alts = (k: string) => byKey[k].map.provisions.filter((p) => p.group === "Alternatives if the permit does not fit").map((p) => p.id);
@@ -381,7 +382,7 @@ test("the GP12 premise row and the API summary shape", () => {
   assert.equal(layout.shownIds[0], "sec-gp12-I-A");
   assert.equal(evaluateQuestion(row, [{ id: "sec-gp12-I-B" }], "premise-gp12", { ids: layout.shownIds, noteKey: "gp12-required", title: layout.summary!.title }).pass, true);
   const s = layout.summary!;
-  assert.deepEqual(Object.keys(s).sort(), ["factors", "groups", "key", "name", "note", "omitted", "omittedIds", "stated", "title"]);
+  assert.deepEqual(Object.keys(s).sort(), ["factors", "groups", "intro", "key", "name", "note", "omitted", "omittedIds", "stated", "title"]);
   assert.equal(s.note!.sentences.length, PREMISE_NOTES.find((n) => n.regKey === "gp12")!.sentences.length);
   // summariseGroups without facets keeps the old fields' meaning for an ordinary map.
   const engines = QUESTION_MAPS.find((m) => m.key === "engines")!;
@@ -404,6 +405,7 @@ test("the eval's new fields are declared only on the rows that need them", () =>
     "If my tank battery is exempt from a construction permit, does Regulation 7 still apply?",
     "Does OOOOb apply to an existing well drilled before 2022?",
     "Can I register a diesel engine under GP02?",
+    "What test methods apply to a Method 21 inspection under Subpart OOOO?",
   ]);
 });
 

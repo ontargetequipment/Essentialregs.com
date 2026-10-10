@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { embedQueries, hrefForHit, regLabel, type SemanticHit } from "@/lib/semantic";
 import { expandAcronyms, keywordQuery } from "@/lib/acronyms";
 import { layoutAsk } from "@/lib/question-maps";
+import { askScope } from "@/lib/ask-scope";
+import { completeListRows } from "@/lib/list-completion";
 import { DEFAULT_TOP_N, EVAL_QUESTIONS, KNOWN_FAILURES, evaluateQuestion, rowsNeeded } from "@/lib/semantic-eval";
 
 export const metadata = { title: "Ask acceptance test" };
@@ -45,6 +47,8 @@ export default async function SemanticEvalPage() {
   let fatal: string | null = null;
   try {
     const expanded = EVAL_QUESTIONS.map((e) => expandAcronyms(e.q));
+    // The document a question names limits the search, as on the Ask page.
+    const scopes = EVAL_QUESTIONS.map((e) => askScope(e.q));
     const embeddings = await embedQueries(expanded);
     rows = await Promise.all(
       EVAL_QUESTIONS.map(async (e, i) => {
@@ -57,23 +61,25 @@ export default async function SemanticEvalPage() {
           query_text: expanded[i],
           query_embedding: embeddings[i],
           match_count: window,
-          reg_filter: null,
+          reg_filter: scopes[i].regFilter ? [scopes[i].regFilter] : null,
           jurisdiction_filter: null,
           include_basis: e.includeBasis ?? false,
           keyword_query: keywordQuery(e.q) || null,
         });
         if (error) throw new Error(`${e.q}: ${error.message}`);
-        const hits = (data ?? []) as SemanticHit[];
+        // A limited search lists a printed list whole, as the page does (list-completion.ts).
+        const hits = (await completeListRows(admin, (data ?? []) as SemanticHit[], scopes[i].within)) as SemanticHit[];
         // Same pure routing and layout calls the Ask page makes; the map key
         // is checked by questions that set `map`, the shown order by those
         // that set `premise`, `title` or `shown` (review 4, 7 Oct 2026).
-        const layout = layoutAsk(e.q, hits);
+        const layout = layoutAsk(e.q, hits, undefined, false, scopes[i].within);
         const mapKey = layout.map?.key ?? null;
         const result = evaluateQuestion(e, hits, mapKey, {
           ids: layout.shownIds,
           noteKey: layout.note?.key ?? null,
           title: layout.summary?.title ?? null,
           omittedIds: layout.summary?.omittedIds ?? [],
+          within: scopes[i].within,
         });
         return { q: e.q, note: e.note, expect: e.expect, hits, window, mapKey, known: KNOWN_FAILURES.includes(e.q), ...result };
       })

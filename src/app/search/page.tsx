@@ -43,6 +43,8 @@ import {
   type StatedFacets,
 } from "@/lib/question-maps";
 import { citeLabel, citeRegKey } from "@/lib/premise-notes";
+import { askScope } from "@/lib/ask-scope";
+import { completeListRows } from "@/lib/list-completion";
 
 export const metadata = {
   title: "Search",
@@ -329,9 +331,17 @@ export default async function SearchPage(props: PageProps<"/search">) {
     jurisdiction: r.jurisdiction_level,
   })).sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
   const regFilter = regOptions.some((r) => r.key === regParam) ? regParam : "";
+  // A question that names exactly one document ("... under Subpart OOOO") is
+  // searched within it (9 Oct 2026, src/lib/ask-scope.ts); ?within=any, the
+  // chip's x, turns that off. The visitor's own Regulation filter wins.
+  const unconstrained = first(params.within) === "any";
+  const scope = askScope(q, { reg: regFilter, unconstrained });
+  const searchReg = scope.regFilter ?? "";
+  const askUrl = (basis: boolean, j: string | null, reg: string, flatList = false, facetsAll = false) =>
+    askHref(q, basis, j, reg, flatList, facetsAll, unconstrained);
 
   let hits: SearchHit[] = [];
-  let askHits: SemanticHit[] = [];
+  let askHits: (SemanticHit & { retrieved?: boolean })[] = [];
   let askMap: QuestionMap | null = null;
   let searchError: string | null = null;
   let askError: { code: SemanticError["code"]; message: string } | null = null;
@@ -348,10 +358,12 @@ export default async function SearchPage(props: PageProps<"/search">) {
   if (q && mode === "ask" && access.hasAccess) {
     try {
       ({ hits: askHits, map: askMap } = await semanticSearch(q, {
-        regFilter: regFilter ? [regFilter] : null,
+        regFilter: searchReg ? [searchReg] : null,
         jurisdiction,
         includeBasis,
       }));
+      // A limited search lists a printed list whole (9 Oct 2026, list-completion.ts).
+      askHits = await completeListRows(supabase, askHits, scope.within);
     } catch (e) {
       askError =
         e instanceof SemanticError
@@ -390,12 +402,12 @@ export default async function SearchPage(props: PageProps<"/search">) {
       .in("id", askMap.provisions.map((p) => p.id));
     if (rowsErr) console.error("ask: question-map lookup failed", rowsErr.message);
     const kept = ((rows ?? []) as MapRow[]).filter(
-      (r) => (!jurisdiction || r.jurisdiction_level === jurisdiction) && (!regFilter || r.id.startsWith(`sec-${regFilter}-`))
+      (r) => (!jurisdiction || r.jurisdiction_level === jurisdiction) && (!searchReg || r.id.startsWith(`sec-${searchReg}-`))
     );
     for (const r of kept) {
       const hit = hitById.get(r.id);
       if (hit) {
-        mapRows.set(r.id, { ...hit, retrieved: true });
+        mapRows.set(r.id, { ...hit, retrieved: hit.retrieved !== false });
         continue;
       }
       mapRows.set(r.id, {
@@ -414,11 +426,11 @@ export default async function SearchPage(props: PageProps<"/search">) {
   // The rows the Ask page shows: the hits, plus the canonical rows retrieval
   // did not return. The review and heading lookups below cover all of them.
   const askRows: AskRow[] = [
-    ...askHits.map((h) => ({ ...h, retrieved: true })),
+    ...askHits.map((h) => ({ ...h, retrieved: h.retrieved !== false })),
     ...Array.from(mapRows.values()).filter((r) => !r.retrieved),
   ];
   const stated: StatedFacets = askMap && !allFacets ? detectFacets(q, askMap) : {};
-  const grouped = askMap && mapRows.size > 0 ? groupHits(askMap, askHits, new Set(mapRows.keys()), stated) : null;
+  const grouped = askMap && mapRows.size > 0 ? groupHits(askMap, askHits, new Set(mapRows.keys()), stated, scope.within) : null;
   const premise = premiseNoteOf(askMap);
   const omitted = askMap ? omittedLines(askMap, stated) : [];
 
@@ -566,6 +578,32 @@ export default async function SearchPage(props: PageProps<"/search">) {
           </div>
         )}
       </form>
+
+      {/* The document the question named (9 Oct 2026): the search is limited to
+          it, and the x lifts the limit. A visitor who lifted it can put it back. */}
+      {mode === "ask" && q && access.hasAccess && scope.within && (
+        <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-line bg-panel py-1 pl-3 pr-1 text-sm text-ink-soft">
+          <span>
+            Searching within: <span className="font-medium text-ink">{nameOf(scope.within)}</span>
+          </span>
+          <Link
+            href={askHref(q, includeBasis, jurisdiction, regFilter, flat, allFacets, true)}
+            aria-label={`Remove the limit to ${nameOf(scope.within)} and search every document`}
+            title="Search every document"
+            className="rounded-full px-2 py-0.5 font-medium hover:bg-accent-soft"
+          >
+            ×
+          </Link>
+        </p>
+      )}
+      {mode === "ask" && q && access.hasAccess && scope.released && (
+        <p className="mt-4 text-sm text-ink-soft">
+          Searching every document.{" "}
+          <Link href={askHref(q, includeBasis, jurisdiction, regFilter, flat, allFacets)} className="font-medium underline">
+            Limit to {nameOf(scope.released)}
+          </Link>
+        </p>
+      )}
 
       {mode === "keyword" && !user && (
         <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -803,23 +841,45 @@ export default async function SearchPage(props: PageProps<"/search">) {
             <span className="font-mono text-eyebrow uppercase text-tag">Mapped question:</span>{" "}
             <span className="font-semibold text-ink">{mapTitle(askMap, stated)}</span>
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-ink-soft">{askMap.factors}</p>
+          {/* The introduction, sentence by sentence with the provisions that
+              support each (9 Oct 2026), the way a premise note shows them. */}
+          <p data-testid="map-intro" className="mt-2 text-sm leading-relaxed text-ink-soft">
+            {askMap.factors.map((sentence, i) => (
+              <span key={i}>
+                {i > 0 && " "}
+                {sentence.text}
+                {sentence.cites.length > 0 && (
+                  <span className="whitespace-nowrap text-xs text-muted">
+                    {" "}
+                    {sentence.cites.map((id, j) => (
+                      <span key={id}>
+                        {j > 0 && ", "}
+                        <Link href={readerHrefFor({ id, reg_key: citeRegKey(id) })} className="underline hover:text-accent">
+                          {citeLabel(id)}
+                        </Link>
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </span>
+            ))}
+          </p>
           <p className="mt-1 text-xs text-muted">
-            <Link href={askHref(q, includeBasis, jurisdiction, regFilter, true)} className="font-medium text-ink-soft underline">
+            <Link href={askUrl(includeBasis, jurisdiction, regFilter, true)} className="font-medium text-ink-soft underline">
               Show as a flat list
             </Link>
             {" · "}
             {includeBasis ? (
               <>
                 Statements of basis (rulemaking history) are included, ranked below the rules.{" "}
-                <Link href={askHref(q, false, jurisdiction, regFilter)} className="font-medium text-ink-soft underline">
+                <Link href={askUrl(false, jurisdiction, regFilter)} className="font-medium text-ink-soft underline">
                   Hide them
                 </Link>
               </>
             ) : (
               <>
                 Statements of basis (rulemaking history) are hidden.{" "}
-                <Link href={askHref(q, true, jurisdiction, regFilter)} className="font-medium text-ink-soft underline">
+                <Link href={askUrl(true, jurisdiction, regFilter)} className="font-medium text-ink-soft underline">
                   Include them
                 </Link>
               </>
@@ -836,7 +896,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                   ) : null;
                 })}
                 {g.hits.map((hit) => (
-                  <AskCard key={hit.id} row={{ ...hit, retrieved: true }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+                  <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
                 ))}
               </ol>
             </section>
@@ -846,7 +906,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
               <h2 className="font-serif text-lg font-bold tracking-tight text-ink">{OTHER_GROUP}</h2>
               <ol className="mt-3 flex flex-col gap-3">
                 {grouped.other.map((hit) => (
-                  <AskCard key={hit.id} row={{ ...hit, retrieved: true }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+                  <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
                 ))}
               </ol>
             </section>
@@ -857,7 +917,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           {omitted.map((o) => (
             <p key={o.facet} className="mt-6 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink-soft">
               <span className="font-medium text-ink">Not shown because you said {o.said}:</span> {o.omitted}.{" "}
-              <Link href={askHref(q, includeBasis, jurisdiction, regFilter, false, true)} className="font-medium underline">
+              <Link href={askUrl(includeBasis, jurisdiction, regFilter, false, true)} className="font-medium underline">
                 Show them
               </Link>
             </p>
@@ -865,7 +925,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           {allFacets && askMap.facets && (
             <p className="mt-6 text-xs text-muted">
               Showing every row of the map, including the ones for facts your question did not state.{" "}
-              <Link href={askHref(q, includeBasis, jurisdiction, regFilter)} className="font-medium underline">
+              <Link href={askUrl(includeBasis, jurisdiction, regFilter)} className="font-medium underline">
                 Back to the filtered view
               </Link>
             </p>
@@ -888,7 +948,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           <p className="mt-1 text-xs text-muted">
             {askMap && flat && (
               <>
-                <Link href={askHref(q, includeBasis, jurisdiction, regFilter)} className="font-medium text-ink-soft underline">
+                <Link href={askUrl(includeBasis, jurisdiction, regFilter)} className="font-medium text-ink-soft underline">
                   Show grouped
                 </Link>
                 {" · "}
@@ -897,14 +957,14 @@ export default async function SearchPage(props: PageProps<"/search">) {
             {includeBasis ? (
               <>
                 Statements of basis (rulemaking history) are included, ranked below the rules.{" "}
-                <Link href={askHref(q, false, jurisdiction, regFilter, flat)} className="font-medium text-ink-soft underline">
+                <Link href={askUrl(false, jurisdiction, regFilter, flat)} className="font-medium text-ink-soft underline">
                   Hide them
                 </Link>
               </>
             ) : (
               <>
                 Statements of basis (rulemaking history) are hidden.{" "}
-                <Link href={askHref(q, true, jurisdiction, regFilter, flat)} className="font-medium text-ink-soft underline">
+                <Link href={askUrl(true, jurisdiction, regFilter, flat)} className="font-medium text-ink-soft underline">
                   Include them
                 </Link>
               </>
@@ -912,7 +972,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           </p>
           <ol className="mt-3 flex flex-col gap-3">
             {askHits.map((hit) => (
-              <AskCard key={hit.id} row={{ ...hit, retrieved: true }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+              <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
             ))}
           </ol>
           <p className="mt-6 text-xs text-muted">
