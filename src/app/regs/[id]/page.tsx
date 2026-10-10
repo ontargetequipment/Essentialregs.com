@@ -73,7 +73,7 @@ export default async function ProvisionPage(
       </Link>
       <div className="mt-4 flex flex-col gap-3">
         <ProvisionCard provision={provision} />
-        <RelatedProvisions provisionId={provision.id} />
+        <RelatedProvisions provisionId={provision.id} hasAccess={hasAccess} />
       </div>
     </div>
   );

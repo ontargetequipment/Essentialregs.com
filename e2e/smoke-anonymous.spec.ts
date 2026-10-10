@@ -229,6 +229,39 @@ test.describe("anonymous", () => {
     await expect(page.locator("article > h2")).toHaveText(SAMPLE_HEADINGS);
   });
 
+  test("a /sample related link opens the focused preview of that provision, not the whole-document preview (GP12 VI.A.1)", async ({ page }) => {
+    // Sprint 4, 10 Oct 2026. GP12 VI.A.1 is a rank-3 neighbour of Reg 7
+    // I.D.3.a.(i). The link used to go to /regulations/gp12/preview, which
+    // shows generic teaser content whatever was clicked.
+    await page.goto("/sample");
+    const card = page
+      .locator("div")
+      .filter({ has: page.getByRole("heading", { name: "Related provisions" }) })
+      .filter({ hasText: "Regulation 7 · I.D.3.a.(i)." })
+      .last();
+    const related = card.locator("section").filter({ has: page.getByRole("heading", { name: "Related provisions" }) });
+    const link = related.getByRole("link").filter({ hasText: "VI.A.1" }).first();
+    await expect(link).toHaveAttribute("href", "/regulations/gp12/preview?p=sec-gp12-VI-A-1");
+    await link.click();
+    await page.waitForURL(/\/regulations\/gp12\/preview\?p=/);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("VI.A.1");
+    const panel = page.locator("[data-testid=locked-destination]");
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText("Start your 7-day trial");
+    await expect(panel.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
+  });
+
+  test("the focused preview answers 200 and ignores a ?p= that is not a provision of that regulation", async ({ page }) => {
+    const ok = await page.goto("/regulations/gp12/preview?p=sec-gp12-VI-A-1");
+    expect(ok?.status()).toBe(200);
+    await expect(page.locator("[data-testid=locked-destination]")).toBeVisible();
+    for (const bad of ["sec-7-B-I-D-3-a-(i)", "not%20an%20id", "sec-gp12-no-such-row"]) {
+      const res = await page.goto(`/regulations/gp12/preview?p=${bad}`);
+      expect(res?.status()).toBe(200);
+      await expect(page.locator("[data-testid=locked-destination]")).toHaveCount(0);
+    }
+  });
+
   test("/states lists Colorado with live counts and links to its index", async ({ page }) => {
     const res = await page.goto("/states");
     expect(res?.status()).toBe(200);
@@ -397,6 +430,19 @@ test.describe("anonymous", () => {
     const badges = page.locator("ol > li > a .summary-badge");
     expect(await badges.count()).toBeGreaterThan(0);
     for (const text of await badges.allTextContents()) expect(text).toMatch(BADGE_TEXT);
+  });
+
+  test("a logged-out keyword search card never links into the gated reader", async ({ page }) => {
+    // The full reader 404s for an anonymous visitor; a card for a regulation
+    // that is not public goes to the focused preview (or /regs/ for a row
+    // with no regulation key). Sprint 4, 10 Oct 2026.
+    await page.goto("/search?q=emissions");
+    const hrefs = await page.locator("ol > li > a").evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
+    expect(hrefs.length).toBeGreaterThan(0);
+    for (const href of hrefs) {
+      expect(href, href).not.toMatch(/^\/regulations\/[^/]+#/);
+      expect(href, href).toMatch(/\/preview\?p=|^\/regs\//);
+    }
   });
 
   test("/search shows the Keyword / Ask tabs to a visitor who is not logged in; the Ask tab carries the query", async ({ page }) => {

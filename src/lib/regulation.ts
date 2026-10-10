@@ -283,6 +283,35 @@ export async function fetchRegulationTeaser(
   };
 }
 
+/** What the focused preview (/regulations/<reg>/preview?p=<id>) shows of one provision. */
+export type ProvisionTeaser = Pick<Provision, "id" | "citation" | "title"> & {
+  /** Ancestor headings below the regulation ("PART B — … › II. …"); null when directly under it. */
+  context_path: string | null;
+};
+
+/**
+ * One provision's label, for the focused preview a visitor lands on from a
+ * result or related-provision link they cannot open (Sprint 4, 10 Oct 2026).
+ * Same idea as fetchRegulationTeaser: the corpus is not `is_public`, so this
+ * bypasses RLS with the service-role client, and the column list is the whole
+ * point -- id, citation, title and the context breadcrumb. NEVER add
+ * full_text or ai_summary here; the page says a provision exists and where it
+ * sits, the subscription opens it. `id` is validated against PROVISION_ID by
+ * the caller. A staged regulation, a missing row or an id that belongs to
+ * another regulation than `reg` is null.
+ */
+export async function fetchProvisionTeaser(reg: string, id: string): Promise<ProvisionTeaser | null> {
+  if (!(await isRegReleased(reg))) return null;
+  const { data, error } = await createAdminClient()
+    .from("provisions")
+    .select("id, citation, title, context_path")
+    .eq("id", id)
+    .eq("reg_key", reg)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as ProvisionTeaser | null) ?? null;
+}
+
 /**
  * How many summaries of each regulation are still pending the automated
  * review (summary_status pending with a summary), for the public sample

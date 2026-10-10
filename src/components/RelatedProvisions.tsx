@@ -17,14 +17,19 @@ const BADGE_CLASS: Record<string, string> = {
  * five provisions whose meaning is closest to this one, corpus-wide, with
  * cross-regulation matches first when they're as good. Server component —
  * it does its own fetch. `teaser` switches to the RLS-bypassing,
- * summary-only variant used on the public sample page.
+ * summary-only variant used on the public sample page. `hasAccess` picks
+ * each link's destination (hrefForRelated): the exact provision in the reader
+ * for a subscriber, the focused /preview?p= for everyone else.
  */
 export async function RelatedProvisions({
   provisionId,
   teaser = false,
+  hasAccess = false,
 }: {
   provisionId: string;
   teaser?: boolean;
+  /** The viewer's real access (getAccessStatus), which decides where each link opens. */
+  hasAccess?: boolean;
 }) {
   let items: RelatedItem[] = [];
   try {
@@ -44,7 +49,7 @@ export async function RelatedProvisions({
       <ol className="mt-3 divide-y divide-line">
         {items.map((item) => (
           <li key={item.id} className="py-2.5">
-            <Link href={hrefForRelated(item, teaser)} className="group block">
+            <Link href={hrefForRelated(item, hasAccess)} className="group block">
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
