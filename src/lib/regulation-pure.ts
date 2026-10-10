@@ -1,5 +1,6 @@
 import sanitizeHtmlLib from "sanitize-html";
 import type { Provision } from "@/lib/types";
+import { formatApDate } from "@/lib/dates";
 import { isPublicReaderReg } from "@/lib/destination";
 import {
   containsBoxFromRows,
@@ -928,21 +929,15 @@ export function summaryStatusBadge(p: SummaryBadgeInput): SummaryBadge | null {
 }
 
 /**
- * AP-style month abbreviations ("Sept", not "Sep"), the owner's wording for
- * the badge: "AI-generated · automated check against source text · Sept 17, 2026".
- */
-const MONTH_ABBREVIATIONS = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
-
-/**
- * A reviewed_at timestamp as "Sept 17, 2026", in UTC so the reader body --
- * rendered once and cached for every subscriber -- never depends on the
- * server's zone. "" for null or anything that is not a date.
+ * A reviewed_at timestamp as "Sept 17, 2026" (AP-style month, the owner's
+ * wording for the badge). Read on the America/Denver calendar, not UTC
+ * (Sprint 5, 10 Oct 2026): a review at 8 pm in Colorado used to print the
+ * next day. The zone is fixed, so the reader body -- rendered once and
+ * cached for every subscriber -- still never depends on the server's own
+ * zone. "" for null or anything that is not a date. See src/lib/dates.ts.
  */
 export function formatReviewedDate(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return `${MONTH_ABBREVIATIONS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+  return formatApDate(iso);
 }
 
 /**

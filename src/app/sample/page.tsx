@@ -4,18 +4,25 @@ import { isPublicReaderReg } from "@/lib/destination";
 import { AskCard } from "@/components/AskCard";
 import { MapIntro } from "@/components/MapIntro";
 import { loadSampleRows } from "@/lib/sample-snapshot";
+import { TRIAL_DAYS } from "@/lib/pricing";
 import {
+  RECOMMENDED_START,
   SNAPSHOT,
+  answerSections,
+  collapseAnswer,
   isOpenForViewer,
   keywordHits,
   layoutSampleAsk,
+  moreResultsLabel,
   sampleHref,
   showingLine,
   snapshotDateLabel,
+  splitKeywordHits,
+  type AnswerSection,
   type SampleHit,
   type SampleRow,
 } from "@/lib/sample-pure";
-import { mapTitle, OTHER_GROUP } from "@/lib/question-maps";
+import { mapTitle } from "@/lib/question-maps";
 import { regulationDisplayName } from "@/lib/regulation-pure";
 import type { SummaryBadgeInput } from "@/lib/regulation-pure";
 
@@ -31,6 +38,14 @@ export const metadata = {
 // runs no search: it looks the stored ids up for labels (sample-snapshot.ts,
 // label-only reads) and lays them out with the functions /search uses.
 //
+// Sprint 5 (10 Oct 2026) trimmed the page for a first-time visitor: the two
+// buttons sit under the intro as well as at the bottom, a "Recommended
+// starting point" line leads the keyword results, five results open at first
+// (the other five behind a <details>), and the Ask answer opens with three
+// provisions per group (the rest behind "See the complete sample answer").
+// Both disclosures are server-rendered <details>, like the test-method page's
+// "Show all": all the cards are in the HTML, no script runs.
+//
 // A result in GP05 is a normal card with its checked summary and opens in the
 // reader. Every other result is a locked card: where it lives in the corpus,
 // never its text or summary, linking to the focused preview. A subscriber who
@@ -40,6 +55,33 @@ const BUTTON =
   "inline-flex min-h-11 items-center justify-center rounded-md px-5 py-3 text-sm font-semibold";
 const BUTTON_PRIMARY = `${BUTTON} bg-accent text-white hover:bg-accent/90`;
 const BUTTON_OUTLINE = `${BUTTON} border border-line bg-panel text-ink hover:bg-accent-soft`;
+
+/**
+ * The page's buttons, shown under the intro and again at the bottom
+ * (Sprint 5, 10 Oct 2026). A visitor gets the free reader and the trial;
+ * `search` adds the search link, at the bottom only. A subscriber has no
+ * trial to start, and their search is the whole corpus, so they keep the old
+ * wording ("the component knows the viewer").
+ */
+function Buttons({ hasAccess, testId, search = false }: { hasAccess: boolean; testId: string; search?: boolean }) {
+  return (
+    <div className="flex flex-wrap gap-3" data-testid={testId}>
+      {!hasAccess && (
+        <Link href="/signup" className={BUTTON_PRIMARY}>
+          Start your {TRIAL_DAYS}-day trial
+        </Link>
+      )}
+      <Link href="/regulations/gp05" className={hasAccess ? BUTTON_PRIMARY : BUTTON_OUTLINE}>
+        Open the free GP05 reader
+      </Link>
+      {search && (
+        <Link href="/search" className={BUTTON_OUTLINE}>
+          {hasAccess ? "Search the complete corpus" : "Search the free GP05 sample"}
+        </Link>
+      )}
+    </div>
+  );
+}
 
 /** What AskCard needs of a row's review state, for the badge beside its summary. */
 function reviewOf(row: SampleRow | undefined): SummaryBadgeInput | undefined {
@@ -69,6 +111,8 @@ export default async function SamplePage() {
   const keyword = keywordHits(rows);
   const ask = layoutSampleAsk(rows);
   const stated = ask.stated;
+  const { first: keywordFirst, more: keywordMore } = splitKeywordHits(keyword);
+  const { head: answerHead, rest: answerRest } = collapseAnswer(answerSections(ask));
 
   /** One card: a normal one for a row the viewer may open, a locked one for the rest. */
   const card = (hit: SampleHit, opts: { why?: string } = {}) => {
@@ -88,6 +132,17 @@ export default async function SamplePage() {
     );
   };
 
+  /** One group of the Ask answer: its heading and its cards. */
+  const section = (g: AnswerSection, suffix = "") => (
+    <section key={g.title} className="mt-8">
+      <h3 className="font-serif text-lg font-bold tracking-tight text-ink">
+        {g.title}
+        {suffix}
+      </h3>
+      <ol className="mt-3 flex flex-col gap-3">{g.items.map((it) => card(it.hit, { why: it.why }))}</ol>
+    </section>
+  );
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">
@@ -95,9 +150,13 @@ export default async function SamplePage() {
       </h1>
       <p className="mt-3 max-w-reading text-sm leading-relaxed text-ink-soft">
         An operator with a produced water tank battery wants to know what applies. Below are the keyword search and the
-        Ask answer a subscriber gets for it. GP05, the general permit for produced water storage tank batteries, is open in
-        the full reader. Every other result shows where it lives in the corpus.
+        Ask answer a subscriber gets for it. GP05, the general permit for produced water storage tank batteries, is available
+        below in the complete reader. Every other result shows where it lives in the corpus.
       </p>
+
+      <div className="mt-5">
+        <Buttons hasAccess={hasAccess} testId="sample-top-cta" />
+      </div>
 
       <p className="mt-3 text-xs text-muted">
         These results are a snapshot from {snapshotDateLabel()}. The live search may differ.
@@ -109,8 +168,25 @@ export default async function SamplePage() {
         <h2 id="sample-keyword-title" className="font-serif text-lg font-bold tracking-tight text-ink">
           Keyword search: &ldquo;{SNAPSHOT.keyword.query}&rdquo;
         </h2>
-        <p className="mt-1 font-mono text-eyebrow uppercase text-tag">{showingLine()}</p>
-        <ol className="mt-3 flex flex-col gap-3">{keyword.map((hit) => card(hit))}</ol>
+        <p className="mt-2 text-sm text-ink-soft" data-testid="sample-recommended">
+          <span className="font-medium text-ink">Recommended starting point:</span>{" "}
+          <Link href={RECOMMENDED_START.href} className="font-medium underline underline-offset-2 hover:text-accent">
+            {RECOMMENDED_START.label}
+          </Link>
+        </p>
+        <p className="mt-3 font-mono text-eyebrow uppercase text-tag">{showingLine()}</p>
+        <ol className="mt-3 flex flex-col gap-3">{keywordFirst.map((hit) => card(hit))}</ol>
+        {keywordMore.length > 0 && (
+          // Server-rendered disclosure (Sprint 5, 10 Oct 2026): the next
+          // results are already in the HTML, so no script and no request.
+          <details className="group mt-3" data-testid="sample-keyword-more">
+            <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-medium text-ink-soft underline underline-offset-2 hover:text-accent">
+              <span className="group-open:hidden">{moreResultsLabel()}</span>
+              <span className="hidden group-open:inline">Show fewer results</span>
+            </summary>
+            <ol className="mt-3 flex flex-col gap-3">{keywordMore.map((hit) => card(hit))}</ol>
+          </details>
+        )}
       </section>
 
       <section className="mt-12" aria-labelledby="sample-ask-title" data-testid="sample-ask">
@@ -126,23 +202,18 @@ export default async function SamplePage() {
               </span>
             </p>
             <MapIntro factors={ask.map.factors} hasAccess={hasAccess} />
-            {ask.grouped.groups.map((g) => (
-              <section key={g.group} className="mt-8">
-                <h3 className="font-serif text-lg font-bold tracking-tight text-ink">{g.group}</h3>
-                <ol className="mt-3 flex flex-col gap-3">
-                  {g.canonical.map((p) => {
-                    const hit = ask.canonicalRows.get(p.id);
-                    return hit ? card(hit, { why: p.why }) : null;
-                  })}
-                  {g.hits.map((hit) => card(hit))}
-                </ol>
-              </section>
-            ))}
-            {ask.grouped.other.length > 0 && (
-              <section className="mt-8">
-                <h3 className="font-serif text-lg font-bold tracking-tight text-ink">{OTHER_GROUP}</h3>
-                <ol className="mt-3 flex flex-col gap-3">{ask.grouped.other.map((hit) => card(hit))}</ol>
-              </section>
+            {answerHead.map((g) => section(g))}
+            {answerRest.length > 0 && (
+              // The rest of every group (Sprint 5, 10 Oct 2026): each group
+              // above opens with its first three provisions; this reveals
+              // the remainder, group by group, in the same order.
+              <details className="group mt-8" data-testid="sample-ask-more">
+                <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-medium text-ink-soft underline underline-offset-2 hover:text-accent">
+                  <span className="group-open:hidden">See the complete sample answer</span>
+                  <span className="hidden group-open:inline">Show less of the sample answer</span>
+                </summary>
+                {answerRest.map((g) => section(g, " (continued)"))}
+              </details>
             )}
             {ask.summary?.omitted.map((o) => (
               <p key={o.facet} className="mt-6 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink-soft">
@@ -173,13 +244,8 @@ export default async function SamplePage() {
         </p>
       </section>
 
-      <div className="mt-12 flex flex-wrap gap-3" data-testid="sample-cta">
-        <Link href="/signup" className={BUTTON_PRIMARY}>
-          Start your trial
-        </Link>
-        <Link href="/search" className={BUTTON_OUTLINE}>
-          Search the complete corpus
-        </Link>
+      <div className="mt-12">
+        <Buttons hasAccess={hasAccess} testId="sample-cta" search />
       </div>
     </div>
   );

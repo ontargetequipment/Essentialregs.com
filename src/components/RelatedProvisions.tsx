@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { fetchRelated, fetchRelatedTeaser, hrefForRelated, type RelatedItem } from "@/lib/related";
+import { displayCitation } from "@/lib/federal-citation";
 import { CLOSED_PERMIT_BADGE, isClosedPermit } from "@/lib/regulation-pure";
 import { SummaryBadgeText } from "@/components/SummaryBadge";
 
@@ -63,7 +64,7 @@ export async function RelatedProvisions({
                   {item.badge}
                 </span>
                 <span className="text-xs text-muted">{item.regLabel}</span>
-                <span className="font-mono text-xs text-tag group-hover:underline">{item.citation}</span>
+                <span className="font-mono text-xs text-tag group-hover:underline">{displayCitation(item.reg_key, item.citation)}</span>
                 {isClosedPermit(item.reg_key) && (
                   <span
                     className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted"

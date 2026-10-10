@@ -14,17 +14,20 @@ import { DISCLAIMER_VERSION } from "../src/lib/disclaimer";
  * link goes to /signup?plan=<that box's interval> (the account step), so
  * the plan the visitor clicked survives to /pricing after confirmation.
  */
-async function expectPlanCtas(scope: import("@playwright/test").Locator | import("@playwright/test").Page) {
-  const ctas = scope.getByRole("link", { name: "Create an account to subscribe" });
+async function expectPlanCtas(
+  scope: import("@playwright/test").Locator | import("@playwright/test").Page,
+  name = "Create an account to subscribe",
+) {
+  const ctas = scope.getByRole("link", { name });
   await expect(ctas).toHaveCount(2);
   for (const plan of ["month", "year"]) {
     const box = scope.locator(`[data-plan="${plan}"]`);
-    await expect(box.getByRole("link", { name: "Create an account to subscribe" })).toHaveAttribute(
-      "href",
-      `/signup?plan=${plan}`,
-    );
+    await expect(box.getByRole("link", { name })).toHaveAttribute("href", `/signup?plan=${plan}`);
   }
 }
+
+/** The /pricing plan buttons (Sprint 5, 10 Oct 2026): same destination, the trial named. */
+const PRICING_BUTTON = "Start your 7-day free trial";
 
 /**
  * What a review-status badge says (summaryStatusBadge): "AI-generated ·
@@ -76,10 +79,29 @@ test.describe("anonymous", () => {
     await expect(page.getByRole("heading", { name: "Choose your plan" })).toBeVisible();
     await expect(page.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toBeVisible();
     await expect(page.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
-    // Logged out: the prices and a create-an-account link per plan.
-    await expectPlanCtas(page);
+    // Logged out: the prices and a trial link per plan (Sprint 5: "Start your 7-day free trial",
+    // still the plan-first signup, /signup?plan=<interval>).
+    await expectPlanCtas(page, PRICING_BUTTON);
     // No plan picked yet: neither box is marked as the choice.
     await expect(page.getByText("Your choice")).toHaveCount(0);
+
+    // What the subscription includes, and the free GP05 reader (Sprint 5, 10 Oct 2026).
+    const includes = page.getByTestId("plan-includes");
+    await expect(includes.getByRole("heading", { name: "What the subscription includes" })).toBeVisible();
+    for (const lead of [
+      "The full Colorado and federal corpus in the reader",
+      "Plain-English summaries",
+      "Keyword search",
+      "Ask",
+      "Cross-reference navigation",
+      "Test methods",
+    ]) {
+      await expect(includes.getByText(`${lead}.`, { exact: false }).first()).toBeVisible();
+    }
+    await expect(includes.getByRole("link", { name: "Open the free GP05 reader" })).toHaveAttribute("href", "/regulations/gp05");
+    // The prices are the owner's, exactly once each.
+    await expect(page.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toHaveCount(1);
+    await expect(page.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toHaveCount(1);
   });
 
   test("/pricing?plan=month highlights the monthly box and keeps the annual one", async ({ page }) => {
@@ -88,7 +110,7 @@ test.describe("anonymous", () => {
     await expect(page.locator('[data-plan="month"]').getByText("Your choice")).toBeVisible();
     await expect(page.locator('[data-plan="year"]').getByText("Your choice")).toHaveCount(0);
     await expect(page.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
-    await expectPlanCtas(page);
+    await expectPlanCtas(page, PRICING_BUTTON);
   });
 
   test("/signup asks for a plan first", async ({ page }) => {
@@ -225,12 +247,30 @@ test.describe("anonymous", () => {
       "See how EssentialRegs answers a real Colorado oil and gas compliance question",
     );
 
-    // Keyword search: ten results, GP05 open and the rest locked.
+    // Under the intro (Sprint 5, 10 Oct 2026): the free reader and the trial, before any results.
+    await expect(page.locator("main")).toContainText("is available below in the complete reader");
+    const top = page.getByTestId("sample-top-cta");
+    await expect(top.getByRole("link", { name: "Open the free GP05 reader" })).toHaveAttribute("href", "/regulations/gp05");
+    await expect(top.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
+    const keywordBox0 = await page.getByTestId("sample-keyword").boundingBox();
+    const topBox = await top.boundingBox();
+    expect(keywordBox0 && topBox && topBox.y + topBox.height <= keywordBox0.y + 1).toBe(true);
+
+    // Keyword search: a recommended starting point, five results open and five more behind a disclosure.
     const keyword = page.getByTestId("sample-keyword");
     await expect(keyword.getByRole("heading", { name: /^Keyword search/ })).toBeVisible();
-    await expect(keyword.getByText("Showing 10 of 25 results")).toBeVisible();
+    await expect(keyword.getByTestId("sample-recommended")).toHaveText(
+      "Recommended starting point: GP05 \u2014 Produced Water Storage Tank Batteries",
+    );
+    await expect(keyword.getByTestId("sample-recommended").getByRole("link")).toHaveAttribute("href", "/regulations/gp05");
+    await expect(keyword.getByText("Showing 5 of 25 results")).toBeVisible();
     const keywordLinks = keyword.locator("ol > li > a");
     await expect(keywordLinks).toHaveCount(10);
+    await expect(keyword.locator("ol > li > a:visible")).toHaveCount(5);
+    const more = keyword.getByTestId("sample-keyword-more");
+    await expect(more.locator("summary")).toContainText("Show 5 more results (10 of 25)");
+    await more.locator("summary").click();
+    await expect(keyword.locator("ol > li > a:visible")).toHaveCount(10);
     const keywordHrefs = await keywordLinks.evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
     expect(keywordHrefs.some((h) => h.startsWith("/regulations/gp05#"))).toBe(true);
     expect(keywordHrefs.some((h) => /\/preview\?p=/.test(h))).toBe(true);
@@ -241,21 +281,28 @@ test.describe("anonymous", () => {
     await expect(keywordLocked.first()).toContainText("In the full corpus");
     await expect(keywordLocked.first()).toContainText("start your 7-day trial");
 
-    // Ask: the mapped answer, with locked cards beside the open GP05 ones.
+    // Ask: the mapped answer opens with three provisions per group; the rest is behind a disclosure.
     const ask = page.getByTestId("sample-ask");
     await expect(ask.getByRole("heading", { name: /^Ask:/ })).toBeVisible();
     await expect(ask.getByTestId("map-title")).toHaveText("Produced water storage tanks and tank batteries");
     await expect(ask.getByTestId("map-intro")).toBeVisible();
     expect(await ask.getByTestId("locked-result").count()).toBeGreaterThan(0);
     await expect(ask.getByText("Not shown because you said produced water:")).toBeVisible();
+    const askMore = ask.getByTestId("sample-ask-more");
+    await expect(askMore.locator("summary")).toContainText("See the complete sample answer");
+    const openAtFirst = await ask.locator("ol > li:visible").count();
+    expect(await askMore.locator("ol > li").count()).toBeGreaterThan(0);
+    await askMore.locator("summary").click();
+    expect(await ask.locator("ol > li:visible").count()).toBeGreaterThan(openAtFirst);
 
     // A line into the real reader.
     await expect(page.locator('a[href="/regulations/gp05"]').first()).toBeVisible();
 
-    // The two closing buttons, after the Ask section.
+    // The closing buttons, after the Ask section: the same two as at the top, and the search link.
     const cta = page.getByTestId("sample-cta");
-    await expect(cta.getByRole("link", { name: "Start your trial" })).toHaveAttribute("href", "/signup");
-    await expect(cta.getByRole("link", { name: "Search the complete corpus" })).toHaveAttribute("href", "/search");
+    await expect(cta.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
+    await expect(cta.getByRole("link", { name: "Open the free GP05 reader" })).toHaveAttribute("href", "/regulations/gp05");
+    await expect(cta.getByRole("link", { name: "Search the free GP05 sample" })).toHaveAttribute("href", "/search");
     const askBox = await ask.boundingBox();
     const ctaBox = await cta.boundingBox();
     expect(askBox && ctaBox && ctaBox.y > askBox.y + askBox.height - 1).toBe(true);
@@ -263,7 +310,9 @@ test.describe("anonymous", () => {
     const text = await page.locator("main").innerText();
     expect(text).not.toContain("exactly as subscribers see them");
     expect(text).not.toContain("cross-references resolved");
-    expect(text).toContain("snapshot from 10 Oct 2026");
+    expect(text).not.toContain("is open in the full reader");
+    // The stamp is 03:46 UTC on 10 Oct: still 9 Oct in Colorado.
+    expect(text).toContain("snapshot from 9 Oct 2026");
   });
 
   test("a related link on a public card page opens the focused preview of that provision, not the whole-document preview (GP12 VI.A.1)", async ({ page }) => {
@@ -306,7 +355,7 @@ test.describe("anonymous", () => {
     await expect(banner).toContainText("You are reading GP05, the free sample.");
     await expect(banner).toContainText("The rest of the corpus opens with a 7-day trial.");
     await expect(banner.getByRole("link", { name: "Start your trial" })).toHaveAttribute("href", "/signup");
-    await expect(banner.getByRole("link", { name: "Search the complete corpus" })).toHaveAttribute("href", "/search");
+    await expect(banner.getByRole("link", { name: "Search the free GP05 sample" })).toHaveAttribute("href", "/search");
 
     // A summary panel carries a review badge and, once opened, the official-source link.
     const panel = page.locator("#doc details.summary-panel").first();
@@ -614,6 +663,10 @@ test.describe("anonymous", () => {
     await expect(tabs.nth(1)).toHaveText("Ask");
     await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "false");
     await expect(tabs.nth(1)).toHaveAttribute("href", "/search?mode=ask&q=emissions");
+    // The not-logged-in notice offers the trial beside "Log in" (Sprint 5, 10 Oct 2026).
+    const loginNotice = page.getByText("You're not logged in", { exact: false });
+    await expect(loginNotice.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
+    await expect(loginNotice.getByRole("link", { name: "start your 7-day trial" })).toHaveAttribute("href", "/signup");
     expect(await page.locator("body").innerText()).not.toMatch(/\bbeta\b/i);
   });
 
@@ -635,10 +688,12 @@ test.describe("anonymous", () => {
     await expect(askTabs.nth(1)).toHaveAttribute("aria-selected", "true");
     await expect(askTabs.nth(0)).toHaveAttribute("aria-selected", "false");
     await expect(page.locator("#search-query")).toHaveValue("do I need a permit for a flare");
-    // The Ask content is on the page: the submit button reads "Ask" and a
-    // visitor who is not logged in sees the subscription notice.
+    // The Ask content is on the page: a visitor who is not logged in gets no live Ask button
+    // but a way in, "Start a 7-day trial to use Ask" (Sprint 5, 10 Oct 2026), and the
+    // subscription notice.
     // Scoped to main: the site header has a submit button named "Search" too.
-    await expect(page.getByRole("main").getByRole("button", { name: "Ask", exact: true })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("button", { name: "Ask", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("link", { name: "Start a 7-day trial to use Ask" })).toHaveAttribute("href", "/signup");
     await expect(page.getByText("Ask is part of the subscription.", { exact: false })).toBeVisible();
     // Keyword switches back on click too, keeping the query.
     await askTabs.nth(0).click();
@@ -661,6 +716,8 @@ test.describe("anonymous", () => {
     await expect(notice).toBeVisible();
     await expect(notice).toContainText("Keyword search of the free sample is still available on the Keyword tab.");
     await expect(notice.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
+    // A signup link beside "Log in" (Sprint 5, 10 Oct 2026).
+    await expect(notice.getByRole("link", { name: "start your 7-day trial" })).toHaveAttribute("href", "/signup");
     expect(await page.locator("body").innerText()).not.toMatch(/\bbeta\b/i);
   });
 

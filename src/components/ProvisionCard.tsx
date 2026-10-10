@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cache } from "react";
 import { getAccessStatus } from "@/lib/access";
 import { regKeyOf, sanitizeCardHtml, sourceLinkTextFor, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
+import { displayCitation } from "@/lib/federal-citation";
 import { SummaryBadge } from "@/components/SummaryBadge";
 import type { Provision } from "@/lib/types";
 
@@ -29,7 +30,7 @@ export async function ProvisionCard({ provision }: { provision: Provision }) {
         {provision.jurisdiction_level} · {provision.issuing_body}
       </div>
       <h2 className="font-serif text-card font-semibold text-ink">
-        {provision.citation}
+        {displayCitation(regKeyOf(provision.id), provision.citation)}
         {headingTitle ? (
           <span className="font-normal text-ink-soft"> — {headingTitle}</span>
         ) : null}

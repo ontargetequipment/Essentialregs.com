@@ -1,6 +1,7 @@
 import snapshotJson from "@/data/sample-snapshot.json";
+import { formatDayMonthYear } from "@/lib/dates";
 import { isPublicReaderReg, provisionDestination } from "@/lib/destination";
-import { layoutAsk, matchQuestionMap, type QuestionMap } from "@/lib/question-maps";
+import { OTHER_GROUP, layoutAsk, matchQuestionMap, type QuestionMap } from "@/lib/question-maps";
 import { regKeyOf } from "@/lib/regulation-names";
 
 /**
@@ -19,6 +20,7 @@ import { regKeyOf } from "@/lib/regulation-names";
  */
 
 export type SampleSnapshot = {
+  /** When the snapshot was taken, as an instant (ISO 8601 with a zone); the page prints it in America/Denver. */
   generated: string;
   note: string;
   keyword: {
@@ -76,18 +78,47 @@ export function keywordShownIds(snapshot: SampleSnapshot = SNAPSHOT): string[] {
   return snapshot.keyword.ids.slice(0, snapshot.keyword.show);
 }
 
-/** The snapshot's date as the page prints it: "10 Oct 2026". */
+/**
+ * The snapshot's date as the page prints it: "9 Oct 2026". `generated` is an
+ * instant, read on the America/Denver calendar (Sprint 5, 10 Oct 2026): the
+ * snapshot was stamped 10 Oct (UTC) while it was still the evening of 9 Oct
+ * in Colorado, and the page showed a date that had not happened yet.
+ */
 export function snapshotDateLabel(snapshot: SampleSnapshot = SNAPSHOT): string {
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const [y, m, d] = snapshot.generated.split("-").map(Number);
-  return `${d} ${months[m - 1]} ${y}`;
+  return formatDayMonthYear(snapshot.generated);
 }
 
-/** "Showing 10 of 25 results". */
+/**
+ * How many keyword results the page opens with (Sprint 5, 10 Oct 2026); a
+ * server-rendered <details> under them reveals the rest of the snapshot's
+ * `show` (ten). Five is a first screen a visitor can take in.
+ */
+export const KEYWORD_INITIAL = 5;
+
+/** "Showing 5 of 25 results": what is open before the disclosure is. */
 export function showingLine(snapshot: SampleSnapshot = SNAPSHOT): string {
   const { show, total } = snapshot.keyword;
-  return `Showing ${Math.min(show, total)} of ${total} results`;
+  return `Showing ${Math.min(KEYWORD_INITIAL, show, total)} of ${total} results`;
 }
+
+/** The disclosure's summary: "Show 5 more results (10 of 25)". */
+export function moreResultsLabel(snapshot: SampleSnapshot = SNAPSHOT): string {
+  const { show, total } = snapshot.keyword;
+  const shown = Math.min(show, total);
+  const more = shown - Math.min(KEYWORD_INITIAL, shown);
+  return `Show ${more} more ${more === 1 ? "result" : "results"} (${shown} of ${total})`;
+}
+
+/** The shown keyword hits split into the ones open at first and the ones behind the disclosure. */
+export function splitKeywordHits<T>(hits: T[]): { first: T[]; more: T[] } {
+  return { first: hits.slice(0, KEYWORD_INITIAL), more: hits.slice(KEYWORD_INITIAL) };
+}
+
+/** The line above the keyword results: the permit the sample recommends starting with. */
+export const RECOMMENDED_START = {
+  label: "GP05 \u2014 Produced Water Storage Tank Batteries",
+  href: "/regulations/gp05",
+} as const;
 
 /** The map the snapshot's question routes to (the same router /search uses). */
 export function snapshotMap(snapshot: SampleSnapshot = SNAPSHOT): QuestionMap | null {
@@ -193,4 +224,53 @@ export function layoutSampleAsk(rows: Map<string, SampleRow>, snapshot: SampleSn
     canonicalRows.set(id, hitById.get(id) ?? toHit(row, null, false, false));
   }
   return { ...layout, hits, canonicalRows };
+}
+
+/** One card in the Ask answer: the row, and the map's reason for it when it is a canonical row. */
+export type AnswerItem = { hit: SampleHit; why?: string };
+/** One group of the Ask answer, in the order the page lists them. */
+export type AnswerSection = { title: string; items: AnswerItem[] };
+
+/** Provisions per group the Ask answer opens with (Sprint 5, 10 Oct 2026). */
+export const ANSWER_PER_GROUP = 3;
+
+/**
+ * The Ask answer as flat sections (the map's groups in order, canonical rows
+ * leading, then "Other matches"), so the page can cut it in two.
+ */
+export function answerSections(ask: ReturnType<typeof layoutSampleAsk>): AnswerSection[] {
+  const sections: AnswerSection[] = [];
+  for (const g of ask.grouped?.groups ?? []) {
+    const items: AnswerItem[] = [];
+    for (const p of g.canonical) {
+      const hit = ask.canonicalRows.get(p.id);
+      if (hit) items.push({ hit, why: p.why });
+    }
+    for (const hit of g.hits) items.push({ hit });
+    sections.push({ title: g.group, items });
+  }
+  const other = ask.grouped?.other ?? [];
+  if (other.length > 0) sections.push({ title: OTHER_GROUP, items: other.map((hit) => ({ hit })) });
+  return sections;
+}
+
+/**
+ * Cuts the answer after the first `perGroup` provisions of every group
+ * (Sprint 5, 10 Oct 2026). `head` is what the page shows; `rest` holds, per
+ * group that has more, the provisions behind "See the complete sample
+ * answer". Nothing is dropped or reordered: head and rest together are the
+ * answer /search would lay out, and a group with `perGroup` or fewer rows has
+ * no entry in `rest`.
+ */
+export function collapseAnswer(
+  sections: AnswerSection[],
+  perGroup: number = ANSWER_PER_GROUP
+): { head: AnswerSection[]; rest: AnswerSection[] } {
+  const head: AnswerSection[] = [];
+  const rest: AnswerSection[] = [];
+  for (const s of sections) {
+    head.push({ title: s.title, items: s.items.slice(0, perGroup) });
+    if (s.items.length > perGroup) rest.push({ title: s.title, items: s.items.slice(perGroup) });
+  }
+  return { head, rest };
 }

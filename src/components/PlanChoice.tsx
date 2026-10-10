@@ -130,10 +130,19 @@ export function PlanChoice({
   access,
   chosen = null,
   className = "",
+  trialButtons = false,
 }: {
   access: AccessStatus;
   chosen?: BillingInterval | null;
   className?: string;
+  /**
+   * Every plan button reads "Start your 7-day free trial" (/pricing, Sprint 5,
+   * 10 Oct 2026) instead of "Create an account to subscribe" for a visitor.
+   * Only where a trial is offered, and never on the "Switch to ..." button of
+   * the plan a signed-in account did not pick; an account that has had a
+   * subscription keeps "Subscribe". The destination does not change.
+   */
+  trialButtons?: boolean;
 }) {
   if (access.hasAccess) return null;
 
@@ -147,7 +156,17 @@ export function PlanChoice({
       <PlanCards
         chosen={chosen}
         cta={(interval) => (
-          <SubscribeControl access={access} interval={interval} chosen={chosen} fullWidth />
+          <SubscribeControl
+            access={access}
+            interval={interval}
+            chosen={chosen}
+            fullWidth
+            label={
+              trialButtons && trialOffered && (!access.user || chosen === null || chosen === interval)
+                ? `Start your ${TRIAL_DAYS}-day free trial`
+                : undefined
+            }
+          />
         )}
       />
       {trialOffered && <TrialNote className="mt-3" />}

@@ -38,7 +38,9 @@ const WIDTH = {
  * `fullWidth` keeps the control a full row at every viewport width (the
  * pricing card's price boxes); by default it is a full row below `sm` only.
  *
- * `label` overrides the checkout button's text. The default names the
+ * `label` overrides the button's text, the logged-out link's too (since
+ * 10 Oct 2026: /pricing says "Start your 7-day free trial" there). For the
+ * checkout button the default names the
  * free trial only for an account that has never had a subscription, which
  * is exactly when the checkout route grants one (src/app/api/stripe/
  * checkout/route.ts) — a lapsed subscriber sees plain "Subscribe".
@@ -73,7 +75,7 @@ export function SubscribeControl({
         href={`/signup?plan=${interval}`}
         className={`${style} ${SIZE[size]} ${width} ${className}`}
       >
-        Create an account to subscribe
+        {label ?? "Create an account to subscribe"}
       </Link>
     );
   }

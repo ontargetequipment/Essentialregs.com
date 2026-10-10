@@ -140,7 +140,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
                 Start your trial
               </Link>
               <Link href="/search" className="visitor-banner-secondary">
-                Search the complete corpus
+                Search the free GP05 sample
               </Link>
             </div>
           </div>
