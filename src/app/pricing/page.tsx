@@ -10,6 +10,7 @@ import {
   type BillingInterval,
 } from "@/lib/pricing";
 import { PLAN_ORDER, PlanCards, PlanChoice } from "@/components/PlanChoice";
+import { PLAN_INCLUDES } from "@/lib/plan-includes";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -23,6 +24,39 @@ export const metadata: Metadata = {
 // A valid ?plan=<month|year> (the plan picked on /signup, carried through
 // the confirmation link) highlights that box and makes its button the
 // primary one; without it the page is the plain two-box choice.
+// What the plan includes and the free GP05 reader (Sprint 5, 10 Oct 2026),
+// under the plan boxes so the choice is still the first thing on screen. The
+// list is src/lib/plan-includes.ts: restated from the homepage and the
+// product, no new claim, no amount.
+function Included({ showFreeReader = true }: { showFreeReader?: boolean }) {
+  return (
+    <section className="mt-8" aria-labelledby="included-heading" data-testid="plan-includes">
+      <h2 id="included-heading" className="font-mono text-eyebrow uppercase text-tag">
+        What the subscription includes
+      </h2>
+      <ul className="mt-3 flex flex-col gap-3 text-sm leading-relaxed text-ink-soft">
+        {PLAN_INCLUDES.map((item) => (
+          <li key={item.lead}>
+            <span className="font-medium text-ink">{item.lead}.</span> {item.detail}
+          </li>
+        ))}
+      </ul>
+      {showFreeReader && (
+        <p className="mt-5 text-sm text-ink-soft">
+          Want to see it first?{" "}
+          <Link
+            href="/regulations/gp05"
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
+          >
+            Open the free GP05 reader
+          </Link>{" "}
+          &mdash; the whole general permit, with summaries and cross-references, no account needed.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default async function PricingPage(props: PageProps<"/pricing">) {
   const [access, searchParams] = await Promise.all([getAccessStatus(), props.searchParams]);
 
@@ -61,6 +95,7 @@ export default async function PricingPage(props: PageProps<"/pricing">) {
             </p>
           )}
         />
+        <Included showFreeReader={false} />
         <p className="mt-6 text-xs text-muted">
           Need multiple seats for your team?{" "}
           <Link
@@ -93,7 +128,9 @@ export default async function PricingPage(props: PageProps<"/pricing">) {
         cancel before the trial ends and you won&apos;t be charged.
       </p>
 
-      <PlanChoice access={access} chosen={chosen} className="mt-5" />
+      <PlanChoice access={access} chosen={chosen} className="mt-5" trialButtons />
+
+      <Included />
 
       <p className="mt-6 text-xs text-muted">
         Need multiple seats for your team?{" "}
