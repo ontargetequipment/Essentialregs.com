@@ -5,7 +5,7 @@
  * and scripts/test-method-links.test.ts proves the grouping, the ordering
  * and the cap without a database or Next.
  */
-import { readerHrefFor } from "@/lib/provision-href";
+import { provisionDestination } from "@/lib/destination";
 import { GP_KEY, regulationDisplayName } from "@/lib/regulation-names";
 import { titleWithoutCitation } from "@/lib/regulation-pure";
 
@@ -20,7 +20,14 @@ export type CitingProvision = {
 
 export type CitedByRow = {
   id: string;
-  /** The reader URL: /regulations/<reg>#<id> (readerHrefFor). */
+  /**
+   * Where the citation opens, for a visitor with no access (provisionDestination,
+   * Sprint 5, 10 Oct 2026): the focused preview /regulations/<reg>/preview?p=<id>,
+   * or the reader /regulations/<reg>#<id> for a regulation anyone may read (GP05).
+   * The page is prerendered once for everyone, so it cannot know the viewer; a
+   * subscriber who lands on the focused preview is redirected to the exact
+   * provision by the preview page.
+   */
   href: string;
   citation: string;
   /** The title with its own citation label removed, "" when it added nothing. */
@@ -94,7 +101,9 @@ export function groupCitedBy(rows: CitingProvision[], cap = CITED_BY_CAP): Cited
       const sorted = [...list].sort((a, b) => a.sort_order - b.sort_order || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
       const toRow = (p: CitingProvision): CitedByRow => ({
         id: p.id,
-        href: readerHrefFor({ id: p.id, reg_key: p.reg_key }),
+        // (Sprint 5, 10 Oct 2026) The old href, /regulations/<reg>#<id>, 404s for
+        // a logged-out visitor: the full reader is public only for GP05.
+        href: provisionDestination({ id: p.id, reg_key: p.reg_key }, { hasAccess: false }),
         citation: p.citation,
         title: titleWithoutCitation(p.title, p.citation),
       });

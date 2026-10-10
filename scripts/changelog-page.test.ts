@@ -97,7 +97,10 @@ test("the page renders the rows when they load: the regulatory empty line names 
   const html = renderToStaticMarkup(createElement(ChangelogBody, { view }));
   assert.ok(!html.includes(CHANGELOG_UNAVAILABLE_NOTICE));
   assert.ok(html.includes("No agency rule changes recorded since Day 2026-10-05."));
-  assert.ok(html.includes('href="/regulations/7"'));
+  // Sprint 5 (10 Oct 2026): the page is the same logged in or out, so a regulation's
+  // line links to its public preview (the reader 404s for a visitor).
+  assert.ok(html.includes('href="/regulations/7/preview"'));
+  assert.ok(!html.includes('href="/regulations/7"'));
   assert.ok(html.includes("links added or updated in 22 provisions"));
   assert.ok(html.includes("<details"));
   assert.ok(html.includes("2 summaries AI reviewed"));

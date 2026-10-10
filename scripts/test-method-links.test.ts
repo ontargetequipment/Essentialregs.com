@@ -89,17 +89,32 @@ test("groupCitedBy: grouped by regulation in that order, sort_order within, titl
     row("sec-gp12-III-F-3", 5, "III.F.3.", "III.F.3."),
     { id: "sec-sample-1", reg_key: "", citation: "Sample", title: "Sample", sort_order: 1 },
   ]);
+  // Sprint 5 (10 Oct 2026): the page is the same HTML for everyone, so every href is
+  // the visitor's (provisionDestination, hasAccess false): the focused preview, not
+  // the reader, which 404s logged out. A subscriber is redirected on from the preview.
   assert.deepEqual(
     groups.map((g) => [g.regKey, g.name, g.more, g.rows.map((r) => [r.href, r.citation, r.title])]),
     [
       ["7", "Regulation 7", 0, [
-        ["/regulations/7#sec-7-B-I-B-3", "I.B.3.", "Approved Instrument Monitoring Method"],
-        ["/regulations/7#sec-7-B-I-J-1-d", "I.J.1.d.", ""],
+        ["/regulations/7/preview?p=sec-7-B-I-B-3", "I.B.3.", "Approved Instrument Monitoring Method"],
+        ["/regulations/7/preview?p=sec-7-B-I-J-1-d", "I.J.1.d.", ""],
       ]],
-      ["gp12", "APCD General Permit GP12", 0, [["/regulations/gp12#sec-gp12-III-F-3", "III.F.3.", ""]]],
-      ["oooob", "40 CFR Part 60 Subpart OOOOb", 0, [["/regulations/oooob#sec-oooob-60.5397b-(a)", "§ 60.5397b(a)", "Fugitive emissions"]]],
+      ["gp12", "APCD General Permit GP12", 0, [["/regulations/gp12/preview?p=sec-gp12-III-F-3", "III.F.3.", ""]]],
+      ["oooob", "40 CFR Part 60 Subpart OOOOb", 0, [["/regulations/oooob/preview?p=sec-oooob-60.5397b-(a)", "§ 60.5397b(a)", "Fugitive emissions"]]],
     ]
   );
+});
+
+test("groupCitedBy: a GP05 citation still opens the reader (its reader is public); no href is a bare reader URL for anyone else", () => {
+  const groups = groupCitedBy([row("sec-gp05-VIII-C-1", 1, "VIII.C.1."), row("sec-gp06-III-E-1", 1, "III.E.1."), row("sec-7-B-I-B-3", 1)]);
+  const hrefs = Object.fromEntries(groups.flatMap((g) => g.rows.map((r) => [r.id, r.href])));
+  assert.equal(hrefs["sec-gp05-VIII-C-1"], "/regulations/gp05#sec-gp05-VIII-C-1");
+  assert.equal(hrefs["sec-gp06-III-E-1"], "/regulations/gp06/preview?p=sec-gp06-III-E-1");
+  for (const g of groups) {
+    for (const r of [...g.rows, ...g.rest]) {
+      if (g.regKey !== "gp05") assert.ok(!/^\/regulations\/[^/]+#/.test(r.href), r.href);
+    }
+  }
 });
 
 test("groupCitedBy caps each regulation at CITED_BY_CAP rows and counts the rest", () => {

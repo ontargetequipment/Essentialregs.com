@@ -9,6 +9,7 @@ import {
   type ChangelogView,
 } from "@/lib/changelog-group";
 import { regulationDisplayName } from "@/lib/regulation-names";
+import { regulationCardHref } from "@/lib/regulation-pure";
 
 /**
  * The body of /changelog from its view model (src/lib/changelog-group.ts
@@ -101,7 +102,9 @@ function Line({ line, section }: { line: ChangelogLine; section: ChangelogSectio
       <div className="min-w-0">
         {line.regKey ? (
           <Link
-            href={`/regulations/${line.regKey}`}
+            // (Sprint 5, 10 Oct 2026) The page is the same logged in or out, and
+            // the reader 404s for a visitor, so link where a visitor can land.
+            href={regulationCardHref(line.regKey, false)}
             className="font-serif text-card font-semibold text-ink hover:text-accent hover:underline"
           >
             {regulationDisplayName(line.regKey)}
