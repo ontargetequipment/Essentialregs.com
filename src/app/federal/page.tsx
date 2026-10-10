@@ -4,7 +4,7 @@ import { getAccessStatus } from "@/lib/access";
 import { RegulationList } from "@/components/RegulationList";
 
 export const metadata = {
-  title: "Federal regulations",
+  title: "Federal Regulations",
 };
 
 // One-line "Applies to ..." card description per federal regulation number
@@ -38,7 +38,7 @@ export default async function FederalIndexPage() {
   return (
     <div className="mx-auto max-w-shell px-6 py-12">
       <div className="max-w-reading">
-        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Federal regulations</h1>
+        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Federal Regulations</h1>
         <p className="mt-2 text-sm text-ink-soft">
           40 CFR Part 60 (New Source Performance Standards) and Part 63
           (NESHAP) subparts as printed in the eCFR, incorporated by
