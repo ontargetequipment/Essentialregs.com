@@ -14,16 +14,23 @@ import { PUBLIC_READER_REGS } from "../src/lib/destination";
 import { detectFacets, mapTitle, omittedLines } from "../src/lib/question-maps";
 import { jurisdictionOfKey, regKeyOf } from "../src/lib/regulation-names";
 import {
+  ANSWER_PER_GROUP,
+  KEYWORD_INITIAL,
+  RECOMMENDED_START,
   SNAPSHOT,
+  answerSections,
+  collapseAnswer,
   isOpenForViewer,
   keywordHits,
   keywordShownIds,
   layoutSampleAsk,
+  moreResultsLabel,
   sampleHref,
   sampleIds,
   showingLine,
   snapshotDateLabel,
   snapshotMap,
+  splitKeywordHits,
   summaryIds,
   type SampleRow,
 } from "../src/lib/sample-pure";
@@ -74,16 +81,81 @@ function fakeRows(drop: (id: string) => boolean = () => false): Map<string, Samp
   return rows;
 }
 
-test("the keyword snapshot: 25 results in the stored order, the page shows the first 10", () => {
+test("the keyword snapshot: 25 results in the stored order, the page shows the first 10 (5 open, 5 behind a disclosure)", () => {
   assert.equal(SNAPSHOT.keyword.query, "produced water tank");
   assert.deepEqual(SNAPSHOT.keyword.ids, KEYWORD_IDS);
   assert.equal(new Set(SNAPSHOT.keyword.ids).size, 25, "no repeats");
   assert.equal(SNAPSHOT.keyword.total, 25);
   assert.equal(SNAPSHOT.keyword.show, 10);
   assert.deepEqual(keywordShownIds(), KEYWORD_IDS.slice(0, 10));
-  assert.equal(showingLine(), "Showing 10 of 25 results");
-  assert.equal(SNAPSHOT.generated, "2026-10-10");
-  assert.equal(snapshotDateLabel(), "10 Oct 2026");
+  // Sprint 5, 10 Oct 2026: five open at first, the other five behind "Show 5 more results".
+  assert.equal(KEYWORD_INITIAL, 5);
+  assert.equal(showingLine(), "Showing 5 of 25 results");
+  assert.equal(moreResultsLabel(), "Show 5 more results (10 of 25)");
+  // The stamp is an instant: 03:46 UTC on 10 Oct is the evening of 9 Oct in Colorado.
+  assert.equal(SNAPSHOT.generated, "2026-10-10T03:46:43Z");
+  assert.equal(snapshotDateLabel(), "9 Oct 2026");
+});
+
+test("the dates the page prints are Colorado's: an instant shifts, a bare date does not", () => {
+  const at = (generated: string) => ({ ...SNAPSHOT, generated });
+  assert.equal(snapshotDateLabel(at("2026-10-10T05:59:00Z")), "9 Oct 2026");
+  assert.equal(snapshotDateLabel(at("2026-10-10T06:00:00Z")), "10 Oct 2026");
+  assert.equal(snapshotDateLabel(at("2026-10-10")), "10 Oct 2026");
+});
+
+test("splitKeywordHits: the first five open, the rest behind the disclosure, nothing lost or reordered", () => {
+  const all = keywordHits(fakeRows());
+  const { first, more } = splitKeywordHits(all);
+  assert.equal(first.length, 5);
+  assert.equal(more.length, 5);
+  assert.deepEqual([...first, ...more].map((h) => h.id), all.map((h) => h.id));
+  // Fewer hits than five: nothing to disclose.
+  const few = splitKeywordHits(all.slice(0, 3));
+  assert.equal(few.first.length, 3);
+  assert.equal(few.more.length, 0);
+  assert.equal(moreResultsLabel({ ...SNAPSHOT, keyword: { ...SNAPSHOT.keyword, show: 6 } }), "Show 1 more result (6 of 25)");
+});
+
+test("the recommended starting point is GP05, linked into its reader", () => {
+  assert.equal(RECOMMENDED_START.label, "GP05 \u2014 Produced Water Storage Tank Batteries");
+  assert.equal(RECOMMENDED_START.href, "/regulations/gp05");
+  assert.ok(isOpenForViewer("gp05", false), "a visitor can open where it points");
+});
+
+test("the Ask answer opens with three provisions per group; the rest is behind 'See the complete sample answer'", () => {
+  const ask = layoutSampleAsk(fakeRows());
+  const sections = answerSections(ask);
+  assert.ok(sections.length > 1);
+  const { head, rest } = collapseAnswer(sections);
+  assert.equal(ANSWER_PER_GROUP, 3);
+  for (const g of head) assert.ok(g.items.length >= 1 && g.items.length <= 3, g.title);
+  assert.deepEqual(head.map((g) => g.title), sections.map((g) => g.title), "every group keeps its heading and its place");
+  // At least one group is long enough to be cut, or the disclosure would be empty.
+  assert.ok(rest.length > 0);
+  // Head and rest together are the whole answer, in order, once each.
+  const rejoined = sections.map((g) => {
+    const tail = rest.find((r) => r.title === g.title);
+    return [...head.find((h) => h.title === g.title)!.items, ...(tail?.items ?? [])].map((i) => i.hit.id);
+  });
+  assert.deepEqual(rejoined, sections.map((g) => g.items.map((i) => i.hit.id)));
+  const all = rejoined.flat();
+  assert.equal(new Set(all).size, all.length);
+  assert.deepEqual([...all].sort(), [...ask.shownIds].sort(), "the same rows the layout shows");
+  // The reasons a canonical row is there travel with it, in the head and in the rest.
+  assert.ok(head.some((g) => g.items.some((i) => i.why)), "a canonical row keeps its reason");
+});
+
+test("collapseAnswer: a group with three or fewer rows has no entry behind the disclosure", () => {
+  const item = (id: string) => ({ hit: { id } as never });
+  const sections = [
+    { title: "Short", items: [item("a"), item("b"), item("c")] },
+    { title: "Long", items: [item("d"), item("e"), item("f"), item("g"), item("h")] },
+  ];
+  const { head, rest } = collapseAnswer(sections);
+  assert.deepEqual(head.map((g) => g.items.length), [3, 3]);
+  assert.deepEqual(rest.map((g) => [g.title, g.items.map((i) => i.hit.id)]), [["Long", ["g", "h"]]]);
+  assert.deepEqual(collapseAnswer(sections, 5).rest, []);
 });
 
 test("the Ask snapshot: 20 hits in retrieval order, scores and keyword flags as the eval printed them", () => {

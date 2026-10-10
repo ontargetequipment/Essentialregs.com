@@ -1,9 +1,9 @@
 {
-  "generated": "2026-10-10",
-  "note": "A frozen snapshot of one keyword search and one Ask, precomputed on 10 Oct 2026 and rendered by /sample (src/lib/sample-snapshot.ts hydrates the ids with labels at request time). Do not re-derive: the point is a stable, fast page. The live search and Ask may return different results.",
+  "generated": "2026-10-10T03:46:43Z",
+  "note": "A frozen snapshot of one keyword search and one Ask, precomputed on 9 Oct 2026 (Colorado time; the stamp is the commit time, an upper bound) and rendered by /sample (src/lib/sample-snapshot.ts hydrates the ids with labels at request time). Do not re-derive: the point is a stable, fast page. The live search and Ask may return different results.",
   "keyword": {
     "query": "produced water tank",
-    "provenance": "search_provisions RPC, limit 25, as a subscriber, Statements of Basis hidden; precomputed 10 Oct 2026",
+    "provenance": "search_provisions RPC, limit 25, as a subscriber, Statements of Basis hidden; precomputed 9 Oct 2026 (Colorado time)",
     "total": 25,
     "show": 10,
     "ids": [
@@ -36,7 +36,7 @@
   },
   "ask": {
     "question": "Produced water storage tanks and tank batteries",
-    "provenance": "match_provisions_hybrid, count 20, Statements of Basis hidden, as a subscriber; Ask eval workflow run 38020544005, 10 Oct 2026",
+    "provenance": "match_provisions_hybrid, count 20, Statements of Basis hidden, as a subscriber; Ask eval workflow run 38020544005, 9 Oct 2026 (Colorado time)",
     "map_key": "storage-tanks",
     "stated": "contents=produced water",
     "eval_printed": {
