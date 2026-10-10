@@ -85,12 +85,12 @@ test("an empty or whitespace-only summary renders no 'Plain-English summary' blo
 
 test("the OOOO initial import reads as one, other days keep 'corrections'", () => {
   const lines = foldChangelog([
-    { day: "2026-10-08", reg_key: "oooo", change_type: "transcription_corrected", provision_count: 725, latest: "2026-10-08T20:00:00Z" },
+    { day: "2026-10-07", reg_key: "oooo", change_type: "transcription_corrected", provision_count: 725, latest: "2026-10-08T03:20:11Z" },
     { day: "2026-10-12", reg_key: "oooo", change_type: "transcription_corrected", provision_count: 3, latest: "2026-10-12T20:00:00Z" },
     { day: "2026-10-08", reg_key: "7", change_type: "transcription_corrected", provision_count: 5, latest: "2026-10-08T20:00:00Z" },
   ]);
   const by = (day: string, reg: string) => lines.find((l) => l.dateKey === day && l.regKey === reg)!;
-  assert.deepEqual(describeLine(by("2026-10-08", "oooo")), ["Initial OOOO import normalized and checked against eCFR across 725 provisions"]);
+  assert.deepEqual(describeLine(by("2026-10-07", "oooo")), ["Initial OOOO import normalized and checked against eCFR across 725 provisions"]);
   assert.deepEqual(describeLine(by("2026-10-12", "oooo")), ["corrections to our copy of the text in 3 provisions"]);
   assert.deepEqual(describeLine(by("2026-10-08", "7")), ["corrections to our copy of the text in 5 provisions"]);
 });

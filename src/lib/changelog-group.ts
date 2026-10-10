@@ -207,7 +207,8 @@ function plural(n: number, one: string, many: string): string {
  * A line for that reg on any other day keeps the "corrections" wording.
  */
 export const INITIAL_IMPORTS: Readonly<Record<string, { day: string; label: string; source: string }>> = {
-  oooo: { day: "2026-10-08", label: "OOOO", source: "eCFR" },
+  // The day changelog_public() files the 725-row import under (production, 9 Oct 2026).
+  oooo: { day: "2026-10-07", label: "OOOO", source: "eCFR" },
 };
 
 /** The phrase for a line's transcription_corrected count: an initial import, or corrections to our copy. */
