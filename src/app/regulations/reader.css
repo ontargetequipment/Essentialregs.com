@@ -1163,3 +1163,96 @@
 .reg-reader #popup-body .related-panel {
   display: none; /* keep the preview popup focused on the provision itself */
 }
+
+/* ---------- The free sample (Sprint 4, 10 Oct 2026) ----------
+   The slim line a visitor sees at the top of the reading pane on GP05
+   ([reg]/page.tsx), and the "in the full corpus" panel the popup shows for a
+   cross-regulation target the visitor cannot open (lockedPopup in
+   reader-nav.ts). Neither blocks anything: the banner scrolls away, the
+   panel sits inside the popup under the label. */
+.reg-reader #visitor-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  max-width: 760px;
+  margin: 12px auto 0;
+  padding: 10px 16px;
+  background: var(--accent-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.reg-reader #visitor-banner p {
+  margin: 0;
+  flex: 1 1 280px;
+}
+.reg-reader .visitor-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reg-reader .visitor-banner-primary,
+.reg-reader .visitor-banner-secondary,
+.reg-reader .locked-primary,
+.reg-reader .locked-secondary {
+  display: inline-block;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.reg-reader .visitor-banner-primary,
+.reg-reader .locked-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.reg-reader .visitor-banner-secondary,
+.reg-reader .locked-secondary {
+  background: var(--paper-panel);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+.reg-reader .visitor-banner-primary:hover,
+.reg-reader .locked-primary:hover {
+  opacity: 0.92;
+}
+.reg-reader .visitor-banner-secondary:hover,
+.reg-reader .locked-secondary:hover {
+  background: var(--accent-soft);
+}
+.reg-reader #popup-body .locked-destination {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-family: var(--sans);
+}
+.reg-reader #popup-body .locked-path {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.reg-reader #popup-body .locked-heading {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 600;
+}
+.reg-reader #popup-body .locked-sub {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+.reg-reader #popup-body .locked-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}

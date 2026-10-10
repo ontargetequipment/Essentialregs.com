@@ -1,0 +1,165 @@
+{
+  "generated": "2026-10-10",
+  "note": "A frozen snapshot of one keyword search and one Ask, precomputed on 10 Oct 2026 and rendered by /sample (src/lib/sample-snapshot.ts hydrates the ids with labels at request time). Do not re-derive: the point is a stable, fast page. The live search and Ask may return different results.",
+  "keyword": {
+    "query": "produced water tank",
+    "provenance": "search_provisions RPC, limit 25, as a subscriber, Statements of Basis hidden; precomputed 10 Oct 2026",
+    "total": 25,
+    "show": 10,
+    "ids": [
+      "sec-7-B-V-C-2-w",
+      "sec-ecmc-314-e-(10)-J-v-cc",
+      "sec-gp08-I-B-1-c",
+      "sec-gp08-II-C-1",
+      "sec-gp05-II-D",
+      "sec-gp12-I-A-3-d",
+      "sec-ecmc-316-c-(4)-C-iii",
+      "sec-gp05-I-A-1",
+      "sec-ecmc-100-DEF-RECYCLED-PRODUCED-WATER-ALTERNATIVE",
+      "sec-gp05-top-REG-gp05",
+      "sec-ecmc-315-a-(5)-D",
+      "sec-ecmc-100-DEF-TANK",
+      "sec-gp01-I-A-1",
+      "sec-7-B-I-F-2-c-(i)",
+      "sec-ecmc-431-a",
+      "sec-ecmc-609-c-(2)",
+      "sec-ecmc-603-o",
+      "sec-3-A-II-D-1-uuu",
+      "sec-3-C-II-E-3-yyy",
+      "sec-3-A-IX-A-2-b-(lvi)",
+      "sec-ecmc-411-a-(2)-B-ii",
+      "sec-7-B-I-C-2-a-(iv)",
+      "sec-gp12-VII-A-2",
+      "sec-ecmc-309-e-(5)-D-i-bb",
+      "sec-ecmc-1202-a-(10)-B"
+    ]
+  },
+  "ask": {
+    "question": "Produced water storage tanks and tank batteries",
+    "provenance": "match_provisions_hybrid, count 20, Statements of Basis hidden, as a subscriber; Ask eval workflow run 38020544005, 10 Oct 2026",
+    "map_key": "storage-tanks",
+    "stated": "contents=produced water",
+    "eval_printed": {
+      "shown_as": "Produced water storage tanks and tank batteries",
+      "stated": "contents=produced water",
+      "not_shown": "condensate-only provisions (GP01, the condensate storage tank definition); crude oil provisions",
+      "omitted_ids": [
+        "sec-gp01-I-A",
+        "sec-gp07-I-A",
+        "sec-7-B-I-B-9",
+        "sec-gp01-I-A-1",
+        "sec-gp01-V-B-4",
+        "sec-gp01-V-B-5"
+      ],
+      "first_shown": [
+        "sec-3-A-II-A",
+        "sec-3-A-II-B-3",
+        "sec-3-A-II-D-1-fff",
+        "sec-3-B-II-D",
+        "sec-gp08-I-B"
+      ]
+    },
+    "hits": [
+      {
+        "id": "sec-gp05-I-A-1",
+        "score": 0.576,
+        "keyword_hit": true
+      },
+      {
+        "id": "sec-gp08-I-B-1-c",
+        "score": 0.574,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-gp01-I-A-1",
+        "score": 0.544,
+        "keyword_hit": true
+      },
+      {
+        "id": "sec-gp12-I-A-3-d",
+        "score": 0.546,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-gp05-I-A-3",
+        "score": 0.537,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-gp05-top-REG-gp05",
+        "score": 0.539,
+        "keyword_hit": true
+      },
+      {
+        "id": "sec-gp01-I-A",
+        "score": 0.536,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-gp05-V-B-4",
+        "score": 0.546,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-gp01-V-B-4",
+        "score": 0.545,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-oooob-60.5365b-(e)-(7)",
+        "score": 0.52,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-gp05-V-B",
+        "score": 0.497,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-gp01-V-B-5",
+        "score": 0.531,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-7-B-V-C-2-w",
+        "score": 0.529,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-ecmc-608-a-(1)",
+        "score": 0.528,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-gp05-IX-A",
+        "score": 0.499,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-ecmc-314-e-(10)-J-v-cc",
+        "score": 0.523,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-gp05-V-B-5",
+        "score": 0.522,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-oooob-60.5365b-(e)-(3)",
+        "score": 0.506,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-gp12-I-A-3-b",
+        "score": 0.505,
+        "keyword_hit": false
+      },
+      {
+        "id": "sec-ecmc-608-a-(1)-F",
+        "score": 0.521,
+        "keyword_hit": false
+      }
+    ]
+  }
+}

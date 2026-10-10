@@ -56,7 +56,9 @@ import {
   foreignOriginOf,
   formatUsDate,
   hashTargetOf,
+  isLockedPreview,
   isUsablePreview,
+  lockedPopup,
   originTrailLabel,
   popupEyebrow,
   printedEffectiveDate,
@@ -1213,5 +1215,148 @@ test("jump box: a federal citation matches with or without the section sign and 
     await key($("#jumpbox") as HTMLInputElement, "Enter");
     assert.equal(window.location.hash, "#sec-oooo-60.5416-(b)-(1)");
   });
+  await unmount();
+});
+
+// ---------------------------------------------------------------------------
+// Sprint 4 (10 Oct 2026): a visitor's click on a cross-regulation link.
+// /api/provision answers { locked: true, ... } and the popup says so.
+// ---------------------------------------------------------------------------
+
+const LOCKED = {
+  locked: true as const,
+  id: "sec-7-B-I-B-33",
+  reg_key: "7",
+  citation: "I.B.33.",
+  title: "OPACITY",
+  path: "PART B \u2014 Oil and Natural Gas \u203a I. Definitions",
+};
+
+test("isLockedPreview and lockedPopup (pure)", () => {
+  assert.equal(isLockedPreview(LOCKED, "sec-7-B-I-B-33"), true);
+  assert.equal(isLockedPreview(LOCKED, "sec-7-B-I-B-34"), false, "the row asked for");
+  assert.equal(isLockedPreview({ ...LOCKED, locked: false }, "sec-7-B-I-B-33"), false);
+  assert.equal(isLockedPreview({ ...LOCKED, citation: "", title: "" }, "sec-7-B-I-B-33"), false, "no heading, no popup");
+  assert.equal(isLockedPreview(null, "x"), false);
+  assert.equal(isUsablePreview(LOCKED, "sec-7-B-I-B-33"), false, "a locked label is not a usable full preview");
+
+  const p = lockedPopup(LOCKED, false);
+  assert.equal(p.eyebrow, "Regulation 7");
+  assert.equal(p.title, "I.B.33.");
+  assert.equal(p.note, "OPACITY");
+  assert.match(p.panelHtml, /data-testid="locked-destination"/);
+  assert.match(p.panelHtml, /Regulation 7 I\.B\.33\. is in the full corpus\./);
+  assert.match(p.panelHtml, /Start your 7-day trial to open it\./);
+  assert.match(p.panelHtml, /href="\/signup">Start your 7-day trial</);
+  assert.match(p.panelHtml, /href="\/regulations\/7\/preview\?p=sec-7-B-I-B-33">See what&#39;s in it</);
+
+  // A title that only repeats the citation adds nothing: no note line.
+  assert.equal(lockedPopup({ ...LOCKED, title: "" }, false).note, null);
+  // Parenthesised ids are encoded in ?p= like everywhere else.
+  assert.match(
+    lockedPopup({ ...LOCKED, id: "sec-gp12-VI-A-1-(i)", reg_key: "gp12", citation: "VI.A.1.(i)" }, false).panelHtml,
+    /preview\?p=sec-gp12-VI-A-1-\(i\)"|preview\?p=sec-gp12-VI-A-1-%28i%29"/
+  );
+
+  // A whole document: its title, the citation on the note line, the regulation's preview page.
+  const doc = lockedPopup(
+    { ...LOCKED, id: "sec-8-top-REG-8", reg_key: "8", citation: "Code of Colorado Regulations \u00b7 Regulation Number 8", title: "CONTROL OF HAZARDOUS AIR POLLUTANTS", path: null },
+    true
+  );
+  assert.equal(doc.eyebrow, "Regulation 8");
+  assert.equal(doc.title, "CONTROL OF HAZARDOUS AIR POLLUTANTS");
+  assert.equal(doc.note, "Code of Colorado Regulations \u00b7 Regulation Number 8");
+  assert.match(doc.panelHtml, /Regulation 8 is in the full corpus\./);
+  assert.match(doc.panelHtml, /href="\/regulations\/8\/preview">See what&#39;s in it</);
+
+  // Everything from the payload is escaped.
+  const evil = lockedPopup(
+    { ...LOCKED, citation: '<img src=x onerror=alert(1)>', title: '"><script>x</script>', path: "<b>p</b>" },
+    false
+  );
+  assert.doesNotMatch(evil.panelHtml, /<img|<script|<b>/);
+  assert.match(evil.panelHtml, /&lt;img src=x onerror=alert\(1\)&gt;/);
+});
+
+test("a visitor's click on a cross-regulation link opens the locked popup, not a redirect", async (t) => {
+  const { dom, messages } = crossRegSetup();
+  const r = await bootReader(dom);
+  const { window, $, mount, unmount, click, sleep } = r;
+  await mount();
+  await sleep(80);
+  const isShown = () => $("#backdrop").classList.contains("show");
+  const link = () => $('#doc > [id="sec-3-A-II-B-5"] a.xref-external-reg[href$="#sec-7-B-I-B-33"]');
+  const docLink = () => $('#doc > [id="sec-3-A-II-B-5"] a.xref-external-reg[href="/regulations/7"]');
+  const before = window.location.href;
+  messages.length = 0;
+
+  await t.test("a provision", async () => {
+    const f = stubFetch(async () => okJson(LOCKED));
+    try {
+      const ev = await click(link());
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-B-I-B-33"]);
+      assert.equal(ev.defaultPrevented, true);
+      assert.equal(isShown(), true);
+      assert.equal($("#popup-eyebrow").textContent, "Regulation 7");
+      assert.equal($("#popup-title").textContent, "I.B.33.");
+      assert.equal($("#popup-note").textContent, "OPACITY");
+      assert.equal(($("#popup-note") as HTMLElement).hidden, false);
+      const panel = $('#popup-body [data-testid="locked-destination"]');
+      assert.match(panel.textContent ?? "", /Regulation 7 I\.B\.33\. is in the full corpus\./);
+      assert.match(panel.textContent ?? "", /Start your 7-day trial to open it\./);
+      assert.equal(panel.querySelector('a[href="/signup"]')?.textContent, "Start your 7-day trial");
+      assert.equal(
+        panel.querySelector("a.locked-secondary")?.getAttribute("href"),
+        "/regulations/7/preview?p=sec-7-B-I-B-33"
+      );
+      // The footer "Open in Regulation 7" link would navigate into a 404: hidden.
+      assert.equal(($("#popup-goto") as HTMLElement).style.display, "none");
+      assert.equal(window.location.href, before, "no navigation");
+      assert.equal(messages.length, 0, "no replayed navigation either");
+    } finally {
+      f.restore();
+    }
+  });
+
+  await t.test("a whole document, then a normal preview restores the footer link", async () => {
+    await click($("#popup-close"));
+    const f = stubFetch(async () =>
+      okJson({ ...LOCKED, id: "sec-7-top-REG-7", citation: "Code of Colorado Regulations \u00b7 Regulation Number 7", title: "CONTROL OF OZONE", path: null })
+    );
+    try {
+      await click(docLink());
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-top-REG-7"]);
+      assert.equal(isShown(), true);
+      assert.equal($("#popup-title").textContent, "CONTROL OF OZONE");
+      assert.match($('#popup-body [data-testid="locked-destination"]').textContent ?? "", /Regulation 7 is in the full corpus\./);
+      assert.equal(($("#popup-goto") as HTMLElement).style.display, "none");
+    } finally {
+      f.restore();
+    }
+    await click($("#popup-close"));
+    const f2 = stubFetch(async () => okJson(PREVIEW));
+    try {
+      await click(link());
+      assert.equal($("#popup-body").querySelector('[data-testid="locked-destination"]'), null);
+      assert.equal(($("#popup-goto") as HTMLElement).style.display, "");
+      assert.equal($("#popup-goto").textContent, "Open in Regulation 7 →");
+    } finally {
+      f2.restore();
+    }
+    await click($("#popup-close"));
+  });
+
+  await t.test("real failures still replay the click as navigation", async () => {
+    const f = stubFetch(async () => ({ ok: false, status: 404, json: async () => ({}) }));
+    messages.length = 0;
+    try {
+      await click(link());
+      assert.equal(isShown(), false);
+      assert.ok(messages.some((m) => /navigation/i.test(m)));
+    } finally {
+      f.restore();
+    }
+  });
+
   await unmount();
 });

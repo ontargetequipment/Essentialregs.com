@@ -16,7 +16,9 @@ import {
   documentShortName,
   foreignOriginOf,
   hashTargetOf,
+  isLockedPreview,
   isUsablePreview,
+  lockedPopup,
   originTrailLabel,
   popupEyebrow,
   printedEffectiveDate,
@@ -32,6 +34,7 @@ import {
 } from "@/lib/reader-nav";
 import { regKeyOf, regulationDisplayName, textLabelFor } from "@/lib/regulation-names";
 import { normalizeJumpKey, summaryBadgeClass } from "@/lib/snippet";
+import { isPublicReaderReg, provisionDestination } from "@/lib/destination";
 import { readRecentVisits, recentListHtml, recordRecentVisit } from "@/lib/reader-client";
 import type { SearchRow } from "@/lib/snippet";
 
@@ -94,8 +97,19 @@ function decodeHash(raw: string): string {
  * the simplest, most robust way to make them interactive is the same
  * DOM-event-delegation approach the original used, run once on mount,
  * rather than re-modeling all of this as React state.
+ *
+ * `publicMode` (Sprint 4, 10 Oct 2026) is true when the page was rendered for
+ * a visitor with no access (GP05, the free sample). Nothing in the document
+ * depends on it -- the sidebar, jump box, summaries, same-document previews
+ * and return trail run on the DOM the page shipped -- except what would
+ * otherwise lead a visitor into a 404: the Recent list (it keeps the entries
+ * of regulations a visitor can open; sessionStorage may still hold a
+ * subscriber's from before they logged out) and the "back to" link of a
+ * `?from=` arrival. The cross-regulation popup needs no flag: /api/provision
+ * answers a visitor with a locked label (provision-preview.ts) and the popup
+ * says so.
  */
-export function RegulationReader() {
+export function RegulationReader({ publicMode = false }: { publicMode?: boolean } = {}) {
   useEffect(() => {
     const doc = document.getElementById("doc");
     const backdrop = document.getElementById("backdrop");
@@ -154,6 +168,7 @@ export function RegulationReader() {
     const pageName = pageKey ? regulationDisplayName(pageKey) : "";
     function renderRecent(visits = readRecentVisits()) {
       if (!recentWrap || !recentList) return;
+      if (publicMode) visits = visits.filter((v) => isPublicReaderReg(v.reg));
       recentList.innerHTML = recentListHtml(visits);
       recentWrap.hidden = visits.length === 0;
     }
@@ -248,7 +263,10 @@ export function RegulationReader() {
       popupSlug = slug;
       popupOrigin = origin;
       popupRemote = false;
-      if (popupGoto) popupGoto.textContent = GOTO_LABEL;
+      if (popupGoto) {
+        popupGoto.textContent = GOTO_LABEL;
+        popupGoto.style.display = "";
+      }
       popupTitle.textContent = labelFor(el) || slug;
       // "Regulation 3 · Part A · II. · II.B." -- the display name, then the
       // ancestors' short labels (reader-nav.ts); never the internal id.
@@ -277,9 +295,12 @@ export function RegulationReader() {
     // A reference into another regulation. The link is an ordinary <a href=
     // "/regulations/<key>#<id>"> that works with no script; a plain left
     // click fetches the target through the gated /api/provision route and
-    // previews it here. Anything that does not come back as a clean preview
-    // (signed out, no access, 404, network, junk) replays the click as plain
-    // navigation -- the click is never swallowed.
+    // previews it here. A viewer without access gets a locked label from that
+    // route (Sprint 4, 10 Oct 2026) and the popup says the provision is in
+    // the full corpus, with the trial and the focused preview: never a
+    // silent redirect into the reader's 404. Anything else that does not
+    // come back as a clean preview (404, network, junk) replays the click as
+    // plain navigation -- the click is never swallowed.
     function fallBackToNavigation(link: HTMLAnchorElement) {
       if (link.isConnected) {
         replayed = link;
@@ -307,7 +328,12 @@ export function RegulationReader() {
           signal: abort.signal,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        data = (await res.json()) as ProvisionPreviewPayload;
+        const json: unknown = await res.json();
+        if (isLockedPreview(json, targetId)) {
+          showLockedPreview(json, seq, asDocument);
+          return;
+        }
+        data = json as ProvisionPreviewPayload;
         if (!isUsablePreview(data, targetId)) throw new Error("bad payload");
       } catch {
         // An unknown target (404), a refusal or an empty payload never
@@ -325,6 +351,7 @@ export function RegulationReader() {
       popupSlug = null;
       popupOrigin = null;
       popupRemote = true;
+      if (popupGoto) popupGoto.style.display = "";
       if (popupEyebrowEl) popupEyebrowEl.textContent = name;
       const wrap = document.createElement("div");
       wrap.className = "item";
@@ -357,6 +384,32 @@ export function RegulationReader() {
         popupGoto.setAttribute("href", regulationHref(targetId, origin, cited));
         popupGoto.textContent = asDocument ? `Open ${documentShortName(key)} →` : `Open in ${name} →`;
       }
+      backdrop.classList.add("show");
+    }
+
+    /**
+     * The popup for a target the viewer cannot open (a locked label from
+     * /api/provision): the regulation's name, the citation, the provision's
+     * title and the "in the full corpus" panel (lockedPopup, reader-nav.ts,
+     * which escapes everything). The footer link is hidden: it would lead
+     * into the 404 the reader gives a visitor for that regulation.
+     */
+    function showLockedPreview(data: Parameters<typeof lockedPopup>[0], seq: number, asDocument: boolean) {
+      if (seq !== previewSeq || !backdrop || !popupBody || !popupTitle) return;
+      const view = lockedPopup(data, asDocument);
+      popupSlug = null;
+      popupOrigin = null;
+      popupRemote = true;
+      if (popupEyebrowEl) popupEyebrowEl.textContent = view.eyebrow;
+      popupTitle.textContent = view.title;
+      setPopupNote(view.note);
+      const wrap = document.createElement("div");
+      wrap.className = "item";
+      wrap.innerHTML = view.panelHtml;
+      popupBody.innerHTML = "";
+      popupBody.appendChild(wrap);
+      if (popupTextLabel) popupTextLabel.hidden = true;
+      if (popupGoto) popupGoto.style.display = "none";
       backdrop.classList.add("show");
     }
 
@@ -838,7 +891,11 @@ export function RegulationReader() {
     if (fromOther) {
       const key = regKeyOf(fromOther);
       otherOrigin = {
-        href: `/regulations/${key}#${fromOther}`,
+        // A visitor's way back must not be a 404 either: provisionDestination
+        // sends a regulation they cannot read to its focused preview.
+        href: publicMode
+          ? provisionDestination({ id: fromOther, reg_key: key }, { hasAccess: false })
+          : `/regulations/${key}#${fromOther}`,
         label: originTrailLabel(fromOther),
       };
       renderTrail();
@@ -872,7 +929,7 @@ export function RegulationReader() {
       jumpbox.removeEventListener("keydown", onJumpKeydown);
       jumpResults.removeEventListener("click", onJumpResultsClick);
     };
-  }, []);
+  }, [publicMode]);
 
   return (
     <>

@@ -9,7 +9,10 @@ import { PROVISION_ID } from "@/lib/types";
 import { provisionDestination } from "@/lib/destination";
 
 /**
- * "Related provisions" — Phase 4 of the semantic-search plan.
+ * "Related by meaning, not cited" — Phase 4 of the semantic-search plan
+ * (renamed from "Related provisions" on 10 Oct 2026: the neighbours are found
+ * by embedding similarity, not by the text's own citations, and the label
+ * now says so wherever they appear).
  *
  * Reads `provision_neighbors` (precomputed by pipeline/embed.py: the five
  * closest provisions corpus-wide, excluding the row's own parent, children
@@ -184,7 +187,7 @@ export function relatedPanelHtml(provisionId: string): string {
   if (!RELATED_ID.test(provisionId)) return "";
   return (
     `<details class="related-panel" data-related-for="${escapeHtml(provisionId)}">` +
-    `<summary>Related provisions</summary>` +
+    `<summary>Related by meaning, not cited</summary>` +
     `<div class="related-body"><p class="related-note">Loading…</p></div>` +
     `</details>`
   );

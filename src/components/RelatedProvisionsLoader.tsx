@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { provisionDestination } from "@/lib/destination";
 
 type Item = {
   id: string;
@@ -21,17 +22,21 @@ function esc(s: string): string {
 }
 
 /**
- * Fills the reader's collapsed "Related provisions" panels on first open.
+ * Fills the reader's collapsed "Related by meaning, not cited" panels on first open.
  * The panels are plain HTML from relatedPanelHtml() (lib/related.ts), so
  * this listens for <details> toggles at the document level (capture phase:
  * `toggle` doesn't bubble) and fetches /api/related once per panel.
  *
  * Same-regulation neighbours are rendered as `.xref` spans, which the
  * existing reader script (RegulationReader.tsx) already turns into
- * click-to-preview popups. Cross-regulation neighbours are ordinary links
- * into that regulation's reader.
+ * click-to-preview popups. Cross-regulation neighbours are ordinary links,
+ * opened by who is looking (provisionDestination, Sprint 4, 10 Oct 2026): the
+ * exact provision in the reader for a subscriber, the focused preview for a
+ * visitor. A visitor's /api/related already returns only public-to-public
+ * neighbours (RLS), so with GP05 the only regulation they can see is their
+ * own page's; the destination rule is the backstop if that ever widens.
  */
-export function RelatedProvisionsLoader({ currentReg }: { currentReg: string }) {
+export function RelatedProvisionsLoader({ currentReg, publicMode = false }: { currentReg: string; publicMode?: boolean }) {
   useEffect(() => {
     const loaded = new Set<string>();
 
@@ -45,7 +50,9 @@ export function RelatedProvisionsLoader({ currentReg }: { currentReg: string }) 
           const sameReg = it.reg_key === currentReg;
           const link = sameReg
             ? `<span class="xref related-link" data-target="${esc(it.id)}">${esc(it.citation)}</span>`
-            : `<a class="related-link" href="/regulations/${esc(it.reg_key ?? "")}#${esc(it.id)}">${esc(it.citation)}</a>`;
+            : `<a class="related-link" href="${esc(
+                provisionDestination({ id: it.id, reg_key: it.reg_key }, { hasAccess: !publicMode })
+              )}">${esc(it.citation)}</a>`;
           const title = it.title ? `<span class="related-title">${esc(it.title)}</span>` : "";
           const path = it.path ? `<span class="related-path">${esc(it.path)}</span>` : "";
           // Same "Plain-English summary" label as the Ask cards (backlog #16), so the
@@ -65,7 +72,7 @@ export function RelatedProvisionsLoader({ currentReg }: { currentReg: string }) 
           );
         })
         .join("");
-      body.innerHTML = `<ul class="related-list">${li}</ul>`;
+      body.innerHTML = `<p class="related-note">Found by meaning; this provision does not cite them.</p><ul class="related-list">${li}</ul>`;
     }
 
     async function load(panel: HTMLDetailsElement) {
@@ -92,7 +99,7 @@ export function RelatedProvisionsLoader({ currentReg }: { currentReg: string }) 
     }
     document.addEventListener("toggle", onToggle, true);
     return () => document.removeEventListener("toggle", onToggle, true);
-  }, [currentReg]);
+  }, [currentReg, publicMode]);
 
   return null;
 }

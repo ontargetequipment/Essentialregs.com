@@ -3,6 +3,8 @@ import { SearchTabs } from "@/components/SearchTabs";
 import { askHref, keywordHref, SEARCH_BOX_ID } from "@/lib/search-hrefs";
 import { provisionDestination } from "@/lib/destination";
 import { SummaryBadge } from "@/components/SummaryBadge";
+import { MapIntro } from "@/components/MapIntro";
+import { AskCard, PROVENANCE_LABEL_CLASS, textNoun, type AskRow, type ReviewRow } from "@/components/AskCard";
 import { detectTestMethod } from "@/lib/test-method-search";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessStatus } from "@/lib/access";
@@ -12,7 +14,6 @@ import {
   isClosedPermit,
   isHeadingOnlyText,
   normalizeCitationLabel,
-  isFederalKey,
   regKeyOf,
   regulationDisplayName,
   summaryParagraphs,
@@ -63,14 +64,6 @@ function hrefFor(hit: SearchHit, hasAccess: boolean): string {
   return provisionDestination(hit, { hasAccess });
 }
 
-/**
- * The provenance label above prose on a result card. Text, not styling
- * alone, so a reader can tell generated prose from regulatory text at a
- * glance (backlog #16). "Plain-English summary" is the reader panel's own
- * heading, so the vocabulary is one thing everywhere.
- */
-const PROVENANCE_LABEL_CLASS = "font-mono text-eyebrow uppercase text-tag";
-
 /*
  * Keyword / Ask layout. On 30 Sep 2026 the owner made keyword search the
  * product and Ask a labelled beta reached from one line under the keyword
@@ -81,144 +74,11 @@ const PROVENANCE_LABEL_CLASS = "font-mono text-eyebrow uppercase text-tag";
  * view, the review-status badges) is kept.
  */
 
-/**
- * The line an Ask card prints for a heading-only row (a section, not a
- * provision) in place of its missing summary. `children` is the count of
- * rows whose parent_id is the heading; null when the count failed.
- */
-function headingLine(children: number | null): string {
-  if (children == null || children === 0) return "Section heading — open it to read the provisions inside.";
-  return `Section heading — ${children} ${children === 1 ? "provision" : "provisions"} inside. Open it to read them.`;
-}
-
 function first(v: string | string[] | undefined): string {
   return (Array.isArray(v) ? v[0] : v) ?? "";
 }
 
 // keywordHref / askHref live in src/lib/search-hrefs.ts (shared with the client tablist, SearchTabs).
-
-/** "regulatory text" for a federal document, "official text" for a Colorado one (trust copy pass, 9 Oct 2026). */
-function textNoun(regKey: string | null): string {
-  return isFederalKey(regKey) ? "regulatory text" : "official text";
-}
-
-/** The review state of a summary, for the badge beside it (and, on the keyword page, the summary itself). */
-type ReviewRow = {
-  id: string;
-  ai_summary: string | null;
-  summary_status: string | null;
-  reviewed_at: string | null;
-  /** Server only: read to tell a person's approval from the pipeline's; never rendered or serialised. */
-  reviewed_by: string | null;
-};
-
-/**
- * One row on the Ask page: a retrieval hit, or a question map's canonical
- * provision read from the table. `retrieved` is false for a canonical row
- * retrieval did not return: it has no score, so the card shows none.
- */
-type AskRow = SemanticHit & { retrieved: boolean };
-
-/**
- * The Ask result card. One markup for the flat list and the grouped view
- * (Ask Track B): badge, regulation name, Statement-of-basis and closed-permit
- * badges, match score, breadcrumb, citation, heading, then the summary with
- * its review badge (or the heading-only line). `why` is the map's one-line
- * reason for a canonical row, printed above the summary label.
- */
-function AskCard({
-  row,
-  why,
-  name,
-  review,
-  headingChildren,
-}: {
-  row: AskRow;
-  why?: string;
-  name: string;
-  review: ReviewRow | undefined;
-  headingChildren: Map<string, number | null>;
-}) {
-  const paras = summaryParagraphs(row.summary ?? "");
-  const badge = regBadge(row.reg_key, row.jurisdiction_level);
-  const heading = titleWithoutCitation(row.title, row.citation);
-  return (
-    <li>
-      <Link
-        href={hrefForHit(row)}
-        className="block rounded-lg border border-line bg-panel p-5 shadow-sm transition hover:border-accent hover:shadow-md"
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
-              badge === "Federal"
-                ? "bg-blue-50 text-blue-700"
-                : badge === "ECMC"
-                  ? "bg-violet-50 text-violet-700"
-                  : "bg-accent-soft text-accent"
-            }`}
-          >
-            {badge}
-          </span>
-          <span className="text-xs text-muted">{name}</span>
-          {row.is_basis && (
-            <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
-              Statement of basis
-            </span>
-          )}
-          {isClosedPermit(row.reg_key) && (
-            <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title={CLOSED_PERMIT_BADGE.title}>
-              {CLOSED_PERMIT_BADGE.label}
-            </span>
-          )}
-          {/* Since 20260930003557 a keyword-only row carries its real cosine, so the
-              null branch is rare: only a row with no embedding still lands here. A
-              canonical map row retrieval did not return has no score at all. */}
-          {row.retrieved && (
-            <span
-              className="ml-auto text-xs tabular-nums text-muted"
-              title={
-                row.score == null
-                  ? "Matched your words; no meaning score available for this provision."
-                  : row.keyword_hit
-                    ? "Matched your words and your meaning"
-                    : "How close this provision's meaning is to your question"
-              }
-            >
-              {row.score == null ? "keyword match" : `${Math.round(row.score * 100)}% match`}
-              {row.keyword_hit && row.score != null ? " · words" : ""}
-            </span>
-          )}
-        </div>
-        {row.path && <p className="mt-2 text-xs leading-snug text-muted">{row.path}</p>}
-        <p className="mt-1 font-mono text-eyebrow uppercase text-tag">
-          {row.citation}
-        </p>
-        {heading && (
-          <p className="mt-1 font-semibold text-ink">{heading}</p>
-        )}
-        {why && (
-          <p className="mt-2 text-xs leading-snug text-muted">
-            <span className="font-medium">Why it&apos;s here:</span> {why}
-          </p>
-        )}
-        {paras.length > 0 ? (
-          <>
-            <p className={`mt-3 ${PROVENANCE_LABEL_CLASS}`}>
-              Plain-English summary
-              {review && <SummaryBadge provision={review} />}
-            </p>
-            <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-ink-soft">{paras[0]}</p>
-          </>
-        ) : headingChildren.has(row.id) ? (
-          <p className="mt-2 text-sm text-muted">{headingLine(headingChildren.get(row.id) ?? null)}</p>
-        ) : (
-          <p className="mt-2 text-sm italic text-muted">No plain-English summary yet — read the {textNoun(row.reg_key)}.</p>
-        )}
-      </Link>
-    </li>
-  );
-}
 
 /**
  * A good Ask hit scores ~0.6–0.9 cosine similarity. When the best result is
@@ -884,27 +744,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           </p>
           {/* The introduction, sentence by sentence with the provisions that
               support each (9 Oct 2026), the way a premise note shows them. */}
-          <p data-testid="map-intro" className="mt-2 text-sm leading-relaxed text-ink-soft">
-            {askMap.factors.map((sentence, i) => (
-              <span key={i}>
-                {i > 0 && " "}
-                {sentence.text}
-                {sentence.cites.length > 0 && (
-                  <span className="whitespace-nowrap text-xs text-muted">
-                    {" "}
-                    {sentence.cites.map((id, j) => (
-                      <span key={id}>
-                        {j > 0 && ", "}
-                        <Link href={provisionDestination({ id, reg_key: citeRegKey(id) }, { hasAccess: access.hasAccess })} className="underline hover:text-accent">
-                          {citeLabel(id)}
-                        </Link>
-                      </span>
-                    ))}
-                  </span>
-                )}
-              </span>
-            ))}
-          </p>
+          <MapIntro factors={askMap.factors} hasAccess={access.hasAccess} />
           <p className="mt-1 text-xs text-muted">
             <Link href={askUrl(includeBasis, jurisdiction, regFilter, true)} className="font-medium text-ink-soft underline">
               Show as a flat list
@@ -933,11 +773,11 @@ export default async function SearchPage(props: PageProps<"/search">) {
                 {g.canonical.map((p) => {
                   const row = mapRows.get(p.id);
                   return row ? (
-                    <AskCard key={p.id} row={row} why={p.why} name={nameOf(row.reg_key)} review={reviewOf.get(p.id)} headingChildren={headingChildren} />
+                    <AskCard key={p.id} row={row} why={p.why} name={nameOf(row.reg_key)} review={reviewOf.get(p.id)} headingChildren={headingChildren} href={hrefForHit(row)} />
                   ) : null;
                 })}
                 {g.hits.map((hit) => (
-                  <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+                  <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} href={hrefForHit(hit)} />
                 ))}
               </ol>
             </section>
@@ -947,7 +787,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
               <h2 className="font-serif text-lg font-bold tracking-tight text-ink">{OTHER_GROUP}</h2>
               <ol className="mt-3 flex flex-col gap-3">
                 {grouped.other.map((hit) => (
-                  <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+                  <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} href={hrefForHit(hit)} />
                 ))}
               </ol>
             </section>
@@ -1013,7 +853,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
           </p>
           <ol className="mt-3 flex flex-col gap-3">
             {askHits.map((hit) => (
-              <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} />
+              <AskCard key={hit.id} row={{ ...hit, retrieved: hit.retrieved !== false }} name={nameOf(hit.reg_key)} review={reviewOf.get(hit.id)} headingChildren={headingChildren} href={hrefForHit(hit)} />
             ))}
           </ol>
           <p className="mt-6 text-xs text-muted">

@@ -34,14 +34,6 @@ async function expectPlanCtas(scope: import("@playwright/test").Locator | import
  */
 const BADGE_TEXT = /^(AI-generated · automated check against source text( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed|Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?)$/;
 
-/** Each /sample card's heading, in SAMPLE_ORDER: regulation label · citation [— title]. */
-const SAMPLE_HEADINGS = [
-  "Regulation 7 · I.D.3.a.(i).",
-  "APCD General Permit GP02 · II.A.2.",
-  "2 CCR 404-1 · 604.a.(1).",
-  "Common Provisions Regulation · I.G.90. — POTENTIAL TO EMIT",
-];
-
 test.describe("anonymous", () => {
   test("home page returns 200 with the four hero buttons, Test Methods marked free", async ({ page }) => {
     const res = await page.goto("/");
@@ -55,7 +47,7 @@ test.describe("anonymous", () => {
       "Federal Regulations",
       "State Regulations",
       /^Test Methods\s*Free$/,
-      "See a sample entry",
+      "See a sample answer",
     ]);
     const hrefs = await buttons.evaluateAll((els) => els.map((a) => a.getAttribute("href")));
     expect(hrefs).toEqual(["/federal", "/states", "/test-methods", "/sample"]);
@@ -223,23 +215,65 @@ test.describe("anonymous", () => {
     expect(status).toBe(401);
   });
 
-  test("/sample shows the four sample cards with their regulation labels", async ({ page }) => {
+  test("/sample answers one canned search and one canned Ask around GP05", async ({ page }) => {
+    // Sprint 4, 10 Oct 2026: the page replays a frozen snapshot (src/data/
+    // sample-snapshot.json). GP05 results are open cards; every other result
+    // is a locked card linking to its focused preview.
     const res = await page.goto("/sample");
     expect(res?.status()).toBe(200);
-    await expect(page.locator("article > h2")).toHaveText(SAMPLE_HEADINGS);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "See how EssentialRegs answers a real Colorado oil and gas compliance question",
+    );
+
+    // Keyword search: ten results, GP05 open and the rest locked.
+    const keyword = page.getByTestId("sample-keyword");
+    await expect(keyword.getByRole("heading", { name: /^Keyword search/ })).toBeVisible();
+    await expect(keyword.getByText("Showing 10 of 25 results")).toBeVisible();
+    const keywordLinks = keyword.locator("ol > li > a");
+    await expect(keywordLinks).toHaveCount(10);
+    const keywordHrefs = await keywordLinks.evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
+    expect(keywordHrefs.some((h) => h.startsWith("/regulations/gp05#"))).toBe(true);
+    expect(keywordHrefs.some((h) => /\/preview\?p=/.test(h))).toBe(true);
+    for (const href of keywordHrefs) expect(href, href).toMatch(/^\/regulations\/gp05#|\/preview\?p=/);
+    const keywordLocked = keyword.getByTestId("locked-result");
+    expect(await keywordLocked.count()).toBeGreaterThan(0);
+    await expect(keywordLocked.first().locator("a")).toHaveAttribute("href", /\/preview\?p=/);
+    await expect(keywordLocked.first()).toContainText("In the full corpus");
+    await expect(keywordLocked.first()).toContainText("start your 7-day trial");
+
+    // Ask: the mapped answer, with locked cards beside the open GP05 ones.
+    const ask = page.getByTestId("sample-ask");
+    await expect(ask.getByRole("heading", { name: /^Ask:/ })).toBeVisible();
+    await expect(ask.getByTestId("map-title")).toHaveText("Produced water storage tanks and tank batteries");
+    await expect(ask.getByTestId("map-intro")).toBeVisible();
+    expect(await ask.getByTestId("locked-result").count()).toBeGreaterThan(0);
+    await expect(ask.getByText("Not shown because you said produced water:")).toBeVisible();
+
+    // A line into the real reader.
+    await expect(page.locator('a[href="/regulations/gp05"]').first()).toBeVisible();
+
+    // The two closing buttons, after the Ask section.
+    const cta = page.getByTestId("sample-cta");
+    await expect(cta.getByRole("link", { name: "Start your trial" })).toHaveAttribute("href", "/signup");
+    await expect(cta.getByRole("link", { name: "Search the complete corpus" })).toHaveAttribute("href", "/search");
+    const askBox = await ask.boundingBox();
+    const ctaBox = await cta.boundingBox();
+    expect(askBox && ctaBox && ctaBox.y > askBox.y + askBox.height - 1).toBe(true);
+
+    const text = await page.locator("main").innerText();
+    expect(text).not.toContain("exactly as subscribers see them");
+    expect(text).not.toContain("cross-references resolved");
+    expect(text).toContain("snapshot from 10 Oct 2026");
   });
 
-  test("a /sample related link opens the focused preview of that provision, not the whole-document preview (GP12 VI.A.1)", async ({ page }) => {
+  test("a related link on a public card page opens the focused preview of that provision, not the whole-document preview (GP12 VI.A.1)", async ({ page }) => {
     // Sprint 4, 10 Oct 2026. GP12 VI.A.1 is a rank-3 neighbour of Reg 7
     // I.D.3.a.(i). The link used to go to /regulations/gp12/preview, which
-    // shows generic teaser content whatever was clicked.
-    await page.goto("/sample");
-    const card = page
-      .locator("div")
-      .filter({ has: page.getByRole("heading", { name: "Related provisions" }) })
-      .filter({ hasText: "Regulation 7 · I.D.3.a.(i)." })
-      .last();
-    const related = card.locator("section").filter({ has: page.getByRole("heading", { name: "Related provisions" }) });
+    // shows generic teaser content whatever was clicked. /sample no longer
+    // carries related blocks; the card page does, as a teaser for a visitor.
+    await page.goto("/regs/sec-7-B-I-D-3-a-(i)");
+    const related = page.locator("section").filter({ has: page.getByRole("heading", { name: "Related by meaning, not cited" }) });
+    await expect(related).toBeVisible();
     const link = related.getByRole("link").filter({ hasText: "VI.A.1" }).first();
     await expect(link).toHaveAttribute("href", "/regulations/gp12/preview?p=sec-gp12-VI-A-1");
     await link.click();
@@ -249,6 +283,84 @@ test.describe("anonymous", () => {
     await expect(panel).toBeVisible();
     await expect(panel).toContainText("Start your 7-day trial");
     await expect(panel.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
+  });
+
+  test("GP05 opens in the real reader for a logged-out visitor (Sprint 4 free sample)", async ({ page }) => {
+    // Needs the data migration 20261010120000_gp05_public_sample.sql applied.
+    const res = await page.goto("/regulations/gp05");
+    expect(res?.status()).toBe(200);
+    await expect(page.locator("#sidebar")).toBeVisible();
+    await expect(page.locator("#jumpbox")).toBeVisible();
+    // Hydrated: the reader sets the combobox role last, after its click handler is attached.
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    await expect(page.locator(".source-status-line")).toContainText(/Current through/);
+    const source = page.locator("#doc a.reg-source-link").first();
+    await expect(source).toHaveAttribute("href", /^https?:\/\//);
+    expect(await page.locator("#doc details.summary-panel").count()).toBeGreaterThan(0);
+
+    // The slim, non-blocking banner.
+    const banner = page.getByTestId("visitor-banner");
+    await expect(banner).toContainText("You are reading GP05, the free sample.");
+    await expect(banner).toContainText("The rest of the corpus opens with a 7-day trial.");
+    await expect(banner.getByRole("link", { name: "Start your trial" })).toHaveAttribute("href", "/signup");
+    await expect(banner.getByRole("link", { name: "Search the complete corpus" })).toHaveAttribute("href", "/search");
+
+    // A summary panel carries a review badge and, once opened, the official-source link.
+    const panel = page.locator("#doc details.summary-panel").first();
+    await panel.locator(":scope > summary").click();
+    await expect(panel.locator(".summary-badge")).toHaveText(BADGE_TEXT);
+    await expect(panel.locator(".summary-status a")).toHaveAttribute("href", /^https?:\/\//);
+
+    // Jump box: a citation typed in, Enter, and the reader moves (the hash changes).
+    const citation = await page.locator("#doc > .item[data-citation]").first().getAttribute("data-citation");
+    expect(citation).toBeTruthy();
+    expect(new URL(page.url()).hash).toBe("");
+    await page.locator("#jumpbox").fill(citation!);
+    await page.locator("#jumpbox").press("Enter");
+    await expect.poll(() => new URL(page.url()).hash).toMatch(/^#sec-gp05-/);
+
+    // A same-document cross-reference opens the popup in place.
+    const xref = page.locator("#doc .xref:visible").first();
+    await xref.click();
+    await expect(page.locator("#backdrop")).toHaveClass(/show/);
+    await page.locator("#popup-close").click();
+    await expect(page.locator("#backdrop")).not.toHaveClass(/show/);
+  });
+
+  test("on GP05, a link into Regulation 7 opens a locked popup in place, never a redirect into a 404", async ({ page }) => {
+    await page.goto("/regulations/gp05");
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    // The first Regulation 7 link in the document, whatever its row (the
+    // reader marks every cross-regulation link a.xref-external-reg).
+    const link = page.locator('#doc a.xref-external-reg[href^="/regulations/7"]').first();
+    await expect(link).toHaveCount(1);
+    await link.scrollIntoViewIfNeeded();
+    await link.click();
+    await expect(page.locator("#backdrop")).toHaveClass(/show/);
+    const panel = page.locator("#popup-body [data-testid=locked-destination]");
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText("is in the full corpus.");
+    await expect(panel).toContainText("Start your 7-day trial");
+    await expect(panel.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
+    await expect(panel.getByRole("link", { name: "See what's in it" })).toHaveAttribute("href", /^\/regulations\/7\/preview/);
+    await expect(page.locator("#popup-eyebrow")).toHaveText("Regulation 7");
+    await expect(page.locator("#popup-title")).not.toHaveText("");
+    // Still on GP05: the click did not navigate.
+    expect(new URL(page.url()).pathname).toBe("/regulations/gp05");
+    // Closing returns to the document.
+    await page.locator("#popup-close").click();
+    await expect(page.locator("#backdrop")).not.toHaveClass(/show/);
+  });
+
+  test("/api/provision answers a visitor with a locked label, no text, never cached", async ({ request }) => {
+    const res = await request.get("/api/provision/sec-7-B-I-D-3-a-(i)", { headers: protectionBypassHeaders() });
+    expect(res.status()).toBe(200);
+    expect(res.headers()["cache-control"]).toContain("no-store");
+    const body = await res.json();
+    expect(body).toMatchObject({ locked: true, id: "sec-7-B-I-D-3-a-(i)", reg_key: "7" });
+    expect(Object.keys(body).sort()).toEqual(["citation", "id", "locked", "path", "reg_key", "title"]);
+    const missing = await request.get("/api/provision/sec-7-B-no-such-row", { headers: protectionBypassHeaders() });
+    expect(missing.status()).toBe(404);
   });
 
   test("the focused preview answers 200 and ignores a ?p= that is not a provision of that regulation", async ({ page }) => {
@@ -419,29 +531,37 @@ test.describe("anonymous", () => {
     expect(urls.length).toBeGreaterThan(50);
   });
 
-  test("keyword search for 'emissions' returns the 3 public hits and no error", async ({ page }) => {
+  test("keyword search for 'emissions' answers a logged-out visitor with open or locked cards and no error", async ({ page }) => {
+    // GP05 became public on 10 Oct 2026, so the count is no longer the four
+    // old sample rows; what holds is that something comes back and every
+    // card goes somewhere a visitor can follow: GP05's reader, a focused
+    // preview, or a standalone /regs/ card.
     const res = await page.goto("/search?q=emissions");
     expect(res?.status()).toBe(200);
     await expect(page.getByText("Search isn't available right now")).toHaveCount(0);
-    await expect(page.getByText(/^3 results for/)).toBeVisible();
-    await expect(page.locator("ol > li > a")).toHaveCount(3);
+    await expect(page.getByText(/^\d+ results? for/)).toBeVisible();
+    const cards = page.locator("ol > li > a");
+    expect(await cards.count()).toBeGreaterThan(0);
+    for (const href of await cards.evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""))) {
+      expect(href, href).toMatch(/^\/regulations\/gp05#|\/preview\?p=|^\/regs\//);
+    }
     // Every keyword card with a summary labels it and badges its review
-    // status (owner decision, 29 Sep 2026); the public rows all have one.
+    // status (owner decision, 29 Sep 2026).
     const badges = page.locator("ol > li > a .summary-badge");
     expect(await badges.count()).toBeGreaterThan(0);
     for (const text of await badges.allTextContents()) expect(text).toMatch(BADGE_TEXT);
   });
 
-  test("a logged-out keyword search card never links into the gated reader", async ({ page }) => {
-    // The full reader 404s for an anonymous visitor; a card for a regulation
-    // that is not public goes to the focused preview (or /regs/ for a row
+  test("a logged-out keyword search card never links into a gated reader", async ({ page }) => {
+    // The full reader 404s for an anonymous visitor except GP05's; a card for
+    // any other regulation goes to the focused preview (or /regs/ for a row
     // with no regulation key). Sprint 4, 10 Oct 2026.
     await page.goto("/search?q=emissions");
     const hrefs = await page.locator("ol > li > a").evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
     expect(hrefs.length).toBeGreaterThan(0);
     for (const href of hrefs) {
-      expect(href, href).not.toMatch(/^\/regulations\/[^/]+#/);
-      expect(href, href).toMatch(/\/preview\?p=|^\/regs\//);
+      if (/^\/regulations\/[^/]+#/.test(href)) expect(href, href).toMatch(/^\/regulations\/gp05#/);
+      else expect(href, href).toMatch(/\/preview\?p=|^\/regs\//);
     }
   });
 
