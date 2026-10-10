@@ -69,6 +69,8 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
           <div className="brand-eyebrow">Cross-Referenced Reader</div>
           <h1>{reader.title}</h1>
           {reader.blurb && <p>{reader.blurb}</p>}
+          {/* Current through <version date> · source checked <date> (sourceStatusLine). */}
+          {reader.dateLine && <p className="source-status-line">{reader.dateLine}</p>}
         </div>
         <div id="jump-wrap">
           <input

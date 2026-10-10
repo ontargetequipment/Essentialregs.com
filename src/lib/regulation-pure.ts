@@ -798,46 +798,88 @@ export function isHeadingOnlyText(fullText: string, title: string | null, citati
 
 /**
  * The text badge every rendered summary carries, from the row's
- * summary_status and reviewed_at (owner decisions, Brody, 29 Sep and 4 Oct
- * 2026). Text with a date, not styling, so a reader can tell a checked
- * summary from one nobody has looked at yet:
+ * summary_status, reviewed_at and (server side only) reviewed_by. Owner
+ * decisions: Brody, 29 Sep and 4 Oct 2026; trust copy pass, 9 Oct 2026
+ * (outside reviewer's fifth review). Text with a date, not styling, so a
+ * reader can tell a checked summary from one nobody has looked at yet:
  *
- *   approved / edited  -> "AI reviewed · Sept 17, 2026" (reviewed_at as
- *                         MMM d, yyyy; "AI reviewed" alone if the date is
- *                         null)
+ *   approved / edited, pipeline stamp (every row today)
+ *        -> "AI-generated · automated check against source text · Sept 17,
+ *           2026" (reviewed_at as MMM d, yyyy; no date if it is null).
+ *           `compactLabel` drops the date: cards use it.
+ *   approved / edited, reviewed_by names a person (present and without
+ *   "automated pipeline")
+ *        -> "Reviewed · Sept 17, 2026" (kind "human"). Today a DB trigger
+ *           refuses every non-pipeline approval, so this branch is for the
+ *           day a person reviews; it exists so the label can never claim
+ *           less than the row says, and never more.
  *   pending (or unset) -> "AI-generated · not yet reviewed"
  *   rejected           -> null (the summary itself is withheld everywhere)
  *
- * "AI reviewed", never a bare "Reviewed": no summary on the site claims
- * human review (4 Oct 2026). The check behind the label is the automated
- * second pass that compares the summary with the official text; every
- * approved row has been through it (scripts/corpus_qa.sql check 21,
- * approved_without_ai_review, fails CI when one has not). It says nothing
- * about who reviewed: reviewed_by never reaches a public surface. `title`
- * is the tooltip; what "AI reviewed" means is defined on the Disclaimer
- * page (/disclaimer#what-reviewed-means). Pure, no React: the reader panel
- * (summaryPanelHtml) and every card (SummaryBadge.tsx) render the same
- * object.
+ * The 9 Oct 2026 pass replaced "AI reviewed" (which a reader took to mean
+ * someone had reviewed it) with a label that says what happened: the text
+ * is AI-generated and was checked by an automated pass against the source
+ * text (scripts/corpus_qa.sql check 21, approved_without_ai_review, fails CI
+ * when an approved row has not been through it). The reviewer's name never
+ * reaches a public surface: `reviewed_by` is read here and only the kind
+ * leaves; callers that cross to the browser pass `reviewed_by_human` (a
+ * boolean, see withReviewerKind) instead of the name. `title` is the
+ * tooltip; the label is defined on the Disclaimer page
+ * (/disclaimer#what-reviewed-means, "What AI-generated means"). Pure, no
+ * React: the reader panel (summaryPanelHtml) and every card
+ * (SummaryBadge.tsx) render the same object.
  */
-export function summaryStatusBadge(
-  p: Pick<Provision, "summary_status" | "reviewed_at">
-): { kind: SummaryBadgeKind; label: string; title: string } | null {
+export type SummaryBadgeInput = Pick<Provision, "summary_status" | "reviewed_at"> & {
+  /** Server side only: the stamp or the reviewer. Never serialise it to the client. */
+  reviewed_by?: string | null;
+  /** The already-reduced form of reviewed_by, for rows that cross to the browser. */
+  reviewed_by_human?: boolean;
+};
+
+export type SummaryBadge = { kind: SummaryBadgeKind; label: string; compactLabel: string; title: string };
+
+/**
+ * True when reviewed_by names a person: present and not the pipeline's
+ * stamp (both stamps contain "automated pipeline"; the trigger
+ * provisions_summary_approval_only_by_pipeline refuses anything else, so
+ * this is false for every row today).
+ */
+export function isHumanReviewer(reviewedBy: string | null | undefined): boolean {
+  const v = (reviewedBy ?? "").trim();
+  return v !== "" && !/automated pipeline/i.test(v);
+}
+
+/** Replaces reviewed_by with the boolean reviewed_by_human, so the name cannot ride along to a client component. */
+export function withReviewerKind<T extends { reviewed_by?: string | null }>(
+  row: T
+): Omit<T, "reviewed_by"> & { reviewed_by_human: boolean } {
+  const { reviewed_by, ...rest } = row;
+  return { ...rest, reviewed_by_human: isHumanReviewer(reviewed_by) };
+}
+
+export const AI_CHECKED_LABEL = "AI-generated \u00b7 automated check against source text";
+
+export function summaryStatusBadge(p: SummaryBadgeInput): SummaryBadge | null {
   const status = p.summary_status ?? "pending";
   if (status === "rejected") return null;
   if (status === "approved" || status === "edited") {
     const date = formatReviewedDate(p.reviewed_at);
+    const human = p.reviewed_by_human ?? isHumanReviewer(p.reviewed_by);
+    const base = human ? "Reviewed" : AI_CHECKED_LABEL;
     return {
-      kind: "reviewed",
-      label: date ? `AI reviewed · ${date}` : "AI reviewed",
-      title: SUMMARY_BADGE_TITLES.reviewed,
+      kind: human ? "human" : "reviewed",
+      label: date ? `${base} \u00b7 ${date}` : base,
+      compactLabel: base,
+      title: SUMMARY_BADGE_TITLES[human ? "human" : "reviewed"],
     };
   }
-  return { kind: "pending", label: "AI-generated · not yet reviewed", title: SUMMARY_BADGE_TITLES.pending };
+  const label = "AI-generated \u00b7 not yet reviewed";
+  return { kind: "pending", label, compactLabel: label, title: SUMMARY_BADGE_TITLES.pending };
 }
 
 /**
  * AP-style month abbreviations ("Sept", not "Sep"), the owner's wording for
- * the badge: "AI reviewed · Sept 17, 2026".
+ * the badge: "AI-generated · automated check against source text · Sept 17, 2026".
  */
 const MONTH_ABBREVIATIONS = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
 
@@ -861,7 +903,7 @@ export function formatReviewedDate(iso: string | null | undefined): string {
  * HTML, so it's escaped here; blank lines become paragraph breaks.
  */
 export function summaryPanelHtml(
-  p: Pick<Provision, "ai_summary" | "summary_status" | "reviewed_at" | "source_url">,
+  p: Pick<Provision, "ai_summary" | "summary_status" | "reviewed_at" | "source_url" | "reviewed_by_human">,
   fallbackSourceUrl?: string | null,
   children?: SummaryChild[],
   contextKey?: string | null
@@ -890,14 +932,16 @@ export function summaryPanelHtml(
       summaryChildrenHtml(children ?? [])
     : paragraphs.map((t) => `<p>${escapeHtml(t)}</p>`).join("");
   // The review-status badge is the first thing in the panel body: text
-  // with a date ("AI reviewed · Sept 17, 2026" / "AI-generated · not yet
-  // reviewed"), never a reviewer. History: the "AI-generated" line was
+  // with a date ("AI-generated · automated check against source text ·
+  // Sept 17, 2026" / "AI-generated · not yet reviewed"), never a reviewer's name. History: the "AI-generated" line was
   // removed on 14 Sep 2026 [Brody] because it had become misleading once
   // review passes included an AI second pass alongside human review. On
   // 29 Sep 2026 [Brody] it came back as this two-state badge, because after
   // Phase 0 the reader could not tell a pending summary from a reviewed
   // one. On 4 Oct 2026 [Brody] "Reviewed" became "AI reviewed": no summary
-  // claims a person checked it. What the label means lives on the
+  // claims a person checked it; on 9 Oct 2026 (fifth review) that became
+  // "AI-generated · automated check against source text", with "Reviewed"
+  // kept only for a row a person approved. What the label means lives on the
   // Disclaimer page (/disclaimer#what-reviewed-means), which the tooltip
   // points at. Only
   // the label and a state class are in the string -- the browser adds the

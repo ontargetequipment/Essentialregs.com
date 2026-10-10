@@ -10,7 +10,7 @@ type Item = {
   path: string | null;
   summary: string | null;
   /** summaryStatusBadge's result for `summary`, computed by /api/related (lib/related.ts). */
-  summary_badge: { kind: "reviewed" | "pending"; label: string; title: string } | null;
+  summary_badge: { kind: "reviewed" | "human" | "pending"; label: string; compactLabel: string; title: string } | null;
   badge: string;
   regLabel: string;
   crossReg: boolean;
@@ -54,7 +54,7 @@ export function RelatedProvisionsLoader({ currentReg }: { currentReg: string }) 
           const review = it.summary_badge
             ? `<span class="summary-badge related-review is-${esc(it.summary_badge.kind)}" title="${esc(
                 it.summary_badge.title
-              )}">${esc(it.summary_badge.label)}</span>`
+              )}">${esc(it.summary_badge.compactLabel)}</span>`
             : "";
           const summary = it.summary
             ? `<span class="related-label">Plain-English summary${review}</span><span class="related-snip">${esc(it.summary)}</span>`

@@ -30,7 +30,7 @@ import {
   validProvisionId,
   versionNote,
 } from "@/lib/reader-nav";
-import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
+import { regKeyOf, regulationDisplayName, textLabelFor } from "@/lib/regulation-names";
 import { normalizeJumpKey, summaryBadgeClass } from "@/lib/snippet";
 import { readRecentVisits, recentListHtml, recordRecentVisit } from "@/lib/reader-client";
 import type { SearchRow } from "@/lib/snippet";
@@ -259,7 +259,11 @@ export function RegulationReader() {
       // The clone carries the row's "Plain-English summary" panel when it
       // has one; only then does the text above it need its own label, so a
       // reader can tell which is which (backlog #16). Text alone: no label.
-      if (popupTextLabel) popupTextLabel.hidden = !clone.querySelector("details.summary-panel");
+      if (popupTextLabel) {
+        // "Regulatory text" on a federal document, "Official text" on a Colorado one.
+        popupTextLabel.textContent = textLabelFor(pageKey);
+        popupTextLabel.hidden = !clone.querySelector("details.summary-panel");
+      }
       if (popupGoto) popupGoto.setAttribute("href", "#" + slug);
       backdrop.classList.add("show");
     }

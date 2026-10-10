@@ -12578,3 +12578,17 @@ class FederalSubpartLinkTests(XregBase):
         self.assertEqual(ic.cfr_section_regkey("60", "5365", "a"), "ooooa")
         self.assertIsNone(ic.cfr_section_regkey("63", "1568", None))
         self.assertEqual(ic.cfr_section_regkey("63", "6675", None), "zzzz")
+
+
+class Reg7RootTitleTests(unittest.TestCase):
+    """Fifth outside review (9 Oct 2026) read the Regulation 7 title as a
+    stutter. It is the title the current Secretary of State cover prints,
+    and the stored root must match that cover word for word."""
+
+    def test_reg7_root_title_is_the_printed_cover_title(self):
+        src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sources", "REG_7.txt")
+        with open(src, encoding="utf-8") as fh:
+            head = re.sub(r"\s+", " ", fh.read()[:4000])
+        self.assertIn("CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9", head)
+        self.assertEqual(ic.REG_META["7"]["root_title"],
+                         "CONTROL OF EMISSIONS FROM OIL AND GAS EMISSIONS OPERATIONS 5 CCR 1001-9")

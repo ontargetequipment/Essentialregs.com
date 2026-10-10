@@ -2,14 +2,17 @@ import {
   buildTree,
   depthOf,
   escapeHtml,
+  isFederalKey,
   kindOf,
   promoteHeadingParagraph,
+  regKeyOf,
   snippetAfterCitation,
   summaryPanelHtml,
   withItemIdBadge,
 } from "@/lib/regulation-pure";
 import { applicabilityContextKey } from "@/lib/applicability-context";
 import { deriveParents, type TreeRow } from "@/lib/reader-tree";
+import { sourceStatusLine } from "@/lib/reader-nav";
 import type { Provision } from "@/lib/types";
 
 /**
@@ -27,7 +30,7 @@ import type { Provision } from "@/lib/types";
  *     already on the page (their data-citation and text);
  *   - no search index: the browser builds it from the same items;
  *   - an empty .summary-status row per summary panel: the browser fills in
- *     the "View official source" link from the root's source link, or from
+ *     the "View official source" ("Verify on eCFR" for a federal document) link from the root's source link, or from
  *     a wrapper's data-src when that row's own URL differs from the root's;
  *   - data-citation on every wrapper (items always had it; the three
  *     section kinds get it too, so the search index can be rebuilt);
@@ -41,6 +44,8 @@ export type RenderedReader = {
   title: string;
   /** Root's text after its own citation, 160 chars; "" renders no <p>. */
   blurb: string;
+  /** "Current through <date> · source checked <date>", or null (sourceStatusLine). */
+  dateLine: string | null;
   /** innerHTML of <div class="nav-reg">. */
   navHtml: string;
   /** innerHTML of <div id="doc">. */
@@ -56,6 +61,7 @@ export function renderReaderBody(all: Provision[]): RenderedReader | null {
     // "" when the root's text is nothing but its own citation -- the <h1>
     // above the blurb already prints that, so render no <p> at all.
     blurb: snippetAfterCitation(root.full_text, root.citation, 160),
+    dateLine: sourceStatusLine(regKeyOf(root.id), root.last_verified_date),
     navHtml: renderNavHtml(all, tree),
     docHtml: renderDocHtml(all, tree),
   };
@@ -153,7 +159,9 @@ export function renderDocHtml(all: Provision[], tree?: Tree): string {
       const sourceLinkHtml = p.source_url
         ? `<a href="${escapeHtml(
             p.source_url
-          )}" target="_blank" rel="noopener noreferrer" class="reg-source-link">View official source ↗</a>`
+          )}" target="_blank" rel="noopener noreferrer" class="reg-source-link">${
+            isFederalKey(regKeyOf(p.id)) ? "Verify on eCFR" : "View official source"
+          } ↗</a>`
         : "";
       out.push(
         `<section id="${escapeHtml(p.id)}" class="reg-block"${attrs}><div class="reg-eyebrow">${escapeHtml(

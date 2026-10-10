@@ -29,7 +29,7 @@ const publicRoot: Provision = {
   sort_order: 0,
 };
 
-const cached: RenderedReader = { title: "REGULATION T", blurb: "", navHtml: "<nav-from-cache>", docHtml: "<doc-from-cache>" };
+const cached: RenderedReader = { title: "REGULATION T", blurb: "", dateLine: null, navHtml: "<nav-from-cache>", docHtml: "<doc-from-cache>" };
 
 function deps(entitled: boolean, liveRows: Provision[] = [publicRoot], visible = true) {
   const calls: string[] = [];

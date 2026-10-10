@@ -845,7 +845,7 @@ test("cross-regulation preview through /api/provision", async (t) => {
       html: "GENERAL PERMIT 12 (GP12) — Well Production Facilities — GP12 Issuance 1, May 28, 2026",
       summary: {
         overview: "GP12 is the general permit for well production facilities. It replaced GP09 and GP10 for new registrations.",
-        badge: { kind: "reviewed", label: "AI reviewed · Oct 5, 2026" },
+        badge: { kind: "reviewed", label: "AI-generated · automated check against source text · Oct 5, 2026" },
       },
     };
     const f = stubFetch(async () => okJson(DOC));
@@ -865,7 +865,7 @@ test("cross-regulation preview through /api/provision", async (t) => {
       // The overview under the reader's own panel markup, open, with the badge.
       const panel = $("#popup-body details.summary-panel") as HTMLDetailsElement;
       assert.equal(panel.open, true);
-      assert.equal($("#popup-body .summary-badge").textContent, "AI reviewed · Oct 5, 2026");
+      assert.equal($("#popup-body .summary-badge").textContent, "AI-generated · automated check against source text · Oct 5, 2026");
       assert.ok($("#popup-body .summary-badge").classList.contains("is-reviewed"));
       assert.equal($("#popup-body .summary-overview").textContent, DOC.summary.overview);
       assert.doesNotMatch($("#popup-body").textContent ?? "", /GENERAL PERMIT 12/, "the root's text is its title again: not repeated");

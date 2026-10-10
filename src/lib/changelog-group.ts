@@ -193,6 +193,35 @@ function plural(n: number, one: string, many: string): string {
 }
 
 /**
+ * Documents whose first-ever import is one line of this page, by reg key:
+ * the Denver day the import ran, the name the line uses and the source the
+ * import was checked against. The data cannot tell a first import from a
+ * re-import: finalize_import_changelog() (pipeline/changelog_sources.py)
+ * re-labels every run's inserts and text changes the same way
+ * (transcription_corrected), so the first import of a new document and a
+ * correction to a document we already held fold into the same count. The
+ * 9 Oct 2026 review read "Corrections to our copy of the text in 725
+ * provisions" under OOOO as a claim that the page had been wrong 725 times;
+ * it was the first import. Add an entry here when a new document is
+ * imported for the first time (the day is the line's day, in Denver time).
+ * A line for that reg on any other day keeps the "corrections" wording.
+ */
+export const INITIAL_IMPORTS: Readonly<Record<string, { day: string; label: string; source: string }>> = {
+  // The day changelog_public() files the 725-row import under (production, 9 Oct 2026).
+  oooo: { day: "2026-10-07", label: "OOOO", source: "eCFR" },
+};
+
+/** The phrase for a line's transcription_corrected count: an initial import, or corrections to our copy. */
+function transcriptionPhrase(line: ChangelogLine): string {
+  const n = plural(line.transcriptionCorrected, "provision", "provisions");
+  const initial = line.regKey ? INITIAL_IMPORTS[line.regKey.toLowerCase()] : undefined;
+  if (initial && initial.day === line.dateKey) {
+    return `Initial ${initial.label} import normalized and checked against ${initial.source} across ${n}`;
+  }
+  return `corrections to our copy of the text in ${n}`;
+}
+
+/**
  * The customer-facing phrases for one line, in the order a reader cares
  * about them: what changed in the official text first, then what happened
  * to the summaries. Empty when the line has nothing to say. Summaries are
@@ -214,7 +243,7 @@ export function describeLine(line: ChangelogLine): string[] {
   if (line.linksUpdated > 0) parts.push(`links added or updated in ${plural(line.linksUpdated, "provision", "provisions")}`);
   // Our own corrections (7 Oct 2026): never "provisions updated", which
   // reads as an agency change.
-  if (line.transcriptionCorrected > 0) parts.push(`corrections to our copy of the text in ${plural(line.transcriptionCorrected, "provision", "provisions")}`);
+  if (line.transcriptionCorrected > 0) parts.push(transcriptionPhrase(line));
   if (line.duplicateRemoved > 0) {
     parts.push(`${plural(line.duplicateRemoved, "provision", "provisions")} removed that duplicated another document in the corpus`);
   }
@@ -307,7 +336,10 @@ export function sectionLines(lines: ChangelogLine[], section: ChangelogSection):
 export function describeSection(line: ChangelogLine, section: ChangelogSection): string[] {
   const all = describeLine(line);
   const isLinks = (p: string) =>
-    p.startsWith("links added or updated") || p.startsWith("corrections to our copy") || p.includes("duplicated another document");
+    p.startsWith("links added or updated") ||
+    p.startsWith("corrections to our copy") ||
+    p.startsWith("Initial ") ||
+    p.includes("duplicated another document");
   const isSummary = (p: string) => /\bsummar(?:y|ies)\b/.test(p);
   switch (section) {
     case "regulatory":

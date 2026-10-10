@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { fetchRegulationTeaser, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
+import { fetchRegulationTeaser, sourceLinkTextFor, summaryParagraphs, titleWithoutCitation } from "@/lib/regulation";
 import { PRICE_SUMMARY } from "@/lib/pricing";
 
 // `reg` goes straight into an `eq("reg_key", reg)` filter
@@ -60,11 +60,11 @@ export default async function RegulationPreviewPage(
           rel="noopener noreferrer"
           className="mt-1 inline-flex min-h-11 items-center text-xs text-muted underline hover:text-ink sm:inline sm:min-h-0"
         >
-          View official source ↗
+          {sourceLinkTextFor(reg)} ↗
         </a>
       )}
       <p className="mt-3 text-sm text-ink-soft">
-        A preview of {root.citation} — its structure, and a few AI-reviewed
+        A preview of {root.citation} — its structure, and a few AI-generated
         plain-English summaries. The full cross-referenced text is available
         to subscribers.
       </p>

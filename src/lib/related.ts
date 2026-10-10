@@ -35,13 +35,13 @@ export type RelatedItem = {
   /** First paragraph of the summary, or null when there is none / it was rejected. */
   summary: string | null;
   /**
-   * The review-status badge for `summary` (summaryStatusBadge: "AI reviewed ·
-   * Sept 17, 2026" / "AI-generated · not yet reviewed"), computed here so the
+   * The review-status badge for `summary` (summaryStatusBadge: "AI-generated ·
+   * automated check against source text" / "AI-generated · not yet reviewed"), computed here so the
    * reader's client-side panel (RelatedProvisionsLoader.tsx, which must not
    * import regulation-pure) and RelatedProvisions.tsx print the same text.
    * null when there is no summary to label. Never names the reviewer.
    */
-  summary_badge: { kind: "reviewed" | "pending"; label: string; title: string } | null;
+  summary_badge: { kind: "reviewed" | "human" | "pending"; label: string; compactLabel: string; title: string } | null;
   score: number;
   rank: number;
   badge: string;
@@ -71,6 +71,8 @@ type NeighborRow = {
     ai_summary: string | null;
     summary_status: string | null;
     reviewed_at: string | null;
+    /** Server only: reduced to the badge kind by summaryStatusBadge; RelatedItem carries the badge, not this. */
+    reviewed_by: string | null;
     jurisdiction_level: string;
     context_path: string | null;
   } | null;
@@ -112,7 +114,7 @@ export function orderForDisplay(items: RelatedItem[]): RelatedItem[] {
 }
 
 const SELECT =
-  "rank, score, neighbor:provisions!provision_neighbors_neighbor_id_fkey(id, citation, title, ai_summary, summary_status, reviewed_at, jurisdiction_level, context_path)";
+  "rank, score, neighbor:provisions!provision_neighbors_neighbor_id_fkey(id, citation, title, ai_summary, summary_status, reviewed_at, reviewed_by, jurisdiction_level, context_path)";
 
 /** Related provisions as the current visitor (RLS-bound). */
 export async function fetchRelated(provisionId: string): Promise<RelatedItem[]> {

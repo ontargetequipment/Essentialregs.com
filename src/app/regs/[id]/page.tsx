@@ -5,7 +5,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { ProvisionCard, cardAccess } from "@/components/ProvisionCard";
 import { RelatedProvisions } from "@/components/RelatedProvisions";
-import { regKeyOf, regulationCardHref, regulationDisplayName } from "@/lib/regulation-pure";
+import { regKeyOf, regulationCardHref, regulationDisplayName, withReviewerKind } from "@/lib/regulation-pure";
 import { PROVISION_ID, type Provision } from "@/lib/types";
 
 // One read per request, shared by generateMetadata and the page. Row Level
@@ -25,7 +25,8 @@ const fetchProvision = cache(async (id: string): Promise<Provision | null> => {
     .eq("id", id)
     .maybeSingle();
   if (error || !data) return null;
-  return { ...data, cross_references: data.cross_references ?? [] } as Provision;
+  // reviewed_by (an email on some rows) is reduced to a boolean for the badge.
+  return { ...withReviewerKind(data), cross_references: data.cross_references ?? [] } as Provision;
 });
 
 /** "I.D.3.a.(i). · Regulation 7": the provision's citation and its regulation's display name. */

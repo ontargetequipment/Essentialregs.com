@@ -171,7 +171,7 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
     <div className="mx-auto max-w-3xl px-6 py-12">
       <h1 className="text-2xl font-bold text-zinc-900">Summary review queue</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Every summary is written as pending and becomes &ldquo;AI reviewed&rdquo; only
+        Every summary is written as pending and reads &ldquo;AI-generated &middot; automated check against source text&rdquo; only
         when the automated second-pass review (pipeline/review.py) approves it, in the
         same run that wrote it. This page cannot approve a summary: it can send one back
         to pending for another review, save an edited text as pending so the reviewer

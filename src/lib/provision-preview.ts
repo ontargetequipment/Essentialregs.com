@@ -63,6 +63,8 @@ export type PreviewRow = {
   ai_summary?: string | null;
   summary_status?: string | null;
   reviewed_at?: string | null;
+  /** Server only: reduced to the badge kind; the payload carries the badge, never this. */
+  reviewed_by?: string | null;
 };
 
 export type PreviewDeps = {
@@ -83,12 +85,16 @@ export function validPreviewId(id: string): string | null {
 }
 
 /** The summary part of the payload: the overview and the badge, or null (no summary, or rejected). Pure. */
-export function previewSummary(row: Pick<PreviewRow, "ai_summary" | "summary_status" | "reviewed_at">): ProvisionPreview["summary"] {
+export function previewSummary(row: Pick<PreviewRow, "ai_summary" | "summary_status" | "reviewed_at" | "reviewed_by">): ProvisionPreview["summary"] {
   if (row.summary_status === "rejected") return null;
   const paragraphs = summaryParagraphs(row.ai_summary ?? "");
   if (!paragraphs.length) return null;
   const overview = summaryOverview(paragraphs)?.overview ?? paragraphs[0];
-  const badge = summaryStatusBadge({ summary_status: row.summary_status ?? null, reviewed_at: row.reviewed_at ?? null });
+  const badge = summaryStatusBadge({
+    summary_status: row.summary_status ?? null,
+    reviewed_at: row.reviewed_at ?? null,
+    reviewed_by: row.reviewed_by ?? null,
+  });
   return { overview, badge: badge ? { kind: badge.kind, label: badge.label } : null };
 }
 

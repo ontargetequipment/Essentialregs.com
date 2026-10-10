@@ -74,6 +74,24 @@ export const TEST_METHOD_BY_SLUG: ReadonlyMap<string, TestMethod> = new Map(
   TEST_METHODS.map((m) => [m.slug, m])
 );
 
+/**
+ * The printed title without its leading repeat of the method's name:
+ * "Method 1—Sample and Velocity Traverses ..." under the heading "Method 1"
+ * becomes "Sample and Velocity Traverses ...", so a card reads
+ * "Method 1 — Sample and Velocity Traverses ..." rather than
+ * "Method 1 — Method 1—Sample ...". Handles the CFR's "Test Method 320—..."
+ * for the shortName "Method 320", em dash, en dash, hyphen or colon after
+ * the name, and leaves a title that does not start with the name as it is.
+ * Display only: officialTitle stays the title as printed (page metadata, the
+ * official-text caption).
+ */
+export function titleWithoutMethodName(shortName: string, officialTitle: string): string {
+  const escaped = shortName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const lead = new RegExp(`^(?:Test\\s+)?${escaped}\\s*[\u2014\u2013:-]\\s*`, "i");
+  const rest = officialTitle.replace(lead, "").trim();
+  return rest || officialTitle;
+}
+
 /** The entries of one category, in file order. */
 export function testMethodsInCategory(category: TestMethodCategory): TestMethod[] {
   return TEST_METHODS.filter((m) => m.category === category);

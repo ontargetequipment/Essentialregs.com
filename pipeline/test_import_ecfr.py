@@ -1028,6 +1028,21 @@ class EcfrImageNoteSourceTests(unittest.TestCase):
             rows, _ = self._rows_report(reg, code)
             self.assertFalse(any("__" in (r["full_text"] or "") for r in rows), reg)
 
+    def test_60_5371_b_3_carries_the_reproduced_as_published_note(self):
+        """9 Oct 2026 (fifth outside review): the eCFR prints \u00a7 60.5371(b)(3)
+        as 'You must sign the following attestation must be signed by the owner
+        or operator into when submitting data ...'. The text stays as printed;
+        the [sic] marker's tooltip is the source note."""
+        rows, _ = self._rows_report("oooo", "OOOO")
+        by_id = {r["id"]: r for r in rows}
+        text = by_id["sec-oooo-60.5371-(b)-(3)"]["full_text"]
+        self.assertIn(
+            "You must sign the following attestation must be signed by the owner or operator into when"
+            '<span class="er-sic" title="Reproduced as published in eCFR."> [sic]</span> submitting data',
+            text,
+        )
+        self.assertEqual(text.count('class="er-sic"'), 1)
+
 
 # ---------------------------------------------------------------------------
 # Whole-PART (49 CFR 191/192) documents, parsed from the eCFR XML
