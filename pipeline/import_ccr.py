@@ -6939,9 +6939,12 @@ def _scan_xreg_clauses(text: str, pos: int, gp_mode: bool = False, lead_re=None)
             kind, part, kw, lst = "C", gd["pc"], None, None
         if part:
             cur_part = part
+        # Where the clause's own printed "Part X" ends (A, B and C name one;
+        # it always starts the clause), so the part can be linked by itself.
         clause = dict(start=cm.start(), end=cm.end(), kind=kind, part=part or cur_part, kw=kw, list_text=lst,
                       kw_start=cm.start(("kwa" if kind == "A" else "kwd")) if kw else None,
-                      list_start=(cm.start({"A": "la", "B": "lb", "D": "ld"}[kind]) if lst else None))
+                      list_start=(cm.start({"A": "la", "B": "lb", "D": "ld"}[kind]) if lst else None),
+                      part_end=(cm.end({"A": "pa", "B": "pb", "C": "pc"}[kind]) if part else None))
         if gp_mode:
             clause["part"] = None
         clauses.append(clause)
@@ -6956,9 +6959,12 @@ def _emit_xreg_clauses(html_text: str, num: str, clauses: list[dict], corpus_ids
     """Turn parsed clauses into deep links to regulation `num` (see
     `resolve_cross_reg_target`). `display` is the printed regulation mention
     ("Regulation Number 7"), used only to describe a fallback in the
-    `unresolved_cross_reg` bucket. The part itself ("Part B,") stays plain
-    text between the links unless it is cited alone (clause kind C), in which
-    case "Part B" links to the part root. A cite that only reaches the
+    `unresolved_cross_reg` bucket. A printed "Part B" links to that part's
+    root (`sec-<num>-P-B`) when the index holds it, whether it is cited alone
+    (clause kind C) or followed by sections ("Regulation Number 7, Part B,
+    Section I.C.1": three links, the part's its own; 11 Oct 2026, it was
+    plain text before); a part the index does not hold stays plain text and
+    only the alone form is recorded. A cite that only reaches the
     regulation root gets NO link (the regulation name already links there)
     and is recorded in the bucket; a part-root or trimmed link is recorded
     too, because it is not the exact provision the text names. With a
@@ -6996,6 +7002,14 @@ def _emit_xreg_clauses(html_text: str, num: str, clauses: list[dict], corpus_ids
                 record(cited, CrossRegTarget(root, "reg_root", "no_such_part") if root in ids
                        else CrossRegTarget(None, "unresolved", "no_such_part"))
             continue
+        if cl["part_end"] is not None:
+            # "Part B, Section I.C.1" / "Part B, III.E.": the part, by itself
+            target = f"sec-{num}-P-{part}"
+            if target in ((corpus_ids or {}).get(num) or ()):
+                pieces.append((cl["start"], cl["part_end"],
+                               f'<a class="xref-external-reg" href="{href_base}#{target}">{html_text[cl["start"]:cl["part_end"]]}</a>'))
+                if XREG_EVENTS is not None:
+                    XREG_EVENTS.append((own_id or "", f"{display}, Part {part}", "part_cited", target))
         keyword_pending = cl["kw"] is not None
         for idx, cm in enumerate(CITATION_RE.finditer(cl["list_text"])):
             cite = cm.group(0)

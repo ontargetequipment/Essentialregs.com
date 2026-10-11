@@ -1408,3 +1408,88 @@ test("a visitor's click on a cross-regulation link opens the locked popup, not a
 
   await unmount();
 });
+
+// ---------------------------------------------------------------------------
+// 11 Oct 2026: the "Part B" between a cross-regulation citation's name and its
+// section links to the part root (pipeline/import_ccr.py _emit_xreg_clauses;
+// production rows updated by
+// supabase/migrations/RUN_ME_20261011_cross_reg_part_links.sql). GP05 VI.A's
+// stored HTML, through the same sanitiser.
+// ---------------------------------------------------------------------------
+
+const GP05_ROOT = "sec-gp05-top-REG-gp05";
+const gp05Reader = renderReaderBody([
+  row(GP05_ROOT, "APCD General Permit GP05", null, "<p>General Permit GP05 Produced Water Storage Tank Batteries</p>"),
+  row("sec-gp05-VI", "VI.", GP05_ROOT, "<p>Ozone Non-Attainment Area Requirements</p>"),
+  row(
+    "sec-gp05-VI-A",
+    "VI.A",
+    "sec-gp05-VI",
+    "<p>This Section VI only applies to facilities located in an Ozone Non- Attainment Area. (Reference: " +
+      '<a class="xref-external-reg" href="/regulations/7">Regulation Number 7</a>, ' +
+      '<a class="xref-external-reg" href="/regulations/7#sec-7-P-B">Part B</a>, ' +
+      '<a class="xref-external-reg" href="/regulations/7#sec-7-B-I-A-1">Section I.A.1</a>)</p>'
+  ),
+])!;
+const PART_B_PREVIEW = {
+  id: "sec-7-P-B",
+  reg_key: "7",
+  citation: "PART B",
+  title: "OIL AND NATURAL GAS",
+  html: '<p><span class="item-id">PART B</span> Oil and Natural Gas</p>',
+};
+
+test("a Part B link opens the part root: the reader for a subscriber, the focused preview for a visitor", async (t) => {
+  const r = await bootReader(makeDom("#sec-gp05-VI-A", "", new VirtualConsole(), gp05Reader, "gp05"));
+  const { window, $, mount, unmount, click, sleep } = r;
+  await mount();
+  await sleep(80);
+  const part = () => $('#doc > [id="sec-gp05-VI-A"] a.xref-external-reg[href="/regulations/7#sec-7-P-B"]');
+  const isShown = () => $("#backdrop").classList.contains("show");
+
+  await t.test("the sanitiser keeps the anchor, its class and its hash", () => {
+    assert.ok(part(), "Part B is a link");
+    assert.equal(part().textContent, "Part B");
+    assert.equal(hashTargetOf(part().getAttribute("href")), "sec-7-P-B");
+    const texts = Array.from($('#doc > [id="sec-gp05-VI-A"]').querySelectorAll("a.xref-external-reg")).map((a) => a.textContent);
+    assert.deepEqual(texts, ["Regulation Number 7", "Part B", "Section I.A.1"]);
+  });
+
+  await t.test("a subscriber: the part previews in place and the footer opens /regulations/7#sec-7-P-B", async () => {
+    const f = stubFetch(async () => okJson(PART_B_PREVIEW));
+    try {
+      const ev = await click(part());
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-P-B"]);
+      assert.equal(ev.defaultPrevented, true);
+      assert.equal(isShown(), true);
+      assert.equal($("#popup-eyebrow").textContent, "Regulation 7");
+      assert.equal($("#popup-title").textContent, "PART B");
+      const open = $("#popup-goto");
+      assert.equal(open.getAttribute("href"), "/regulations/7?from=sec-gp05-VI-A#sec-7-P-B");
+      const url = new URL(open.getAttribute("href")!, "http://localhost");
+      assert.equal(url.pathname + url.hash, "/regulations/7#sec-7-P-B");
+    } finally {
+      f.restore();
+    }
+    await click($("#popup-close"));
+  });
+
+  await t.test("a visitor: the locked popup's \"See what's in it\" is /regulations/7/preview?p=sec-7-P-B", async () => {
+    const before = window.location.href;
+    const f = stubFetch(async () => okJson({ ...LOCKED, id: "sec-7-P-B", citation: "PART B", title: "OIL AND NATURAL GAS", path: null }));
+    try {
+      await click(part());
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-P-B"]);
+      assert.equal(isShown(), true);
+      const panel = $('#popup-body [data-testid="locked-destination"]');
+      assert.match(panel.textContent ?? "", /Regulation 7 PART B is in the full corpus\./);
+      assert.equal(panel.querySelector("a.locked-secondary")?.getAttribute("href"), "/regulations/7/preview?p=sec-7-P-B");
+      assert.equal(window.location.href, before, "no navigation");
+    } finally {
+      f.restore();
+    }
+    await click($("#popup-close"));
+  });
+
+  await unmount();
+});

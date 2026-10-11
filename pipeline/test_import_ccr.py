@@ -11361,7 +11361,7 @@ class CrossRegDeepLinkTests(XregBase):
         out, buckets = self.link("as defined in Regulation Number 7, Part B, Section I.B.33 and Section II.A.46 (Adopted).")
         self.assertEqual(
             out,
-            "as defined in " + _xl("7", "Regulation Number 7") + ", Part B, "
+            "as defined in " + _xl("7", "Regulation Number 7") + ", " + _xl("7", "Part B", "sec-7-P-B") + ", "
             + _xl("7", "Section I.B.33", "sec-7-B-I-B-33") + " and "
             + _xl("7", "Section II.A.46", "sec-7-B-II-A-46") + " (Adopted).",
         )
@@ -11371,7 +11371,8 @@ class CrossRegDeepLinkTests(XregBase):
         out, _ = self.link("Regulation Number 7, Part B, Sections I.B.33, II.A.46 and II.B. apply")
         self.assertEqual(
             out,
-            _xl("7", "Regulation Number 7") + ", Part B, " + _xl("7", "Sections I.B.33", "sec-7-B-I-B-33") + ", "
+            _xl("7", "Regulation Number 7") + ", " + _xl("7", "Part B", "sec-7-P-B") + ", "
+            + _xl("7", "Sections I.B.33", "sec-7-B-I-B-33") + ", "
             + _xl("7", "II.A.46", "sec-7-B-II-A-46") + " and " + _xl("7", "II.B.", "sec-7-B-II-B") + " apply",
         )
 
@@ -11415,7 +11416,8 @@ class CrossRegDeepLinkTests(XregBase):
         self.assertTrue(any("no_such_part" in k for k in buckets[ic.BUCKET_CROSS_REG]), dict(buckets[ic.BUCKET_CROSS_REG]))
         # A part that does exist is followed within the sentence: both clauses link.
         out, _ = self.link("per Regulation Number 7, Part B, Section V.B. and Part B, Section II.B., as amended")
-        self.assertIn(_xl("7", "Section V.B.", "sec-7-B-V-B") + " and Part B, " + _xl("7", "Section II.B.", "sec-7-B-II-B"), out)
+        self.assertIn(_xl("7", "Section V.B.", "sec-7-B-V-B") + " and " + _xl("7", "Part B", "sec-7-P-B") + ", "
+                      + _xl("7", "Section II.B.", "sec-7-B-II-B"), out)
         # Several citations after one regulation name, with a change of Part, joined by "&amp;".
         out, _ = self.link("Regulation Number 7, Part B, Sections V.B. &amp; II.B. and Part B, Section II.C.5.")
         self.assertIn(_xl("7", "Sections V.B.", "sec-7-B-V-B") + " &amp; " + _xl("7", "II.B.", "sec-7-B-II-B"), out)
@@ -11491,7 +11493,8 @@ class CrossRegDeepLinkTests(XregBase):
         old order of steps let Part B bind to THIS document's own Part B."""
         known = {"sec-3-top-REG-3", "sec-3-P-B", "sec-3-B-I-B-33"}
         out, _ = self.link("under Regulation 7 Part B, Sections I.B.33", reg="3", known=known, own_part="A")
-        self.assertEqual(out, "under " + _xl("7", "Regulation 7") + " Part B, " + _xl("7", "Sections I.B.33", "sec-7-B-I-B-33"))
+        self.assertEqual(out, "under " + _xl("7", "Regulation 7") + " " + _xl("7", "Part B", "sec-7-P-B") + ", "
+                         + _xl("7", "Sections I.B.33", "sec-7-B-I-B-33"))
         self.assertNotIn("data-target", out)
         old, _ = self.link("under Regulation 7 Part B, Sections I.B.33", reg="3", known=known, own_part="A", corpus_ids={})
         self.assertIn('<span class="xref" data-target="sec-3-P-B">Part B</span>', old)  # the behaviour being fixed
@@ -11501,6 +11504,81 @@ class CrossRegDeepLinkTests(XregBase):
         self.assertNotIn("<a ", out)
         self.assertNotIn("data-target", out)
         self.assertEqual(dict(buckets[ic.BUCKET_CROSS_REG]), {})
+
+
+class CrossRegPartLinkTests(XregBase):
+    """The "Part B" between a cross-regulation citation's name and its
+    sections links to the part root when the cited document has one (11 Oct
+    2026). Before, it stayed plain text while the name and the section
+    around it were links (GP05 VI.A: "Regulation Number 7, Part B, Section
+    I.A.1")."""
+
+    EXTRA = {"sec-7-B-I-C", "sec-7-B-I-C-1", "sec-7-B-I-D", "sec-7-B-I-D-3", "sec-7-B-II-D", "sec-7-B-II-D-2"}
+
+    def ids(self):
+        idx = {k: set(v) for k, v in self.idx.items()}
+        idx["7"] |= self.EXTRA
+        return idx
+
+    def test_part_and_section_each_link(self):
+        out, buckets = self.link("per Regulation Number 7, Part B, Section I.C.1.", reg="gp05",
+                                 corpus_ids=self.ids(), own_id="sec-gp05-VI-C")
+        self.assertEqual(
+            out,
+            "per " + _xl("7", "Regulation Number 7") + ", " + _xl("7", "Part B", "sec-7-P-B") + ", "
+            + _xl("7", "Section I.C.1.", "sec-7-B-I-C-1"),
+        )
+        self.assertEqual(dict(buckets[ic.BUCKET_CROSS_REG]), {})
+
+    def test_part_then_a_list_of_sections(self):
+        out, _ = self.link("Regulation Number 7, Part B, Sections I.D.3 and II.D.2 apply.", reg="gp05",
+                           corpus_ids=self.ids())
+        self.assertEqual(
+            out,
+            _xl("7", "Regulation Number 7") + ", " + _xl("7", "Part B", "sec-7-P-B") + ", "
+            + _xl("7", "Sections I.D.3", "sec-7-B-I-D-3") + " and " + _xl("7", "II.D.2", "sec-7-B-II-D-2") + " apply.",
+        )
+
+    def test_part_with_no_root_is_left_alone(self):
+        # Reg 7 has no Part D any more: the part stays plain text, no guessed link.
+        text = "Regulation Number 7, Part D, Section V.C. for inclusion"
+        out, _ = self.link(text, reg="gp05", corpus_ids=self.ids())
+        self.assertEqual(out, _xl("7", "Regulation Number 7") + ", Part D, Section V.C. for inclusion")
+        # A part root missing from the index: the part stays plain (and, as
+        # before, a section is never resolved into a part the index lacks).
+        idx = self.ids()
+        idx["7"].discard("sec-7-P-B")
+        out, _ = self.link("Regulation Number 7, Part B, Section I.C.1.", reg="gp05", corpus_ids=idx)
+        self.assertEqual(out, _xl("7", "Regulation Number 7") + ", Part B, Section I.C.1.")
+
+    def test_part_not_preceded_by_a_regulation_citation_is_left_alone(self):
+        # A GP has no parts of its own: "Part B" here names nothing it can prove.
+        text = "the requirements of Part B, Section I.C.1 apply"
+        out, _ = self.link(text, reg="gp05", corpus_ids=self.ids())
+        self.assertEqual(out, text)
+        # A regulation named earlier in the sentence does not reach a later "Part B".
+        text = "Regulation Number 7 applies; see also Part B, Section I.C.1."
+        out, _ = self.link(text, reg="gp05", corpus_ids=self.ids())
+        self.assertEqual(out, _xl("7", "Regulation Number 7") + " applies; see also Part B, Section I.C.1.")
+        # In a document with parts, a bare "Part B" is its own part (the same-document span), never Reg 7's.
+        known = {"sec-3-top-REG-3", "sec-3-P-B"}
+        out, _ = self.link("as required by Part B of this regulation", reg="3", known=known, corpus_ids=self.ids())
+        self.assertEqual(out, 'as required by <span class="xref" data-target="sec-3-P-B">Part B</span> of this regulation')
+
+    def test_visible_text_and_part_cited_event(self):
+        text = "Regulation Number 7, Part B, Section I.C.1 and Part A, Section II.A.1."
+        ic.XREG_EVENTS = []
+        try:
+            out, _ = self.link(text, reg="gp05", corpus_ids=self.ids(), own_id="sec-gp05-VI-C")
+            events = list(ic.XREG_EVENTS)
+        finally:
+            ic.XREG_EVENTS = None
+        self.assertEqual(re.sub(r"<[^>]+>", "", out), text)
+        self.assertIn(_xl("7", "Part A", "sec-7-P-A") + ", " + _xl("7", "Section II.A.1.", "sec-7-A-II-A-1"), out)
+        self.assertEqual([e for e in events if e[2] == "part_cited"], [
+            ("sec-gp05-VI-C", "Regulation Number 7, Part B", "part_cited", "sec-7-P-B"),
+            ("sec-gp05-VI-C", "Regulation Number 7, Part A", "part_cited", "sec-7-P-A"),
+        ])
 
 
 class TrailingSectionNeverBindsLocallyTests(XregBase):
@@ -11516,7 +11594,8 @@ class TrailingSectionNeverBindsLocallyTests(XregBase):
         self.assertNotIn("sec-gp01-II-C", out)
         self.assertEqual(
             out,
-            _xl("7", "Regulation Number 7") + ", Part B, " + _xl("7", "Section II.B", "sec-7-B-II-B") + " and "
+            _xl("7", "Regulation Number 7") + ", " + _xl("7", "Part B", "sec-7-P-B") + ", "
+            + _xl("7", "Section II.B", "sec-7-B-II-B") + " and "
             # the sample index carries Part B Section II.C since review 4 (7 Oct 2026): an exact hit
             + _xl("7", "Section II.C.", "sec-7-B-II-C"),
         )
@@ -11549,7 +11628,7 @@ class TrailingSectionNeverBindsLocallyTests(XregBase):
         out, buckets = self.link(text, reg="gp01", known=self.KNOWN, own_id="sec-gp01-VI-B")
         self.assertNotIn("data-target", out)
         self.assertTrue(out.endswith(" through C."), out)
-        self.assertEqual(out.count("<a "), 2)  # regulation name + Section I.A.
+        self.assertEqual(out.count("<a "), 3)  # regulation name + Part B + Section I.A.
         for key in buckets[ic.BUCKET_CROSS_REG]:
             self.assertNotIn("\tC", key)
 
@@ -12007,7 +12086,7 @@ class DefinitionCitationTests(XregBase):
         text = ("Produced gas, as defined in Regulation Number 7, Part B, Section I.B.20., must comply with "
                 "Regulation Number 7, Part B, Section I.K.")
         out, buckets = self.dlink(text, reg="gp09", own_id="sec-gp09-IV-G-1")
-        self.assertIn(", Part B, Section I.B.20., must", out)
+        self.assertIn(", " + _xl("7", "Part B", "sec-7-P-B") + ", Section I.B.20., must", out)
         self.assertNotIn("#sec-7-B-I-B-2", out)
         self.assertIn(_xl("7", "Regulation Number 7"), out)
         self.assertIn(_xl("7", "Section I.K.", "sec-7-B-I-K"), out)
@@ -12047,7 +12126,7 @@ class DefinitionCitationTests(XregBase):
                       "sec-7-B-II-A-47": "Visible Emissions"}}
         text = "Storage tanks with visible emissions, as defined in Regulation Number 7, Part B, Section II.A.45, are covered."
         out, buckets = self.dlink(text, reg="gp01", defs=defs, own_id="sec-gp01-IV-B")
-        self.assertIn(", Part B, Section II.A.45, are", out)
+        self.assertIn(", " + _xl("7", "Part B", "sec-7-P-B") + ", Section II.A.45, are", out)
         self.assertNotIn("#sec-7-B-II-A-4", out)
         key, = buckets[ic.BUCKET_XREG_DEF_MISMATCH]
         src, cited, phrase, detail = key.split("\t")
@@ -12063,7 +12142,7 @@ class DefinitionCitationTests(XregBase):
         text = ("normal operations of a connector, as defined in Regulation Number 7, "
                 "Part B, Section II.A.45, is covered.")
         out, buckets = self.dlink(text, reg="gp01", own_id="sec-gp01-IV-B")
-        self.assertIn(", Part B, Section II.A.45, is", out)
+        self.assertIn(_xl("7", "Part B", "sec-7-P-B") + ", Section II.A.45, is", out)
         self.assertNotIn("#sec-7-B-II-A-", out)
         key, = buckets[ic.BUCKET_XREG_DEF_MISMATCH]
         detail = key.split("\t")[3]
