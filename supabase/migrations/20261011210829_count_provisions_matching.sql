@@ -1,4 +1,7 @@
 -- How many provisions of the whole library match a keyword search. 11 Oct 2026.
+-- Applied to production 11 Oct 2026 through the Supabase connector (apply_migration),
+-- recorded as version 20261011210829; the file is named for that version. Read back
+-- as anon: "dehydrator" -> 65, a nonsense word -> 0.
 --
 -- Why: a logged-out visitor's keyword search reads only the is_public rows
 -- (GP05 and a handful of sample rows). A search for "Method 21" or

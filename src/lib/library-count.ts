@@ -9,7 +9,7 @@
  * else: a number, never a citation, a title, a snippet or an id.
  *
  * The number comes from public.count_provisions_matching(q)
- * (supabase/migrations/20261011190000_count_provisions_matching.sql), a
+ * (supabase/migrations/20261011210829_count_provisions_matching.sql), a
  * count-only SECURITY DEFINER function with the same match as
  * search_provisions, so the visitor's own client may call it. Pure and
  * dependency-free (no server imports), so scripts/library-count.test.ts runs

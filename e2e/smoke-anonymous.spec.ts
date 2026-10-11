@@ -977,7 +977,7 @@ test.describe("anonymous", () => {
 
   test("a logged-out search that GP05 cannot answer says how many provisions the full library has; a nonsense search says neither", async ({ page }) => {
     // Sprint 8, 11 Oct 2026 (src/lib/library-count.ts, migration
-    // 20261011190000_count_provisions_matching). "dehydrator" is in no GP05
+    // 20261011210829_count_provisions_matching). "dehydrator" is in no GP05
     // row (pipeline/sources/GP05.txt has none) and in no other public row, and
     // it is in Regulation 7, ECMC and the NSPS subparts, so the free search
     // finds nothing and the count is above 0. It passes against production once

@@ -917,7 +917,7 @@ function searchProvisions(args, ctx, docKey = null) {
 }
 
 /**
- * count_provisions_matching(q) (migration 20261011190000): the same matcher as
+ * count_provisions_matching(q) (migration 20261011210829): the same matcher as
  * searchProvisions, over every released row regardless of RLS (SECURITY
  * DEFINER), as a bare integer. The input is trimmed and cut to 200 characters;
  * a query with no lexemes counts 0. Statements of Basis are excluded in

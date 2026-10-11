@@ -93,7 +93,7 @@ test("leak check: the notice carries the visitor's own words and a number, nothi
 });
 
 test("the migration: count-only, SECURITY DEFINER, pinned search_path, search_provisions' predicate, staged excluded, granted to the API roles, no statement that removes an object", () => {
-  const sql = readFileSync(new URL("../supabase/migrations/20261011190000_count_provisions_matching.sql", import.meta.url), "utf8");
+  const sql = readFileSync(new URL("../supabase/migrations/20261011210829_count_provisions_matching.sql", import.meta.url), "utf8");
   // The Supabase connector holds any statement containing the word, comments included.
   assert.ok(!/drop/i.test(sql), "no DROP anywhere in the file");
   assert.match(sql, /create or replace function public\.count_provisions_matching\(q text\)\s+returns integer/i);
