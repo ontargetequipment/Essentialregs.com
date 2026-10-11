@@ -32,7 +32,7 @@ CI (`.github/workflows/ci.yml`) has three jobs:
 
 Two more workflows gate every pull request to `main` against production's search ranking (make both required checks in the branch protection):
 
-- **Ask eval** (`.github/workflows/ask-eval.yml`): `scripts/ask-eval.ts`, the 29 Ask questions and their pass rules (`src/lib/semantic-eval.ts`). Secrets: `VOYAGE_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+- **Ask eval** (`.github/workflows/ask-eval.yml`): `scripts/ask-eval.ts`, the 38 Ask questions and their pass rules (`src/lib/semantic-eval.ts`), each with its ranking margin (`src/lib/ask-margin.ts`; under 0.005 is flagged). By hand, `margins` runs the margin report alone and `stability` repeats one question ten times with fresh and fixed query vectors (`scripts/ask-eval-stability.ts`). Secrets: `VOYAGE_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 - **Keyword eval** (`.github/workflows/keyword-eval.yml`): `scripts/keyword-eval.ts`, the outside reviewer's seven keyword rows plus the "OOOO" row of 8 Oct 2026 (`src/lib/keyword-eval.ts`) against `search_provisions()`; a row listed in `KEYWORD_KNOWN_FAILURES` may fail, with its reason. Secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Read-only.
 
 The smoke job also uploads the acceptance screenshots the signed-in checks take (`e2e-screenshots/`, artifact `smoke-screenshots`): the whole-document preview from GP12 XII.E and the reader at 390 and 526 px for regulations 7, 8 and gp12.
