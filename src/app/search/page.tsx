@@ -493,12 +493,15 @@ export default async function SearchPage(props: PageProps<"/search">) {
                 </label>
               ))}
             </span>
-            <label className="inline-flex items-center gap-2">
+            {/* min-w-0 / max-w-full: a <select> is as wide as its longest
+                option, and the longest document name ran it to 403px, past a
+                390px phone (Sprint 8, 11 Oct 2026); it now shrinks to the row. */}
+            <label className="inline-flex min-w-0 max-w-full items-center gap-2">
               <span>Regulation</span>
               <select
                 name="reg"
                 defaultValue={regFilter}
-                className="rounded-md border border-line bg-panel px-2 py-1 text-sm text-ink"
+                className="min-w-0 max-w-full rounded-md border border-line bg-panel px-2 py-1 text-sm text-ink"
               >
                 <option value="">Any</option>
                 {regOptions.map((r) => (
