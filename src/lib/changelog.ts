@@ -101,6 +101,26 @@ export async function fetchChangelogWith(client: ChangelogClient): Promise<Chang
   return { rows: [], computedAt: null, source: "none", error };
 }
 
+/**
+ * When the stored changelog snapshot was last computed (its computed_at),
+ * or null when it has never been written or the call fails. The About
+ * page dates "what the corpus holds" by it (Sprint 8, 11 Oct 2026): the
+ * pipeline refreshes the snapshot after every write, so it is the moment
+ * the corpus last changed. Unlike fetchChangelogWith() this never falls
+ * back to the live changelog_public() aggregate (the statement-timeout
+ * one): a page that only needs a date must not run it.
+ */
+export async function fetchSnapshotDateWith(client: ChangelogClient): Promise<string | null> {
+  try {
+    const { data, error } = await client.rpc("changelog_snapshot_public");
+    if (error) return null;
+    const row = (Array.isArray(data) ? data[0] : data) as SnapshotRow | undefined;
+    return row?.computed_at ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchChangelog(): Promise<ChangelogResult> {
   const supabase = await createClient();
   return fetchChangelogWith(supabase as unknown as ChangelogClient);
