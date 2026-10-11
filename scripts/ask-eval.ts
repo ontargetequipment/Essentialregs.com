@@ -23,17 +23,14 @@
  *   npx tsx scripts/ask-eval.ts --ask "When is a GP01 required?" --ask "..." --count 25
  */
 import { appendFileSync } from "node:fs";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 import { expandAcronyms, keywordQuery } from "../src/lib/acronyms";
 import { layoutAsk } from "../src/lib/question-maps";
 import { askScope } from "../src/lib/ask-scope";
+import { MARGIN_FLAG, formatMargin } from "../src/lib/ask-margin";
 import { completeListRows } from "../src/lib/list-completion";
-import { EVAL_QUESTIONS, KNOWN_FAILURES, evaluateQuestion, rowsNeeded, type EvalHit } from "../src/lib/semantic-eval";
-
-// Mirrors EMBED_MODEL / EMBED_DIMS in src/lib/semantic.ts, which cannot be
-// imported here (it pulls in the Next.js server client).
-const EMBED_MODEL = "voyage-3.5-lite";
-const EMBED_DIMS = 1024;
+import { EVAL_QUESTIONS, KNOWN_FAILURES } from "../src/lib/semantic-eval";
+import { embedQuery, env, hybrid, runQuestion, type Hit } from "./ask-eval-core";
 
 const DEFAULT_ASK = [
   "When is a GP01 required?",
@@ -45,49 +42,6 @@ const DEFAULT_ASK = [
 ];
 /** Ids to flag by name when they appear in an Ask top 10 (the engine question). */
 const WATCH = ["sec-jjjj-60.4230", "sec-zzzz-63.6585"];
-
-type Hit = EvalHit & { citation: string; title: string; reg_key: string | null; jurisdiction_level: string; score: number | null; keyword_hit?: boolean };
-
-function env(name: string, fallback?: string): string {
-  const v = process.env[name] ?? (fallback ? process.env[fallback] : undefined);
-  if (!v) throw new Error(`${name} is not set`);
-  return v;
-}
-
-async function embedQueries(texts: string[], key: string): Promise<number[][]> {
-  const res = await fetch("https://api.voyageai.com/v1/embeddings", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ input: texts, model: EMBED_MODEL, input_type: "query", output_dimension: EMBED_DIMS, truncation: true }),
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (!res.ok) throw new Error(`Voyage ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const json = (await res.json()) as { data: { index: number; embedding: number[] }[] };
-  return json.data.sort((a, b) => a.index - b.index).map((d) => d.embedding);
-}
-
-// One question per Voyage call, the way the app embeds (one string per
-// request): a batch embedding differs slightly from the single one (about
-// 0.0014 cosine on the same question, 2 Oct), enough to swap two rows within
-// 0.0004 of each other, so the gate must score the embedding production uses.
-async function embedQuery(text: string, key: string): Promise<number[]> {
-  return (await embedQueries([text], key))[0];
-}
-
-/**
- * One hybrid search, retried on a Postgres statement timeout (the embedder
- * and the neighbour rebuild can hold the database busy for minutes; a
- * timed-out probe says nothing about the ranking).
- */
-async function hybrid(supabase: SupabaseClient, args: Record<string, unknown>, label: string): Promise<Hit[]> {
-  for (let attempt = 1; ; attempt++) {
-    const { data, error } = await supabase.rpc("match_provisions_hybrid", args);
-    if (!error) return (data ?? []) as Hit[];
-    if (!/statement timeout/i.test(error.message) || attempt >= 4) throw new Error(`${label}: ${error.message}`);
-    console.error(`${label}: statement timeout (attempt ${attempt}), retrying...`);
-    await new Promise((r) => setTimeout(r, 5_000 * attempt));
-  }
-}
 
 function line(h: Hit, i: number): string {
   const score = h.score == null ? "kw" : h.score.toFixed(3);
@@ -145,45 +99,33 @@ async function main(): Promise<void> {
   }
 
   // --- Eval ---------------------------------------------------------------
-  const expanded = EVAL_QUESTIONS.map((e) => expandAcronyms(e.q));
-  const rows: { q: string; pass: boolean; known: boolean; matchRank: number | null; failures: string[]; ids: string[]; omittedIds: string[]; top: number | null }[] = [];
-  for (let i = 0; i < EVAL_QUESTIONS.length; i++) {
-    const e = EVAL_QUESTIONS[i];
-    // A document the question names limits the search, as on the Ask page.
-    const scope = askScope(e.q);
-    const found = await hybrid(supabase, {
-      query_text: expanded[i],
-      query_embedding: await embedQuery(expanded[i], voyageKey),
-      match_count: rowsNeeded(e),
-      reg_filter: scope.regFilter ? [scope.regFilter] : null,
-      jurisdiction_filter: null,
-      include_basis: e.includeBasis ?? false,
-      keyword_query: keywordQuery(e.q) || null,
-    }, e.q);
-    // A limited search lists a printed list whole, as the page does (list-completion.ts).
-    const hits = (await completeListRows(supabase, found, scope.within)) as Hit[];
-    // Same routing and layout calls the page makes (pure); the map key is
-    // looked at by questions that set `map`, the shown order by those that
-    // set `premise`, `title` or `shown`.
-    const layout = layoutAsk(e.q, hits, undefined, false, scope.within);
-    const omittedIds = layout.summary?.omittedIds ?? [];
-    const r = evaluateQuestion(e, hits, layout.map?.key ?? null, {
-      ids: layout.shownIds,
-      noteKey: layout.note?.key ?? null,
-      title: layout.summary?.title ?? null,
-      omittedIds,
-      within: scope.within,
+  // Each question as the page asks it (scripts/ask-eval-core.ts), plus its
+  // ranking margin (src/lib/ask-margin.ts).
+  const rows: { q: string; pass: boolean; known: boolean; matchRank: number | null; failures: string[]; ids: string[]; omittedIds: string[]; top: number | null; margin: string; thin: boolean }[] = [];
+  for (const e of EVAL_QUESTIONS) {
+    const r = await runQuestion(supabase, e, await embedQuery(expandAcronyms(e.q), voyageKey));
+    const m = r.margin;
+    rows.push({
+      q: e.q,
+      pass: r.result.pass,
+      known: KNOWN_FAILURES.includes(e.q),
+      matchRank: r.result.matchRank,
+      failures: r.result.failures,
+      ids: r.hits.map((h) => h.id),
+      omittedIds: r.omittedIds,
+      top: r.hits[0]?.score ?? null,
+      margin: formatMargin(m) + (r.completed ? " (list completed)" : ""),
+      thin: m.margin == null || (!m.atLeast && m.margin < MARGIN_FLAG),
     });
-    rows.push({ q: e.q, pass: r.pass, known: KNOWN_FAILURES.includes(e.q), matchRank: r.matchRank, failures: r.failures, ids: hits.map((h) => h.id), omittedIds, top: hits[0]?.score ?? null });
   }
   const passed = rows.filter((r) => r.pass).length;
   const mapChecked = EVAL_QUESTIONS.filter((e) => e.map !== undefined).length;
   out.push(`### Ask acceptance test: ${passed} of ${rows.length} passed`, "");
-  out.push("| # | question | pass | rank | map |", "|---|---|---|---|---|");
+  out.push("| # | question | pass | rank | margin | map |", "|---|---|---|---|---|---|");
   rows.forEach((r, i) => {
     const e = EVAL_QUESTIONS[i];
     const mapCell = e.map === undefined ? "" : `${e.map === null ? "none" : e.map} ${r.failures.some((f) => f.startsWith("routed to")) ? "❌" : "✅"}`;
-    out.push(`| ${i + 1} | ${r.q} | ${r.pass ? "✅" : r.known ? "❌ (known)" : "❌"} | ${r.matchRank ?? "–"} | ${mapCell} |`);
+    out.push(`| ${i + 1} | ${r.q} | ${r.pass ? "✅" : r.known ? "❌ (known)" : "❌"} | ${r.matchRank ?? "–"} | ${r.margin}${r.thin ? " ⚠️" : ""} | ${mapCell} |`);
   });
   const failed = rows.filter((r) => !r.pass);
   if (failed.length) {
@@ -197,6 +139,11 @@ async function main(): Promise<void> {
       );
     }
   }
+  const thin = rows.filter((r) => r.thin);
+  out.push(
+    "",
+    `Margin: how far the fused score of every expected row could fall before the question fails (src/lib/ask-margin.ts). ${thin.length ? `${thin.length} under ${MARGIN_FLAG} (⚠️): ${thin.map((r) => r.q).join(" | ")}` : `none under ${MARGIN_FLAG}`}.`
+  );
   const unexpected = failed.filter((r) => !r.known);
   out.push(
     "",
