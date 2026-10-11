@@ -345,3 +345,32 @@ Where people stop (furthest step per run): `select furthest, count(*) from (sele
 **Migration parity.** `20261010120000_gp05_public_sample` (Sprint 4) has no row in `schema_migrations`, although its data is in place (all 111 GP05 rows are `is_public`). `20261009005000` was recorded by hand (no statements stored). One parity check of the folder against `schema_migrations` is worth running.
 
 **Part links (PR #98, 11 Oct 2026).** "Regulation Number 7, Part B, Section I.C.1" now links "Part B" to `/regulations/7#sec-7-P-B` (a visitor gets the locked popup and `/regulations/7/preview?p=sec-7-P-B`): the importer (`_emit_xreg_clauses`) for every future import, and 604 rows in 26 regulations (797 links) by one UPDATE in place (`supabase/migrations/RUN_ME_20261011_cross_reg_part_links.sql`, logged `links_updated`, no re-embedding); still plain: parts with no root (Reg 7 D and E, Reg 10 B), "Parts A and B" (8), and until those documents are re-imported "Regulation Number 3, Part B. Section ..." with a period (16 rows, GP05 II.B.1 among them) and "Regulation Number 6 Part B," (1).
+
+## Sprint 7: the walkthrough finished, Oct 11 2026 (PRs #99 and PR 2)
+
+The eighth outside review (11 Oct, logged out) called the walkthrough a convincing demonstration but unfinished: GP05 VI.D's Table 2 was malformed, the Regulation 7 I.C.1 click ended at a subscription preview, and the tour asked the visitor to type "VI.D". Status in progress; the full record follows when PR 2 merges.
+
+**Counts (seven steps since PR 2).** `tour_step` carries the step reached, 1-7 (step 1 included, sent with `tour_start`); `tour_complete` (step 7) is sent on arrival back at GP05 VI.C; `tour_trial_click` is step 7; `tour_skip` carries the step shown (the closing card counts as 7). Rows before PR 2's deploy are the six-step tour (`tour_complete` at 6); filter on `created_at` to read either alone. In the SQL editor:
+
+```sql
+-- starts, completions, trial clicks
+select count(*) filter (where event = 'tour_start') as starts,
+       count(*) filter (where event = 'tour_complete') as completions,
+       count(*) filter (where event = 'tour_trial_click') as trial_clicks
+from public.tour_events where env = 'production';
+
+-- drop-off by step: runs that reached each step, and the share of starts
+select step, count(distinct session_id) as runs,
+       round(100.0 * count(distinct session_id)
+             / nullif((select count(distinct session_id) from public.tour_events
+                       where env = 'production' and event = 'tour_start'), 0), 1) as pct_of_starts
+from public.tour_events
+where env = 'production' and event = 'tour_step'
+group by step order by step;
+
+-- where people stop (furthest step per run; 8 = came back to VI.C and saw the closing card)
+select furthest, count(*) from (
+  select session_id, max(case when event = 'tour_complete' then 8 else step end) as furthest
+  from public.tour_events where env = 'production' group by 1) t
+group by 1 order by 1;
+```
