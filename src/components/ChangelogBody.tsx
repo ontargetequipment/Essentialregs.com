@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  LINKS_EXPLANATION,
   SUMMARY_QUALITY_EXPLANATION,
   describeSection,
   summaryDayTotal,
@@ -25,8 +26,8 @@ export function ChangelogBody({ view }: { view: ChangelogView }) {
         <p className="mt-2 text-sm text-ink-soft">
           What&apos;s changed in the regulation corpus, in three parts: rule changes that came from the agency (a new
           version of the official text, provisions it added or removed); links between provisions, source links and
-          corrections to our own copy of the text; and the plain-English summaries AI reviewed, corrected, or
-          rewritten. Each regulation&apos;s page shows its current version and effective date.
+          corrections to our own copy of the text; and the plain-English summaries, checked against the source
+          text, corrected, or rewritten. Each regulation&apos;s page shows its current version and effective date.
         </p>
 
         {view.notice && (
@@ -53,6 +54,7 @@ function Section({ section }: { section: ChangelogSectionView }) {
         {title}
       </h2>
       {key === "summaries" && <p className="mt-2 text-sm leading-relaxed text-ink-soft">{SUMMARY_QUALITY_EXPLANATION}</p>}
+      {key === "links" && <p className="mt-2 text-sm leading-relaxed text-ink-soft">{LINKS_EXPLANATION}</p>}
       {groups.length === 0 && (
         <p className="mt-3 text-sm text-muted" data-empty-section={key}>
           {section.emptyLine}

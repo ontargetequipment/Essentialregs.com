@@ -167,10 +167,11 @@ export default async function AboutPage() {
 
       <LegalSection title="An honest note about the summaries">
         <p>
-          The plain-English summaries are generated with the help of AI
-          tools and then checked against the official text by a separate
-          automated review; no summary on this site is presented as reviewed
-          by a person. Checked or not, a summary
+          The plain-English summaries are AI-generated and then checked
+          against the source text by a separate automated check (the badge
+          reads &ldquo;AI-generated · automated check against source
+          text&rdquo;); no summary on this site is presented as reviewed by
+          a person. Checked or not, a summary
           is an orientation aid — it tells you what a section is about so
           you can decide whether to read it, not what the section requires
           of you. Always read the regulatory text before acting on it, and

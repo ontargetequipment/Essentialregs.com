@@ -272,8 +272,9 @@ export default async function RegulationPreviewPage(
           </div>
         ) : pendingSummaries > 0 ? (
           <p className="mt-4 text-sm text-muted">
-            This regulation&apos;s summaries are being checked by the automated
-            review — they appear here once the review has finished.
+            This regulation&apos;s summaries are being checked against the
+            source text by an automated check — they appear here once it has
+            finished.
           </p>
         ) : (
           <p className="mt-4 text-sm text-muted">
@@ -289,7 +290,8 @@ export default async function RegulationPreviewPage(
         </h2>
         <p className="mt-2 text-sm text-ink-soft">
           Subscribers get the full text, linked cross-references, and
-          plain-English summaries as they pass AI review —{" "}
+          plain-English summaries as they pass the automated check against
+          source text —{" "}
           {PRICE_SUMMARY}.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">

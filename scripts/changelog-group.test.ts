@@ -55,8 +55,8 @@ test("wording: text first, then summaries; corrected shown inside reviewed", () 
     "1,496 provisions updated",
     "1 provision added",
     "2 provisions removed",
-    "201 summaries AI reviewed (1 corrected)",
-    "3 summaries rewritten, awaiting AI review",
+    "201 summaries checked against source text (1 corrected)",
+    "3 summaries rewritten, not yet checked",
   ]);
 });
 
@@ -72,7 +72,7 @@ test("a rewrite reviewed in the same run is one statement (GP03, 6 Oct 2026)", (
     { day: "2026-10-06", reg_key: "gp03", change_type: "summary_rewritten_reviewed", provision_count: 4, latest: "2026-10-06T15:01:16Z" },
     { day: "2026-10-06", reg_key: "gp03", change_type: "summary_rewritten_corrected", provision_count: 1, latest: "2026-10-06T15:01:16Z" },
   ]);
-  assert.deepEqual(describeLine(gp03), ["5 summaries rewritten and AI reviewed (1 corrected)"]);
+  assert.deepEqual(describeLine(gp03), ["5 summaries rewritten and checked against source text (1 corrected)"]);
 
   // Rewrites with no review within a day: pending ones say so; one reviewed
   // days later is not "awaiting" (its review is counted on its own day).
@@ -82,20 +82,20 @@ test("a rewrite reviewed in the same run is one statement (GP03, 6 Oct 2026)", (
     { day: "2026-10-02", reg_key: "7", change_type: "summary_approved", provision_count: 3, latest: "2026-10-03T03:49:43Z" },
   ]);
   assert.deepEqual(describeLine(mixed), [
-    "3 summaries AI reviewed",
-    "1 summary rewritten (AI reviewed later)",
-    "2 summaries rewritten, awaiting AI review",
+    "3 summaries checked against source text",
+    "1 summary rewritten (checked later)",
+    "2 summaries rewritten, not yet checked",
   ]);
   // No corrected count when every paired review passed.
   const [plain] = foldChangelog([
     { day: "2026-10-06", reg_key: "1", change_type: "summary_rewritten_reviewed", provision_count: 1, latest: "2026-10-06T15:01:04Z" },
   ]);
-  assert.deepEqual(describeLine(plain), ["1 summary rewritten and AI reviewed"]);
+  assert.deepEqual(describeLine(plain), ["1 summary rewritten and checked against source text"]);
   // The pre-migration shape still folds, as pending.
   const [legacy] = foldChangelog([
     { day: "2026-09-16", reg_key: "3", change_type: "summary_regenerated", provision_count: 40, latest: "2026-09-16T01:00:00Z" },
   ]);
-  assert.deepEqual(describeLine(legacy), ["40 summaries rewritten, awaiting AI review"]);
+  assert.deepEqual(describeLine(legacy), ["40 summaries rewritten, not yet checked"]);
 });
 
 test("a markup-only re-import is 'links added or updated', not 'provisions updated' (7 Oct 2026)", () => {
@@ -114,29 +114,29 @@ test("a markup-only re-import is 'links added or updated', not 'provisions updat
   assert.deepEqual(describeLine(one), ["3 provisions updated", "links added or updated in 1 provision"]);
 });
 
-test("when every logged review was a correction the line says so, not 'AI reviewed (N corrected)' (7 Oct 2026)", () => {
+test("when every logged review was a correction the line says so, not 'checked against source text (N corrected)' (7 Oct 2026)", () => {
   // Passes are not logged as changes (pipeline/README.md: a pass writes no
   // provision_changes row), so "98 summaries AI reviewed (98 corrected)"
   // read as if every reviewed summary was wrong.
   const [all] = foldChangelog([
     { day: "2026-10-05", reg_key: "21", change_type: "summary_edited", provision_count: 98, latest: "2026-10-05T03:58:00Z" },
   ]);
-  assert.deepEqual(describeLine(all), ["98 summaries corrected on AI review"]);
+  assert.deepEqual(describeLine(all), ["98 summaries corrected after checking against source text"]);
   const [single] = foldChangelog([
     { day: "2026-10-05", reg_key: "p196", change_type: "summary_edited", provision_count: 1, latest: "2026-10-05T03:55:27Z" },
   ]);
-  assert.deepEqual(describeLine(single), ["1 summary corrected on AI review"]);
+  assert.deepEqual(describeLine(single), ["1 summary corrected after checking against source text"]);
   // A mix still shows the corrected count inside the reviewed count.
   const [mix] = foldChangelog([
     { day: "2026-10-05", reg_key: "3", change_type: "summary_approved", provision_count: 3, latest: "2026-10-05T04:56:53Z" },
     { day: "2026-10-05", reg_key: "3", change_type: "summary_edited", provision_count: 97, latest: "2026-10-05T04:56:53Z" },
   ]);
-  assert.deepEqual(describeLine(mix), ["100 summaries AI reviewed (97 corrected)"]);
+  assert.deepEqual(describeLine(mix), ["100 summaries checked against source text (97 corrected)"]);
   // Same rule for rewrites reviewed in the same run.
   const [rewrites] = foldChangelog([
     { day: "2026-10-06", reg_key: "11", change_type: "summary_rewritten_corrected", provision_count: 1, latest: "2026-10-06T15:01:05Z" },
   ]);
-  assert.deepEqual(describeLine(rewrites), ["1 summary rewritten and corrected on AI review"]);
+  assert.deepEqual(describeLine(rewrites), ["1 summary rewritten and corrected after checking against source text"]);
 });
 
 test("the removal of Regulation 26's Subpart JJJJ copy reads as one plain line (4 Oct 2026)", () => {
@@ -149,7 +149,7 @@ test("the removal of Regulation 26's Subpart JJJJ copy reads as one plain line (
   assert.deepEqual(describeLine(line), ["20 provisions removed"]);
 });
 
-test("no changelog phrase says a summary was 'reviewed' without 'AI' (owner decision, 4 Oct 2026)", () => {
+test("no changelog phrase says a summary was 'reviewed' or 'AI reviewed': it was 'checked against source text' (owner decision 4 Oct 2026, badge wording 9 Oct, changelog 11 Oct)", () => {
   const lines = foldChangelog([
     { day: "2026-09-14", reg_key: "7", change_type: "text_updated", provision_count: 5, latest: "2026-09-14T02:00:00Z" },
     { day: "2026-09-14", reg_key: "7", change_type: "links_updated", provision_count: 2, latest: "2026-09-14T02:00:00Z" },
@@ -163,9 +163,9 @@ test("no changelog phrase says a summary was 'reviewed' without 'AI' (owner deci
     { day: "2026-09-14", reg_key: "7", change_type: "summary_rewritten_reviewed_later", provision_count: 1, latest: "2026-09-14T01:00:00Z" },
   ]);
   for (const phrase of lines.flatMap(describeLine)) {
-    // "reviewed"/"review" only ever directly after "AI".
-    assert.doesNotMatch(phrase, /(?<!AI )\breview(ed)?\b/, phrase);
-    assert.doesNotMatch(phrase, /^Reviewed\b/, phrase);
+    // The badge says "AI-generated · automated check against source text"
+    // and the changelog says "checked": never "reviewed", with or without "AI".
+    assert.doesNotMatch(phrase, /\breview(ed|s)?\b/i, phrase);
   }
 });
 
@@ -174,7 +174,7 @@ test("counts arrive as strings from PostgREST bigint and still add up", () => {
     { day: "2026-09-14", reg_key: "gp12", change_type: "summary_approved", provision_count: "7" as unknown as number, latest: "2026-09-14T03:00:00Z" },
   ]);
   assert.equal(line.reviewed, 7);
-  assert.deepEqual(describeLine(line), ["7 summaries AI reviewed"]);
+  assert.deepEqual(describeLine(line), ["7 summaries checked against source text"]);
 });
 
 test("no rows, no lines", () => {
@@ -206,7 +206,7 @@ test("a line is split by section with the same words, and lands only in the sect
   const gp08 = lines.find((l) => l.regKey === "gp08")!;
   assert.deepEqual(describeSection(gp08, "regulatory"), ["3 provisions updated"]);
   assert.deepEqual(describeSection(gp08, "links"), ["links added or updated in 1 provision"]);
-  assert.deepEqual(describeSection(gp08, "summaries"), ["5 summaries AI reviewed (1 corrected)"]);
+  assert.deepEqual(describeSection(gp08, "summaries"), ["5 summaries checked against source text (1 corrected)"]);
   assert.deepEqual(describeLine(gp08), [...describeSection(gp08, "regulatory"), ...describeSection(gp08, "links"), ...describeSection(gp08, "summaries")]);
   assert.deepEqual(sectionLines(lines, "regulatory").map((l) => [l.dateKey, l.regKey]), [["2026-10-06", "gp08"], ["2026-10-05", null]]);
   assert.deepEqual(sectionLines(lines, "links").map((l) => [l.dateKey, l.regKey]), [["2026-10-06", "7"], ["2026-10-06", "gp08"]]);
@@ -229,11 +229,11 @@ test("the summary section's one-line total per day sums the day's regulations in
   ]);
   assert.equal(
     summaryDayTotal(lines),
-    "212 summaries AI reviewed (12 corrected) · 5 summaries rewritten and AI reviewed (1 corrected) · 1 summary rewritten (AI reviewed later) · 2 summaries rewritten, awaiting AI review"
+    "212 summaries checked against source text (12 corrected) · 5 summaries rewritten and checked against source text (1 corrected) · 1 summary rewritten (checked later) · 2 summaries rewritten, not yet checked"
   );
   // Every logged review a correction: the total says so, like the line does.
   const [all] = foldChangelog([{ day: "2026-10-07", reg_key: "3", change_type: "summary_edited", provision_count: 98, latest: "2026-10-07T01:00:00Z" }]);
-  assert.equal(summaryDayTotal([all]), "98 summaries corrected on AI review");
+  assert.equal(summaryDayTotal([all]), "98 summaries corrected after checking against source text");
   assert.doesNotMatch(summaryDayTotal(lines), /(?<!AI )reviewed/);
 });
 
@@ -305,7 +305,7 @@ test("the regulatory section's empty line names the earliest recorded day, and t
   ]);
   assert.equal(view.sections[0].emptyLine, regulatoryEmptyLine("L(2026-09-14)"));
   assert.deepEqual(view.sections[1].groups.map((g) => [g.key, g.label, g.lines.length]), [["2026-10-06", "L(2026-10-06)", 1], ["2026-09-14", "L(2026-09-14)", 1]]);
-  assert.equal(summaryDayTotal(view.sections[2].groups[0].lines), "2 summaries AI reviewed");
+  assert.equal(summaryDayTotal(view.sections[2].groups[0].lines), "2 summaries checked against source text");
   assert.equal(CHANGELOG_SECTIONS.length, 3);
   assert.match(SUMMARY_QUALITY_EXPLANATION, /official text is never changed/);
 });

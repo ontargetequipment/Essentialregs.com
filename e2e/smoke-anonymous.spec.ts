@@ -828,6 +828,47 @@ test.describe("anonymous", () => {
     expect(await links.locator("li").count()).toBeGreaterThan(0);
     await expect(links.locator("li").filter({ hasText: "corrections to our copy of the text" }).first()).toBeVisible();
     await expect(regulatory.locator("li").filter({ hasText: /corrections to our copy|links added/ })).toHaveCount(0);
+    // What "a correction to our copy" means is said once, under the links heading (11 Oct 2026).
+    await expect(links.getByText("A correction to our copy is a fix to our transcription of the text, with the official text unchanged.")).toHaveCount(1);
+    // The summaries are "checked against source text", never "AI reviewed" (the badge's own wording since 9 Oct 2026).
+    const text = await page.locator("main").innerText();
+    expect(text).not.toMatch(/AI[\s-]+review/i);
+    await expect(summaryDays.first().locator("summary")).toContainText(/checked against source text|rewritten|corrected/);
+  });
+
+  test("/about lists the corpus from the database, dated and counted by jurisdiction, with no 'More is coming'", async ({ page }) => {
+    // Sprint 8 (11 Oct 2026): "What's covered today" was a hand-written list
+    // of four documents; it is now the released regulation roots grouped like
+    // the /states/colorado and /federal indexes. The database always holds
+    // the Colorado and federal documents the groups below name.
+    const res = await page.goto("/about");
+    expect(res?.status()).toBe(200);
+    const section = page.locator("section").filter({ has: page.getByRole("heading", { name: "What's covered today" }) });
+    await expect(section).toContainText(/the corpus holds \d+ documents: \d+ from Colorado and \d+ federal\./);
+    await expect(section).toContainText("Air Quality Control Commission (5 CCR 1001)");
+    await expect(section).toContainText("APCD General Permits");
+    await expect(section).toContainText("Energy and Carbon Management Commission (2 CCR 404-1)");
+    await expect(section).toContainText(/40 CFR Part 60/);
+    await expect(section).toContainText("PHMSA");
+    await expect(section).not.toContainText("More is coming");
+    await expect(section.locator('a[href="/states"]')).toHaveCount(1);
+    await expect(section.locator('a[href="/sample"]')).toHaveCount(1);
+    expect(await page.locator("main").innerText()).not.toMatch(/AI[\s-]+review/i);
+  });
+
+  test("citations print in their stored case: no uppercase transform on an index or reader citation", async ({ page }) => {
+    // Previews showed "§ 60.5365B(E)" for "§ 60.5365b(e)" because the eyebrow
+    // CSS upper-cased its text (11 Oct 2026). The text in the DOM was always
+    // right; the computed style is what a reader saw.
+    await page.goto("/states/colorado");
+    const indexCitation = page.locator('a[href$="/preview"] p').first();
+    expect(await indexCitation.evaluate((el) => getComputedStyle(el).textTransform)).toBe("none");
+    await page.goto("/regulations/gp05");
+    for (const selector of [".reg-eyebrow", ".nav-reg-title"]) {
+      const el = page.locator(selector).first();
+      await expect(el, selector).toBeAttached();
+      expect(await el.evaluate((node) => getComputedStyle(node).textTransform), selector).toBe("none");
+    }
   });
 
   test("/sitemap.xml lists more than 50 URLs", async ({ page }) => {

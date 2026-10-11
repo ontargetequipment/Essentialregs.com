@@ -5,6 +5,7 @@ export type { ChangelogCountRow, ChangelogLine, ChangelogResult, ChangelogSectio
 export {
   CHANGELOG_SECTIONS,
   CHANGELOG_UNAVAILABLE_NOTICE,
+  LINKS_EXPLANATION,
   SUMMARY_QUALITY_EXPLANATION,
   buildChangelogView,
   describeLine,
