@@ -867,7 +867,7 @@ function headlineOf(ix, termSet) {
   return words.slice(start, end).map((w) => (isHit(w) ? `<mark>${w}</mark>` : w)).join(" ");
 }
 
-function searchProvisions(args, ctx) {
+function searchProvisions(args, ctx, docKey = null) {
   const q = String(args.q ?? "");
   const lim = Math.max(1, Number.isFinite(Number(args.lim)) ? Number(args.lim) : 25);
   const clauses = parseWebQuery(q);
@@ -878,6 +878,7 @@ function searchProvisions(args, ctx) {
   const hits = [];
   for (const p of T.provisions) {
     if (!provisionVisible(p, ctx, staged)) continue;
+    if (docKey !== null && p.reg_key !== docKey) continue;
     const ix = indexOf(p);
     const ok = clauses.some((c) => clauseMatches(c, ix));
     if (!ok) continue;
@@ -922,6 +923,11 @@ function rpc(name, args, ctx, req) {
   switch (name) {
     case "search_provisions":
       return searchProvisions(args, ctx);
+    case "search_provisions_in_document":
+      // Scoped to one reg_key before the limit; RLS (provisionVisible) still decides what the caller sees.
+      return searchProvisions({ q: args.q, lim: Math.min(Number(args.lim ?? 10) || 10, 50) }, ctx, String(args.doc_key ?? "").trim().toLowerCase()).map(
+        ({ id, citation, title, headline, rank }) => ({ id, citation, title, headline, rank }),
+      );
     case "provision_path":
       return provisionPath(String(args.p_id ?? ""), ctx);
     case "changelog_snapshot_public":

@@ -10,7 +10,7 @@
  * and the page its citation opens. The visitor does every action; the tour
  * only watches the page and moves on when the action has happened:
  *
- *   1. the jump box: type "frequency", pick VI.D -> advances ONLY when the
+ *   1. the jump box: type "sampling", pick VI.D -> advances ONLY when the
  *                                                  reader lands on VI.D through the jump box
  *   2. VI.D's official text and Table 2           -> Next
  *   3. VI.D's summary control                     -> advances when the summary is open
@@ -46,7 +46,7 @@ export type TourView = TourStep | "closing";
 /**
  * What the visitor opens in steps 1 and 4, resolved to ids the way the jump
  * box resolves a typed citation (jumpTargetFor). Step 1 types a WORD, not the
- * citation (copy: "Type frequency in the box and pick VI.D from the
+ * citation (copy: "Type sampling in the box and pick VI.D from the
  * matches"); VI.D is what it must land on.
  */
 export const TOUR_JUMPS = { first: "VI.D", second: "VI.C" } as const;
@@ -73,8 +73,8 @@ export const TOUR_START_HREF = `/regulations/${TOUR_REG}?${TOUR_PARAM}=1`;
 /** The walkthrough's words. Every callout's text is here, in one place. */
 export const TOUR_COPY = {
   scenario: "You run storage tanks under GP05 using site-specific emission factors. How often do you have to sample?",
-  step1: "Type frequency in the box and pick VI.D from the matches.",
-  step1Docked: "Tap Contents, type frequency in the box at the top and pick VI.D from the matches.",
+  step1: "Type sampling in the box and pick VI.D from the matches.",
+  step1Docked: "Tap Contents, type sampling in the box at the top and pick VI.D from the matches.",
   step2: "This is the regulation as issued. Table 2 below sets the parameters and frequency.",
   step3: "Open the plain-English summary.",
   /** Not carried by the summary panel itself (its badge tooltip says only "The source text controls"), so the callout says it. */

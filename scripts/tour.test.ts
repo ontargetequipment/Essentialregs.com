@@ -292,8 +292,8 @@ test("the event route accepts the five events with a step 1-7 and a session id, 
 
 test("the callouts say what the brief says", () => {
   assert.equal(TOUR_COPY.scenario, "You run storage tanks under GP05 using site-specific emission factors. How often do you have to sample?");
-  assert.equal(TOUR_COPY.step1, "Type frequency in the box and pick VI.D from the matches.");
-  assert.equal(TOUR_COPY.step1Docked, "Tap Contents, type frequency in the box at the top and pick VI.D from the matches.");
+  assert.equal(TOUR_COPY.step1, "Type sampling in the box and pick VI.D from the matches.");
+  assert.equal(TOUR_COPY.step1Docked, "Tap Contents, type sampling in the box at the top and pick VI.D from the matches.");
   assert.equal(TOUR_COPY.step2, "This is the regulation as issued. Table 2 below sets the parameters and frequency.");
   assert.equal(TOUR_COPY.step3, "Open the plain-English summary.");
   assert.equal(TOUR_COPY.officialControls, "The official text controls; the summary is a reading aid.");

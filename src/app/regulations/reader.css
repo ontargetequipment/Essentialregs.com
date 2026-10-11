@@ -140,6 +140,14 @@
   font-size: 12.5px;
   color: var(--ink-soft);
 }
+/* A text match's excerpt (search_provisions_in_document's headline). */
+.reg-reader .jr-snip mark {
+  background: #fff3b0;
+  color: var(--ink);
+  font-weight: 600;
+  padding: 0 1px;
+  border-radius: 2px;
+}
 
 .reg-reader .nav-reg {
   margin-bottom: 18px;

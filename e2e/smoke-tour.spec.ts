@@ -7,7 +7,7 @@
  * The subscriber's version is in smoke-signed-in.spec.ts.
  *
  * The seven steps, logged out:
- *   1  GP05 reader, the jump box: type frequency, pick VI.D from the matches
+ *   1  GP05 reader, the jump box: type sampling, pick VI.D from the matches
  *   2  VI.D, Next                       3  VI.D's summary control
  *   4  the open summary, jump to VI.C   5  VI.C's Regulation 7 I.C.1 link
  *   6  the focused preview of I.C.1: open I.C.1.a's summary
@@ -52,7 +52,7 @@ import {
   summaryControl,
   summaryPanel,
   tagsOf,
-  typeFrequency,
+  typeSampling,
   walkToClosing,
   walkToStep5,
 } from "./tour-helpers";
@@ -120,7 +120,7 @@ test.describe("guided walkthrough", () => {
     // 1 -- the scenario and the jump box.
     await expect(count(page)).toHaveText("Step 1 of 7");
     await expect(c).toContainText("You run storage tanks under GP05 using site-specific emission factors. How often do you have to sample?");
-    await expect(c).toContainText("Type frequency in the box and pick VI.D from the matches.");
+    await expect(c).toContainText("Type sampling in the box and pick VI.D from the matches.");
     await expect(c.getByTestId("tour-skip")).toHaveText("Skip tour");
     await expect(c.getByTestId("tour-restart")).toBeVisible();
     // Anchored to the jump box: in the sidebar column, right above or below it.
@@ -137,7 +137,7 @@ test.describe("guided walkthrough", () => {
     await shot(page, testInfo, "tour-1280-step1");
 
     // Typed, not picked: nothing moves.
-    await typeFrequency(page);
+    await typeSampling(page);
     await page.waitForTimeout(500);
     await expect(c).toHaveAttribute("data-step", "1");
     expect(new URL(page.url()).hash).toBe("");
@@ -280,8 +280,8 @@ test.describe("guided walkthrough", () => {
     await stays("Forward to VI.D");
 
     // Typed into the jump box but not picked.
-    await typeFrequency(page);
-    await stays("frequency typed, nothing picked");
+    await typeSampling(page);
+    await stays("sampling typed, nothing picked");
     expect(tagsOf(events)).toEqual(["tour_start:1", "tour_step:1"]);
 
     // Enter in the jump box on the VI.D match is the jump box: it moves on.
@@ -476,12 +476,12 @@ test.describe("guided walkthrough", () => {
     await page.setViewportSize({ width: 375, height: H });
     const events = await captureTourEvents(page);
 
-    // 1 -- Tap Contents, type frequency, pick VI.D.
+    // 1 -- Tap Contents, type sampling, pick VI.D.
     await openTour(page);
     await expectDocked(page, 1, null, H);
     await expect(count(page)).toHaveText("Step 1 of 7");
     await expect(callout(page)).toContainText("You run storage tanks under GP05 using site-specific emission factors.");
-    await expect(callout(page)).toContainText("Tap Contents, type frequency in the box at the top and pick VI.D from the matches.");
+    await expect(callout(page)).toContainText("Tap Contents, type sampling in the box at the top and pick VI.D from the matches.");
     await shot(page, testInfo, "tour-375-step1");
     // "Contents" stays above the dock and opens the sidebar with the jump box.
     const toggle = page.locator("#mobile-toggle");

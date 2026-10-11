@@ -37,6 +37,16 @@ import {
 } from "@/lib/reader-nav";
 import { regKeyOf, regulationDisplayName, textLabelFor } from "@/lib/regulation-names";
 import { normalizeJumpKey, summaryBadgeClass } from "@/lib/snippet";
+import {
+  citationMatches,
+  JUMP_DEBOUNCE_MS,
+  JUMP_EMPTY_HTML,
+  JUMP_ERROR_HTML,
+  jumpItemsHtml,
+  jumpQueryKey,
+  mergeJumpResults,
+  type JumpTextHit,
+} from "@/lib/jump-search";
 import { isPublicReaderReg, provisionDestination } from "@/lib/destination";
 import { readRecentVisits, recentListHtml, recordRecentVisit } from "@/lib/reader-client";
 import type { SearchRow } from "@/lib/snippet";
@@ -778,9 +788,6 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
     function escapeHtml(s: string) {
       return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
-    function escapeAttr(s: string) {
-      return escapeHtml(s).replace(/"/g, "&quot;");
-    }
 
     // The jump box is an ARIA combobox over a listbox: the input keeps focus
     // while ArrowUp/ArrowDown move an "active" option (aria-activedescendant),
@@ -822,54 +829,117 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       jumpResults?.classList.add("show");
       jumpbox?.setAttribute("aria-expanded", "true");
     }
-    function hideResults() {
+    // The list is hidden without touching a request in flight (runSearch
+    // does that while the text answer is pending) ...
+    function hideList() {
       jumpResults?.classList.remove("show");
       jumpbox?.setAttribute("aria-expanded", "false");
       setActive(-1);
     }
+    // ... and closed for good by everything else (Escape, a pick, a click
+    // outside), which also drops the pending request.
+    function hideResults() {
+      cancelText();
+      hideList();
+    }
+
+    // The text half of the list (11 Oct 2026): the server's keyword search
+    // inside this document, asked ~150 ms after the last keystroke. The
+    // citation matches are painted at once from the reader's own rows; the
+    // text matches join them under it when the answer arrives. While the
+    // request is out nothing else changes on screen (no spinner, no "No
+    // matches"). One request at a time: a new query aborts the old one, and
+    // a late answer for an old query is dropped by its sequence number.
+    const textCache = new Map<string, JumpTextHit[]>();
+    let textTimer: ReturnType<typeof setTimeout> | null = null;
+    let textAbort: AbortController | null = null;
+    let textSeq = 0;
+    let pendingKey: string | null = null;
+    function cancelText() {
+      if (textTimer !== null) clearTimeout(textTimer);
+      textTimer = null;
+      textAbort?.abort();
+      textAbort = null;
+      pendingKey = null;
+      textSeq++;
+    }
+    function paintJump(cit: SearchRow[], text: JumpTextHit[] | null) {
+      if (!jumpResults) return;
+      const items = mergeJumpResults(cit, text);
+      const was = optionEls()[activeIdx]?.dataset.slug;
+      jumpResults.innerHTML = items.length ? jumpItemsHtml(items) : JUMP_EMPTY_HTML;
+      showResults();
+      // A late answer must not move the highlight the visitor arrowed to.
+      const again = was ? optionEls().findIndex((el) => el.dataset.slug === was) : -1;
+      setActive(again);
+    }
+    function askServer(key: string, q: string) {
+      if (!pageKey) {
+        pendingKey = null;
+        return;
+      }
+      const ctl = new AbortController();
+      textAbort = ctl;
+      const seq = ++textSeq;
+      const settle = (text: JumpTextHit[] | null) => {
+        if (seq !== textSeq || !jumpbox) return;
+        textAbort = null;
+        pendingKey = null;
+        const cit = citationMatches(getSearchIndex(), jumpbox.value);
+        if (text) {
+          textCache.set(key, text);
+          paintJump(cit, text);
+        } else if (!cit.length && jumpResults) {
+          jumpResults.innerHTML = JUMP_ERROR_HTML;
+          showResults();
+        }
+      };
+      fetch(`/api/reader-search?reg=${encodeURIComponent(pageKey)}&q=${encodeURIComponent(q)}`, {
+        signal: ctl.signal,
+        credentials: "same-origin",
+      })
+        .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+        .then((body: { results?: JumpTextHit[] }) => settle(Array.isArray(body.results) ? body.results : []))
+        .catch(() => {
+          if (!ctl.signal.aborted) settle(null);
+        });
+    }
 
     function runSearch(qRaw: string) {
-      const q = qRaw.trim().toLowerCase();
       if (!jumpResults) return;
-      setActive(-1);
+      const q = qRaw.trim();
       if (!q) {
+        cancelText();
         jumpResults.innerHTML = "";
-        hideResults();
+        hideList();
         return;
       }
-      // Citations match on the normalized key (no §, no spaces), the text on
-      // the query as typed: "60.5416 (b)(1)" finds "§ 60.5416(b)(1)".
-      const qKey = normalizeJumpKey(qRaw);
-      const idMatches: SearchRow[] = [];
-      const textMatches: SearchRow[] = [];
-      for (const row of getSearchIndex()) {
-        if (qKey && normalizeJumpKey(row[1]).indexOf(qKey) === 0) {
-          idMatches.push(row);
-        } else if (row[2].toLowerCase().indexOf(q) !== -1) {
-          textMatches.push(row);
-        }
-        if (idMatches.length >= 12) break;
+      const key = jumpQueryKey(qRaw);
+      const cit = citationMatches(getSearchIndex(), qRaw);
+      const cached = textCache.get(key);
+      if (cached) {
+        cancelText();
+        paintJump(cit, cached);
+        return;
       }
-      const combined = idMatches.concat(textMatches).slice(0, 15);
-      if (!combined.length) {
-        jumpResults.innerHTML = '<div class="jr-item jr-empty">No matches</div>';
+      // Not asked yet (or a different query than the one in flight): the
+      // citation matches now, the text matches when the server answers.
+      if (pendingKey !== key) {
+        cancelText();
+        pendingKey = key;
+        textTimer = setTimeout(() => {
+          textTimer = null;
+          askServer(key, q.slice(0, 200));
+        }, JUMP_DEBOUNCE_MS);
+      }
+      setActive(-1);
+      if (cit.length) {
+        jumpResults.innerHTML = jumpItemsHtml(mergeJumpResults(cit, null));
         showResults();
-        return;
+      } else {
+        jumpResults.innerHTML = "";
+        hideList();
       }
-      jumpResults.innerHTML = combined
-        .map((row) => {
-          // row[2] is "" for a row whose text is only its own citation
-          // (snippetAfterCitation no longer falls back to the label) --
-          // skip the span rather than emit an empty one.
-          const snip = row[2] ? `<span class="jr-snip">${escapeHtml(row[2])}</span>` : "";
-          return `<div class="jr-item" role="option" id="jump-opt-${escapeAttr(
-            row[0]
-          )}" aria-selected="false" data-slug="${escapeAttr(row[0])}"><span class="jr-id">${escapeHtml(
-            row[1]
-          )}</span>${snip}</div>`;
-        })
-        .join("");
-      showResults();
     }
     function onJumpInput() {
       if (jumpbox) runSearch(jumpbox.value);
@@ -925,7 +995,7 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
         if (slug) openResult(slug);
         return;
       }
-      if (e.key === "Escape" && (resultsShown() || activeIdx >= 0)) hideResults();
+      if (e.key === "Escape" && (resultsShown() || activeIdx >= 0 || pendingKey !== null)) hideResults();
     }
     jumpbox.addEventListener("input", onJumpInput);
     jumpbox.addEventListener("focus", onJumpFocus);
@@ -998,6 +1068,7 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       toggle?.removeEventListener("click", onToggleClick);
       sidebar.removeEventListener("click", onSidebarClick);
       sidebarScrim?.removeEventListener("click", closeSidebar);
+      cancelText();
       jumpbox.removeEventListener("input", onJumpInput);
       jumpbox.removeEventListener("focus", onJumpFocus);
       jumpbox.removeEventListener("keydown", onJumpKeydown);

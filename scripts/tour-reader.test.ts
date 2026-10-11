@@ -2,7 +2,7 @@
  * The guided GP05 walkthrough on the real RegulationReader and ReaderTour
  * under React in jsdom (Sprint 7): what moves each step on, with a reader
  * shaped like GP05 -- VI.C (with the Regulation 7 I.C.1 link) and VI.D (with
- * a summary and the word "frequency").
+ * a summary and text that ends in the word "sampling", past the first 90 characters).
  *
  *   - step 1 moves on only when VI.D is reached through the jump box (a click
  *     on its match, or Enter on it): a typed hash, a sidebar link and
@@ -62,7 +62,7 @@ const gp05 = renderReaderBody([
     '<p>The owner or operator shall comply with <a class="xref-external-reg" href="/regulations/7#sec-7-B-I-C-1">Section I.C.1.</a> of Regulation Number 7 and ' +
       '<a class="xref-external-reg" href="/regulations/7#sec-7-B-II-B-2">II.B.2.</a></p>'
   ),
-  row("sec-gp05-VI-D", "VI.D.", "sec-gp05-VI", "<p>At the frequency specified in Table 2, the owner or operator of storage tanks shall sample.</p>", {
+  row("sec-gp05-VI-D", "VI.D.", "sec-gp05-VI", "<p>At the frequency specified in Table 2, the owner or operator of storage tanks utilizing site-specific emission factors must complete site-specific sampling.</p>", {
     ai_summary: "Sampling happens at the frequency in Table 2.",
     summary_status: "approved",
   }),
@@ -179,6 +179,14 @@ async function boot(opts: {
       const b = JSON.parse(init?.body ?? "{}");
       sent.push({ event: b.event, step: b.step });
     }
+    // The jump box's text matches (/api/reader-search): the word "sampling" is in VI.D, past the first 90 characters.
+    if (String(url).startsWith("/api/reader-search")) {
+      const q = new URL(String(url), "http://localhost").searchParams.get("q") ?? "";
+      const results = /sampl/i.test(q)
+        ? [{ id: "sec-gp05-VI-D", citation: "VI.D.", headline: "must complete site-specific <mark>sampling</mark>." }]
+        : [];
+      return { ok: true, status: 200, json: async () => ({ results }) };
+    }
     return { ok: true, status: 204, json: async () => ({}) };
   }) as typeof fetch;
 
@@ -252,6 +260,8 @@ async function boot(opts: {
 }
 
 const GP05_PATH = "/regulations/gp05?tour=1";
+/** The jump box asks the server ~150 ms after the last keystroke; wait that and the answer. */
+const JUMP_WAIT = 260;
 const rowIn = (document: Document, id: string) => document.querySelector<HTMLElement>(`#doc > [id="${id}"]`)!;
 
 test("step 1 moves on only through the jump box; steps 2-4 move as the visitor acts; step 5 is taken, and moves nothing", async (t) => {
@@ -287,8 +297,9 @@ test("step 1 moves on only through the jump box; steps 2-4 move as the visitor a
     assert.deepEqual(tags(), ["tour_start:1", "tour_step:1"]);
   });
 
-  await t.test("frequency typed but nothing picked: still step 1; the match for VI.D is offered", async () => {
-    await type("frequency");
+  await t.test("sampling typed but nothing picked: still step 1; the match for VI.D is offered", async () => {
+    await type("sampling");
+    await settle(JUMP_WAIT);
     assert.ok($('#jump-results .jr-item[data-slug="sec-gp05-VI-D"]'), "VI.D is among the matches for the word");
     await settle(60);
     assert.equal(callout()?.getAttribute("data-step"), "1");
@@ -368,7 +379,8 @@ test("step 1 moves on only through the jump box; steps 2-4 move as the visitor a
   });
 
   await t.test("a click on the VI.D match moves it on (the pointer path)", async () => {
-    await type("frequency");
+    await type("sampling");
+    await settle(JUMP_WAIT);
     await click($('#jump-results .jr-item[data-slug="sec-gp05-VI-D"]'));
     await settle();
     assert.equal(callout()?.getAttribute("data-step"), "2");
