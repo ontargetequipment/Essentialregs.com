@@ -592,7 +592,7 @@ test.describe("signed in", () => {
     expect(res?.status()).toBe(200);
     await expect(page.getByText("Ask is part of the subscription")).toHaveCount(0);
     await expect(page.getByText("Mapped question: Natural gas-fired engines")).toHaveCount(1);
-    await expect(page.getByText(/The fuel splits the rules/)).toHaveCount(1);
+    await expect(page.getByTestId("map-intro").getByText(/The fuel splits the rules/)).toHaveCount(1);
     await expect(page.getByText("Not shown because you said natural gas:", { exact: false })).toHaveCount(1);
     await expect(page.getByText("diesel engine provisions (GP06, Subpart IIII)", { exact: false })).toHaveCount(1);
     await expect(page.getByRole("link", { name: "Show them" })).toHaveAttribute("href", /[?&]facets=all/);
@@ -616,6 +616,34 @@ test.describe("signed in", () => {
     expect(await page.getByText("Why it's here:", { exact: false }).count()).toBeGreaterThan(0);
     expect(await page.locator("ol > li > a").count()).toBeGreaterThan(0);
     await expect(page.getByRole("link", { name: "Show as a flat list" })).toHaveAttribute("href", /[?&]flat=1/);
+
+    // Sprint 8 (11 Oct 2026): the research map comes first. The line that says
+    // what Ask is, the table with one row per group (the same groups, in the
+    // same order, as the h2s below it), the introduction under "Reading of the
+    // provisions above", then the cards.
+    const map = page.getByTestId("ask-map");
+    await expect(map.getByTestId("ask-finds-line")).toHaveText("It finds provisions; it does not decide what applies to you.");
+    await expect(map.getByRole("columnheader")).toHaveText(["Question component", "Provision", "Why it matters"]);
+    expect(await map.getByRole("rowheader").allInnerTexts()).toEqual(headings);
+    // Every provision of the table is a reader link (Ask is for subscribers), and the omitted fuel's rows are not in it.
+    const mapHrefs = await map.locator("tbody a").evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
+    expect(mapHrefs.length).toBeGreaterThan(5);
+    for (const href of mapHrefs) expect(href, href).toMatch(/^\/regulations\/[^/]+#/);
+    expect(mapHrefs.some((h) => h.startsWith("/regulations/gp06") || h.startsWith("/regulations/iiii"))).toBe(false);
+    const reading = page.getByTestId("ask-reading");
+    await expect(reading.getByRole("heading", { level: 3, name: "Reading of the provisions above" })).toBeVisible();
+    const mapBox = await map.boundingBox();
+    const readingBox = await reading.boundingBox();
+    const firstGroup = await page.getByRole("heading", { level: 2 }).first().boundingBox();
+    expect(mapBox && readingBox && firstGroup && mapBox.y + mapBox.height <= readingBox.y + 1 && readingBox.y < firstGroup.y).toBe(true);
+    // The finds line is above the map and below the "Mapped question" line.
+    const mapped = await page.getByText("Mapped question:", { exact: false }).boundingBox();
+    const lineBox = await map.getByTestId("ask-finds-line").boundingBox();
+    expect(mapped && lineBox && mapped.y < lineBox.y && lineBox.y < mapBox!.y + mapBox!.height).toBe(true);
+    // Phone width: no sideways scroll.
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    await page.setViewportSize({ width: 1280, height: 720 });
 
     // "Show them": the whole map, titled for both fuels, GP06 back, no omitted line.
     const all = await page.goto("/search?mode=ask&facets=all&q=" + encodeURIComponent(q));
@@ -685,7 +713,7 @@ test.describe("signed in", () => {
     const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
     expect(res?.status()).toBe(200);
     await expect(page.getByText("Mapped question: Storage tanks and tank batteries")).toHaveCount(1);
-    await expect(page.getByText(/Regulation 7 Part B Section I\.D\.3\.a requires storage tanks/)).toHaveCount(1);
+    await expect(page.getByTestId("map-intro").getByText(/Regulation 7 Part B Section I\.D\.3\.a requires storage tanks/)).toHaveCount(1);
     expect(await page.getByRole("heading", { level: 2 }).count()).toBeGreaterThan(0);
     // Subpart HH is not in the corpus: the tanks map has no Federal NESHAP row, and an
     // empty group is not rendered.
@@ -701,7 +729,7 @@ test.describe("signed in", () => {
     const res = await page.goto("/search?mode=ask&q=" + encodeURIComponent(q));
     expect(res?.status()).toBe(200);
     await expect(page.getByText("Mapped question: Leak detection and repair at well production facilities and compressor stations")).toHaveCount(1);
-    await expect(page.getByText(/Regulation 7 Part B Section II\.E is a State Only leak detection/)).toHaveCount(1);
+    await expect(page.getByTestId("map-intro").getByText(/Regulation 7 Part B Section II\.E is a State Only leak detection/)).toHaveCount(1);
     expect(await page.getByRole("heading", { level: 2 }).count()).toBeGreaterThan(0);
     await expect(page.getByRole("heading", { level: 2, name: "Colorado standards" })).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 2, name: "Federal NESHAP" })).toHaveCount(0);

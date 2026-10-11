@@ -6,7 +6,8 @@ import { displayCitation } from "@/lib/federal-citation";
 import { CITATION_EYEBROW_CLASS } from "@/lib/ui";
 import { provisionDestination } from "@/lib/destination";
 import { SummaryBadge } from "@/components/SummaryBadge";
-import { MapIntro } from "@/components/MapIntro";
+import { AskReading, AskResearchMap } from "@/components/AskResearchMap";
+import { askMapRows } from "@/lib/ask-map-rows";
 import { AskCard, PROVENANCE_LABEL_CLASS, textNoun, type AskRow, type ReviewRow } from "@/components/AskCard";
 import { detectTestMethod } from "@/lib/test-method-search";
 import { createClient } from "@/lib/supabase/server";
@@ -343,6 +344,25 @@ export default async function SearchPage(props: PageProps<"/search">) {
       for (const r of (rows ?? []) as ReviewRow[]) reviewOf.set(r.id, r);
     }
   }
+
+  // The research map above the Ask answer (Sprint 8, 11 Oct 2026): one row
+  // per group the layout above produced, built by the same askMapRows the
+  // /sample page calls. The "Why it matters" falls back to a summary sentence
+  // only for a summary the automated review approved or edited (the same
+  // status the card's badge reads); every link is the card's own (hrefForHit).
+  const researchRows =
+    askMap && grouped
+      ? askMapRows({
+          map: askMap,
+          grouped,
+          source: (id) => mapRows.get(id),
+          hrefFor: hrefForHit,
+          summaryOf: (id) => {
+            const r = reviewOf.get(id);
+            return r && (r.summary_status === "approved" || r.summary_status === "edited") ? r.ai_summary : null;
+          },
+        })
+      : [];
 
   // Heading-only rows among the Ask hits (a section, not a provision: its
   // text is nothing but its heading, the same test search_provisions uses to
@@ -742,13 +762,17 @@ export default async function SearchPage(props: PageProps<"/search">) {
                 {premise.sentences.map((sentence, i) => (
                   <li key={i}>
                     {sentence.text}{" "}
-                    <span className="whitespace-nowrap text-xs text-muted">
+                    {/* Each citation on one line, the list free to wrap between them (Sprint 8, 11 Oct 2026; see MapIntro). */}
+                    <span className="text-xs text-muted">
                       {sentence.cites.map((id, j) => (
                         <span key={id}>
-                          {j > 0 && ", "}
-                          <Link href={provisionDestination({ id, reg_key: citeRegKey(id) }, { hasAccess: access.hasAccess })} className="underline hover:text-accent">
-                            {citeLabel(id)}
-                          </Link>
+                          <span className="whitespace-nowrap">
+                            <Link href={provisionDestination({ id, reg_key: citeRegKey(id) }, { hasAccess: access.hasAccess })} className="underline hover:text-accent">
+                              {citeLabel(id)}
+                            </Link>
+                            {j < sentence.cites.length - 1 && ","}
+                          </span>
+                          {j < sentence.cites.length - 1 && " "}
                         </span>
                       ))}
                     </span>
@@ -768,9 +792,14 @@ export default async function SearchPage(props: PageProps<"/search">) {
             <span className="font-mono text-eyebrow uppercase text-tag">Mapped question:</span>{" "}
             <span className="font-semibold text-ink">{mapTitle(askMap, stated)}</span>
           </p>
-          {/* The introduction, sentence by sentence with the provisions that
-              support each (9 Oct 2026), the way a premise note shows them. */}
-          <MapIntro factors={askMap.factors} hasAccess={access.hasAccess} />
+          {/* The research map first (Sprint 8, 11 Oct 2026): one row per group,
+              Question component | Provision | Why it matters, under the line
+              that says what Ask is. The map's introduction -- sentence by
+              sentence with the provisions that support each (9 Oct 2026), the
+              way a premise note shows them -- follows it as "Reading of the
+              provisions above", and the cards after that. */}
+          <AskResearchMap rows={researchRows} />
+          <AskReading factors={askMap.factors} hasAccess={access.hasAccess} />
           <p className="mt-1 text-xs text-muted">
             <Link href={askUrl(includeBasis, jurisdiction, regFilter, true)} className="font-medium text-ink-soft underline">
               Show as a flat list

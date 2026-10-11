@@ -3,6 +3,7 @@ import { formatDayMonthYear } from "@/lib/dates";
 import { isPublicReaderReg, provisionDestination } from "@/lib/destination";
 import { OTHER_GROUP, layoutAsk, matchQuestionMap, type QuestionMap } from "@/lib/question-maps";
 import { regKeyOf } from "@/lib/regulation-names";
+import { askMapRows, type AskMapRow } from "@/lib/ask-map-rows";
 
 /**
  * The pure half of the /sample page (Sprint 4, 10 Oct 2026): the frozen
@@ -273,4 +274,31 @@ export function collapseAnswer(
     if (s.items.length > perGroup) rest.push({ title: s.title, items: s.items.slice(perGroup) });
   }
   return { head, rest };
+}
+
+/**
+ * The research map above the Ask example (Sprint 8, 11 Oct 2026): one row per
+ * group of the answer, built by the same askMapRows /search?mode=ask uses.
+ * Each provision links where sampleHref says for this viewer (the reader for a
+ * GP05 row or a subscriber, the focused preview for everything else), so the
+ * table opens nothing a card would not. A "Why it matters" falls back to a
+ * summary sentence only for a row whose summary was hydrated, which is GP05's
+ * alone (summaryIds), and only an approved or edited one.
+ */
+export function sampleMapRows(
+  ask: ReturnType<typeof layoutSampleAsk>,
+  rows: Map<string, SampleRow>,
+  hasAccess: boolean
+): AskMapRow[] {
+  if (!ask.map || !ask.grouped) return [];
+  return askMapRows({
+    map: ask.map,
+    grouped: ask.grouped,
+    source: (id) => ask.canonicalRows.get(id),
+    hrefFor: (row) => sampleHref(row, hasAccess),
+    summaryOf: (id) => {
+      const r = rows.get(id);
+      return r && (r.summary_status === "approved" || r.summary_status === "edited") ? (r.ai_summary ?? null) : null;
+    },
+  });
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getAccessStatus } from "@/lib/access";
 import { isPublicReaderReg } from "@/lib/destination";
 import { AskCard } from "@/components/AskCard";
-import { MapIntro } from "@/components/MapIntro";
+import { AskReading, AskResearchMap } from "@/components/AskResearchMap";
 import { loadSampleRows } from "@/lib/sample-snapshot";
 import { TRIAL_DAYS } from "@/lib/pricing";
 import { buttonClass } from "@/lib/ui";
@@ -11,12 +11,12 @@ import {
   RECOMMENDED_START,
   SNAPSHOT,
   answerSections,
-  collapseAnswer,
   isOpenForViewer,
   keywordHits,
   layoutSampleAsk,
   moreResultsLabel,
   sampleHref,
+  sampleMapRows,
   showingLine,
   snapshotDateLabel,
   splitKeywordHits,
@@ -52,6 +52,15 @@ export const metadata = {
 // the real GP05 reader with ?tour=1 (src/lib/tour.ts), where the visitor does
 // the research once. The search and Ask example is the second section, a
 // collapsed <details> of its own, with its two inner disclosures unchanged.
+//
+// Sprint 8 (11 Oct 2026) turned the Ask example into a research map: the
+// table first (Question component | Provision | Why it matters, one row per
+// group, src/components/AskResearchMap.tsx), the map's cited introduction
+// under it as "Reading of the provisions above", then the cards behind the one
+// "See the complete sample answer" disclosure. /search?mode=ask renders the
+// same component in the same order. The reviewer had read the narrative as
+// the answer and the provisions as supporting detail; the order says the
+// reverse.
 //
 // A result in GP05 is a normal card with its checked summary and opens in the
 // reader. Every other result is a locked card: where it lives in the corpus,
@@ -117,7 +126,8 @@ export default async function SamplePage() {
   const ask = layoutSampleAsk(rows);
   const stated = ask.stated;
   const { first: keywordFirst, more: keywordMore } = splitKeywordHits(keyword);
-  const { head: answerHead, rest: answerRest } = collapseAnswer(answerSections(ask));
+  const answer = answerSections(ask);
+  const mapRows = sampleMapRows(ask, rows, hasAccess);
 
   /** One card: a normal one for a row the viewer may open, a locked one for the rest. */
   const card = (hit: SampleHit, opts: { why?: string } = {}) => {
@@ -138,12 +148,9 @@ export default async function SamplePage() {
   };
 
   /** One group of the Ask answer: its heading and its cards. */
-  const section = (g: AnswerSection, suffix = "") => (
+  const section = (g: AnswerSection) => (
     <section key={g.title} className="mt-8">
-      <h3 className="font-serif text-lg font-bold tracking-tight text-ink">
-        {g.title}
-        {suffix}
-      </h3>
+      <h3 className="font-serif text-lg font-bold tracking-tight text-ink">{g.title}</h3>
       <ol className="mt-3 flex flex-col gap-3">{g.items.map((it) => card(it.hit, { why: it.why }))}</ol>
     </section>
   );
@@ -239,18 +246,23 @@ export default async function SamplePage() {
                     {mapTitle(ask.map, stated)}
                   </span>
                 </p>
-                <MapIntro factors={ask.map.factors} hasAccess={hasAccess} />
-                {answerHead.map((g) => section(g))}
-                {answerRest.length > 0 && (
-                  // The rest of every group (Sprint 5, 10 Oct 2026): each group
-                  // above opens with its first three provisions; this reveals
-                  // the remainder, group by group, in the same order.
+                {/* The research map first, the map's cited introduction under it as
+                    the secondary reading, then the cards (Sprint 8, 11 Oct 2026). */}
+                <AskResearchMap rows={mapRows} />
+                <AskReading factors={ask.map.factors} hasAccess={hasAccess} />
+                {answer.length > 0 && (
+                  // The cards, group by group (Sprint 8, 11 Oct 2026): the table
+                  // above already lists every provision of every group with its
+                  // link, so the cards -- summary, badge, "why it's here" -- sit
+                  // behind the one disclosure (Sprint 5 opened three per group
+                  // and kept the rest behind it; now all of them are). They are
+                  // still in the HTML; no script runs.
                   <details className="group mt-8" data-testid="sample-ask-more">
                     <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-medium text-ink-soft underline underline-offset-2 hover:text-accent">
                       <span className="group-open:hidden">See the complete sample answer</span>
                       <span className="hidden group-open:inline">Show less of the sample answer</span>
                     </summary>
-                    {answerRest.map((g) => section(g, " (continued)"))}
+                    {answer.map((g) => section(g))}
                   </details>
                 )}
                 {ask.summary?.omitted.map((o) => (
