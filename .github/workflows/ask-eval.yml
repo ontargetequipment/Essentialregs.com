@@ -31,6 +31,14 @@ on:
         description: "How many hits to print per Ask question (1-50)."
         required: false
         default: "10"
+      stability:
+        description: "Instead of the eval: repeat this one question N times and report whether its ranking is stable (scripts/ask-eval-stability.ts)."
+        required: false
+        default: ""
+      stability_runs:
+        description: "How many repeats for the stability check (2-30)."
+        required: false
+        default: "10"
 
 concurrency:
   group: ask-eval-${{ github.event.pull_request.number || github.ref }}
@@ -62,7 +70,13 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ASK: ${{ inputs.ask }}
           ASK_COUNT: ${{ inputs.ask_count }}
+          STABILITY: ${{ inputs.stability }}
+          STABILITY_RUNS: ${{ inputs.stability_runs }}
         run: |
+          if [ -n "$STABILITY" ]; then
+            npx tsx scripts/ask-eval-stability.ts --ask "$STABILITY" --runs "${STABILITY_RUNS:-10}"
+            exit 0
+          fi
           ARGS=()
           if [ -n "$ASK_COUNT" ]; then ARGS+=(--count "$ASK_COUNT"); fi
           if [ -n "$ASK" ]; then
