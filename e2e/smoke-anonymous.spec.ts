@@ -88,7 +88,8 @@ test.describe("anonymous", () => {
     const res = await page.goto("/");
     expect(res?.status()).toBe(200);
     // The hero's four buttons, in order: the federal and state indexes,
-    // the free Test Methods reference, the sample. The Test Methods link
+    // the free Test Methods reference, then "See how it works" (the sample)
+    // on its own row. The Test Methods link
     // carries a FREE pill so it reads as free at a glance.
     const hero = page.locator("h1 ~ div").first();
     const buttons = hero.getByRole("link");
@@ -96,7 +97,7 @@ test.describe("anonymous", () => {
       "Federal Regulations",
       "State Regulations",
       /^Test Methods\s*Free$/,
-      "See a sample answer",
+      "See how it works",
     ]);
     const hrefs = await buttons.evaluateAll((els) => els.map((a) => a.getAttribute("href")));
     expect(hrefs).toEqual(["/federal", "/states", "/test-methods", "/sample"]);

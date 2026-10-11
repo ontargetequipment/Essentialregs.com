@@ -5,18 +5,21 @@ import { PlanChoice } from "@/components/PlanChoice";
 import { SubscribeControl } from "@/components/SubscribeControl";
 
 // Hero buttons. Full-width 44px rows below `sm` (tap targets), inline from
-// `sm` up (wrapping onto a second row where four don't fit). The federal
-// button lands on the federal list and the state button on the /states
-// picker, whether or not the visitor is signed in (the index pages read the
-// roots through the anonymous-safe fetchRegulationRoots).
+// `sm` up (wrapping where three don't fit). The federal button lands on the
+// federal list and the state button on the /states picker, whether or not
+// the visitor is signed in (the index pages read the roots through the
+// anonymous-safe fetchRegulationRoots).
 const BUTTON =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-semibold";
 const BUTTON_PRIMARY = `${BUTTON} bg-accent text-white hover:bg-accent/90`;
-const BUTTON_OUTLINE = `${BUTTON} border border-line bg-panel text-ink hover:bg-accent-soft`;
-// The "FREE" pill inside the Test Methods button: existing accent tokens
-// only, so it reads as free at a glance without a new colour.
+// "See how it works" sits on its own row below the three: outline, taller
+// and larger type, and from `sm` up at least as wide as two buttons above.
+const BUTTON_TOUR =
+  "inline-flex min-h-14 items-center justify-center rounded-md border border-line bg-panel px-8 py-3 text-base font-semibold text-ink hover:bg-accent-soft sm:min-w-96 sm:self-start";
+// The "FREE" pill inside the green Test Methods button: paper on accent
+// (about 6.8:1), existing tokens only, so it reads as free at a glance.
 const FREE_PILL =
-  "rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-accent";
+  "rounded-full bg-paper px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-accent";
 
 // The six things the reader does. `lead` is a short serif label; `detail`
 // is the reviewer-approved sentence, kept word for word.
@@ -46,29 +49,40 @@ export default async function Home() {
           easier to use.
         </h1>
         <p className="mt-6 max-w-reading text-lg leading-relaxed text-ink-soft">
-          Navigate state air-quality rules, oil &amp; gas requirements, General
-          Permits, federal EPA standards and PHMSA pipeline regulations in one
-          connected reader. Jump straight to a provision, preview cited
-          sections without losing your place, and use plain-English summaries
-          to understand a rule before verifying it against the official
-          source.
+          <span className="font-medium text-ink">
+            Find the rule yourself before you pay someone to find it for you.
+          </span>{" "}
+          EssentialRegs puts state air-quality rules, oil &amp; gas
+          requirements, General Permits, federal EPA standards and PHMSA
+          pipeline regulations in one connected reader, with a plain-English
+          summary beside every official provision. Answer the routine
+          questions in minutes, see which ones are worth a consultant’s hourly
+          rate, and — if you own land with oil and gas on it — know what the
+          operator is actually required to do.
         </p>
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <Link href="/federal" className={BUTTON_PRIMARY}>
-            Federal Regulations
-          </Link>
-          <Link href="/states" className={BUTTON_OUTLINE}>
-            State Regulations
-          </Link>
-          <Link href="/test-methods" className={BUTTON_OUTLINE}>
-            Test Methods
-            <span className={FREE_PILL}>Free</span>
-          </Link>
-          <Link href="/sample" className={BUTTON_OUTLINE}>
-            See a sample answer
+        <div className="mt-8 flex flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link href="/federal" className={BUTTON_PRIMARY}>
+              Federal Regulations
+            </Link>
+            <Link href="/states" className={BUTTON_PRIMARY}>
+              State Regulations
+            </Link>
+            <Link href="/test-methods" className={BUTTON_PRIMARY}>
+              Test Methods
+              <span className={FREE_PILL}>Free</span>
+            </Link>
+          </div>
+          <Link href="/sample" className={BUTTON_TOUR}>
+            See how it works
           </Link>
         </div>
+
+        <p className="mt-6 max-w-reading text-sm text-ink-soft">
+          Built for compliance staff, operators, and landowners who’d rather
+          read the rule than guess.
+        </p>
 
         {/* Coverage line. Names only what is in the corpus today; the
             "Coming soon" clause is the one forward-looking line on the site. */}
