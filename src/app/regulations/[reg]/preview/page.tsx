@@ -17,6 +17,7 @@ import { PreviewSubtree } from "@/components/PreviewSubtree";
 import { isPublicReaderReg } from "@/lib/destination";
 import { PRICE_SUMMARY } from "@/lib/pricing";
 import { displayCitation } from "@/lib/federal-citation";
+import { CITATION_EYEBROW_CLASS } from "@/lib/ui";
 import { PROVISION_ID } from "@/lib/types";
 import { ReaderTour } from "@/components/ReaderTour";
 import { TOUR_PARAM, tourRequested } from "@/lib/tour";
@@ -187,7 +188,7 @@ export default async function RegulationPreviewPage(
           {tourRequested(searchParams[TOUR_PARAM]) && <ReaderTour page="destination" hasAccess={false} placement="floating" />}
         </div>
       )}
-      <p className="font-mono text-eyebrow uppercase text-tag">
+      <p className={CITATION_EYEBROW_CLASS}>
         {root.citation}
       </p>
       {/* The citation is printed on its own line just above, so the <h1>
@@ -229,7 +230,7 @@ export default async function RegulationPreviewPage(
                   key={h.id}
                   className="rounded-md border border-line bg-panel px-4 py-3 text-sm"
                 >
-                  <span className="block font-mono text-eyebrow uppercase text-tag">
+                  <span className={`block ${CITATION_EYEBROW_CLASS}`}>
                     {h.citation}
                   </span>
                   {heading && <span className="mt-0.5 block text-ink-soft">{heading}</span>}
@@ -253,7 +254,7 @@ export default async function RegulationPreviewPage(
                   key={s.id}
                   className="rounded-lg border border-line bg-panel p-5 shadow-sm"
                 >
-                  <p className="font-mono text-eyebrow uppercase text-tag">
+                  <p className={CITATION_EYEBROW_CLASS}>
                     {displayCitation(reg, s.citation)}
                   </p>
                   {heading && <p className="mt-1 font-semibold text-ink">{heading}</p>}

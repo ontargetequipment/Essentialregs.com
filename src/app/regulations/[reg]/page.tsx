@@ -17,6 +17,7 @@ import { RegulationReader } from "@/components/RegulationReader";
 import { ReaderTour } from "@/components/ReaderTour";
 import { TOUR_PARAM, TOUR_REG, tourRequested } from "@/lib/tour";
 import { jumpboxPlaceholder } from "@/lib/regulation-names";
+import { documentShortName } from "@/lib/reader-nav";
 import "../reader.css";
 
 // `reg` goes straight into an `eq("reg_key", reg)` filter
@@ -142,7 +143,7 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
         {publicMode && (
           <div id="visitor-banner" data-testid="visitor-banner" role="note">
             <p>
-              You are reading {reg.toUpperCase()}, the free sample. The rest of the corpus opens with a {TRIAL_DAYS}-day
+              You are reading {documentShortName(reg)}, the free sample. The rest of the corpus opens with a {TRIAL_DAYS}-day
               trial.
             </p>
             <div className="visitor-banner-actions">

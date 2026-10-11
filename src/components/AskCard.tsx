@@ -10,6 +10,7 @@ import {
   type SummaryBadgeInput,
 } from "@/lib/regulation-pure";
 import { displayCitation } from "@/lib/federal-citation";
+import { CITATION_EYEBROW_CLASS } from "@/lib/ui";
 import { regBadge } from "@/lib/regulation-names";
 import type { SemanticHit } from "@/lib/semantic";
 
@@ -146,7 +147,7 @@ export function AskCard({
           )}
         </div>
         {row.path && <p className="mt-2 text-xs leading-snug text-muted">{row.path}</p>}
-        <p className="mt-1 font-mono text-eyebrow uppercase text-tag">
+        <p className={`mt-1 ${CITATION_EYEBROW_CLASS}`}>
           {displayCitation(row.reg_key, row.citation)}
         </p>
         {heading && (

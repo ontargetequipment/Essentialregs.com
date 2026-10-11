@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { AccessStatus } from "@/lib/access";
 import { PRICE_SUMMARY, TRIAL_DAYS } from "@/lib/pricing";
 import { PlanChoice } from "@/components/PlanChoice";
+import { CITATION_EYEBROW_CLASS } from "@/lib/ui";
 import type { Provision } from "@/lib/types";
 import {
   groupColoradoRegulations,
@@ -118,7 +119,7 @@ export function RegulationList({
                   href={regulationCardHref(reg, access.hasAccess)}
                   className="rounded-lg border border-line bg-panel p-5 shadow-sm transition hover:border-accent hover:shadow-md"
                 >
-                  <p className="font-mono text-eyebrow uppercase text-tag">
+                  <p className={CITATION_EYEBROW_CLASS}>
                     {r.citation}
                   </p>
                   <p className="mt-1 font-serif text-card font-semibold text-ink">{info.title}</p>

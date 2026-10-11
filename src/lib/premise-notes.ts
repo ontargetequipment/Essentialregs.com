@@ -1,4 +1,4 @@
-import { federalIdLabel } from "@/lib/federal-citation";
+import { federalCitationPrefix, federalIdLabel } from "@/lib/federal-citation";
 import type { MapGroup, MapProvision, QuestionMap } from "@/lib/question-maps";
 
 /**
@@ -953,8 +953,10 @@ export function citeLabel(id: string): string {
   const m = id.match(/^sec-([^-]+)-(.+)$/);
   if (!m) return id;
   const [, reg, rest] = m;
-  if (rest.startsWith("top-REG-")) return `${reg.toUpperCase()} (document)`;
-  const regName = /^gp\d\d$/.test(reg) ? reg.toUpperCase() : /^\d+$/.test(reg) ? `Regulation ${reg}` : reg.toUpperCase();
+  // A federal id federalIdLabel could not parse still keeps the subpart's real case (OOOOb, not OOOOB).
+  const keyName = federalCitationPrefix(reg) ?? reg.toUpperCase();
+  if (rest.startsWith("top-REG-")) return `${keyName} (document)`;
+  const regName = /^gp\d\d$/.test(reg) ? reg.toUpperCase() : /^\d+$/.test(reg) ? `Regulation ${reg}` : keyName;
   const part = rest.match(/^([A-Z])-(.+)$/);
   if (/^\d+$/.test(reg) && part) return `${regName} Part ${part[1]} ${part[2].replace(/-/g, ".")}`;
   return `${regName} ${rest.replace(/-/g, ".")}`;

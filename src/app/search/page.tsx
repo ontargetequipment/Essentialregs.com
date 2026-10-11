@@ -3,6 +3,7 @@ import { SearchTabs } from "@/components/SearchTabs";
 import { TRIAL_DAYS } from "@/lib/pricing";
 import { askHref, keywordHref, SEARCH_BOX_ID } from "@/lib/search-hrefs";
 import { displayCitation } from "@/lib/federal-citation";
+import { CITATION_EYEBROW_CLASS } from "@/lib/ui";
 import { provisionDestination } from "@/lib/destination";
 import { SummaryBadge } from "@/components/SummaryBadge";
 import { MapIntro } from "@/components/MapIntro";
@@ -669,7 +670,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                           <span className="text-muted">·</span>
                         </>
                       )}
-                      <span className="font-mono text-eyebrow uppercase text-tag">{displayCitation(hit.reg_key, hit.citation)}</span>
+                      <span className={CITATION_EYEBROW_CLASS}>{displayCitation(hit.reg_key, hit.citation)}</span>
                       {hit.is_basis && (
                         <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted" title="Rulemaking history: the Commission's explanation of why a rule was adopted, not the rule itself">
                           Statement of basis
