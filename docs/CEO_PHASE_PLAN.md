@@ -407,3 +407,57 @@ group by 1 order by 1;
 **Follow-up, 11 Oct 2026 (closes decisions 2 and 3 above).** The GP05 reader's popup now shows a public Reg 7 row (I.C.1 and below) as text, summary control, source link and its public sub-rows, with a footer to the focused preview; locked rows keep the label (`/api/provision` reads the visitor's RLS-bound subtree and fences it; leak guard extended in unit tests and smoke), and `/regs/<id>` for public rows of a closed document reads "← Back to Regulation 7" to `/regulations/7/preview?p=sec-7-P-B`.
 
 **Follow-up, 11 Oct 2026 (closes decision 1): the jump box searches the whole provision text, and step 1 is "sampling" again.** Citation matches are unchanged (client-side, instant, listed first); the text matches come from the new `search_provisions_in_document(q, doc_key, lim)` (migration `20261011175808`, SECURITY INVOKER so RLS is the gate; `search_provisions` has no document filter and applies its limit corpus-wide) through `GET /api/reader-search?reg=&q=` (150 ms debounce, 10 rows, `<mark>` excerpt, same stemming as /search, so "sampling" also finds "sample"), with `reg` taken from the open document. A logged-out search of a locked document's key returns nothing (checked as `anon` on production for Reg 3 and GP12, and in the smoke). The reader's DOM-built index keeps the first-line snippet that citation matches show, so there was no payload to shrink. Tests: `scripts/jump-search.test.ts`, `reader-nav.test.ts`, `tour-reader.test.ts`; Playwright in the anonymous, tour and signed-in specs.
+
+## Sprint 8: four trust fixes before acquisition, Oct 11 2026 (PRs #114, #115, #116)
+
+The ninth outside review (11 Oct, logged out) scored the public product 8.1 and worth buying. It named four contained problems that affect professional trust: cross-references that 404, a stale About page, federal citations printed in capitals, and an Ask answer that read as a narrative with footnotes. Built in one Claude Code session (Opus 5.5). Three Sonnet 5.5 agents built in parallel worktrees; the session reviewed, fixed and merged. Ranking, the tour, the Test Methods pages, pricing and the reader's jump box are untouched.
+
+**PR #114, About page, citation case, copy (merged).**
+- **About from the database.** "What's covered today" is computed from the released regulation roots (`src/lib/corpus-coverage.ts`, `CorpusCoverage.tsx`) with the grouping /states/colorado and /federal use, so its counts are always the cards on those pages: AQCC regulations, APCD General Permits, ECMC rules, 40 CFR Part 60 and Part 63 subparts, PHMSA parts. Dated by the changelog snapshot's `computed_at` (Denver), never the live aggregate (`fetchSnapshotDateWith`). "More is coming" is gone. `scripts/about-coverage.test.ts` checks the grouped counts against an independent count by jurisdiction.
+- **Citation case.** "§ 60.5365B(E)" was CSS: the eyebrow class's `uppercase` on elements that print a citation. The stored text and `federal-citation.ts` were right. `CITATION_EYEBROW_CLASS` (`normal-case`) is used on AskCard, /search cards, the preview page, RegulationList cards and the reader's `.nav-reg-title` / `.reg-eyebrow`; the federal-key label fallbacks keep the subpart's case. Colorado citations keep their stored case too ("I.D.3.a.(i)" no longer prints as "I.D.3.A.(I)"). `scripts/citation-case.test.ts` covers the formatter and scans the source for an `uppercase` element that prints a citation.
+- **Copy.** No user-visible "AI reviewed" remains. The changelog's one short form (`summaryPhrases`): "N summaries checked against source text (M corrected)", "rewritten and checked against source text", "rewritten (checked later)", "rewritten, not yet checked". /changelog's "Links, sources and transcription" section now says "A correction to our copy is a fix to our transcription of the text, with the official text unchanged." The disclaimer text is unchanged, so DISCLAIMER_VERSION is not bumped.
+
+**PR #115, Ask as a research map (merged).**
+- **Layout only.** Ranking, retrieval, the maps and the eval are unchanged; `layoutAsk()` output is the same.
+- **Order.** The /sample Ask example and the live Ask tab now open with "It finds provisions; it does not decide what applies to you." and a table: Question component | Provision | Why it matters, one row per group (`src/lib/ask-map-rows.ts`, `AskResearchMap.tsx`). The map's cited introduction follows under "Reading of the provisions above", then the cards (on /sample behind "See the complete sample answer").
+- **"Why it matters" is existing text, never generated.** Each cell takes the first of:
+  1. the intro sentence citing the group's provisions;
+  2. the group's first canonical row's `why`;
+  3. the first sentence of an AI-checked summary overview;
+  4. otherwise a dash.
+- **Empty free search.** A logged-out keyword search that finds nothing says "No matches in GP05. The full library has N provisions matching “…”." with a trial link, hidden at 0. N comes from `count_provisions_matching(q)`: count only, SECURITY DEFINER, the same predicate as `search_provisions`, staged documents excluded.
+  - **Migration.** Applied through the connector, recorded as `20261011210829`; the file is named for that version. Read back as anon: "dehydrator" gives 65, a nonsense word gives 0.
+  - **Corpus QA.** Check 15 (`definer_without_entitlement_check`) exempts it by name, as it does `changelog_public`.
+- **Found by the new phone-width check:** the Ask filter's Regulation `<select>` was 403 px wide (its longest document name) and scrolled a 390 px phone sideways. That predates the sprint; it now shrinks to the row.
+- **(d) Signup** is not built: it needs Brody's yes.
+
+**PR #116, no cross-reference ever 404s.**
+- **The three outcomes.** `resolveReaderPage` answers `reader`, `preview` or `not-found`:
+
+  | Outcome | When |
+  |---|---|
+  | `reader` | The viewer may read the document. |
+  | `preview` | No access, not public, released. `fetchRegulationRoot` reads only the root's id and citation. |
+  | `not-found` | Unknown or staged; or a subscriber's empty reader, because the preview would send them back and loop. |
+
+- **The redirect page.** `ReaderRedirect` shows the document's name only and sends the browser on:
+  - with JavaScript, an inline script (`previewRedirectTarget`, the same source the unit test runs) carries the hash to `/regulations/{reg}/preview?p=<id>` and `from=`;
+  - without it, a `<noscript>` meta refresh and a plain link go to the plain preview.
+- **Visitors' hrefs.** In the visitor's GP05 reader every `a.xref-external-reg` href is rewritten on the server to the preview form (`src/lib/xref-href.ts`, `reader-visitor.ts`), so right-click, copy link, middle-click and JavaScript-off all work. The popup still intercepts in-page clicks. Subscribers' cached body and same-regulation links are unchanged.
+- **Tests.** The anonymous smoke requests every cross-regulation href of the logged-out GP05 reader directly and fails on any 404. On the #116 preview against production data: 144 links, 49 distinct URLs, 0 failures; 113 smoke tests passed.
+
+**Could not finish or verify locally.**
+- The live Ask layout and the Voyage-backed smoke tests only run in the preview smoke (they were green on #115).
+- The harness's fixture inputs are not in a fresh sandbox, so the agents parsed `pipeline/sources` themselves. `e2e/harness/selftest.mjs` still expects the pre-Sprint 7 locked popup for `sec-7-B-I-C-1` and fails that one check.
+- **Ask eval flake.** One Ask eval run died on "fetch failed" before any question ran; its one re-run passed.
+
+**Owner decisions (Brody).**
+1. **Signup.** Replace the forced full-disclaimer scroll with a two-line acknowledgement beside the checkbox and a link to the full disclaimer? The checkbox and the stored acceptance would stay the same. Not built.
+2. **Test Methods pages.** The `/test-methods/<slug>` "Cited by" group heading still upper-cases "Subpart OOOOb" as "OOOOB". It is a one-class fix on a page this sprint was told not to touch.
+3. **"No matches in GP05".** A visitor's free search actually covers GP05 plus the 14 public Regulation 7 rows and the 3 older sample rows. Keep the wording, or say "in the free sample"?
+4. **"Why it matters" cells.** On the /sample map, two cells are weak:
+   - Definitions shows a canonical row's short reason;
+   - ECMC shows a dash (a hits-only group).
+
+   A one-line curated description per map group would fill them. That is writing work, not a paid run.
+5. **Still open from Sprint 6.** The GP06 II.A.3 tooltip, the "Source checked" date, Skew Protection.
