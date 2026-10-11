@@ -118,9 +118,9 @@ export function TrialNote({ className = "" }: { className?: string }) {
  *                             step of the plan-first signup)
  *
  * `chosen` (/pricing?plan=<interval>, where /auth/confirm lands a new
- * account) highlights that box and makes its button the primary "Start
- * your 7-day free trial"; the other box stays, with a secondary "Switch
- * to ..." button. Without it both boxes look the same as always.
+ * account) highlights that box and makes its button "Start your 7-day
+ * free trial!"; the other box stays, with a "Switch to ..." button.
+ * Without it both boxes look the same as always.
  *
  * The trial sentence appears whenever the checkout would grant a trial: an
  * account that has never had a subscription, or a visitor who isn't logged
@@ -136,7 +136,7 @@ export function PlanChoice({
   chosen?: BillingInterval | null;
   className?: string;
   /**
-   * Every plan button reads "Start your 7-day free trial" (/pricing, Sprint 5,
+   * Every plan button reads "Start your 7-day free trial!" (/pricing, Sprint 5,
    * 10 Oct 2026) instead of "Create an account to subscribe" for a visitor.
    * Only where a trial is offered, and never on the "Switch to ..." button of
    * the plan a signed-in account did not pick; an account that has had a
@@ -163,7 +163,7 @@ export function PlanChoice({
             fullWidth
             label={
               trialButtons && trialOffered && (!access.user || chosen === null || chosen === interval)
-                ? `Start your ${TRIAL_DAYS}-day free trial`
+                ? `Start your ${TRIAL_DAYS}-day free trial!`
                 : undefined
             }
           />

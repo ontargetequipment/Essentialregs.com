@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { login } from "../auth/actions";
+import { buttonClass } from "@/lib/ui";
 
 export function LoginForm({ next }: { next?: string }) {
   const [state, formAction, pending] = useActionState(login, undefined);
@@ -60,7 +61,7 @@ export function LoginForm({ next }: { next?: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 disabled:opacity-60"
+        className={buttonClass({ width: "full" })}
       >
         {pending ? "Logging in…" : "Log in"}
       </button>

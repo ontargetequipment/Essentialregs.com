@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { requestPasswordReset } from "../auth/actions";
+import { buttonClass } from "@/lib/ui";
 
 export function ForgotPasswordForm() {
   const [state, formAction, pending] = useActionState(requestPasswordReset, undefined);
@@ -31,7 +32,7 @@ export function ForgotPasswordForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 disabled:opacity-60"
+        className={buttonClass({ width: "full" })}
       >
         {pending ? "Sending…" : "Send reset link"}
       </button>

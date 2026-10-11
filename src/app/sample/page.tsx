@@ -5,6 +5,7 @@ import { AskCard } from "@/components/AskCard";
 import { MapIntro } from "@/components/MapIntro";
 import { loadSampleRows } from "@/lib/sample-snapshot";
 import { TRIAL_DAYS } from "@/lib/pricing";
+import { buttonClass } from "@/lib/ui";
 import { TOUR_START_HREF } from "@/lib/tour";
 import {
   RECOMMENDED_START,
@@ -57,10 +58,8 @@ export const metadata = {
 // never its text or summary, linking to the focused preview. A subscriber who
 // visits sees nothing locked; every card opens in the reader.
 
-const BUTTON =
-  "inline-flex min-h-11 items-center justify-center rounded-md px-5 py-3 text-sm font-semibold";
-const BUTTON_PRIMARY = `${BUTTON} bg-accent text-white hover:bg-accent/90`;
-const BUTTON_OUTLINE = `${BUTTON} border border-line bg-panel text-ink hover:bg-accent-soft`;
+// Every button here is the site's one green button (src/lib/ui.ts).
+const BUTTON = buttonClass();
 
 /**
  * The page's buttons, shown under the intro and again at the bottom
@@ -73,15 +72,15 @@ function Buttons({ hasAccess, testId, search = false }: { hasAccess: boolean; te
   return (
     <div className="flex flex-wrap gap-3" data-testid={testId}>
       {!hasAccess && (
-        <Link href="/signup" className={BUTTON_PRIMARY}>
-          Start your {TRIAL_DAYS}-day trial
+        <Link href="/signup" className={BUTTON}>
+          Start your {TRIAL_DAYS}-day trial!
         </Link>
       )}
-      <Link href="/regulations/gp05" className={hasAccess ? BUTTON_PRIMARY : BUTTON_OUTLINE}>
+      <Link href="/regulations/gp05" className={BUTTON}>
         Open the free GP05 reader
       </Link>
       {search && (
-        <Link href="/search" className={BUTTON_OUTLINE}>
+        <Link href="/search" className={BUTTON}>
           {hasAccess ? "Search the complete corpus" : "Search the free GP05 sample"}
         </Link>
       )}
@@ -174,7 +173,7 @@ export default async function SamplePage() {
           into Regulation 7, in the real reader.
         </p>
         <div className="mt-5">
-          <Link href={TOUR_START_HREF} className={BUTTON_PRIMARY}>
+          <Link href={TOUR_START_HREF} className={BUTTON}>
             Start the walkthrough
           </Link>
         </div>

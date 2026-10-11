@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { BillingInterval } from "@/lib/pricing";
 import { resendConfirmation } from "../auth/actions";
+import { buttonClass } from "@/lib/ui";
 
 export function ResendForm({ email, plan }: { email: string; plan?: BillingInterval }) {
   const [state, formAction, pending] = useActionState(resendConfirmation, undefined);
@@ -38,7 +39,7 @@ export function ResendForm({ email, plan }: { email: string; plan?: BillingInter
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md border border-line bg-paper px-4 py-2 text-sm font-semibold text-ink hover:border-accent disabled:opacity-60"
+        className={buttonClass({ width: "full" })}
       >
         {pending ? "Sending…" : "Resend confirmation email"}
       </button>

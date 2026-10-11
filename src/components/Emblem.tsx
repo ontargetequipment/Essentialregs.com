@@ -1,0 +1,76 @@
+// The ER emblem: one definition for the favicon (src/app/icon.svg), the
+// Apple touch icon (src/app/apple-icon.png), the header mark and the Open
+// Graph image (src/app/opengraph-image.tsx). After changing anything here,
+// run `npx tsx scripts/render-emblem.tsx` to rewrite the two icon files;
+// scripts/emblem.test.ts fails while they are out of date.
+//
+// A rounded square (radius 18% of the side) in the accent green with "ER" in
+// white Source Serif 4 Bold, the site's serif display face. The letters are
+// outlines, not <text>: an SVG favicon cannot load a web font, so text would
+// fall back to whatever serif the browser has. They were drawn from Source
+// Serif 4 Bold (Google Fonts, SIL Open Font License) with letter-spacing
+// -0.03em, the pair 72% of the side wide, and the capitals centred
+// vertically then lifted 1% of the side (optical centre).
+
+import type { SVGProps } from "react";
+
+/** --color-accent in src/app/globals.css (white on it: 7.49:1). */
+export const EMBLEM_ACCENT = "#2f5d50";
+const LETTERS = "#ffffff";
+const SIDE = 100;
+/** 18% of the side. */
+const RADIUS = 18;
+
+/** "E" and "R" in a 100 x 100 box. */
+const E_PATH =
+  "M14 67.43V63.79L21.3 63.39H22.19V67.43ZM18.43 67.43Q18.49 64.63 18.49 61.82Q18.49 59.02 18.49 56.18Q18.49 53.35 18.49 50.54V47.46Q18.49 44.59 18.49 41.79Q18.49 38.98 18.49 36.15Q18.49 33.31 18.43 30.57H28.48Q28.42 33.31 28.39 36.15Q28.37 38.98 28.37 41.79Q28.37 44.59 28.37 47.46V50.43Q28.37 53.29 28.37 56.13Q28.37 58.96 28.39 61.8Q28.42 64.63 28.48 67.43ZM23.93 67.43V63.84H41.39L39.2 65.98L41.05 57.45H45.54L45.15 67.43ZM23.37 50.37V46.67H36.39V50.37ZM35.16 54.58 34.26 49.14V47.74L35.16 42.46H38.86V54.58ZM14 34.16V30.57H22.19V34.61H21.3ZM39.93 40.27 38.07 32.02 40.43 34.16H23.93V30.57H44.02L44.42 40.27Z";
+const R_PATH =
+  "M47.61 67.43V63.79L55.25 63.39H58.89L66.36 63.79V67.43ZM52.05 67.43Q52.1 64.63 52.13 61.8Q52.16 58.96 52.16 56.13Q52.16 53.29 52.16 50.54V47.46Q52.16 44.71 52.16 41.9Q52.16 39.1 52.13 36.23Q52.1 33.37 52.05 30.57H62.04Q61.98 33.37 61.95 36.23Q61.93 39.1 61.93 42.01Q61.93 44.93 61.93 48.02V50.04Q61.93 53.01 61.93 55.93Q61.93 58.85 61.95 61.71Q61.98 64.57 62.04 67.43ZM79.71 68.16Q75.84 68.16 73.68 66.73Q71.52 65.3 71.02 61.88L69.95 55.76Q69.67 53.91 69.02 52.79Q68.38 51.67 67.34 51.16Q66.3 50.66 64.62 50.66H57.27V47.23H64.56Q67.14 47.23 68.74 46.39Q70.34 45.55 71.07 44.06Q71.8 42.57 71.8 40.61Q71.8 37.3 70.01 35.73Q68.21 34.16 64.73 34.16H58.45V30.57H66.3Q73.77 30.57 77.67 32.95Q81.57 35.34 81.57 39.71Q81.57 42.07 80.11 43.95Q78.65 45.83 75.7 46.95Q72.76 48.07 68.21 48.24V48.58Q71.35 48.64 73.46 49.08Q75.56 49.53 76.88 50.52Q78.2 51.5 78.96 53.12Q79.71 54.75 80.16 57.22L81.9 66.26L77.08 63.11L86 63.9V67.43Q84.99 67.66 84.04 67.8Q83.08 67.94 82.07 68.05Q81.06 68.16 79.71 68.16ZM47.61 34.16V30.57H55.7V34.61H54.8Z";
+
+/**
+ * The emblem as an inline SVG, `size` px square. Decorative by default
+ * (aria-hidden): beside the "EssentialRegs" wordmark the text names it.
+ * `square` drops the rounding, for the Apple touch icon, which iOS rounds
+ * itself (transparent corners would show black there).
+ */
+export function Emblem({
+  size,
+  square = false,
+  ...rest
+}: { size: number; square?: boolean } & Omit<SVGProps<SVGSVGElement>, "width" | "height" | "viewBox">) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox={`0 0 ${SIDE} ${SIDE}`}
+      aria-hidden
+      focusable="false"
+      {...rest}
+    >
+      <rect width={SIDE} height={SIDE} rx={square ? 0 : RADIUS} fill={EMBLEM_ACCENT} />
+      <path d={E_PATH} fill={LETTERS} />
+      <path d={R_PATH} fill={LETTERS} />
+    </svg>
+  );
+}
+
+/**
+ * The same emblem as standalone SVG markup: the contents of
+ * src/app/icon.svg, and an <img> source where an inline <svg> won't do
+ * (the Open Graph image).
+ */
+export function emblemSvg({ square = false }: { square?: boolean } = {}): string {
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SIDE} ${SIDE}">` +
+    `<rect width="${SIDE}" height="${SIDE}" rx="${square ? 0 : RADIUS}" fill="${EMBLEM_ACCENT}"/>` +
+    `<path d="${E_PATH}" fill="${LETTERS}"/>` +
+    `<path d="${R_PATH}" fill="${LETTERS}"/>` +
+    `</svg>\n`
+  );
+}
+
+/** emblemSvg() as a data: URL. */
+export function emblemDataUrl(opts: { square?: boolean } = {}): string {
+  return `data:image/svg+xml;base64,${Buffer.from(emblemSvg(opts)).toString("base64")}`;
+}
