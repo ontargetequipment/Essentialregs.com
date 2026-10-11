@@ -343,3 +343,5 @@ Where people stop (furthest step per run): `select furthest, count(*) from (sele
 - (3) Skew Protection: a plan upgrade, unchanged.
 
 **Migration parity.** `20261010120000_gp05_public_sample` (Sprint 4) has no row in `schema_migrations`, although its data is in place (all 111 GP05 rows are `is_public`). `20261009005000` was recorded by hand (no statements stored). One parity check of the folder against `schema_migrations` is worth running.
+
+**Part links (PR #98, 11 Oct 2026).** "Regulation Number 7, Part B, Section I.C.1" now links "Part B" to `/regulations/7#sec-7-P-B` (a visitor gets the locked popup and `/regulations/7/preview?p=sec-7-P-B`): the importer (`_emit_xreg_clauses`) for every future import, and 604 rows in 26 regulations (797 links) by one UPDATE in place (`supabase/migrations/RUN_ME_20261011_cross_reg_part_links.sql`, logged `links_updated`, no re-embedding); still plain: parts with no root (Reg 7 D and E, Reg 10 B), "Parts A and B" (8), and until those documents are re-imported "Regulation Number 3, Part B. Section ..." with a period (16 rows, GP05 II.B.1 among them) and "Regulation Number 6 Part B," (1).
