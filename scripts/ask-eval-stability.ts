@@ -14,8 +14,10 @@
  * Margin report (--margins, 11 Oct 2026): every eval question once, with its
  * pass, rank and ranking margin -- how far the fused score of every expected
  * row could fall before the question fails (src/lib/ask-margin.ts) -- and a
- * flag on any margin under MARGIN_FLAG (0.005, about five times the jitter
- * one changed query vector causes). The regression guard for ranking
+ * flag (src/lib/ask-margin.ts isThin): a sentence question (score fusion)
+ * under MARGIN_FLAG (0.005, about five times the jitter one changed query
+ * vector causes); a short question (rank fusion) whose best expected row
+ * sits in the last slot of the window. Also the time of each RPC call. The regression guard for ranking
  * changes: run it before and after, compare the column. The PR gate
  * (scripts/ask-eval.ts) prints the same margins with its score.
  *
@@ -31,10 +33,10 @@ import { appendFileSync } from "node:fs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expandAcronyms, keywordQuery } from "../src/lib/acronyms";
 import { askScope } from "../src/lib/ask-scope";
-import { MARGIN_FLAG, formatMargin } from "../src/lib/ask-margin";
+import { MARGIN_FLAG, formatMargin, isThin } from "../src/lib/ask-margin";
 import { completeListRows } from "../src/lib/list-completion";
 import { EVAL_QUESTIONS, rowsNeeded } from "../src/lib/semantic-eval";
-import { askArgs, embedQuery, env, hybrid, runQuestion, type Hit } from "./ask-eval-core";
+import { askArgs, embedQuery, env, hybrid, runQuestion, timingLine, type Hit } from "./ask-eval-core";
 
 type Row = Hit;
 
@@ -46,20 +48,22 @@ const fmt = (n: number | null | undefined, d = 6) => (n == null ? "–" : n.toFi
 async function margins(supabase: SupabaseClient, voyageKey: string, out: string[]): Promise<void> {
   out.push(`### Ask margin report: ${EVAL_QUESTIONS.length} questions, one run each`, "");
   out.push(
-    "Margin: how far the fused score of every expected row could fall, the other rows unchanged, before the question fails (negative: the rise it needs to pass). Flag ⚠️ under " +
-      `${MARGIN_FLAG}. Re-ranked with the RPC's own ORDER BY (src/lib/ask-margin.ts); "≥" = larger than the gap to the last row read.`,
+    "Margin, by how the RPC fuses the question. Score fusion (6+ words): how far the fused score of every expected row could fall, the other rows unchanged, before the question fails (negative: the rise it needs to pass), flagged ⚠️ under " +
+      `${MARGIN_FLAG}; re-ranked with the RPC's own ORDER BY, "≥" = larger than the gap to the last row read. Rank fusion (5 words or fewer): fused scores only move when ranks swap, so the best expected row's rank is reported, flagged ⚠️ in the last slot of the window.`,
     ""
   );
-  out.push("| # | question | pass | rank | margin | best expected (fused) | row it must stay above (fused) |", "|---|---|---|---|---|---|---|");
-  const json: { q: string; pass: boolean; rank: number | null; margin: number | null; atLeast: boolean }[] = [];
+  out.push("| # | question | fusion | pass | margin | best expected (fused) | row it must stay above (fused) | rpc ms |", "|---|---|---|---|---|---|---|---|");
+  const rpcMs: number[] = [];
+  const json: { q: string; mode: string; pass: boolean; rank: number | null; margin: number | null; atLeast: boolean; flagged: boolean; rpcMs: number }[] = [];
   let thin = 0;
   let mismatched = 0;
   for (let i = 0; i < EVAL_QUESTIONS.length; i++) {
     const e = EVAL_QUESTIONS[i];
     const r = await runQuestion(supabase, e, await embedQuery(expandAcronyms(e.q), voyageKey));
     const m = r.margin;
-    const isThin = m.margin == null || (!m.atLeast && m.margin < MARGIN_FLAG);
-    if (isThin) thin++;
+    const flagged = isThin(m);
+    if (flagged) thin++;
+    rpcMs.push(r.rpcMs);
     if (!m.orderMatches) mismatched++;
     const omitted = new Set(r.omittedIds);
     const listed = r.raw.filter((h) => !omitted.has(h.id));
@@ -69,11 +73,11 @@ async function margins(supabase: SupabaseClient, voyageKey: string, out: string[
     // In plain fused order the row to beat is the n-th unexpected row; shown for reading, the margin itself comes from the re-rank.
     const rival = listed.filter((h) => !isExp(h))[n - 1];
     out.push(
-      `| ${i + 1} | ${e.q} | ${r.result.pass ? "✅" : "❌"} | ${r.result.matchRank ?? "–"} | ${formatMargin(m)}${isThin ? " ⚠️" : ""}${r.completed ? " (list completed)" : ""}${m.orderMatches ? "" : " (order re-rank differs)"} | ${best ? `\`${best.id}\` (${fmt(best.fused)})` : "–"} | ${rival ? `\`${rival.id}\` (${fmt(rival.fused)})` : "–"} |`
+      `| ${i + 1} | ${e.q} | ${m.mode} | ${r.result.pass ? "✅" : "❌"} | ${formatMargin(m)}${flagged ? " ⚠️" : ""}${r.completed ? " (list completed)" : ""}${m.orderMatches ? "" : " (order re-rank differs)"} | ${best ? `\`${best.id}\` (${fmt(best.fused)})` : "–"} | ${rival ? `\`${rival.id}\` (${fmt(rival.fused)})` : "–"} | ${r.rpcMs.toFixed(0)} |`
     );
-    json.push({ q: e.q, pass: r.result.pass, rank: r.result.matchRank, margin: m.margin, atLeast: m.atLeast });
+    json.push({ q: e.q, mode: m.mode, pass: r.result.pass, rank: m.rank, margin: m.margin, atLeast: m.atLeast, flagged, rpcMs: Math.round(r.rpcMs) });
   }
-  out.push("", `${thin} of ${EVAL_QUESTIONS.length} under ${MARGIN_FLAG}.${mismatched ? ` ${mismatched} question(s) where the re-rank did not reproduce the RPC order (ties on fused and cosine; the RPC's last key is sort_order).` : ""}`, "");
+  out.push("", `${thin} of ${EVAL_QUESTIONS.length} flagged. match_provisions_hybrid: ${timingLine(rpcMs)}.${mismatched ? ` ${mismatched} question(s) where the re-rank did not reproduce the RPC order (ties on fused and cosine; the RPC's last key is sort_order).` : ""}`, "");
   out.push("<details><summary>raw JSON</summary>", "", "```json", JSON.stringify(json), "```", "</details>");
 }
 
@@ -111,14 +115,16 @@ async function main(): Promise<void> {
   const scope = askScope(q);
   // An eval question is scored exactly as the gate scores it (runQuestion);
   // any other question gets the page's arguments for `top` rows.
-  const call = async (embedding: number[]): Promise<{ raw: Row[]; ids: string[]; pass: boolean | null; margin: string }> => {
+  const call = async (embedding: number[]): Promise<{ raw: Row[]; ids: string[]; pass: boolean | null; margin: string; flagged: boolean; ms: number }> => {
     if (e) {
       const r = await runQuestion(supabase, e, embedding);
-      return { raw: r.raw, ids: r.hits.map((h) => h.id).concat(r.raw.slice(r.hits.length).map((h) => h.id)), pass: r.result.pass, margin: formatMargin(r.margin) };
+      return { raw: r.raw, ids: r.hits.map((h) => h.id).concat(r.raw.slice(r.hits.length).map((h) => h.id)), pass: r.result.pass, margin: formatMargin(r.margin), flagged: isThin(r.margin), ms: r.rpcMs };
     }
+    const t0 = performance.now();
     const raw = await hybrid(supabase, askArgs(q, embedding, top), q);
+    const ms = performance.now() - t0;
     const completed = (await completeListRows(supabase, raw, scope.within)) as Row[];
-    return { raw, ids: completed.map((h) => h.id), pass: null, margin: "–" };
+    return { raw, ids: completed.map((h) => h.id), pass: null, margin: "–", flagged: false, ms };
   };
 
   out.push(`### Ask stability: "${q}"`, "", `expanded: \`${expanded}\`; keyword query: \`${keywordQuery(q) || ""}\`; rows read ${e ? Math.max(rowsNeeded(e), 20) : top}; scope ${scope.within ?? "none"}; expect ${e ? e.expect.join(", ") : "(not an eval question)"}`, "");
@@ -145,7 +151,7 @@ async function main(): Promise<void> {
     detailA.push({ run: r, rows: res.raw });
     const maxDiff = Math.max(...v.map((x, i) => Math.abs(x - vecs[0][i])));
     summaryA.push(
-      `| ${r} | ${sha(v)} | ${r === 1 ? "1" : cosine(v, vecs[0]).toFixed(10)} | ${r === 1 ? "0" : maxDiff.toExponential(2)} | \`${ids[4] ?? "–"}\` | \`${ids[5] ?? "–"}\` | ${res.pass == null ? "–" : res.pass ? "yes" : "NO"} | ${res.margin} | ${ids.slice(0, top).join() === topIdsA[0].join() ? "yes" : "NO"} |`
+      `| ${r} | ${sha(v)} | ${r === 1 ? "1" : cosine(v, vecs[0]).toFixed(10)} | ${r === 1 ? "0" : maxDiff.toExponential(2)} | \`${ids[4] ?? "–"}\` | \`${ids[5] ?? "–"}\` | ${res.pass == null ? "–" : res.pass ? "yes" : "NO"} | ${res.margin}${res.flagged ? " ⚠️" : ""} | ${ids.slice(0, top).join() === topIdsA[0].join() ? "yes" : "NO"} |`
     );
   }
   out.push(...summaryA, "");
@@ -164,13 +170,16 @@ async function main(): Promise<void> {
   // --- B: one embedding held fixed -----------------------------------------
   out.push("#### B. embedding held fixed (run 1's), RPC called again", "");
   const keyB = new Set<string>();
+  const msB: number[] = [];
   let firstB: Row[] = [];
   for (let r = 1; r <= runs; r++) {
-    const { raw } = await call(vecs[0]);
+    const { raw, ms } = await call(vecs[0]);
+    msB.push(ms);
     if (r === 1) firstB = raw;
     keyB.add(raw.slice(0, top).map((x) => `${x.id}@${x.fused}`).join());
   }
   out.push(`distinct top-${top} (id and fused score) across ${runs} RPC calls with the same vector: ${keyB.size}`, "");
+  out.push(`match_provisions_hybrid, same vector, wall time from the runner: ${timingLine(msB)}`, "");
   table("run 1 vector, raw RPC rows", firstB);
 
   // Machine-readable copy for the record.

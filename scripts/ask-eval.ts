@@ -27,10 +27,10 @@ import { createClient } from "@supabase/supabase-js";
 import { expandAcronyms, keywordQuery } from "../src/lib/acronyms";
 import { layoutAsk } from "../src/lib/question-maps";
 import { askScope } from "../src/lib/ask-scope";
-import { MARGIN_FLAG, formatMargin } from "../src/lib/ask-margin";
+import { MARGIN_FLAG, formatMargin, isThin } from "../src/lib/ask-margin";
 import { completeListRows } from "../src/lib/list-completion";
 import { EVAL_QUESTIONS, KNOWN_FAILURES } from "../src/lib/semantic-eval";
-import { embedQuery, env, hybrid, runQuestion, type Hit } from "./ask-eval-core";
+import { embedQuery, env, hybrid, runQuestion, timingLine, type Hit } from "./ask-eval-core";
 
 const DEFAULT_ASK = [
   "When is a GP01 required?",
@@ -102,9 +102,11 @@ async function main(): Promise<void> {
   // Each question as the page asks it (scripts/ask-eval-core.ts), plus its
   // ranking margin (src/lib/ask-margin.ts).
   const rows: { q: string; pass: boolean; known: boolean; matchRank: number | null; failures: string[]; ids: string[]; omittedIds: string[]; top: number | null; margin: string; thin: boolean }[] = [];
+  const rpcMs: number[] = [];
   for (const e of EVAL_QUESTIONS) {
     const r = await runQuestion(supabase, e, await embedQuery(expandAcronyms(e.q), voyageKey));
     const m = r.margin;
+    rpcMs.push(r.rpcMs);
     rows.push({
       q: e.q,
       pass: r.result.pass,
@@ -115,7 +117,7 @@ async function main(): Promise<void> {
       omittedIds: r.omittedIds,
       top: r.hits[0]?.score ?? null,
       margin: formatMargin(m) + (r.completed ? " (list completed)" : ""),
-      thin: m.margin == null || (!m.atLeast && m.margin < MARGIN_FLAG),
+      thin: isThin(m),
     });
   }
   const passed = rows.filter((r) => r.pass).length;
@@ -142,7 +144,9 @@ async function main(): Promise<void> {
   const thin = rows.filter((r) => r.thin);
   out.push(
     "",
-    `Margin: how far the fused score of every expected row could fall before the question fails (src/lib/ask-margin.ts). ${thin.length ? `${thin.length} under ${MARGIN_FLAG} (⚠️): ${thin.map((r) => r.q).join(" | ")}` : `none under ${MARGIN_FLAG}`}.`
+    `Margin (src/lib/ask-margin.ts): sentence questions (score fusion), how far the fused score of every expected row could fall before the question fails, flagged under ${MARGIN_FLAG}; short questions (rank fusion), the best expected row's rank, flagged in the last slot of the window. ${thin.length ? `${thin.length} flagged (⚠️): ${thin.map((r) => r.q).join(" | ")}` : "none flagged"}.`,
+    "",
+    `match_provisions_hybrid, one call per question: ${timingLine(rpcMs)}.`
   );
   const unexpected = failed.filter((r) => !r.known);
   out.push(

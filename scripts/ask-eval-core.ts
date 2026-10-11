@@ -25,6 +25,14 @@ import { DEFAULT_TOP_N, evaluateQuestion, rowsNeeded, type EvalHit, type EvalQue
 export const EMBED_MODEL = "voyage-3.5-lite";
 export const EMBED_DIMS = 1024;
 
+/** Median, 95th percentile and max of a list of call times, for the reports. */
+export function timingLine(ms: number[]): string {
+  if (!ms.length) return "no calls";
+  const s = [...ms].sort((a, b) => a - b);
+  const at = (p: number) => s[Math.min(s.length - 1, Math.floor(p * s.length))];
+  return `median ${at(0.5).toFixed(0)} ms, p95 ${at(0.95).toFixed(0)} ms, max ${s[s.length - 1].toFixed(0)} ms over ${s.length} calls`;
+}
+
 /** Rows read per eval question so the margin has rows below the window (see the file comment). */
 export const MARGIN_ROWS = 20;
 
@@ -96,13 +104,17 @@ export type QuestionRun = {
   margin: Margin;
   /** list completion changed the eval's rows (a question limited to one document): the margin is over retrieval's own order */
   completed: boolean;
+  /** wall time of the match_provisions_hybrid call, ms (network round trip included; retries on a statement timeout included) */
+  rpcMs: number;
 };
 
 /** Scores one eval question with a given query embedding. */
 export async function runQuestion(supabase: SupabaseClient, e: EvalQuestion, embedding: number[]): Promise<QuestionRun> {
   const scope = askScope(e.q);
   const need = rowsNeeded(e);
+  const t0 = performance.now();
   const raw = await hybrid(supabase, askArgs(e.q, embedding, need <= MARGIN_ROWS ? MARGIN_ROWS : need, e.includeBasis ?? false), e.q);
+  const rpcMs = performance.now() - t0;
   // A limited search lists a printed list whole, as the page does (list-completion.ts).
   const hits = (await completeListRows(supabase, raw.slice(0, need), scope.within)) as Hit[];
   // Same routing and layout calls the page makes (pure); the map key is
@@ -123,5 +135,5 @@ export async function runQuestion(supabase: SupabaseClient, e: EvalQuestion, emb
   const omittedAll = layoutAsk(e.q, raw, undefined, false, scope.within).summary?.omittedIds ?? [];
   const margin = expectMargin(raw, e.expect, e.topN ?? DEFAULT_TOP_N, expandAcronyms(e.q), omittedAll);
   const completed = hits.map((h) => h.id).join() !== raw.slice(0, need).map((h) => h.id).join();
-  return { hits, raw, result, omittedIds, mapKey: layout.map?.key ?? null, margin, completed };
+  return { hits, raw, result, omittedIds, mapKey: layout.map?.key ?? null, margin, completed, rpcMs };
 }
