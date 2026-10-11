@@ -21,12 +21,15 @@ export const metadata: Metadata = {
  * /federal indexes use), dated by the changelog snapshot's computed_at in
  * America/Denver. Both reads are anonymous-safe service-role reads with no
  * visitor session, like the index pages (fetchRegulationRoots drops a staged
- * document, src/lib/release.ts). The root layout reads the session cookie,
- * so every route here renders per request: the page is dynamic like
- * /states, /federal and /changelog, with no revalidate to tune, and a new
- * release shows on the next request. A database problem degrades to a
- * one-line note and links to the index pages; the rest of the page never
- * fails for it.
+ * document, src/lib/release.ts).
+ *
+ * Rendering: server-rendered on demand, like /states, /federal and
+ * /changelog. The root layout reads the session cookie (AuthStatus), and in
+ * this app that makes every route dynamic: `next build` lists /about as
+ * "ƒ (Dynamic)", so a `revalidate` export here would do nothing. A release
+ * therefore shows on the next request, with no cache to refresh. A database
+ * problem (a timeout) degrades to a one-line note with links to the index
+ * pages; the rest of the page never fails for it.
  */
 async function loadCoverage(): Promise<{ coverage: Coverage | null; asOf: string | null }> {
   try {
