@@ -139,7 +139,7 @@ export default async function AboutPage() {
           </p>
         )}
         <p>
-          Counts are of released documents, read from the database. The{" "}
+          These counts update as documents are added. The{" "}
           <Link href="/states" className="underline underline-offset-2">
             State
           </Link>{" "}
