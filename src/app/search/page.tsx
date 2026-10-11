@@ -8,6 +8,8 @@ import { provisionDestination } from "@/lib/destination";
 import { SummaryBadge } from "@/components/SummaryBadge";
 import { AskReading, AskResearchMap } from "@/components/AskResearchMap";
 import { askMapRows } from "@/lib/ask-map-rows";
+import { LibraryCountNotice } from "@/components/LibraryCountNotice";
+import { fetchLibraryMatchCount } from "@/lib/library-count";
 import { AskCard, PROVENANCE_LABEL_CLASS, textNoun, type AskRow, type ReviewRow } from "@/components/AskCard";
 import { detectTestMethod } from "@/lib/test-method-search";
 import { createClient } from "@/lib/supabase/server";
@@ -241,6 +243,17 @@ export default async function SearchPage(props: PageProps<"/search">) {
       // applied yet, so the RPC doesn't exist. Surface it rather than 500.
       searchError = e instanceof Error ? e.message : String(e);
     }
+  }
+  // A visitor's free search found nothing (11 Oct 2026): say how many
+  // provisions the full library has for the same words. One count-only RPC
+  // through the visitor's own client (count_provisions_matching is SECURITY
+  // DEFINER and returns an integer, nothing else); never for a subscriber,
+  // whose search already covers the library, and never when the search
+  // errored or a test-method card answers the query. Any failure leaves it
+  // null and the line is not shown (src/lib/library-count.ts).
+  let libraryCount: number | null = null;
+  if (q && mode === "keyword" && !searchError && hits.length === 0 && !methodHit && !access.hasAccess) {
+    libraryCount = await fetchLibraryMatchCount(supabase, q);
   }
   if (q && mode === "ask" && access.hasAccess) {
     try {
@@ -631,6 +644,9 @@ export default async function SearchPage(props: PageProps<"/search">) {
             </>
           )}
         </p>
+      )}
+      {mode === "keyword" && q && !searchError && hits.length === 0 && !methodHit && !access.hasAccess && (
+        <LibraryCountNotice query={q} count={libraryCount} signedIn={!!user} />
       )}
 
       {mode === "ask" && q && access.hasAccess && !askError && askHits.length === 0 && !grouped && (

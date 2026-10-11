@@ -175,6 +175,35 @@ await check("search_provisions runs as the caller: anon finds only public rows, 
   if (!anon.json.every((h) => h.headline === null || h.headline.includes("<mark>"))) throw new Error("headline lacks <mark>");
 });
 
+await check("count_provisions_matching: one bare integer over the whole library for anon, the visitor and the subscriber alike, 0 for nonsense, and a staged document is not counted", async () => {
+  const count = async (q, token = ANON) => {
+    const r = await rest("/rest/v1/rpc/count_provisions_matching", { method: "POST", body: { q }, token });
+    eq(r.status, 200);
+    if (!Number.isInteger(r.json)) throw new Error(`count of "${q}" was not a bare integer: ${JSON.stringify(r.json)}`);
+    return r.json;
+  };
+  const n = await count("flare");
+  eq([await count("flare", VIS), await count("flare", SUB), await count("flare", SERVICE)], [n, n, n]);
+  const anonHits = (await rest("/rest/v1/rpc/search_provisions", { method: "POST", body: { q: "flare", lim: 50 } })).json.length;
+  if (!(n > anonHits)) throw new Error(`the count (${n}) should exceed what anon can read (${anonHits}): it covers locked rows`);
+  eq(await count("zzzqqqxxnotaword"), 0);
+  eq(await count(""), 0);
+  eq(await count("   "), 0);
+  // A staged document leaves the count (service key writes the gate, then restores it).
+  const subHits = (await rest("/rest/v1/rpc/search_provisions", { method: "POST", body: { q: "flare", lim: 50 }, token: SUB })).json;
+  const reg = subHits.map((h) => h.reg_key).find((k) => k && k !== "gp05" && k !== "7");
+  if (!reg) throw new Error("no locked document among the subscriber's flare hits");
+  const post = await rest("/rest/v1/regulation_releases", { method: "POST", token: SERVICE, body: { reg_key: reg, status: "staged" } });
+  eq(post.status, 201);
+  try {
+    const staged = await count("flare");
+    if (!(staged < n)) throw new Error(`staging ${reg} did not lower the count (${staged} vs ${n})`);
+  } finally {
+    await rest(`/rest/v1/regulation_releases?reg_key=eq.${reg}`, { method: "DELETE", token: SERVICE });
+  }
+  eq(await count("flare"), n);
+});
+
 console.log("other tables");
 await check("profiles: anon denied, a user reads only their own row, the service role reads all", async () => {
   eq((await rest("/rest/v1/profiles?select=id")).status, 403);
