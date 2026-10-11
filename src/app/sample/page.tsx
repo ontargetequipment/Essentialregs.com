@@ -5,6 +5,7 @@ import { AskCard } from "@/components/AskCard";
 import { MapIntro } from "@/components/MapIntro";
 import { loadSampleRows } from "@/lib/sample-snapshot";
 import { TRIAL_DAYS } from "@/lib/pricing";
+import { TOUR_START_HREF } from "@/lib/tour";
 import {
   RECOMMENDED_START,
   SNAPSHOT,
@@ -45,6 +46,11 @@ export const metadata = {
 // provisions per group (the rest behind "See the complete sample answer").
 // Both disclosures are server-rendered <details>, like the test-method page's
 // "Show all": all the cards are in the HTML, no script runs.
+//
+// Sprint 6 (10 Oct 2026) leads with the guided walkthrough: one button into
+// the real GP05 reader with ?tour=1 (src/lib/tour.ts), where the visitor does
+// the research once. The search and Ask example is the second section, a
+// collapsed <details> of its own, with its two inner disclosures unchanged.
 //
 // A result in GP05 is a normal card with its checked summary and opens in the
 // reader. Every other result is a locked card: where it lives in the corpus,
@@ -149,88 +155,123 @@ export default async function SamplePage() {
         See how EssentialRegs answers a real Colorado oil and gas compliance question
       </h1>
       <p className="mt-3 max-w-reading text-sm leading-relaxed text-ink-soft">
-        An operator with a produced water tank battery wants to know what applies. Below are the keyword search and the
-        Ask answer a subscriber gets for it. GP05, the general permit for produced water storage tank batteries, is available
-        below in the complete reader. Every other result shows where it lives in the corpus.
+        An operator with a produced water tank battery wants to know what applies. Do the research once yourself in the
+        walkthrough, or open the keyword search and the Ask answer a subscriber gets for it further down. GP05, the general
+        permit for produced water storage tank batteries, is available below in the complete reader.
       </p>
 
-      <div className="mt-5">
+      <section
+        className="mt-8 rounded-lg border border-line bg-accent-soft p-6"
+        aria-labelledby="sample-walkthrough-title"
+        data-testid="sample-walkthrough"
+      >
+        <h2 id="sample-walkthrough-title" className="font-serif text-card font-semibold text-ink">
+          Take the 60-second walkthrough
+        </h2>
+        <p className="mt-2 max-w-reading text-sm leading-relaxed text-ink-soft">
+          You operate a produced-water tank battery under GP05 and need the site-specific sampling requirements. In about
+          a minute you find the provision, read the official text, check the plain-English summary and follow a citation
+          into Regulation 7, in the real reader.
+        </p>
+        <div className="mt-5">
+          <Link href={TOUR_START_HREF} className={BUTTON_PRIMARY}>
+            Start the walkthrough
+          </Link>
+        </div>
+      </section>
+
+      <div className="mt-6">
         <Buttons hasAccess={hasAccess} testId="sample-top-cta" />
       </div>
 
-      <p className="mt-3 text-xs text-muted">
-        These results are a snapshot from {snapshotDateLabel()}. The live search may differ.
-      </p>
-
       {error && <p className="mt-6 rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</p>}
 
-      <section className="mt-10" aria-labelledby="sample-keyword-title" data-testid="sample-keyword">
-        <h2 id="sample-keyword-title" className="font-serif text-lg font-bold tracking-tight text-ink">
-          Keyword search: &ldquo;{SNAPSHOT.keyword.query}&rdquo;
-        </h2>
-        <p className="mt-2 text-sm text-ink-soft" data-testid="sample-recommended">
-          <span className="font-medium text-ink">Recommended starting point:</span>{" "}
-          <Link href={RECOMMENDED_START.href} className="font-medium underline underline-offset-2 hover:text-accent">
-            {RECOMMENDED_START.label}
-          </Link>
-        </p>
-        <p className="mt-3 font-mono text-eyebrow uppercase text-tag">{showingLine()}</p>
-        <ol className="mt-3 flex flex-col gap-3">{keywordFirst.map((hit) => card(hit))}</ol>
-        {keywordMore.length > 0 && (
-          // Server-rendered disclosure (Sprint 5, 10 Oct 2026): the next
-          // results are already in the HTML, so no script and no request.
-          <details className="group mt-3" data-testid="sample-keyword-more">
-            <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-medium text-ink-soft underline underline-offset-2 hover:text-accent">
-              <span className="group-open:hidden">{moreResultsLabel()}</span>
-              <span className="hidden group-open:inline">Show fewer results</span>
-            </summary>
-            <ol className="mt-3 flex flex-col gap-3">{keywordMore.map((hit) => card(hit))}</ol>
-          </details>
-        )}
-      </section>
+      {/* The search and Ask example (Sprints 4 and 5), collapsed under the
+          walkthrough (Sprint 6). Server-rendered: every card is in the HTML. */}
+      <details className="group/example mt-10 rounded-lg border border-line bg-panel" data-testid="sample-example">
+        <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 px-5 py-4 font-serif text-lg font-bold tracking-tight text-ink">
+          <span>Search and Ask: the same question answered two ways</span>
+          <span className="shrink-0 font-sans text-sm font-medium text-ink-soft underline underline-offset-2 group-open/example:hidden">
+            Show
+          </span>
+          <span className="hidden shrink-0 font-sans text-sm font-medium text-ink-soft underline underline-offset-2 group-open/example:inline">
+            Hide
+          </span>
+        </summary>
+        <div className="border-t border-line px-5 pb-6">
+          <p className="mt-4 text-xs text-muted">
+            These results are a snapshot from {snapshotDateLabel()}. The live search may differ.
+          </p>
 
-      <section className="mt-12" aria-labelledby="sample-ask-title" data-testid="sample-ask">
-        <h2 id="sample-ask-title" className="font-serif text-lg font-bold tracking-tight text-ink">
-          Ask: &ldquo;{SNAPSHOT.ask.question}&rdquo;
-        </h2>
-        {ask.map && ask.grouped ? (
-          <>
-            <p className="mt-3 text-sm">
-              <span className="font-mono text-eyebrow uppercase text-tag">Mapped question:</span>{" "}
-              <span className="font-semibold text-ink" data-testid="map-title">
-                {mapTitle(ask.map, stated)}
-              </span>
+          <section className="mt-8" aria-labelledby="sample-keyword-title" data-testid="sample-keyword">
+            <h2 id="sample-keyword-title" className="font-serif text-lg font-bold tracking-tight text-ink">
+              Keyword search: &ldquo;{SNAPSHOT.keyword.query}&rdquo;
+            </h2>
+            <p className="mt-2 text-sm text-ink-soft" data-testid="sample-recommended">
+              <span className="font-medium text-ink">Recommended starting point:</span>{" "}
+              <Link href={RECOMMENDED_START.href} className="font-medium underline underline-offset-2 hover:text-accent">
+                {RECOMMENDED_START.label}
+              </Link>
             </p>
-            <MapIntro factors={ask.map.factors} hasAccess={hasAccess} />
-            {answerHead.map((g) => section(g))}
-            {answerRest.length > 0 && (
-              // The rest of every group (Sprint 5, 10 Oct 2026): each group
-              // above opens with its first three provisions; this reveals
-              // the remainder, group by group, in the same order.
-              <details className="group mt-8" data-testid="sample-ask-more">
+            <p className="mt-3 font-mono text-eyebrow uppercase text-tag">{showingLine()}</p>
+            <ol className="mt-3 flex flex-col gap-3">{keywordFirst.map((hit) => card(hit))}</ol>
+            {keywordMore.length > 0 && (
+              // Server-rendered disclosure (Sprint 5, 10 Oct 2026): the next
+              // results are already in the HTML, so no script and no request.
+              <details className="group mt-3" data-testid="sample-keyword-more">
                 <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-medium text-ink-soft underline underline-offset-2 hover:text-accent">
-                  <span className="group-open:hidden">See the complete sample answer</span>
-                  <span className="hidden group-open:inline">Show less of the sample answer</span>
+                  <span className="group-open:hidden">{moreResultsLabel()}</span>
+                  <span className="hidden group-open:inline">Show fewer results</span>
                 </summary>
-                {answerRest.map((g) => section(g, " (continued)"))}
+                <ol className="mt-3 flex flex-col gap-3">{keywordMore.map((hit) => card(hit))}</ol>
               </details>
             )}
-            {ask.summary?.omitted.map((o) => (
-              <p key={o.facet} className="mt-6 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink-soft">
-                <span className="font-medium text-ink">Not shown because you said {o.said}:</span> {o.omitted}.
-              </p>
-            ))}
-            <p className="mt-6 text-xs text-muted">
-              The groups are a map of where the rules for this question live; the provisions inside them are the
-              regulation&apos;s own, with the ones found by meaning and by your words marked with a match score. Statements
-              of basis (rulemaking history) are hidden. None of this is legal advice; read the full text and check the
-              official source before relying on it.
-            </p>
-          </>
-        ) : (
-          !error && <p className="mt-3 text-sm text-muted">The Ask answer is not available right now.</p>
-        )}
-      </section>
+          </section>
+
+          <section className="mt-12" aria-labelledby="sample-ask-title" data-testid="sample-ask">
+            <h2 id="sample-ask-title" className="font-serif text-lg font-bold tracking-tight text-ink">
+              Ask: &ldquo;{SNAPSHOT.ask.question}&rdquo;
+            </h2>
+            {ask.map && ask.grouped ? (
+              <>
+                <p className="mt-3 text-sm">
+                  <span className="font-mono text-eyebrow uppercase text-tag">Mapped question:</span>{" "}
+                  <span className="font-semibold text-ink" data-testid="map-title">
+                    {mapTitle(ask.map, stated)}
+                  </span>
+                </p>
+                <MapIntro factors={ask.map.factors} hasAccess={hasAccess} />
+                {answerHead.map((g) => section(g))}
+                {answerRest.length > 0 && (
+                  // The rest of every group (Sprint 5, 10 Oct 2026): each group
+                  // above opens with its first three provisions; this reveals
+                  // the remainder, group by group, in the same order.
+                  <details className="group mt-8" data-testid="sample-ask-more">
+                    <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-medium text-ink-soft underline underline-offset-2 hover:text-accent">
+                      <span className="group-open:hidden">See the complete sample answer</span>
+                      <span className="hidden group-open:inline">Show less of the sample answer</span>
+                    </summary>
+                    {answerRest.map((g) => section(g, " (continued)"))}
+                  </details>
+                )}
+                {ask.summary?.omitted.map((o) => (
+                  <p key={o.facet} className="mt-6 rounded-md border border-line bg-panel px-4 py-3 text-sm text-ink-soft">
+                    <span className="font-medium text-ink">Not shown because you said {o.said}:</span> {o.omitted}.
+                  </p>
+                ))}
+                <p className="mt-6 text-xs text-muted">
+                  The groups are a map of where the rules for this question live; the provisions inside them are the
+                  regulation&apos;s own, with the ones found by meaning and by your words marked with a match score. Statements
+                  of basis (rulemaking history) are hidden. None of this is legal advice; read the full text and check the
+                  official source before relying on it.
+                </p>
+              </>
+            ) : (
+              !error && <p className="mt-3 text-sm text-muted">The Ask answer is not available right now.</p>
+            )}
+          </section>
+        </div>
+      </details>
 
       <section className="mt-12 rounded-lg border border-line bg-accent-soft p-6" data-testid="sample-reader">
         <h2 className="font-serif text-card font-semibold text-ink">
