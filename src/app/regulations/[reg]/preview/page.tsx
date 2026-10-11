@@ -1,22 +1,33 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import { cache } from "react";
 import {
   fetchProvisionTeaser,
   fetchRegulationTeaser,
   sourceLinkTextFor,
   summaryParagraphs,
   titleWithoutCitation,
+  type ProvisionTeaser,
 } from "@/lib/regulation";
 import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
 import { getAccessStatus } from "@/lib/access";
 import { LockedDestination } from "@/components/LockedDestination";
+import { PreviewSubtree } from "@/components/PreviewSubtree";
 import { isPublicReaderReg } from "@/lib/destination";
 import { PRICE_SUMMARY } from "@/lib/pricing";
 import { displayCitation } from "@/lib/federal-citation";
 import { PROVISION_ID } from "@/lib/types";
 import { ReaderTour } from "@/components/ReaderTour";
 import { TOUR_PARAM, tourRequested } from "@/lib/tour";
+import {
+  previewReturnLink,
+  publicSubtree,
+  readerRedirectHref,
+  renderSubtreeHtml,
+  type SubtreeRow,
+} from "@/lib/preview-subtree";
+import { fetchSubtreeRows } from "@/lib/preview-subtree-data";
 
 // `reg` goes straight into an `eq("reg_key", reg)` filter
 // (fetchRegulationTeaser) -- restricting it to alphanumerics before it ever
@@ -34,6 +45,31 @@ function focusedId(p: string | string[] | undefined, reg: string): string | null
   return regKeyOf(p) === reg ? p : null;
 }
 
+/**
+ * One load per request, shared by generateMetadata and the page (React's
+ * cache() dedupes within a request): the focused provision's label, and the
+ * rows the VISITOR's own session may read of it and below
+ * (fetchSubtreeRows: RLS-bound, the database decides). A row the label read
+ * does not find -- missing, or in a staged document -- shows nothing, public
+ * or not. The rows are unfenced here; renderSubtreeHtml and publicSubtree
+ * (preview-subtree.ts) fence them before anything reaches the page.
+ *
+ * A failed row read is logged and answers "no rows": the page is then what it
+ * was before the subtree (the locked panel), which shows nothing it should
+ * not, instead of turning every focused preview a search result links to into
+ * an error page.
+ */
+const loadFocused = cache(async (reg: string, id: string): Promise<{ focused: ProvisionTeaser | null; rows: SubtreeRow[] }> => {
+  const [focused, rows] = await Promise.all([
+    fetchProvisionTeaser(reg, id),
+    fetchSubtreeRows(reg, id).catch((e: unknown) => {
+      console.error("preview subtree:", e instanceof Error ? e.message : e);
+      return [] as SubtreeRow[];
+    }),
+  ]);
+  return { focused, rows: focused ? rows : [] };
+});
+
 export async function generateMetadata(
   props: PageProps<"/regulations/[reg]/preview">
 ): Promise<Metadata> {
@@ -46,11 +82,16 @@ export async function generateMetadata(
     notFound();
   }
   const id = focusedId((await props.searchParams).p, reg);
-  const focused = id ? await fetchProvisionTeaser(reg, id) : null;
-  if (focused) {
+  const { focused, rows } = id ? await loadFocused(reg, id) : { focused: null, rows: [] };
+  if (focused && id) {
+    // A public provision (the Regulation 7 I.C.1 subtree, Sprint 7) is read
+    // on this page; the description must not call it locked.
+    const open = publicSubtree(rows, id).length > 0;
     return {
       title: `${displayCitation(reg, focused.citation)} — ${root.citation}`,
-      description: `${displayCitation(reg, focused.citation)} of ${root.citation} is in the full EssentialRegs corpus. Start a trial to open it in the cross-referenced reader.`,
+      description: open
+        ? `${displayCitation(reg, focused.citation)} of ${root.citation}: the official text and plain-English summaries on EssentialRegs. The rest of the regulation opens with a trial.`
+        : `${displayCitation(reg, focused.citation)} of ${root.citation} is in the full EssentialRegs corpus. Start a trial to open it in the cross-referenced reader.`,
       // A per-provision URL for every id in the corpus is not worth indexing.
       robots: { index: false },
     };
@@ -77,12 +118,15 @@ export default async function RegulationPreviewPage(
   const searchParams = await props.searchParams;
   const id = focusedId(searchParams.p, reg);
   let focused = null;
+  let subtreeRows: SubtreeRow[] = [];
   if (id) {
     // GP05's reader is open to everyone (PUBLIC_READER_REGS), so a link here
-    // for one of its provisions goes straight to it, visitor or not.
+    // for one of its provisions goes straight to it, visitor or not. The
+    // redirect keeps ?from= and ?tour=1: a subscriber who lands on a preview
+    // link from GP05 still gets the reader's return bar and the walkthrough.
     const { hasAccess } = await getAccessStatus();
-    if (hasAccess || isPublicReaderReg(reg)) redirect(`/regulations/${reg}#${id}`);
-    focused = await fetchProvisionTeaser(reg, id);
+    if (hasAccess || isPublicReaderReg(reg)) redirect(readerRedirectHref(reg, id, searchParams));
+    ({ focused, rows: subtreeRows } = await loadFocused(reg, id));
   }
 
   const { root, headings, summaries, pendingSummaries } = await fetchRegulationTeaser(reg);
@@ -91,11 +135,30 @@ export default async function RegulationPreviewPage(
   }
   const regName = regulationDisplayName(reg, root);
   const rootHeading = titleWithoutCitation(root.title, root.citation) || root.citation;
+  // The focused provision when the visitor's own session may read it (it is
+  // public), as the reader's rows; empty html when it is locked. The summary
+  // gate takes the regulation's real pending count, the one the teaser uses.
+  const subtree = id
+    ? renderSubtreeHtml(subtreeRows, { reg, focusedId: id, rootSourceUrl: root.source_url, pendingSummaries })
+    : { ids: [], html: "" };
+  // "← Back to GP05 · VI.C" when the visitor came from a provision of another
+  // regulation (?from=), for a public and a locked provision alike.
+  const returnLink = focused ? previewReturnLink(searchParams, reg) : null;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
       {focused && (
         <div className="mb-10 border-b border-line pb-10">
+          {returnLink && (
+            <a
+              id="preview-return"
+              data-testid="preview-return"
+              href={returnLink.href}
+              className="mb-5 inline-flex min-h-11 items-center rounded-full border border-line bg-panel px-4 text-sm font-semibold text-accent shadow-sm hover:bg-accent-soft"
+            >
+              {returnLink.label}
+            </a>
+          )}
           <p className="text-sm text-ink-soft">{regName}</p>
           <h1 className="mt-1 font-serif text-section font-bold tracking-tight text-ink">
             {displayCitation(reg, focused.citation)}
@@ -108,12 +171,16 @@ export default async function RegulationPreviewPage(
           {focused.context_path && (
             <p className="mt-2 text-xs leading-snug text-muted">{focused.context_path}</p>
           )}
-          <LockedDestination
-            regName={regName}
-            citation={displayCitation(reg, focused.citation)}
-            title={titleWithoutCitation(focused.title, focused.citation)}
-            readerHref={`/regulations/${reg}#${focused.id}`}
-          />
+          {subtree.html ? (
+            <PreviewSubtree html={subtree.html} regName={regName} readerHref={`/regulations/${reg}#${focused.id}`} />
+          ) : (
+            <LockedDestination
+              regName={regName}
+              citation={displayCitation(reg, focused.citation)}
+              title={titleWithoutCitation(focused.title, focused.citation)}
+              readerHref={`/regulations/${reg}#${focused.id}`}
+            />
+          )}
           {/* The walkthrough's last step (Sprint 6, src/lib/tour.ts): a
               visitor who followed GP05 VI.C's Regulation 7 citation lands
               here with ?tour=1. Shows only while that tour is at step 6. */}
