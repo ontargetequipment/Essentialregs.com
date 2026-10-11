@@ -839,6 +839,9 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       hideResults();
       jumpbox.value = "";
       goToProvision(slug, { push: true });
+      // On a phone the jump box is inside the off-canvas sidebar; close it
+      // like a sidebar link does, or the landed provision stays behind it.
+      closeSidebar();
     }
     function onJumpResultsClick(e: MouseEvent) {
       const item = (e.target as HTMLElement).closest(".jr-item") as HTMLElement | null;
