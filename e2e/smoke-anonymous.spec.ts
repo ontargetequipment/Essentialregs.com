@@ -408,6 +408,24 @@ test.describe("anonymous", () => {
     // Closing returns to the document.
     await page.locator("#popup-close").click();
     await expect(page.locator("#backdrop")).not.toHaveClass(/show/);
+
+    // The part between the regulation and the section is a link too (11 Oct
+    // 2026): VI.A's "Regulation Number 7, Part B, Section I.A.1". Its locked
+    // popup offers the focused preview of the part root, and that page opens.
+    const partB = page.locator('#doc > [id="sec-gp05-VI-A"] a.xref-external-reg[href="/regulations/7#sec-7-P-B"]');
+    await expect(partB).toHaveText("Part B");
+    await partB.scrollIntoViewIfNeeded();
+    await partB.click();
+    await expect(page.locator("#backdrop")).toHaveClass(/show/);
+    const partPanel = page.locator("#popup-body [data-testid=locked-destination]");
+    await expect(partPanel).toContainText("Regulation 7 PART B is in the full corpus.");
+    const inside = partPanel.getByRole("link", { name: "See what's in it" });
+    await expect(inside).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-P-B");
+    expect(new URL(page.url()).pathname).toBe("/regulations/gp05");
+    await inside.click();
+    await page.waitForURL((url) => url.pathname === "/regulations/7/preview" && url.searchParams.get("p") === "sec-7-P-B");
+    await expect(page.locator("h1")).toHaveText("PART B");
+    await expect(page.locator("[data-testid=locked-destination]")).toContainText("Regulation 7 PART B is in the full corpus.");
   });
 
   test("/api/provision answers a visitor with a locked label, no text, never cached", async ({ request }) => {

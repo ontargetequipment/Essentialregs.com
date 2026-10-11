@@ -383,6 +383,22 @@ test.describe("signed in", () => {
     expect(res?.status()).toBe(200);
     await expect(page.locator("#sidebar")).toBeVisible();
     await expect(page.getByTestId("visitor-banner")).toHaveCount(0);
+
+    // VI.A's "Part B" (linked since 11 Oct 2026) previews Regulation 7's part
+    // root in place, and the popup's footer opens it in the Regulation 7 reader.
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    const partB = row(page, "sec-gp05-VI-A").locator('a.xref-external-reg[href="/regulations/7#sec-7-P-B"]');
+    await expect(partB).toHaveText("Part B");
+    await partB.scrollIntoViewIfNeeded();
+    await partB.click();
+    await expect(page.locator("#backdrop")).toHaveClass(/show/);
+    await expect(page.locator("#popup-eyebrow")).toHaveText("Regulation 7");
+    await expect(page.locator("#popup-title")).toHaveText("PART B");
+    const open = page.locator("#popup-goto");
+    await expect(open).toHaveAttribute("href", "/regulations/7?from=sec-gp05-VI-A#sec-7-P-B");
+    await open.click();
+    await page.waitForURL((url) => url.pathname === "/regulations/7" && url.hash === "#sec-7-P-B");
+    await expect(row(page, "sec-7-P-B")).toBeInViewport({ timeout: 30_000 });
   });
 
   test("a subscriber gets the walkthrough too: step 5 opens Regulation 7 I.C.1 in the reader and step 6 has no trial button", async ({ page }, testInfo) => {

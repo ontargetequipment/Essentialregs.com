@@ -60,6 +60,8 @@ test("step 5 follows VI.C's Regulation 7 Section I.C.1 link and no other", () =>
   assert.equal(isTourCitationLink("/regulations/7#sec-7-B-II-B-2", "II.B.2."), false);
   assert.equal(isTourCitationLink("/regulations/7#sec-7-B-I-D-3", "Sections I.D.3."), false);
   assert.equal(isTourCitationLink("/regulations/7", "Regulation Number 7"), false);
+  // The part between them links its root since 11 Oct 2026; it is not the citation.
+  assert.equal(isTourCitationLink("/regulations/7#sec-7-P-B", "Part B"), false);
   // A suffix is not a match: II.C.1 is not I.C.1.
   assert.equal(isTourCitationLink("/regulations/7#sec-7-B-II-C-1", "Section II.C.1."), false);
   // The right words into another regulation.
