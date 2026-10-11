@@ -191,6 +191,7 @@ Done when: a handful of unaffiliated paying subscribers exist.
 - `AGENTS.md` matters: this is Next.js 16.3.4 — read `node_modules/next/dist/docs/` before writing code. ESLint has `react-hooks/set-state-in-effect` on. Never add jsdom-based deps (they crashed Vercel's runtime before).
 - The site can't be reached from some sandboxes; verify production with a fetch tool using a unique query string per request (caches are aggressive). `/regulations/{reg}` returns 404 for anonymous visitors by design.
 - Brody's standing instruction (Sep 13 2026): if Claude has a tool that can do something directly, do it that way instead of asking Brody to click through a dashboard. Applies to production DB changes too — the Supabase MCP connection can run safe, non-destructive DML (a handful of UPDATEs/INSERTs on specific known rows) directly; still write the change as a `supabase/migrations/RUN_ME_*.sql` file for the repo's record even when applying it directly, and still confirm the result with a read-back query afterwards. Schema/DDL changes go through `apply_migration`, not raw `execute_sql`. Reserve "Brody needs to click this himself" for things that are genuinely his to do: anything requiring credentials/secrets that shouldn't pass through Claude at all (see below), an account-level toggle Claude has no API for, or a change large/risky enough (e.g. touching most of the corpus, or anything hard to reverse) that it deserves his eyes first.
+- The Supabase connector's `apply_migration` (and `execute_sql`) holds any statement containing DROP for a confirmation that an unattended session never gives, and the call times out after 60s with nothing applied. Keep `drop ... if exists` out of a migration for a new object. Oct 10-11 2026: `tour_events` timed out eight times with one `drop policy if exists`, and applied at once without it. A timed-out call applies nothing, so check `schema_migrations` before retrying.
 - Never paste secrets into chat or commit them; they go in Vercel env vars or GitHub Actions secrets. This one stays a hard boundary regardless of the line above — it's not about Claude lacking a tool, it's that a service-role key or API secret shouldn't flow through an AI chat session even when it technically could.
 
 ## Review 4 fixes, Oct 7 2026 (branch `claude/keen-shannon-jz8dt7`)
@@ -285,7 +286,7 @@ Plan: "EssentialRegs: Path to 9/10", section "Sprint 4: the Sample page becomes 
 - **PR #92, related-result destinations (merged).** `provisionDestination` (`src/lib/destination.ts`) sends a subscriber to `/regulations/{reg}#{id}` and a visitor to the focused preview `/regulations/{reg}/preview?p={id}`, which shows the provision's citation, title and path plus the locked-destination panel (`LockedDestination.tsx`). A subscriber who lands on a focused preview is redirected to the provision. e2e covers GP12 VI.A.1 signed in and out.
 - **GP05 public sample.** Every GP05 row is `is_public` (`supabase/migrations/20261010120000_gp05_public_sample.sql`, applied to production by the CEO session), and `PUBLIC_READER_REGS = ["gp05"]` is the app-side gate. Every other regulation still 404s in the reader for a visitor. In the visitor's reader, cross-regulation links open a popup with the destination's citation and title and the locked panel (`/api/provision` answers a visitor with a label-only `{locked: true, ...}`); there is never a silent redirect. `/sample` shows the canned "produced water tank" keyword search and the "Produced water storage tanks and tank batteries" Ask, both from `src/data/sample-snapshot.json`. The ids come from `search_provisions` and from Ask eval run 38020544005; labels are read at request time. Every non-GP05 result is shown as a locked destination. Semantic neighbours read "Related by meaning, not cited" everywhere.
 - **Refreshing the snapshot:** re-run the Ask eval workflow by hand with `ask` set to the question and `ask_count` 20; run `select id from search_provisions('produced water tank', 25, false)` as a privileged role; then update the JSON's ids and `generated` date.
-- **TODO (owner decision pending): GP06 II.A.2 vs II.A.3.** Both describe the January 27, 2020 reclassification, one as moderate-to-serious and one as serious-to-severe. Brody is checking the issued permit. Add no source-text note on either condition until he says so.
+- **GP06 II.A.2 vs II.A.3: checked Oct 10 (PR #96), owner decision still open.** Both describe the January 27, 2020 reclassification, one as moderate-to-serious and one as serious-to-severe. Our rows match the retained permit letter for letter, so the clash is in the permit itself (see Sprint 6). Add no source-text note on either condition until Brody says so.
 - The plan's "Regulation 7 card" item is moot: the four-card page is retired, and `/regs/<id>` keeps those rows public.
 
 ## Sprint 5: fix the public path, then trim the Sample, Oct 10 2026 (PRs #94 and #95)
@@ -294,4 +295,51 @@ Plan: "EssentialRegs: Path to 9/10", section "Sprint 5". Built by two Sonnet age
 
 - **PR #94, the four bugs (merged, deployed).** (1) Test Method "Cited by" links go through `provisionDestination(..., { hasAccess: false })` (`test-method-citations-pure.ts`): a visitor gets the focused preview, a subscriber is redirected from it to the provision, GP05 opens the reader. `/changelog` had the same 404 link and now uses `regulationCardHref(key, false)`. The anonymous smoke walks every Cited by link on Method 21 and fails on any 404. (2) Stale navigation: Vercel Skew Protection is not available on this project's plan (the API answers "Skew Protection not found"; enabling it means a plan upgrade, Brody's call). `next.config.ts` sets `deploymentId: process.env.VERCEL_DEPLOYMENT_ID`, so a client from an older deploy gets a hard reload instead of a client-side navigation (`<html data-dpl-id>`, `x-nextjs-deployment-id`). A local two-build reproduction did not show the stale page (Next's build-id check already reloads on a plain server), so this is a documented mitigation, not a reproduced fix; the sample links are plain `<Link>`s. (3) The reader's Back label records the row last clicked in or focused while it is on screen, else the viewport-top row (`originRowId`). (4) `kindOf` treats `sec-<reg>-P-<X>` (27 regulations) as a part and the preview's "What's inside" query includes those rows under the root; the reader keeps its old markup through `readerKindOf` (restyling those parts is a separate change: switch the callers to `kindOf` and bump `READER_RENDER_VERSION`).
 - **PR #95, trim items 5-12 (merged, deployed).** /sample: trial and GP05-reader buttons under the intro and at the bottom, "Recommended starting point: GP05" above five keyword results (five more behind a `<details>`), the Ask answer opens three provisions per group with "See the complete sample answer", intro says "is available below in the complete reader". Visitors see "Search the free GP05 sample"; on /search a visitor's Ask button is "Start a 7-day trial to use Ask" and both notices offer the trial beside "Log in". One federal citation formatter (`src/lib/federal-citation.ts`; `citeLabel` printed `OOOOA 60.5365a.(e)`). Public dates on the America/Denver calendar, date-only values printed as written (`src/lib/dates.ts`; snapshot now "9 Oct 2026"; `READER_RENDER_VERSION` 4). /pricing lists what the subscription includes (`src/lib/plan-includes.ts`), links the free GP05 reader, and a visitor's plan buttons read "Start your 7-day free trial".
-- **Open:** the snapshot's `generated` instant is the Sample commit time (an upper bound; both candidates fall on 9 Oct in Colorado). `pipeline/import_ccr.py` stamps `last_verified_date` with the runner's date, which can be a day ahead of Denver after 6 pm. GP06 II.A.2 / II.A.3 still waits on the issued permit.
+- **Open:** the snapshot's `generated` instant is the Sample commit time (an upper bound; both candidates fall on 9 Oct in Colorado). The `last_verified_date` and GP06 items were closed in Sprint 6 (PR #96).
+
+## Sprint 6: the guided GP05 walkthrough, Oct 10-11 2026 (PRs #96 and #97)
+
+Plan: "EssentialRegs: Path to 9/10", section "Sprint 6". Built in one Claude Code session. A Sonnet agent did the Sprint 5 leftovers (PR #96); a second one built a local mock-Supabase harness, so the tour could be run in a real browser inside the sandbox, which reaches neither the site nor Supabase. Pricing ($25 / $250) and Skew Protection are untouched.
+
+**PR #97, the walkthrough.**
+- `/regulations/gp05?tour=1` runs six steps on the real reader. `src/lib/tour.ts` holds the steps, copy, state, citation matching and placement math (`scripts/tour.test.ts`). `src/components/ReaderTour.tsx` is the page side.
+- The visitor does every action. The tour watches the reader and moves on: a row taking focus after a jump, `hashchange`/`popstate`, the summary's `toggle`.
+- VI.D and VI.C resolve through the jump box's own `normalizeJumpKey` match (`jumpTargetFor`); nothing is hard-coded. Step 5 is VI.C's link whose text names Regulation 7 Section I.C.1.
+- That click goes to `provisionDestination(...)` with `?tour=1`: the focused preview for a visitor, `/regulations/7#sec-7-B-I-C-1` for a subscriber.
+- Step 6 sits under the locked panel (beside the provision on a subscriber's Reg 7 reader). Its buttons are "Explore GP05 yourself" and, for visitors only, "Start your 7-day trial" (`/signup`, the plan choice).
+- State is `sessionStorage["er:tour"]`, so a reload resumes. Skip clears it and drops `?tour=1`. Restart returns to the jump box.
+- Placement: on wide screens the callout is in the sidebar column beside its anchor, never over the text. At 860px and below it docks to the bottom with matching page padding. There is no overlay and no tour library.
+- **Different from the brief:** in the normal reader, a visitor's Reg 7 click opens the locked popup in place (Sprint 4), not the focused preview. The tour takes that one click itself (`preventDefault` in the capture phase, which the reader already respects) so step 5 lands on the preview. Outside the tour, the popup is unchanged.
+- **Reader:** no anchors were added. One fix: on a phone, Enter in the jump box now closes the off-canvas sidebar, as a sidebar link already did. Before this, the landed provision stayed behind the menu.
+- The summary panel doesn't print "The official text controls; the summary is a reading aid." (its badge tooltip says "The source text controls"), so step 4's callout, beside the open summary, says it.
+- **/sample:** "Take the 60-second walkthrough" comes first, with one button and two sentences. The search and Ask example moved into a collapsed `<details>`. The trial and GP05-reader buttons stay.
+- **Counts:** Vercel custom events need Pro or Enterprise (the API answers 402 on this team).
+  - So: `public.tour_events` (migration `20261011014953_tour_events.sql`) and `POST /api/tour-event`.
+  - RLS is insert-only for anon and authenticated. No PII: event, step, the tour's random session id, `env`, time.
+  - Events: tour_start; tour_step (each step once per run); tour_complete (step 6 reached); tour_trial_click; tour_skip (with its step).
+  - The smoke suite's browsers are not stored.
+  - Counts, in the SQL editor:
+
+```sql
+select count(*) filter (where event = 'tour_start') as starts, count(*) filter (where event = 'tour_complete') as completions, count(*) filter (where event = 'tour_trial_click') as trial_clicks from public.tour_events where env = 'production';
+```
+
+Where people stop (furthest step per run): `select furthest, count(*) from (select session_id, max(step) as furthest from public.tour_events where env = 'production' group by 1) t group by 1 order by 1;`
+
+**PR #96, Sprint 5 leftovers (merged).**
+- **Denver days.** `pipeline/denver_date.py` `today_denver()` mirrors `todayDenver()`. It has no UTC fallback.
+  - It now stamps `last_verified_date` on new rows, the import/release note days, the `reviewed_by` day, the eCFR "Retrieved" date, the `docs/imports/<day>` folders and the workflow issue-comment days.
+  - Instants (`*_at`) stay UTC.
+  - Found: `last_verified_date` is written only when a row is INSERTed, so "source checked" shows the day the root row was created, not the last import (`pipeline/README.md`).
+- **GP06 II.A.2 / II.A.3.** The permit itself prints "(January 27, 2020)" for moderate-to-serious (II.A.2, p. 6) and again for serious-to-severe (II.A.3, p. 7).
+  - Our rows match the retained `pipeline/sources/GP06.pdf` (Issuance 4, July 23 2025) word for word: 7,165 of 7,165.
+  - The same permit dates serious-to-severe at Issuance 3, November 3 2022 (I.C and the revision table), so II.A.3's date looks carried over from II.A.2.
+  - `test_sprint3_text.py` pins both sentences. Nothing is on the site.
+  - cdphe.colorado.gov was unreachable from the sandbox, so the live copy has not been compared.
+
+**Owner decisions (Brody).**
+- (1) GP06 II.A.3: leave as printed, or approve a `[sic]`-style tooltip on its date: "Printed this way in GP06 Issuance 4. The same permit dates the serious-to-severe change at Issuance 3 (November 3, 2022) in I.C and in its revision table; January 27, 2020 is the moderate-to-serious date used in I.B and II.A.2." It needs a markup-only gp06 re-import. Before deciding, open the issued PDF once at CDPHE (pages 6-7).
+- (2) "Source checked": either make re-imports refresh the root row's `last_verified_date`, or relabel it.
+- (3) Skew Protection: a plan upgrade, unchanged.
+
+**Migration parity.** `20261010120000_gp05_public_sample` (Sprint 4) has no row in `schema_migrations`, although its data is in place (all 111 GP05 rows are `is_public`). `20261009005000` was recorded by hand (no statements stored). One parity check of the folder against `schema_migrations` is worth running.
