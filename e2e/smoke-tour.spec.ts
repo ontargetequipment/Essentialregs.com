@@ -69,9 +69,11 @@ async function expectBesideTheText(page: Page): Promise<void> {
 }
 
 /**
- * The visitor preview has no sidebar: at 1280px the card is fixed in the
- * bottom-right corner (320px wide, 16px margins, below the site header) and
- * the anchor is clear of it.
+ * The visitor preview has no sidebar and is one centred text column. At 1280px
+ * its gutter (280px) is wide enough for the card: fixed in the bottom-right
+ * corner, as wide as the gutter allows less 12px each side (at most 296px),
+ * below the site header -- and entirely to the right of #preview-doc, so none
+ * of the column's text is under it, and clear of the anchor.
  */
 async function expectFloatingCorner(page: Page, anchor: Locator): Promise<void> {
   const vp = page.viewportSize()!;
@@ -80,16 +82,19 @@ async function expectFloatingCorner(page: Page, anchor: Locator): Promise<void> 
   await expect
     .poll(async () => {
       const cb = await boxOf(c);
-      // 16px from the right edge (a classic scrollbar may take a few more) and from the bottom.
+      // 12px from the right edge (a classic scrollbar may take a few more) and 16px from the bottom.
       return (
-        cb.width >= 300 &&
-        cb.width <= 340 &&
-        cb.x + cb.width <= vp.width - 16 + 1 &&
-        cb.x + cb.width >= vp.width - 16 - 24 &&
+        cb.width >= 220 &&
+        cb.width <= 297 &&
+        cb.x + cb.width <= vp.width - 12 + 1 &&
+        cb.x + cb.width >= vp.width - 12 - 24 &&
         Math.abs(cb.y + cb.height - (vp.height - 16)) <= 1 &&
         cb.y >= 66
       );
     }, { message: "the card is in the bottom-right corner" })
+    .toBe(true);
+  await expect
+    .poll(async () => !overlap(await boxOf(c), await boxOf(page.locator("#preview-doc"))), { message: "no part of #preview-doc is under the card" })
     .toBe(true);
   await expect
     .poll(async () => !overlap(await boxOf(c), await boxOf(anchor)), { message: "the card is never over its anchor" })
@@ -537,6 +542,24 @@ test.describe("guided walkthrough", () => {
     await shot(page, testInfo, "tour-375-closing");
     await sawEvent(events, "tour_complete:7");
     expect(tagsOf(events)).toEqual(FULL_RUN);
+  });
+
+  test("at 1100px the preview's gutter is too narrow for the card: it docks, and follows a resize both ways", async ({ page }) => {
+    const H = 720;
+    await page.setViewportSize({ width: 1100, height: H });
+    await captureTourEvents(page);
+    await openAtStep(page, 6);
+    const aControl = summaryControl(previewRow(page, REG7_IC1_A));
+    // A 190px gutter: docked like on a phone, with the control above the dock.
+    await expectDocked(page, 6, aControl, H, 1100);
+    // Wider: the card moves into the gutter, clear of the text.
+    await page.setViewportSize({ width: 1280, height: H });
+    await expectFloatingCorner(page, aControl);
+    // Narrower again: docked.
+    await page.setViewportSize({ width: 1100, height: H });
+    await expectDocked(page, 6, aControl, H, 1100);
+    await aControl.click();
+    await expectDocked(page, 7, page.locator("#preview-return"), H, 1100);
   });
 
   test("outside the tour, a visitor's click on VI.C's Regulation 7 citation opens the locked popup, and its preview link carries VI.C", async ({ page }) => {
