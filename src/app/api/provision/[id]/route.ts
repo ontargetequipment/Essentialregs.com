@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAccessStatus } from "@/lib/access";
 import { loadProvisionPreview, previewCacheControl } from "@/lib/provision-preview";
-import { fetchProvisionTeaser } from "@/lib/regulation";
+import { fetchSubtreeRows } from "@/lib/preview-subtree-data";
+import { fetchProvisionTeaser, fetchRegulationTeaser } from "@/lib/regulation";
 import { regKeyOf } from "@/lib/regulation-names";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,7 +17,9 @@ export const runtime = "nodejs";
  * visitors get the text, read through their own RLS-bound client; anyone else
  * gets 200 { locked: true, id, reg_key, citation, title, path } -- the label
  * of the provision, read with the service role from four columns and never
- * its text (Sprint 4, 10 Oct 2026; was 401 / 403). The gate itself is
+ * its text (Sprint 4, 10 Oct 2026; was 401 / 403) -- except for a row that is
+ * is_public (Regulation 7 I.C.1 and below, 11 Oct 2026), which anyone gets
+ * as text with its summary panel and public sub-rows. The gate itself is
  * loadProvisionPreview.
  */
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -38,6 +41,20 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
           .maybeSingle();
         if (error) throw new Error(error.message);
         return data;
+      },
+      // A viewer who cannot read the corpus still reads a row the database
+      // marks is_public (Regulation 7 I.C.1 and below): the row and its
+      // descendants through the visitor's own RLS-bound client, which is the
+      // gate. loadProvisionPreview fences what comes back.
+      fetchSubtree: async (rowId) => {
+        const key = regKeyOf(rowId);
+        return key ? fetchSubtreeRows(key, rowId) : [];
+      },
+      // What a public row's summary panel needs of its regulation: the root's
+      // source link and how many summaries are still pending (the gate).
+      fetchPanelContext: async (key) => {
+        const { root, pendingSummaries } = await fetchRegulationTeaser(key);
+        return root ? { rootSourceUrl: root.source_url ?? null, pendingSummaries } : null;
       },
       // The label of a provision the viewer cannot read: fetchProvisionTeaser
       // selects id, citation, title and context_path only and is null for a

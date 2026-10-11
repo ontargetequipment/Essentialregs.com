@@ -61,7 +61,9 @@ import {
   lockedPopup,
   originTrailLabel,
   popupEyebrow,
+  partRootIdOf,
   printedEffectiveDate,
+  publicPreviewParts,
   regulationHref,
   renumberedNote,
   ReturnTrail,
@@ -73,6 +75,7 @@ import {
   validCitedSection,
   validProvisionId,
   versionNote,
+  visitorPreviewHref,
 } from "../src/lib/reader-nav";
 import { renderReaderBody } from "../src/lib/reader-render";
 import { SOURCE_DATES } from "../src/lib/source-dates.generated";
@@ -1473,6 +1476,153 @@ test("a visitor's click on a cross-regulation link opens the locked popup, not a
     } finally {
       f.restore();
     }
+  });
+
+  await unmount();
+});
+
+// ---------------------------------------------------------------------------
+// 11 Oct 2026: a PUBLIC row of a closed regulation (Regulation 7 I.C.1 and
+// below) in the popup of a visitor who cannot read the corpus: its text, the
+// summary control with its source link, its public sub-rows, and a footer that
+// opens the focused preview, not the reader's 404. A locked row, same visitor,
+// is still only the label (LOCKED above).
+// ---------------------------------------------------------------------------
+
+const SUMMARY_PANEL =
+  '<details class="summary-panel"><summary>Plain-English summary</summary><div class="summary-body">' +
+  '<p class="summary-badge reviewed" title="Disclaimer page">AI-generated \u00b7 automated check against source text</p>' +
+  "<p>Control equipment must be run to its specifications.</p></div>" +
+  '<div class="summary-status"><a class="reg-source-link" href="https://www.sos.state.co.us/CCR/reg7" target="_blank" rel="noopener noreferrer">View official source \u2197</a></div></details>';
+const PUBLIC_IC1 = {
+  id: "sec-7-B-I-C-1",
+  reg_key: "7",
+  citation: "I.C.1.",
+  title: "I.C.1.",
+  html: "<p>General Requirements</p>",
+  public: true,
+  panel: "",
+  below:
+    '<div class="item" data-citation="I.C.1.a."><p><span class="item-id">I.C.1.a.</span> All air pollution control equipment used to demonstrate compliance.</p>' +
+    SUMMARY_PANEL +
+    "</div>",
+};
+
+test("publicPreviewParts, visitorPreviewHref and partRootIdOf (pure)", () => {
+  const parts = publicPreviewParts(PUBLIC_IC1, "Regulation 7", "sec-gp05-VI-C")!;
+  assert.equal(parts.bodyHtml, PUBLIC_IC1.html + PUBLIC_IC1.below, "text, then (no row panel), then the sub-rows");
+  assert.equal(parts.hasSummary, true);
+  assert.equal(parts.footerHref, "/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C");
+  assert.equal(parts.footerLabel, "Open the Regulation 7 preview \u2192");
+  // The row's own panel comes between the text and the sub-rows.
+  assert.equal(
+    publicPreviewParts({ ...PUBLIC_IC1, below: "", panel: SUMMARY_PANEL }, "Regulation 7")!.bodyHtml,
+    PUBLIC_IC1.html + SUMMARY_PANEL
+  );
+  // No summary anywhere: no "Official text" label wanted.
+  assert.equal(publicPreviewParts({ ...PUBLIC_IC1, below: "" }, "Regulation 7")!.hasSummary, false);
+  // Only the server's public answer qualifies; anything else is the ordinary preview.
+  assert.equal(publicPreviewParts({ ...PUBLIC_IC1, public: undefined }, "Regulation 7"), null);
+  assert.equal(publicPreviewParts({ ...PUBLIC_IC1, public: false }, "Regulation 7"), null);
+  // A bad origin is not carried; the same regulation's own row is not carried either.
+  assert.equal(publicPreviewParts(PUBLIC_IC1, "Regulation 7", "nonsense")!.footerHref, "/regulations/7/preview?p=sec-7-B-I-C-1");
+  assert.equal(publicPreviewParts(PUBLIC_IC1, "Regulation 7", "sec-7-B-I-A")!.footerHref, "/regulations/7/preview?p=sec-7-B-I-C-1");
+  assert.equal(visitorPreviewHref("sec-7-B-I-C-1", "7", "sec-gp05-VI-C"), "/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C");
+
+  // The Part a row sits in, from its id alone.
+  assert.equal(partRootIdOf("sec-7-B-I-C-1"), "sec-7-P-B");
+  assert.equal(partRootIdOf("sec-7-B-I-C-1-e-(iv)"), "sec-7-P-B");
+  assert.equal(partRootIdOf("sec-7-B-I-D-3-a-(i)"), "sec-7-P-B");
+  assert.equal(partRootIdOf("sec-3-A-II-D-1"), "sec-3-P-A");
+  assert.equal(partRootIdOf("sec-25-P-A-I-2"), "sec-25-P-A", "already under a P- part");
+  assert.equal(partRootIdOf("sec-gp05-VI-C"), null, "a general permit has sections, not parts");
+  assert.equal(partRootIdOf("sec-7-top-REG-7"), null);
+  assert.equal(partRootIdOf("sec-ecmc-100-DEF-TANK"), null);
+  assert.equal(partRootIdOf("nonsense"), null);
+});
+
+test("a visitor's click on a link to a public row shows its text, summary control and source link, and its footer opens the preview", async (t) => {
+  const { dom, messages } = crossRegSetup();
+  const r = await bootReader(dom);
+  const { window, $, mount, unmount, click, sleep } = r;
+  await mount();
+  await sleep(80);
+  const isShown = () => $("#backdrop").classList.contains("show");
+  const link = () => $('#doc > [id="sec-3-A-II-B-5"] a.xref-external-reg[href$="#sec-7-B-I-B-33"]');
+  const before = window.location.href;
+  messages.length = 0;
+
+  await t.test("the text, the sub-rows' text, the summary control with its badge and source link", async () => {
+    const f = stubFetch(async () => okJson({ ...PUBLIC_IC1, id: "sec-7-B-I-B-33" }));
+    try {
+      const ev = await click(link());
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-B-I-B-33"]);
+      assert.equal(ev.defaultPrevented, true);
+      assert.equal(isShown(), true);
+      assert.equal($("#popup-eyebrow").textContent, "Regulation 7");
+      assert.equal($("#popup-title").textContent, "I.C.1.");
+      const body = $("#popup-body");
+      assert.equal(body.querySelector('[data-testid="locked-destination"]'), null, "not the locked label");
+      assert.match(body.textContent ?? "", /General Requirements/);
+      assert.match(body.textContent ?? "", /All air pollution control equipment used to demonstrate compliance\./);
+      const panel = body.querySelector("details.summary-panel");
+      assert.ok(panel, "the summary control");
+      assert.equal((panel as HTMLDetailsElement).open, false, "closed until the visitor opens it");
+      assert.equal(panel!.querySelector("summary")?.textContent, "Plain-English summary");
+      assert.match(panel!.querySelector(".summary-badge")?.textContent ?? "", /automated check against source text/);
+      const source = panel!.querySelector(".summary-status a");
+      assert.equal(source?.getAttribute("href"), "https://www.sos.state.co.us/CCR/reg7");
+      assert.equal(source?.getAttribute("target"), "_blank");
+      // The "Official text" label that tells the text from the summary is shown, as in a same-document popup.
+      const label = $("#popup-text-label") as HTMLElement;
+      assert.equal(label.hidden, false);
+      // The footer is a real link to the focused preview carrying the origin -- not the reader, which 404s for a visitor.
+      assert.equal($("#popup-goto").getAttribute("href"), "/regulations/7/preview?p=sec-7-B-I-B-33&from=sec-3-A-II-B-5");
+      assert.equal($("#popup-goto").textContent, "Open the Regulation 7 preview \u2192");
+      assert.equal(($("#popup-goto") as HTMLElement).style.display, "");
+      assert.equal(window.location.href, before, "no navigation");
+      assert.equal(messages.length, 0, "no replayed navigation either");
+    } finally {
+      f.restore();
+    }
+    await click($("#popup-close"));
+  });
+
+  await t.test("a public row with no summary: text only, no label, no control", async () => {
+    const f = stubFetch(async () => okJson({ ...PUBLIC_IC1, id: "sec-7-B-I-B-33", below: "" }));
+    try {
+      await click(link());
+      assert.equal(isShown(), true);
+      assert.equal($("#popup-body").querySelector("details.summary-panel"), null);
+      assert.equal(($("#popup-text-label") as HTMLElement).hidden, true);
+      assert.match($("#popup-body").textContent ?? "", /General Requirements/);
+    } finally {
+      f.restore();
+    }
+    await click($("#popup-close"));
+  });
+
+  await t.test("a locked row, same visitor: the label and no text; and an ordinary preview restores the footer and hides the label", async () => {
+    const f = stubFetch(async () => okJson(LOCKED));
+    try {
+      await click(link());
+      assert.equal($("#popup-body").querySelector("details.summary-panel"), null);
+      assert.doesNotMatch($("#popup-body").textContent ?? "", /General Requirements|All air pollution/);
+      assert.match($('#popup-body [data-testid="locked-destination"]').textContent ?? "", /is in the full corpus\./);
+    } finally {
+      f.restore();
+    }
+    await click($("#popup-close"));
+    const f2 = stubFetch(async () => okJson(PREVIEW));
+    try {
+      await click(link());
+      assert.equal($("#popup-goto").textContent, "Open in Regulation 7 \u2192");
+      assert.equal($("#popup-goto").getAttribute("href"), "/regulations/7?from=sec-3-A-II-B-5#sec-7-B-I-B-33");
+      assert.equal(($("#popup-text-label") as HTMLElement).hidden, true);
+    } finally {
+      f2.restore();
+    }
+    await click($("#popup-close"));
   });
 
   await unmount();

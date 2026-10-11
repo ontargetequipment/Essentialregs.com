@@ -5,8 +5,8 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { ProvisionCard, cardAccess } from "@/components/ProvisionCard";
 import { RelatedProvisions } from "@/components/RelatedProvisions";
-import { regKeyOf, regulationCardHref, regulationDisplayName, withReviewerKind } from "@/lib/regulation-pure";
-import { isPublicReaderReg } from "@/lib/destination";
+import { regKeyOf, regulationDisplayName, withReviewerKind } from "@/lib/regulation-pure";
+import { provisionBackLink } from "@/lib/provision-back";
 import { displayCitation } from "@/lib/federal-citation";
 import { PROVISION_ID, type Provision } from "@/lib/types";
 
@@ -54,22 +54,14 @@ export default async function ProvisionPage(
     notFound();
   }
 
-  // The four public sample rows came from /sample, so they go back there.
-  // A row of a regulation whose reader is open to everyone (GP05, Sprint 4,
-  // 10 Oct 2026) is public too, but its home is the reader. Any other row is
-  // a corpus provision reached from search or a link, and its home is the
-  // reader, at its own anchor (or the public teaser when the visitor is not
-  // entitled to the reader, which 404s for them).
-  const regKey = regKeyOf(provision.id);
+  // Where back goes depends on the row (provisionBackLink): a row with no
+  // regulation key is a hand-written sample (/sample); GP05's rows go to its
+  // open reader; a public row of a closed regulation (Regulation 7 I.C.1 and
+  // below) goes to that document's visitor preview, focused on its Part; any
+  // other row is a corpus provision reached from search or a link, and its
+  // home is the reader (or the preview, for a visitor who cannot open it).
   const { hasAccess } = await cardAccess();
-  const readerOpen = !!regKey && isPublicReaderReg(regKey);
-  const back =
-    (provision.is_public && !readerOpen) || !regKey
-      ? { href: "/sample", label: "← Back to sample" }
-      : {
-          href: hasAccess || readerOpen ? `/regulations/${regKey}#${provision.id}` : regulationCardHref(regKey, false),
-          label: `← Back to ${regulationDisplayName(regKey)}`,
-        };
+  const back = provisionBackLink(provision, { hasAccess });
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">

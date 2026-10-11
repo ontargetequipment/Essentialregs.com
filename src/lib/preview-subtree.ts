@@ -277,7 +277,11 @@ export function rewriteSubtreeLinks(html: string, ctx: LinkContext): string {
  * the page ships them finished. scripts/preview-subtree.test.ts compares the
  * result with the reader's own panel after the browser-side fill.
  */
-function filledPanel(panel: string, row: SubtreeRow, rootSourceUrl: string | null): string {
+export function filledPanel(
+  panel: string,
+  row: Pick<SubtreeRow, "id" | "source_url" | "summary_status" | "reviewed_at" | "reviewed_by_human">,
+  rootSourceUrl: string | null
+): string {
   if (!panel) return panel;
   let out = panel;
   const url = row.source_url || rootSourceUrl;
@@ -387,6 +391,52 @@ export function renderSubtreeHtml(rows: readonly SubtreeRow[], opts: SubtreeOpti
     })
     .join("");
   return { ids: gated.map((r) => r.id), html };
+}
+
+/** What renderPopupRows returns: the parts of a public row's citation popup. */
+export type PopupRows = {
+  /** The focused row's own text, badged as the reader's rows are. */
+  html: string;
+  /** Its summary panel (open the control to read it), "" when there is none to show. */
+  panel: string;
+  /** Its public descendants in order, each `<div class="item" data-citation>` text + panel; "" for a leaf. */
+  below: string;
+};
+
+/**
+ * What the reader's citation popup shows of a PUBLIC row (11 Oct 2026, after
+ * Sprint 7): the row's own text and summary panel, then the public rows below
+ * it, each as its text and summary panel. A panel is "" where the summary is
+ * not approved or its regulation's review run has not finished
+ * (gatePublicSummaries). Unlike renderSubtreeHtml the text keeps the reader's
+ * own cross-reference markup (spans with data-target, a.xref-external-reg
+ * links), because the popup's click handler, not a page of anchors, follows
+ * them. Rows go through publicSubtree first, so a locked focused row, and a
+ * locked parent of a public child, give null.
+ */
+export function renderPopupRows(rows: readonly SubtreeRow[], opts: SubtreeOptions): PopupRows | null {
+  const fenced = publicSubtree(rows, opts.focusedId);
+  if (fenced.length === 0) return null;
+  const key = regKeyOf(opts.focusedId) ?? opts.reg;
+  const gated = gatePublicSummaries(fenced, new Map([[key, opts.pendingSummaries]]));
+  const one = (r: SubtreeRow) => ({
+    text: withItemIdBadge(promoteHeadingParagraph(sanitizeHtml(r.full_text)), r.citation),
+    panel: filledPanel(
+      summaryPanelHtml(r, opts.rootSourceUrl, undefined, applicabilityContextKey(r.id)),
+      r,
+      opts.rootSourceUrl
+    ),
+  });
+  // publicSubtree returns [] unless the focused row is among its rows.
+  const first = one(gated.find((r) => r.id === opts.focusedId)!);
+  const below = gated
+    .filter((r) => r.id !== opts.focusedId)
+    .map((r) => {
+      const { text, panel } = one(r);
+      return `<div class="item" data-citation="${escapeHtml(r.citation)}">${text}${panel}</div>`;
+    })
+    .join("");
+  return { html: first.text, panel: first.panel, below };
 }
 
 // ---------------------------------------------------------------------------

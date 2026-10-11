@@ -476,6 +476,26 @@ export function citationLabelFromId(id: string): string | null {
 }
 
 /**
+ * The id of the Part a row sits in, from the row's id alone -- "sec-7-B-I-C-1-a"
+ * -> "sec-7-P-B" -- by the rule citationLabelFromId uses for "Part B ·" (a
+ * leading single letter that is not a section numeral and is followed by one
+ * is the Part), and for a row already under a "sec-<reg>-P-<X>" part. null for
+ * anything else (a regulation without Parts, a root, a general permit). A
+ * guess about an id, not a lookup: the focused preview of an id that does not
+ * exist is the document's plain preview.
+ */
+export function partRootIdOf(id: string): string | null {
+  const key = regKeyOf(id);
+  if (!key || id.includes("-top-REG-")) return null;
+  const segs = id.slice(`sec-${key}-`.length).split("-").filter(Boolean);
+  if (segs.length >= 2 && segs[0] === "P" && /^[A-Za-z0-9]+$/.test(segs[1])) return `sec-${key}-P-${segs[1]}`;
+  if (segs.length >= 2 && /^[A-Z]$/.test(segs[0]) && !isSectionRoman(segs[0]) && isSectionRoman(segs[1])) {
+    return `sec-${key}-P-${segs[0]}`;
+  }
+  return null;
+}
+
+/**
  * The return bar's text for an origin in another regulation: the
  * regulation's display name (never the key), then the short citation when
  * the id yields one -- "Regulation 7 · Part B · I.B.33". A general permit
@@ -493,6 +513,15 @@ export type ProvisionPreviewPayload = {
   title?: string;
   html: string;
   summary?: { overview: string; badge: { kind: SummaryBadgeKind; label: string } | null } | null;
+  /**
+   * Set only when the row is public to a viewer who cannot read the corpus
+   * (provision-preview.ts, Regulation 7 I.C.1 and below): `panel` is the
+   * row's summary panel and `below` its public sub-rows, both server-built
+   * markup like `html`.
+   */
+  public?: boolean;
+  panel?: string;
+  below?: string;
 };
 
 /**
@@ -529,6 +558,47 @@ function escapeLockedHtml(s: string): string {
 }
 
 /**
+ * Where a visitor opens a provision of a regulation whose reader is closed to
+ * them: its focused preview, carrying `&from=<the row the link was clicked
+ * in>` when that is a provision of ANOTHER regulation (so the preview can
+ * draw its "Back to GP05 · VI.C" link). Shared by the locked popup's "See
+ * what's in it" and the public popup's footer.
+ */
+export function visitorPreviewHref(id: string, key: string, fromId?: string | null): string {
+  const from = fromId ? validProvisionId(fromId) : null;
+  const carryFrom = from !== null && regKeyOf(from)?.toLowerCase() !== key.toLowerCase() ? `&from=${encodeURIComponent(from)}` : "";
+  return provisionDestination({ id, reg_key: key }, { hasAccess: false, publicRegs: [] }) + carryFrom;
+}
+
+/**
+ * The popup for a PUBLIC row of a closed regulation (a visitor following
+ * GP05 VI.C's Regulation 7 I.C.1 citation, 11 Oct 2026): the row's text, its
+ * summary control and official-source link (`panel`), and its public sub-rows
+ * (`below`), in the order the reader's own popup shows them, with a footer
+ * link to the focused preview -- not the reader, which 404s for a visitor.
+ * `hasSummary` says whether the "Official text" label (which tells the text
+ * from the summary under it) is wanted. null unless the payload is the
+ * server's public answer. Pure, so scripts/reader-nav.test.ts can check it.
+ */
+export function publicPreviewParts(
+  data: ProvisionPreviewPayload,
+  name: string,
+  fromId?: string | null
+): { bodyHtml: string; hasSummary: boolean; footerHref: string; footerLabel: string } | null {
+  if (data.public !== true) return null;
+  const panel = typeof data.panel === "string" ? data.panel : "";
+  const below = typeof data.below === "string" ? data.below : "";
+  const key = regKeyOf(data.id);
+  if (!key) return null;
+  return {
+    bodyHtml: data.html + panel + below,
+    hasSummary: (panel + below).includes('class="summary-panel"'),
+    footerHref: visitorPreviewHref(data.id, key, fromId),
+    footerLabel: `Open the ${name} preview \u2192`,
+  };
+}
+
+/**
  * The popup for a locked cross-regulation target (Sprint 4, 10 Oct 2026):
  * the regulation's name as the eyebrow, the citation as the title, the
  * provision's own title on the line below (the popup's note line), and a
@@ -558,11 +628,9 @@ export function lockedPopup(
   // business (the API sends the stored title); show it only when it adds
   // something to the citation.
   const title = data.title && data.title !== data.citation ? data.title : "";
-  const from = fromId ? validProvisionId(fromId) : null;
-  const carryFrom = from !== null && regKeyOf(from)?.toLowerCase() !== key.toLowerCase() ? `&from=${encodeURIComponent(from)}` : "";
   const previewHref = asDocument
     ? `/regulations/${encodeURIComponent(key)}/preview`
-    : provisionDestination({ id: data.id, reg_key: key }, { hasAccess: false, publicRegs: [] }) + carryFrom;
+    : visitorPreviewHref(data.id, key, fromId);
   const what = asDocument ? name : `${name} ${data.citation}`;
   const panelHtml =
     `<section class="locked-destination" data-testid="locked-destination">` +

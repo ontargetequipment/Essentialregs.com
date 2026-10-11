@@ -17,6 +17,7 @@ import {
   type PreviewLabel,
   type PreviewRow,
 } from "../src/lib/provision-preview";
+import type { SubtreeRow } from "../src/lib/preview-subtree";
 
 const ROW: PreviewRow = {
   id: "sec-7-B-I-B-33",
@@ -33,8 +34,19 @@ const LABEL: PreviewLabel = {
   context_path: "PART B — Oil and Natural Gas › I. Definitions",
 };
 
-function deps(over: { signedIn?: boolean; hasAccess?: boolean; row?: PreviewRow | null; label?: PreviewLabel | null } = {}) {
-  const calls = { access: 0, fetch: [] as string[], label: [] as string[] };
+type DepsOver = {
+  signedIn?: boolean;
+  hasAccess?: boolean;
+  row?: PreviewRow | null;
+  label?: PreviewLabel | null;
+  /** What the visitor's own RLS-bound subtree read returns; default none (every row locked). */
+  subtree?: SubtreeRow[] | Error;
+  /** The panel context; default: nothing pending, a root source link. null = staged; an Error = the read fails. */
+  ctx?: { rootSourceUrl: string | null; pendingSummaries: number } | null | Error;
+};
+
+function deps(over: DepsOver = {}) {
+  const calls = { access: 0, fetch: [] as string[], label: [] as string[], subtree: [] as string[], ctx: [] as string[] };
   const d: PreviewDeps = {
     access: async () => {
       calls.access++;
@@ -47,6 +59,16 @@ function deps(over: { signedIn?: boolean; hasAccess?: boolean; row?: PreviewRow 
     fetchLabel: async (id) => {
       calls.label.push(id);
       return over.label === undefined ? LABEL : over.label;
+    },
+    fetchSubtree: async (id) => {
+      calls.subtree.push(id);
+      if (over.subtree instanceof Error) throw over.subtree;
+      return over.subtree ?? [];
+    },
+    fetchPanelContext: async (key) => {
+      calls.ctx.push(key);
+      if (over.ctx instanceof Error) throw over.ctx;
+      return over.ctx === undefined ? { rootSourceUrl: "https://www.sos.state.co.us/CCR/reg7", pendingSummaries: 0 } : over.ctx;
     },
   };
   return { d, calls };
@@ -221,19 +243,187 @@ test("a whole-document preview carries the root's title and the two-sentence ove
   assert.equal(previewSummary({ ai_summary: "   ", summary_status: "approved", reviewed_at: null }), null);
 });
 
-test("a visitor asking for a public Regulation 7 subtree row (I.C.1.a) still gets the label alone, as before the subtree opened (Sprint 7)", async () => {
-  // /api/provision is unchanged: only PUBLIC_READER_REGS (GP05) answers a visitor with text. The
-  // subtree's text is on the focused preview and /regs/<id>, not here.
-  const row: PreviewRow = { id: "sec-7-B-I-C-1-a", citation: "I.C.1.a.", full_text: "<p>All air pollution control equipment.</p>", ai_summary: "Summary." };
+// ---------------------------------------------------------------------------
+// A public row of a closed regulation, asked for by a visitor (11 Oct 2026,
+// after Sprint 7): the reader's citation popup shows its text, summary control
+// and source link; a locked row, and a locked parent of a public one, still
+// get the label alone.
+// ---------------------------------------------------------------------------
+
+const PUBLIC_SOURCE = "https://www.sos.state.co.us/CCR/reg7";
+function pub(id: string, citation: string, over: Partial<SubtreeRow> = {}): SubtreeRow {
+  return {
+    id,
+    citation,
+    title: citation,
+    jurisdiction_level: "state",
+    parent_id: null,
+    full_text: `<p>${citation} text of ${id}.</p>`,
+    ai_summary: null,
+    source_url: null,
+    is_public: true,
+    sort_order: 0,
+    summary_status: null,
+    reviewed_at: null,
+    reviewed_by_human: false,
+    ...over,
+  };
+}
+const IC1 = pub("sec-7-B-I-C-1", "I.C.1.", { sort_order: 1, full_text: "<p>General Requirements</p>" });
+const IC1A = pub("sec-7-B-I-C-1-a", "I.C.1.a.", {
+  sort_order: 2,
+  parent_id: "sec-7-B-I-C-1",
+  full_text: "<p>I.C.1.a. All air pollution control equipment used to demonstrate compliance.</p>",
+  ai_summary: "Control equipment must be run to its specifications.",
+  summary_status: "approved",
+  reviewed_at: "2026-10-05T04:45:29.910Z",
+});
+const IC1B = pub("sec-7-B-I-C-1-b", "I.C.1.b.", {
+  sort_order: 3,
+  parent_id: "sec-7-B-I-C-1",
+  ai_summary: "Pending summary text.",
+  summary_status: "pending",
+});
+
+test("a visitor asking for a public row of a closed regulation gets its text, summary control, source link and public sub-rows", async () => {
+  const { d, calls } = deps({ signedIn: false, hasAccess: false, subtree: [IC1, IC1A, IC1B] });
+  const res = await loadProvisionPreview("sec-7-B-I-C-1", d);
+  assert.equal(res.status, 200);
+  const body = res.body as Record<string, unknown> & { html: string; panel: string; below: string };
+  assert.equal("locked" in body, false);
+  assert.deepEqual(Object.keys(body).sort(), ["below", "citation", "html", "id", "panel", "public", "reg_key", "summary", "title"]);
+  assert.equal(body.public, true);
+  assert.equal(body.reg_key, "7");
+  assert.equal(body.citation, "I.C.1.");
+  assert.match(body.html, /General Requirements/);
+  assert.match(body.html, /<span class="item-id">I\.C\.1\.<\/span>/, "badged like a reader row");
+  // I.C.1 has no summary: no control on the row itself.
+  assert.equal(body.panel, "");
+  // Its public children follow, each as an item with its text...
+  assert.match(body.below, /<div class="item" data-citation="I\.C\.1\.a\.">/);
+  assert.match(body.below, /All air pollution control equipment used to demonstrate compliance\./);
+  // ...and I.C.1.a's approved summary as the reader's control: badge (with its tooltip) and the official-source link.
+  assert.match(body.below, /<details class="summary-panel"><summary>Plain-English summary<\/summary>/);
+  assert.match(body.below, /Control equipment must be run to its specifications\./);
+  assert.match(body.below, /class="summary-badge [^"]*" title="[^"]*Disclaimer page/);
+  assert.match(body.below, new RegExp(`<div class="summary-status"><a [^>]*href="${PUBLIC_SOURCE.replace(/[.?]/g, "\\$&")}"[^>]*>View official source`));
+  // I.C.1.b's summary is still pending: never offered.
+  assert.doesNotMatch(JSON.stringify(body), /Pending summary text/);
+  assert.deepEqual(calls.fetch, [], "the single-row read of the entitled path never ran");
+  assert.deepEqual(calls.label, [], "no service-role label read for a row the database lets the visitor read");
+  assert.deepEqual(calls.subtree, ["sec-7-B-I-C-1"]);
+  assert.equal(previewCacheControl(res), "private, max-age=300");
+});
+
+test("a public leaf row has its own summary control on the row and nothing below", async () => {
+  const { d } = deps({ signedIn: false, hasAccess: false, subtree: [IC1A] });
+  const res = await loadProvisionPreview("sec-7-B-I-C-1-a", d);
+  const body = res.body as { html: string; panel: string; below: string; summary: { overview: string; badge: { kind: string } | null } | null };
+  assert.match(body.html, /All air pollution control equipment/);
+  assert.match(body.panel, /^<details class="summary-panel">/);
+  assert.match(body.panel, /Control equipment must be run to its specifications\./);
+  assert.match(body.panel, /View official source/);
+  assert.equal(body.below, "");
+  assert.equal(body.summary?.overview, "Control equipment must be run to its specifications.");
+  assert.equal(body.summary?.badge?.kind, "reviewed");
+  // The row's own source_url wins over the root's.
+  const own = deps({ signedIn: false, hasAccess: false, subtree: [{ ...IC1A, source_url: "https://example.test/own" }] });
+  const res2 = await loadProvisionPreview("sec-7-B-I-C-1-a", own.d);
+  assert.match((res2.body as { panel: string }).panel, /href="https:\/\/example\.test\/own"/);
+});
+
+test("signed in without access gets the same public answer", async () => {
+  const { d } = deps({ signedIn: true, hasAccess: false, subtree: [IC1A] });
+  const res = await loadProvisionPreview("sec-7-B-I-C-1-a", d);
+  assert.equal((res.body as { public?: boolean }).public, true);
+});
+
+test("leak guard: a locked row is the label alone, the visitor's read returning nothing for it", async () => {
   const { d, calls } = deps({
     signedIn: false,
     hasAccess: false,
-    row,
-    label: { id: "sec-7-B-I-C-1-a", citation: "I.C.1.a.", title: "I.C.1.a.", context_path: "PART B › I. › I.C. General Provisions" },
+    subtree: [],
+    label: { id: "sec-7-B-I-B-33", citation: "I.B.33.", title: "I.B.33. OPACITY", context_path: "PART B › I." },
   });
-  const res = await loadProvisionPreview("sec-7-B-I-C-1-a", d);
-  assert.equal(res.status, 200);
+  const res = await loadProvisionPreview("sec-7-B-I-B-33", d);
   assert.deepEqual(Object.keys(res.body).sort(), ["citation", "id", "locked", "path", "reg_key", "title"]);
-  assert.deepEqual(calls.fetch, [], "the text read never ran");
-  assert.doesNotMatch(JSON.stringify(res.body), /air pollution control equipment|Summary/);
+  assert.deepEqual(calls.subtree, ["sec-7-B-I-B-33"], "the database was asked, and said no");
+  assert.deepEqual(calls.label, ["sec-7-B-I-B-33"]);
+  assert.equal(previewCacheControl(res), "no-store");
+  assert.doesNotMatch(JSON.stringify(res.body), /html|panel|below|summary|text of/);
+});
+
+test("leak guard: a locked parent of a public child is the label alone (the fence needs the focused row itself public)", async () => {
+  // sec-7-B-I-C is locked; its descendants include the public I.C.1 subtree, which the database returns for the `like` read.
+  const { d } = deps({
+    signedIn: false,
+    hasAccess: false,
+    subtree: [IC1, IC1A, IC1B],
+    label: { id: "sec-7-B-I-C", citation: "I.C.", title: "I.C. General Provisions", context_path: null },
+  });
+  const res = await loadProvisionPreview("sec-7-B-I-C", d);
+  assert.equal((res.body as { locked?: boolean }).locked, true);
+  assert.doesNotMatch(JSON.stringify(res.body), /General Requirements|All air pollution control|Control equipment/);
+  assert.equal(previewCacheControl(res), "no-store");
+});
+
+test("leak guard: rows the database should not have returned (not public, or outside the subtree) are dropped", async () => {
+  // The focused row is public; a sibling and a lookalike come back too, and one child has a null flag.
+  const sibling = pub("sec-7-B-I-C-2", "I.C.2.", { full_text: "<p>SIBLING SECRET</p>" });
+  const lookalike = pub("sec-7-B-I-C-10", "I.C.10.", { full_text: "<p>LOOKALIKE SECRET</p>" });
+  const flagged = pub("sec-7-B-I-C-1-z", "I.C.1.z.", { full_text: "<p>NOT PUBLIC SECRET</p>", is_public: false });
+  const nullFlag = { ...pub("sec-7-B-I-C-1-y", "I.C.1.y.", { full_text: "<p>NULL FLAG SECRET</p>" }), is_public: null } as unknown as SubtreeRow;
+  const { d } = deps({ signedIn: false, hasAccess: false, subtree: [IC1, IC1A, sibling, lookalike, flagged, nullFlag] });
+  const res = await loadProvisionPreview("sec-7-B-I-C-1", d);
+  const text = JSON.stringify(res.body);
+  assert.doesNotMatch(text, /SECRET/);
+  assert.match(text, /All air pollution control equipment/);
+});
+
+test("leak guard: a read that fails, or a focused row that is not public, falls back to the label, never an error or text", async () => {
+  const label = { id: "sec-7-B-I-C-1-a", citation: "I.C.1.a.", title: "I.C.1.a.", context_path: null };
+  const failed = deps({ signedIn: false, hasAccess: false, subtree: new Error("boom"), label });
+  const r1 = await loadProvisionPreview("sec-7-B-I-C-1-a", failed.d);
+  assert.equal((r1.body as { locked?: boolean }).locked, true);
+  const notPublic = deps({ signedIn: false, hasAccess: false, subtree: [{ ...IC1A, is_public: false }], label });
+  const r2 = await loadProvisionPreview("sec-7-B-I-C-1-a", notPublic.d);
+  assert.equal((r2.body as { locked?: boolean }).locked, true);
+  assert.doesNotMatch(JSON.stringify(r2.body), /All air pollution control/);
+});
+
+test("summaries stay withheld while the regulation's review run is unfinished or the panel context cannot be read; the text does not", async () => {
+  for (const ctx of [{ rootSourceUrl: PUBLIC_SOURCE, pendingSummaries: 3 }, new Error("boom")]) {
+    const { d } = deps({ signedIn: false, hasAccess: false, subtree: [IC1A], ctx });
+    const res = await loadProvisionPreview("sec-7-B-I-C-1-a", d);
+    const body = res.body as { html: string; panel: string; summary: unknown };
+    assert.match(body.html, /All air pollution control equipment/);
+    assert.equal(body.panel, "");
+    assert.equal(body.summary, null);
+    assert.doesNotMatch(JSON.stringify(body), /Control equipment must be run/);
+  }
+  // A staged regulation has no public popup: 404.
+  const staged = deps({ signedIn: false, hasAccess: false, subtree: [IC1A], ctx: null });
+  assert.equal((await loadProvisionPreview("sec-7-B-I-C-1-a", staged.d)).status, 404);
+});
+
+test("a rejected or unreviewed summary is not offered on a public row", async () => {
+  for (const summary_status of ["rejected", "pending", null]) {
+    const { d } = deps({ signedIn: false, hasAccess: false, subtree: [{ ...IC1A, summary_status }] });
+    const res = await loadProvisionPreview("sec-7-B-I-C-1-a", d);
+    const body = res.body as { panel: string; summary: unknown };
+    assert.equal(body.panel, "", String(summary_status));
+    assert.equal(body.summary, null, String(summary_status));
+  }
+});
+
+test("an entitled viewer, and a GP05 row for a visitor, never take the public-row path", async () => {
+  const sub = deps();
+  await loadProvisionPreview("sec-7-B-I-B-33", sub.d);
+  assert.deepEqual(sub.calls.subtree, []);
+  assert.deepEqual(sub.calls.ctx, []);
+  const gp05: PreviewRow = { id: "sec-gp05-II-D", citation: "II.D.", title: "II.D.", full_text: "<p>Limit.</p>" };
+  const visitor = deps({ signedIn: false, hasAccess: false, row: gp05 });
+  const res = await loadProvisionPreview("sec-gp05-II-D", visitor.d);
+  assert.deepEqual(Object.keys(res.body).sort(), ["citation", "html", "id", "reg_key", "summary", "title"]);
+  assert.deepEqual(visitor.calls.subtree, []);
 });
