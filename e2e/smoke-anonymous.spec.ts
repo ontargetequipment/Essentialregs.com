@@ -252,6 +252,12 @@ test.describe("anonymous", () => {
     const top = page.getByTestId("sample-top-cta");
     await expect(top.getByRole("link", { name: "Open the free GP05 reader" })).toHaveAttribute("href", "/regulations/gp05");
     await expect(top.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
+    // Sprint 6: the search and Ask example is a collapsed second section, under
+    // the walkthrough (smoke-tour.spec.ts checks the walkthrough itself).
+    const example = page.getByTestId("sample-example");
+    await expect(example).not.toHaveAttribute("open", "");
+    await example.locator(":scope > summary").click();
+    await expect(example).toHaveAttribute("open", "");
     const keywordBox0 = await page.getByTestId("sample-keyword").boundingBox();
     const topBox = await top.boundingBox();
     expect(keywordBox0 && topBox && topBox.y + topBox.height <= keywordBox0.y + 1).toBe(true);
