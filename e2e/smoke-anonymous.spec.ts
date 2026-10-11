@@ -466,12 +466,15 @@ test.describe("anonymous", () => {
     const partPanel = page.locator("#popup-body [data-testid=locked-destination]");
     await expect(partPanel).toContainText("Regulation 7 PART B is in the full corpus.");
     const inside = partPanel.getByRole("link", { name: "See what's in it" });
-    await expect(inside).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-P-B");
+    // Sprint 7: the link carries the GP05 row it came from, and the preview offers the way back.
+    await expect(inside).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-P-B&from=sec-gp05-VI-A");
     expect(new URL(page.url()).pathname).toBe("/regulations/gp05");
     await inside.click();
     await page.waitForURL((url) => url.pathname === "/regulations/7/preview" && url.searchParams.get("p") === "sec-7-P-B");
     await expect(page.locator("h1")).toHaveText("PART B");
     await expect(page.locator("[data-testid=locked-destination]")).toContainText("Regulation 7 PART B is in the full corpus.");
+    await expect(page.locator("#preview-return")).toHaveText("← Back to GP05 · VI.A");
+    await expect(page.locator("#preview-return")).toHaveAttribute("href", "/regulations/gp05#sec-gp05-VI-A");
   });
 
   test("/api/provision answers a visitor with a locked label, no text, never cached", async ({ request }) => {
@@ -822,6 +825,9 @@ test.describe("anonymous", () => {
       "/regulations/7?from=sec-gp05-VI-C&tour=1",
       "/regulations/7?from=sec-gp05-VI-C&tour=1#sec-7-B-I-C-1",
     ]) {
+      // A URL that differs from the one before it only in its #hash would be
+      // a same-document navigation with no response: start each from a blank page.
+      await page.goto("about:blank");
       const res = await page.goto(url);
       expect(res?.status(), url).toBe(404);
       await expect(page.locator("#doc"), url).toHaveCount(0);
