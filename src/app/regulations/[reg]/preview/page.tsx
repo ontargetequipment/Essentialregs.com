@@ -15,6 +15,8 @@ import { isPublicReaderReg } from "@/lib/destination";
 import { PRICE_SUMMARY } from "@/lib/pricing";
 import { displayCitation } from "@/lib/federal-citation";
 import { PROVISION_ID } from "@/lib/types";
+import { ReaderTour } from "@/components/ReaderTour";
+import { TOUR_PARAM, tourRequested } from "@/lib/tour";
 
 // `reg` goes straight into an `eq("reg_key", reg)` filter
 // (fetchRegulationTeaser) -- restricting it to alphanumerics before it ever
@@ -72,7 +74,8 @@ export default async function RegulationPreviewPage(
   // link for a provision the visitor cannot open lands here with ?p=<id>.
   // A subscriber is sent on to the exact provision (stale links included);
   // anyone else sees which provision it is and the offer to open it.
-  const id = focusedId((await props.searchParams).p, reg);
+  const searchParams = await props.searchParams;
+  const id = focusedId(searchParams.p, reg);
   let focused = null;
   if (id) {
     // GP05's reader is open to everyone (PUBLIC_READER_REGS), so a link here
@@ -111,6 +114,10 @@ export default async function RegulationPreviewPage(
             title={titleWithoutCitation(focused.title, focused.citation)}
             readerHref={`/regulations/${reg}#${focused.id}`}
           />
+          {/* The walkthrough's last step (Sprint 6, src/lib/tour.ts): a
+              visitor who followed GP05 VI.C's Regulation 7 citation lands
+              here with ?tour=1. Shows only while that tour is at step 6. */}
+          {tourRequested(searchParams[TOUR_PARAM]) && <ReaderTour page="destination" hasAccess={false} placement="inline" />}
         </div>
       )}
       <p className="font-mono text-eyebrow uppercase text-tag">

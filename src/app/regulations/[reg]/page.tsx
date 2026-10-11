@@ -14,6 +14,8 @@ import Link from "next/link";
 import { TRIAL_DAYS } from "@/lib/pricing";
 import { loadReaderPage } from "@/lib/reader-page";
 import { RegulationReader } from "@/components/RegulationReader";
+import { ReaderTour } from "@/components/ReaderTour";
+import { TOUR_PARAM, TOUR_REG, tourRequested } from "@/lib/tour";
 import { jumpboxPlaceholder } from "@/lib/regulation-names";
 import "../reader.css";
 
@@ -87,6 +89,11 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
   // in PUBLIC_READER_REGS. The client gets the flag (the Recent list and the
   // cross-regulation popup behave for a visitor) and the page a slim banner.
   const publicMode = !(await accessOf()).hasAccess;
+  // The guided walkthrough (Sprint 6, src/lib/tour.ts): ?tour=1 runs it on
+  // GP05. On any other regulation it only finishes a tour that is already
+  // at its last step (a subscriber's step 5 lands on the Reg 7 provision);
+  // without one it renders nothing, so ?tour=1 there is ignored.
+  const tourOn = tourRequested((await props.searchParams)[TOUR_PARAM]);
 
   // The sidebar tree and the document body are the same for everyone who
   // can see this regulation, so they are two HTML strings (reader-render.ts)
@@ -97,6 +104,9 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
   return (
     <div className="reg-reader">
       <RegulationReader publicMode={publicMode} />
+      {tourOn && (
+        <ReaderTour page={reg.toLowerCase() === TOUR_REG ? "reader" : "destination"} hasAccess={!publicMode} />
+      )}
 
       <nav id="sidebar">
         <div id="sidebar-header">

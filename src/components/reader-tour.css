@@ -1,0 +1,248 @@
+/*
+ * The guided GP05 walkthrough's callout (ReaderTour.tsx, Sprint 6, 10 Oct
+ * 2026). Three placements, set on data-mode:
+ *
+ *   anchored  wide screens on a reader page: fixed, beside its anchor in the
+ *             sidebar column or right of the text (placeCallout, tour.ts).
+ *             z-index 35: over the sidebar's tree, under the jump results
+ *             (40), the site header (45) and the reader's popup (100).
+ *   inline    the focused preview on a wide screen: in the page's flow,
+ *             under the locked panel.
+ *   docked    860px and below (the reader's own breakpoint): fixed to the
+ *             bottom of the viewport, over the off-canvas sidebar (55) so
+ *             the jump-box steps stay readable, under "Contents" (60), which
+ *             moves up above it. The page gets the dock's height as bottom
+ *             padding, so nothing ends up permanently under it.
+ *
+ * Nothing dims or blocks the page; there is no overlay.
+ */
+
+.tour-callout {
+  --tour-accent: #2f5d50;
+  --tour-accent-soft: #e4ece8;
+  --tour-ink: #1e2422;
+  --tour-ink-soft: #4b544f;
+  --tour-line: #d9d3c4;
+
+  box-sizing: border-box;
+  background: #ffffff;
+  color: var(--tour-ink);
+  border: 1px solid var(--tour-line);
+  border-top: 3px solid var(--tour-accent);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(20, 30, 25, 0.18);
+  padding: 12px 16px 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
+}
+.tour-callout *,
+.tour-callout *::before,
+.tour-callout *::after {
+  box-sizing: border-box;
+}
+
+.tour-callout[data-mode="anchored"] {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 296px;
+  z-index: 35;
+}
+.tour-callout[data-mode="anchored"][data-unanchored] {
+  top: auto;
+  left: auto;
+  right: 16px;
+  bottom: 16px;
+}
+.tour-callout[data-mode="inline"] {
+  position: relative;
+  margin-top: 24px;
+}
+.tour-callout[data-mode="docked"] {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 57;
+  max-height: 46vh;
+  overflow-y: auto;
+  border-radius: 12px 12px 0 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 24px rgba(20, 30, 25, 0.16);
+}
+/* The site menu drawer marks <main> inert; the dock steps out of its way like "Contents" does. */
+main[inert] .tour-callout {
+  visibility: hidden;
+}
+
+html[data-tour-docked] body {
+  padding-bottom: var(--tour-dock-h, 0px);
+}
+html[data-tour-docked] .reg-reader #mobile-toggle {
+  bottom: calc(var(--tour-dock-h, 0px) + 12px);
+}
+
+.tour-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.tour-count {
+  font-family: var(--font-ibm-plex-mono), "SF Mono", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a5f30;
+}
+.tour-scenario {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+.tour-text {
+  margin: 0 0 6px;
+}
+.tour-hint {
+  margin: 0 0 6px;
+  color: var(--tour-ink-soft);
+  font-size: 13px;
+}
+.tour-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.tour-restart {
+  margin-left: auto;
+}
+
+.tour-primary,
+.tour-secondary,
+.tour-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  text-decoration: none;
+}
+.tour-primary {
+  background: var(--tour-accent);
+  color: #ffffff;
+  border: 1px solid var(--tour-accent);
+  padding: 8px 14px;
+}
+.tour-primary:hover {
+  background: #264d42;
+}
+.tour-secondary {
+  background: #ffffff;
+  color: var(--tour-accent);
+  border: 1px solid var(--tour-line);
+  padding: 8px 14px;
+}
+.tour-secondary:hover {
+  background: var(--tour-accent-soft);
+}
+.tour-quiet {
+  background: none;
+  border: 0;
+  color: var(--tour-ink-soft);
+  padding: 6px 4px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+}
+.tour-quiet:hover {
+  color: var(--tour-ink);
+}
+.tour-primary:focus-visible,
+.tour-secondary:focus-visible,
+.tour-quiet:focus-visible {
+  outline: 2px solid var(--tour-accent);
+  outline-offset: 2px;
+}
+@media (max-width: 860px) {
+  .tour-primary,
+  .tour-secondary,
+  .tour-quiet {
+    min-height: 44px;
+  }
+}
+
+/* The pointer: a small square turned 45 degrees on the edge facing the anchor. */
+.tour-arrow {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border: 1px solid var(--tour-line);
+  transform: rotate(45deg);
+}
+.tour-arrow[hidden] {
+  display: none;
+}
+.tour-arrow[data-side="right"] {
+  right: -7px;
+  margin-top: -6px;
+  border-left: 0;
+  border-bottom: 0;
+}
+.tour-arrow[data-side="left"] {
+  left: -7px;
+  margin-top: -6px;
+  border-right: 0;
+  border-top: 0;
+}
+.tour-arrow[data-side="down"] {
+  bottom: -7px;
+  margin-left: -6px;
+  border-left: 0;
+  border-top: 0;
+}
+.tour-arrow[data-side="up"] {
+  top: -8px;
+  margin-left: -6px;
+  border-right: 0;
+  border-bottom: 0;
+  background: var(--tour-accent);
+  border-color: var(--tour-accent);
+}
+
+/* What the current step points at: a ring, never a cover. */
+#jumpbox[data-tour-target] {
+  box-shadow: 0 0 0 3px rgba(47, 93, 80, 0.35);
+}
+#doc > [data-tour-target] {
+  outline: 2px dashed rgba(47, 93, 80, 0.45);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+#doc details.summary-panel[data-tour-target] {
+  outline: 2px solid rgba(47, 93, 80, 0.45);
+  outline-offset: 4px;
+}
+#doc details.summary-panel > summary[data-tour-target] {
+  outline: 2px solid #2f5d50;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+#doc a.xref-external-reg[data-tour-target] {
+  background: #fbf0c9;
+  outline: 2px solid #b8892b;
+  outline-offset: 1px;
+  border-radius: 3px;
+}

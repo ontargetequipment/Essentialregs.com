@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, test, withProtectionBypass } from "./fixtures";
 import type { Page, TestInfo } from "@playwright/test";
+import { REG7_IC1, VI_C, boxOf, callout, captureTourEvents, walkToStep5, row } from "./tour-helpers";
 
 /**
  * Where the acceptance screenshots go (6 Oct 2026 review items 1 and 5):
@@ -382,6 +383,43 @@ test.describe("signed in", () => {
     expect(res?.status()).toBe(200);
     await expect(page.locator("#sidebar")).toBeVisible();
     await expect(page.getByTestId("visitor-banner")).toHaveCount(0);
+  });
+
+  test("a subscriber gets the walkthrough too: step 5 opens Regulation 7 I.C.1 in the reader and step 6 has no trial button", async ({ page }, testInfo) => {
+    // Sprint 6 (src/lib/tour.ts): the same six steps; the citation goes to the
+    // subscriber's destination (provisionDestination), and the closing
+    // callout drops "Start your 7-day trial".
+    const events = await captureTourEvents(page);
+    await walkToStep5(page);
+    const link = row(page, VI_C).locator(`a.xref-external-reg[href$="#${REG7_IC1}"]`);
+    await expect(link).toHaveAttribute("data-tour-target", "5");
+    await link.click();
+    await page.waitForURL((url) => url.pathname === "/regulations/7" && url.hash === `#${REG7_IC1}`);
+    expect(new URL(page.url()).searchParams.get("tour")).toBe("1");
+    await expect(row(page, REG7_IC1)).toBeInViewport({ timeout: 30_000 });
+    const c = callout(page);
+    await expect(c).toHaveAttribute("data-step", "6");
+    await expect(c.getByTestId("tour-trial")).toHaveCount(0);
+    await expect(c.getByTestId("tour-explore")).toHaveAttribute("href", "/regulations/gp05");
+    // Beside the provision, in the sidebar column: never over the text.
+    await expect
+      .poll(async () => {
+        const cb = await boxOf(c);
+        const sidebar = await boxOf(page.locator("#sidebar"));
+        return cb.x + cb.width <= sidebar.x + sidebar.width + 1;
+      })
+      .toBe(true);
+    await shot(page, testInfo, "tour-subscriber-step6");
+    expect(events.map((e) => e.event)).toContain("tour_complete");
+    expect(events.map((e) => e.event)).not.toContain("tour_trial_click");
+  });
+
+  test("?tour=1 on another regulation is ignored: /regulations/7?tour=1 is the normal reader", async ({ page }) => {
+    const res = await page.goto("/regulations/7?tour=1");
+    expect(res?.status()).toBe(200);
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    await page.waitForTimeout(500);
+    await expect(callout(page)).toHaveCount(0);
   });
 
   test("a stale focused-preview link sends a subscriber to the provision in the reader", async ({ page }) => {
