@@ -152,11 +152,13 @@
 .reg-reader .nav-reg {
   margin-bottom: 18px;
 }
+/* The regulation's own citation ("40 CFR Part 60 Subpart OOOOb"), so no
+   upper-casing: it printed Subpart OOOOb as OOOOB (Sprint 8, 11 Oct 2026). */
 .reg-reader .nav-reg-title {
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.07em;
-  text-transform: uppercase;
+  text-transform: none;
   color: var(--ink-soft);
   border-bottom: 1px solid var(--line);
   padding-bottom: 6px;
@@ -224,12 +226,13 @@
   margin-bottom: 30px;
   border-bottom: 3px solid var(--ink);
 }
+/* The regulation's citation again, above its text: stored case, as above. */
 .reg-reader .reg-eyebrow {
   font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 0.06em;
   color: var(--tag);
-  text-transform: uppercase;
+  text-transform: none;
   margin-bottom: 10px;
 }
 .reg-reader .reg-source-link {

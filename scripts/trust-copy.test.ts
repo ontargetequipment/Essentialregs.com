@@ -7,12 +7,18 @@
  *   npm test
  */
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
 import { test } from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ChangelogBody } from "../src/components/ChangelogBody";
 import { isFederalKey, sourceLinkTextFor, textLabelFor, summaryPanelHtml, summaryParagraphs } from "../src/lib/regulation-pure";
 import { summarySourceLinkHtml } from "../src/lib/snippet";
 import { sourceStatusLine } from "../src/lib/reader-nav";
 import { renderReaderBody } from "../src/lib/reader-render";
-import { describeLine, foldChangelog } from "../src/lib/changelog-group";
+import { LINKS_EXPLANATION, SUMMARY_QUALITY_EXPLANATION, buildChangelogView, describeLine, foldChangelog, summaryDayTotal, type ChangelogCountRow } from "../src/lib/changelog-group";
+import { AI_CHECKED_LABEL, SUMMARY_BADGE_TITLES, summaryStatusBadge } from "../src/lib/regulation-pure";
 import { previewSummary } from "../src/lib/provision-preview";
 import { TEST_METHODS, titleWithoutMethodName } from "../src/data/test-methods";
 import type { Provision } from "../src/lib/types";
@@ -108,4 +114,107 @@ test("a test-method title drops its leading repeat of the name; the data has no 
       assert.ok(!/[^.]\.\.(?!\.)/.test(f), `${m.slug}: double period`);
     }
   }
+});
+
+// ---- "AI reviewed" is gone from every user-visible string (11 Oct 2026) ----
+//
+// The badge stopped saying "AI reviewed" on 9 Oct 2026 because a reader took
+// it to mean someone had reviewed the summary ("AI-generated · automated
+// check against source text"). The changelog, the tooltips and the trust
+// pages still did on 11 Oct. History may stay in code comments and in
+// identifiers (summary_rewritten_reviewed, rewrittenReviewed); what a
+// visitor reads may not say it.
+
+const AI_REVIEWED = /\bAI[\s-]+review(?:ed|s)?\b/i;
+
+/** One row of every change type the changelog has words for, so every phrase is rendered. */
+const EVERY_CHANGE: ChangelogCountRow[] = [
+  "text_updated",
+  "links_updated",
+  "added",
+  "removed",
+  "source_version_changed",
+  "transcription_corrected",
+  "duplicate_removed",
+  "summary_approved",
+  "summary_edited",
+  "summary_rewritten_reviewed",
+  "summary_rewritten_corrected",
+  "summary_rewritten_reviewed_later",
+  "summary_rewritten_pending",
+  "summary_regenerated",
+].flatMap((change_type, i) => [
+  { day: "2026-10-06", reg_key: "7", change_type, provision_count: 3 + i, latest: `2026-10-06T0${i % 10}:00:00Z` },
+  { day: "2026-10-05", reg_key: "gp08", change_type, provision_count: 1, latest: `2026-10-05T0${i % 10}:00:00Z` },
+]);
+
+test("the rendered changelog never says 'AI reviewed' (every change type, loaded and empty)", () => {
+  const loaded = buildChangelogView({ rows: EVERY_CHANGE, computedAt: null, source: "snapshot", error: null }, (d) => d);
+  const empty = buildChangelogView({ rows: [], computedAt: null, source: "none", error: "timeout" }, (d) => d);
+  for (const view of [loaded, empty]) {
+    const html = renderToStaticMarkup(createElement(ChangelogBody, { view }));
+    assert.doesNotMatch(html, AI_REVIEWED);
+  }
+  const html = renderToStaticMarkup(createElement(ChangelogBody, { view: loaded }));
+  assert.match(html, /summaries checked against source text/);
+  assert.match(html, /rewritten \(checked later\)/);
+  assert.ok(html.includes(LINKS_EXPLANATION));
+  for (const phrase of [...foldChangelog(EVERY_CHANGE).flatMap(describeLine), summaryDayTotal(foldChangelog(EVERY_CHANGE)), SUMMARY_QUALITY_EXPLANATION, LINKS_EXPLANATION]) {
+    assert.doesNotMatch(phrase, AI_REVIEWED, phrase);
+  }
+});
+
+test("the badge and its tooltips say the agreed short form, never 'AI reviewed'", () => {
+  assert.equal(AI_CHECKED_LABEL, "AI-generated \u00b7 automated check against source text");
+  const badge = summaryStatusBadge({ summary_status: "approved", reviewed_at: "2026-10-05T18:00:00Z", reviewed_by: "Claude (automated pipeline)" })!;
+  assert.equal(badge.compactLabel, AI_CHECKED_LABEL);
+  assert.equal(badge.label, `${AI_CHECKED_LABEL} \u00b7 Oct 5, 2026`);
+  for (const text of [badge.label, badge.compactLabel, badge.title, ...Object.values(SUMMARY_BADGE_TITLES)]) {
+    assert.doesNotMatch(text, AI_REVIEWED);
+  }
+});
+
+const SRC = join(__dirname, "..", "src");
+
+function walk(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) walk(p, out);
+    else out.push(p);
+  }
+  return out;
+}
+
+/** Source with its comments removed (block, JSX and line comments; a "//" after a colon is a URL). */
+function withoutComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .split("\n")
+    .map((line) => line.replace(/(^|[^:"'`\\])\/\/.*$/, "$1"))
+    .join("\n");
+}
+
+test("no source file that renders copy says 'AI reviewed' outside a comment (admin pages excepted)", () => {
+  const files = walk(SRC).filter((f) => /\.(tsx?|json|md)$/.test(f) && !relative(SRC, f).startsWith(join("app", "admin")));
+  assert.ok(files.length > 100, "the scan reads the app");
+  const hits: string[] = [];
+  for (const file of files) {
+    const text = withoutComments(readFileSync(file, "utf8")).replace(/\s+/g, " ");
+    const m = AI_REVIEWED.exec(text);
+    if (m) hits.push(`${relative(SRC, file)}: ...${text.slice(Math.max(0, m.index - 40), m.index + 40)}...`);
+  }
+  assert.deepEqual(hits, []);
+});
+
+test("the copy-source scan itself sees the old wording and ignores a comment", () => {
+  assert.match(withoutComments('const s = "5 summaries AI reviewed";'), AI_REVIEWED);
+  assert.match(withoutComments("<p>the summaries AI\n reviewed, corrected</p>").replace(/\s+/g, " "), AI_REVIEWED);
+  assert.doesNotMatch(withoutComments("// was AI reviewed\nconst s = 1; /* AI reviewed */ {/* AI review */}"), AI_REVIEWED);
+});
+
+test("the Disclaimer anchor the badge links to is kept", () => {
+  const disclaimer = readFileSync(join(SRC, "components", "DisclaimerText.tsx"), "utf8");
+  assert.match(disclaimer, /REVIEWED_SECTION_ID = "what-reviewed-means"/);
+  // The two checked states point at the section; the pending one has nothing to explain yet.
+  for (const title of [SUMMARY_BADGE_TITLES.reviewed, SUMMARY_BADGE_TITLES.human]) assert.match(title, /Disclaimer page, \u201cWhat AI-generated means\u201d/);
 });

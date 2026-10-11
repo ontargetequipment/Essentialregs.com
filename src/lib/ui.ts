@@ -44,3 +44,15 @@ export function buttonClass({
  */
 export const FREE_PILL =
   "rounded-full bg-paper px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-accent";
+
+/**
+ * The eyebrow style for text that IS a citation (Sprint 8, 11 Oct 2026):
+ * the mono face, size, tracking and brass colour of an eyebrow, with no
+ * upper-casing. Citations are case-sensitive. A federal subpart's suffix
+ * is lower case (60.5365b(e), OOOOb) and so are the lettered levels of a
+ * Colorado one (I.D.3.a.(i)); the eyebrow's `uppercase` printed them as
+ * "§ 60.5365B(E)" and "I.D.3.A.(I)" (outside review, 10-11 Oct 2026). Use
+ * this wherever a stored citation or a document's citation line prints;
+ * keep the plain eyebrow (`uppercase`) for labels that are words.
+ */
+export const CITATION_EYEBROW_CLASS = "font-mono text-eyebrow normal-case text-tag";

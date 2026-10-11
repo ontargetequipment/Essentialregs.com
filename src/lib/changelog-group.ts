@@ -3,7 +3,7 @@
  * regulation and change type -- see
  * supabase/migrations/20261003160524_changelog_public_rpc.sql) into one line
  * per regulation per day: "Regulation 7 — 1,496 provisions updated · 212
- * summaries AI reviewed". Since migration 20261007010000 the function
+ * summaries checked against source text". Since migration 20261007010000 the function
  * reports a summary rewritten and reviewed in the same run as one
  * summary_rewritten_reviewed / summary_rewritten_corrected row (the review
  * is not counted again), an unpaired rewrite as summary_rewritten_pending
@@ -221,13 +221,68 @@ function transcriptionPhrase(line: ChangelogLine): string {
   return `corrections to our copy of the text in ${n}`;
 }
 
+/** The two forms of the check in the summary phrases ("checked ..." / "after checking ..."). */
+const CHECKED = "checked against source text";
+const CHECKING = "checking against source text";
+
+/** The counts the summary phrases are built from: one line's, or a day's summed. */
+export type SummaryCounts = {
+  reviewed: number;
+  corrected: number;
+  rewrittenReviewed: number;
+  rewrittenCorrected: number;
+  /** Rewritten summaries whose check came more than a day later. */
+  later: number;
+  /** Rewritten summaries not yet checked. */
+  pending: number;
+};
+
+/**
+ * The phrases for the summaries of a line, or of a whole day, in one short
+ * form (11 Oct 2026; was "AI reviewed ..."):
+ *
+ *   212 summaries checked against source text (12 corrected)
+ *   98 summaries corrected after checking against source text
+ *   5 summaries rewritten and checked against source text (1 corrected)
+ *   1 summary rewritten (checked later)
+ *   2 summaries rewritten, not yet checked
+ *
+ * Passes are not logged as changes, so a day on which every logged check
+ * was a correction must not read as "98 checked (98 corrected)", which says
+ * every checked summary was wrong (7 Oct 2026). A rewrite checked in the
+ * same run is one statement (6 Oct 2026 review: the same five GP03
+ * summaries read as both "checked" and "awaiting"); "not yet checked" is
+ * only ever said of summaries that are pending now.
+ */
+export function summaryPhrases(t: SummaryCounts): string[] {
+  const parts: string[] = [];
+  if (t.reviewed > 0) {
+    const n = plural(t.reviewed, "summary", "summaries");
+    if (t.corrected >= t.reviewed) parts.push(`${n} corrected after ${CHECKING}`);
+    else if (t.corrected > 0) parts.push(`${n} ${CHECKED} (${COUNT.format(t.corrected)} corrected)`);
+    else parts.push(`${n} ${CHECKED}`);
+  }
+  if (t.rewrittenReviewed > 0) {
+    const n = plural(t.rewrittenReviewed, "summary", "summaries");
+    if (t.rewrittenCorrected >= t.rewrittenReviewed) parts.push(`${n} rewritten and corrected after ${CHECKING}`);
+    else if (t.rewrittenCorrected > 0) parts.push(`${n} rewritten and ${CHECKED} (${COUNT.format(t.rewrittenCorrected)} corrected)`);
+    else parts.push(`${n} rewritten and ${CHECKED}`);
+  }
+  if (t.later > 0) parts.push(`${plural(t.later, "summary", "summaries")} rewritten (checked later)`);
+  if (t.pending > 0) parts.push(`${plural(t.pending, "summary", "summaries")} rewritten, not yet checked`);
+  return parts;
+}
+
 /**
  * The customer-facing phrases for one line, in the order a reader cares
  * about them: what changed in the official text first, then what happened
  * to the summaries. Empty when the line has nothing to say. Summaries are
- * "AI reviewed", never a bare "reviewed" (owner decision, 4 Oct 2026): the
- * review is the automated second pass, and the changelog must say the same
- * thing as the badge.
+ * "checked against source text", never a bare "reviewed" (owner decision,
+ * 4 Oct 2026): the check is the automated second pass, and the changelog
+ * must say the same thing as the badge. Until 11 Oct 2026 the lines said
+ * "AI reviewed", which the badge had stopped saying on 9 Oct ("AI-generated
+ * · automated check against source text"); a reader took "AI reviewed" to
+ * mean someone had reviewed the summary.
  */
 export function describeLine(line: ChangelogLine): string[] {
   const parts: string[] = [];
@@ -247,29 +302,16 @@ export function describeLine(line: ChangelogLine): string[] {
   if (line.duplicateRemoved > 0) {
     parts.push(`${plural(line.duplicateRemoved, "provision", "provisions")} removed that duplicated another document in the corpus`);
   }
-  // Passes are not logged as changes, so a day on which every logged
-  // review was a correction must not read as "98 AI reviewed (98
-  // corrected)", which says every reviewed summary was wrong (7 Oct 2026).
-  if (line.reviewed > 0) {
-    const n = plural(line.reviewed, "summary", "summaries");
-    if (line.corrected >= line.reviewed) parts.push(`${n} corrected on AI review`);
-    else if (line.corrected > 0) parts.push(`${n} AI reviewed (${COUNT.format(line.corrected)} corrected)`);
-    else parts.push(`${n} AI reviewed`);
-  }
-  // A rewrite reviewed in the same run is one statement (6 Oct 2026 review:
-  // the same five GP03 summaries read as both "AI reviewed" and "awaiting
-  // AI review"). "Awaiting AI review" is only ever said of summaries that
-  // are pending now.
-  if (line.rewrittenReviewed > 0) {
-    const n = plural(line.rewrittenReviewed, "summary", "summaries");
-    if (line.rewrittenCorrected >= line.rewrittenReviewed) parts.push(`${n} rewritten and corrected on AI review`);
-    else if (line.rewrittenCorrected > 0) parts.push(`${n} rewritten and AI reviewed (${COUNT.format(line.rewrittenCorrected)} corrected)`);
-    else parts.push(`${n} rewritten and AI reviewed`);
-  }
-  if (line.rewrittenReviewedLater > 0) {
-    parts.push(`${plural(line.rewrittenReviewedLater, "summary", "summaries")} rewritten (AI reviewed later)`);
-  }
-  if (line.rewrittenPending > 0) parts.push(`${plural(line.rewrittenPending, "summary", "summaries")} rewritten, awaiting AI review`);
+  parts.push(
+    ...summaryPhrases({
+      reviewed: line.reviewed,
+      corrected: line.corrected,
+      rewrittenReviewed: line.rewrittenReviewed,
+      rewrittenCorrected: line.rewrittenCorrected,
+      later: line.rewrittenReviewedLater,
+      pending: line.rewrittenPending,
+    })
+  );
   return parts;
 }
 
@@ -310,6 +352,20 @@ export function regulatoryEmptyLine(sinceLabel: string | null): string {
  */
 export const SUMMARY_QUALITY_EXPLANATION =
   "An automated second pass compares each plain-English summary with the official text. \u201cCorrected\u201d means that pass changed the summary. Most corrections make the summary match the rule\u2019s wording more exactly, such as who must act, a condition, or a list that is not exhaustive. Some fix a factual error, such as a deadline or a dropped exception. The official text is never changed by this.";
+
+/**
+ * The explanation under the "Links, sources and transcription" heading
+ * (11 Oct 2026). "A correction to our copy" was a phrase with no
+ * definition on the page; a reader took it as the agency having changed
+ * the rule. It is our own transcription being fixed (change_type
+ * transcription_corrected; it counts as a regulatory change only when the
+ * same import also found a new source version, see INITIAL_IMPORTS above
+ * and "Regulatory changes"), and the agency's text is what it is compared
+ * against, not what it changes. One sentence, placed under the section's
+ * heading beside the Summary quality explanation.
+ */
+export const LINKS_EXPLANATION =
+  "A correction to our copy is a fix to our transcription of the text, with the official text unchanged.";
 
 /** The counts of a line that belong to a section. */
 export function sectionTotal(line: ChangelogLine, section: ChangelogSection): number {
@@ -353,11 +409,12 @@ export function describeSection(line: ChangelogLine, section: ChangelogSection):
 
 /**
  * The one line a day gets under "Summary quality" while collapsed:
- * "212 summaries AI reviewed (12 corrected) · 5 rewritten and AI reviewed ·
- * 2 awaiting AI review", summed over the day's regulations.
+ * "212 summaries checked against source text (12 corrected) · 5 summaries
+ * rewritten and checked against source text · 2 summaries rewritten, not
+ * yet checked", summed over the day's regulations.
  */
 export function summaryDayTotal(lines: ChangelogLine[]): string {
-  const t = { reviewed: 0, corrected: 0, rewrittenReviewed: 0, rewrittenCorrected: 0, later: 0, pending: 0 };
+  const t: SummaryCounts = { reviewed: 0, corrected: 0, rewrittenReviewed: 0, rewrittenCorrected: 0, later: 0, pending: 0 };
   for (const l of lines) {
     t.reviewed += l.reviewed;
     t.corrected += l.corrected;
@@ -366,24 +423,7 @@ export function summaryDayTotal(lines: ChangelogLine[]): string {
     t.later += l.rewrittenReviewedLater;
     t.pending += l.rewrittenPending;
   }
-  const parts: string[] = [];
-  if (t.reviewed > 0) {
-    const n = plural(t.reviewed, "summary", "summaries");
-    parts.push(t.corrected >= t.reviewed ? `${n} corrected on AI review` : t.corrected > 0 ? `${n} AI reviewed (${COUNT.format(t.corrected)} corrected)` : `${n} AI reviewed`);
-  }
-  if (t.rewrittenReviewed > 0) {
-    const n = plural(t.rewrittenReviewed, "summary", "summaries");
-    parts.push(
-      t.rewrittenCorrected >= t.rewrittenReviewed
-        ? `${n} rewritten and corrected on AI review`
-        : t.rewrittenCorrected > 0
-          ? `${n} rewritten and AI reviewed (${COUNT.format(t.rewrittenCorrected)} corrected)`
-          : `${n} rewritten and AI reviewed`
-    );
-  }
-  if (t.later > 0) parts.push(`${plural(t.later, "summary", "summaries")} rewritten (AI reviewed later)`);
-  if (t.pending > 0) parts.push(`${plural(t.pending, "summary", "summaries")} rewritten, awaiting AI review`);
-  return parts.join(" \u00b7 ");
+  return summaryPhrases(t).join(" \u00b7 ");
 }
 
 /**

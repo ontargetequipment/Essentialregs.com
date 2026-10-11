@@ -1,17 +1,55 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CorpusCoverage } from "@/components/CorpusCoverage";
 import { LegalList, LegalPage, LegalSection } from "@/components/LegalPage";
+import { fetchSnapshotDateWith, type ChangelogClient } from "@/lib/changelog";
+import { corpusCoverage, type CorpusCoverage as Coverage } from "@/lib/corpus-coverage";
+import { formatDayMonthYear } from "@/lib/dates";
+import { fetchRegulationRoots } from "@/lib/regulation";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = {
   title: "About",
   description:
-    "EssentialRegs is a cross-referenced, plain-English reference for state and federal regulations, now featuring Colorado oil & gas, built by someone who does this compliance work every day.",
+    "EssentialRegs is a cross-referenced, plain-English reference for state and federal regulations, now featuring Colorado and federal oil & gas rules, built by someone who does this compliance work every day.",
 };
 
-export default function AboutPage() {
+/**
+ * "What's covered today" is computed, not written (Sprint 8, 11 Oct 2026):
+ * the released regulation roots grouped by jurisdiction
+ * (src/lib/corpus-coverage.ts, the same grouping the /states/colorado and
+ * /federal indexes use), dated by the changelog snapshot's computed_at in
+ * America/Denver. Both reads are anonymous-safe service-role reads with no
+ * visitor session, like the index pages (fetchRegulationRoots drops a staged
+ * document, src/lib/release.ts).
+ *
+ * Rendering: server-rendered on demand, like /states, /federal and
+ * /changelog. The root layout reads the session cookie (AuthStatus), and in
+ * this app that makes every route dynamic: `next build` lists /about as
+ * "ƒ (Dynamic)", so a `revalidate` export here would do nothing. A release
+ * therefore shows on the next request, with no cache to refresh. A database
+ * problem (a timeout) degrades to a one-line note with links to the index
+ * pages; the rest of the page never fails for it.
+ */
+async function loadCoverage(): Promise<{ coverage: Coverage | null; asOf: string | null }> {
+  try {
+    const [roots, computedAt] = await Promise.all([
+      fetchRegulationRoots(),
+      fetchSnapshotDateWith(createAdminClient() as unknown as ChangelogClient),
+    ]);
+    return { coverage: corpusCoverage(roots), asOf: formatDayMonthYear(computedAt) || null };
+  } catch (error) {
+    console.error("about: corpus coverage unavailable:", error instanceof Error ? error.message : error);
+    return { coverage: null, asOf: null };
+  }
+}
+
+export default async function AboutPage() {
+  const { coverage, asOf } = await loadCoverage();
   return (
     <LegalPage
       title="About EssentialRegs"
+      lastUpdated="October 11, 2026"
       intro={
         <p>
           EssentialRegs is a subscription reference for state and federal
@@ -84,36 +122,32 @@ export default function AboutPage() {
       </LegalSection>
 
       <LegalSection title="What's covered today">
-        <p>The current corpus includes:</p>
-        <LegalList>
-          <li>
-            <strong>Colorado Regulation 3</strong> (5 CCR 1001-5) —
-            stationary source permitting and Air Pollutant Emission Notice
-            requirements.
-          </li>
-          <li>
-            <strong>Colorado Regulation 7</strong> (5 CCR 1001-9) — control
-            of ozone precursors, hydrocarbons, and greenhouse gases,
-            including the oil and gas sections.
-          </li>
-          <li>
-            <strong>Colorado Regulation 26</strong> (5 CCR 1001-31) —
-            greenhouse gas reporting and intensity requirements for oil and
-            gas operations.
-          </li>
-          <li>
-            <strong>40 CFR Part 60, Subpart OOOOb</strong> — federal New
-            Source Performance Standards for crude oil and natural gas
-            facilities.
-          </li>
-        </LegalList>
+        {coverage ? (
+          <CorpusCoverage coverage={coverage} asOf={asOf} />
+        ) : (
+          <p>
+            The list of what the corpus holds could not be loaded just now.
+            The{" "}
+            <Link href="/states" className="underline underline-offset-2">
+              State
+            </Link>{" "}
+            and{" "}
+            <Link href="/federal" className="underline underline-offset-2">
+              Federal
+            </Link>{" "}
+            regulations pages show it.
+          </p>
+        )}
         <p>
-          More is coming: additional CDPHE and ECMC rules and further
-          federal EPA and PHMSA provisions that apply to oil and gas. The{" "}
+          These counts update as documents are added. The{" "}
           <Link href="/states" className="underline underline-offset-2">
-            Regulations
+            State
           </Link>{" "}
-          page always shows what is live, and the{" "}
+          and{" "}
+          <Link href="/federal" className="underline underline-offset-2">
+            Federal
+          </Link>{" "}
+          regulations pages always show what is live, and the{" "}
           <Link href="/sample" className="underline underline-offset-2">
             sample
           </Link>{" "}
@@ -136,10 +170,11 @@ export default function AboutPage() {
 
       <LegalSection title="An honest note about the summaries">
         <p>
-          The plain-English summaries are generated with the help of AI
-          tools and then checked against the official text by a separate
-          automated review; no summary on this site is presented as reviewed
-          by a person. Checked or not, a summary
+          The plain-English summaries are AI-generated and then checked
+          against the source text by a separate automated check (the badge
+          reads &ldquo;AI-generated · automated check against source
+          text&rdquo;); no summary on this site is presented as reviewed by
+          a person. Checked or not, a summary
           is an orientation aid — it tells you what a section is about so
           you can decide whether to read it, not what the section requires
           of you. Always read the regulatory text before acting on it, and

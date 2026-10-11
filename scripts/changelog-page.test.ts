@@ -13,7 +13,7 @@ import { test } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { ChangelogBody } from "../src/components/ChangelogBody";
-import { CHANGELOG_UNAVAILABLE_NOTICE, buildChangelogView, type ChangelogCountRow } from "../src/lib/changelog-group";
+import { CHANGELOG_UNAVAILABLE_NOTICE, LINKS_EXPLANATION, buildChangelogView, type ChangelogCountRow } from "../src/lib/changelog-group";
 import { fetchChangelogWith, resetChangelogMemory, type ChangelogClient } from "../src/lib/changelog";
 
 const ROWS: ChangelogCountRow[] = [
@@ -103,5 +103,20 @@ test("the page renders the rows when they load: the regulatory empty line names 
   assert.ok(!html.includes('href="/regulations/7"'));
   assert.ok(html.includes("links added or updated in 22 provisions"));
   assert.ok(html.includes("<details"));
-  assert.ok(html.includes("2 summaries AI reviewed"));
+  assert.ok(html.includes("2 summaries checked against source text"));
+});
+
+test("the links section explains what a correction to our copy is, once, under its heading and before its lines (11 Oct 2026)", () => {
+  assert.equal(LINKS_EXPLANATION, "A correction to our copy is a fix to our transcription of the text, with the official text unchanged.");
+  for (const rows of [ROWS, []]) {
+    const view = buildChangelogView({ rows, computedAt: null, source: "snapshot", error: null }, (d) => d);
+    const html = renderToStaticMarkup(createElement(ChangelogBody, { view }));
+    assert.equal(html.split(LINKS_EXPLANATION).length - 1, 1);
+    const heading = html.indexOf('id="changelog-links"');
+    const explanation = html.indexOf(LINKS_EXPLANATION);
+    const summaries = html.indexOf('id="changelog-summaries"');
+    assert.ok(heading >= 0 && heading < explanation && explanation < summaries, "inside the links section");
+    // The page's intro still names the three parts without the old wording.
+    assert.ok(html.includes("checked against the source text, corrected, or rewritten") || html.includes("checked against the source"));
+  }
 });

@@ -22,6 +22,7 @@ export * from "@/lib/snippet";
 
 // Likewise the regulation-name helpers (regulationDisplayName, regKeyOf,
 // ...): the reader popup's eyebrow prints the display name in the browser.
+import { federalCitationPrefix } from "@/lib/federal-citation";
 import { GP_KEY, regKeyOf, regulationLabel, rootIdOf } from "@/lib/regulation-names";
 export * from "@/lib/regulation-names";
 
@@ -1234,7 +1235,10 @@ export function sampleCards<T extends Pick<Provision, "id" | "citation" | "title
   return rows
     .map((p) => {
       const key = regKeyOf(p.id);
-      const label = key ? labelByKey.get(key) ?? key.toUpperCase() : null;
+      // No root row: the key's own label. A federal key keeps the subpart's
+      // real case (OOOOb, never OOOOB -- Sprint 8, 11 Oct 2026); the rest is
+      // the upper-cased key it always was (GP02, CP, ECMC, 7).
+      const label = key ? labelByKey.get(key) ?? federalCitationPrefix(key) ?? key.toUpperCase() : null;
       // Corpus rows carry the bare label ("I.D.3.a.(i).") as the whole title
       // on some rows and as the OPENING of the title on others ("I.G.90.
       // POTENTIAL TO EMIT"). Strip it against the BARE citation here, before
