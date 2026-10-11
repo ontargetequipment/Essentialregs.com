@@ -52,6 +52,7 @@ from method_links import (
     set_enabled as set_method_links_enabled,
     write_method_links_report,
 )
+from table_rows import TABLE_ROW_MERGES, merge_continuation_rows, unique_merges
 
 FF = "\x0c"  # form-feed: pdftotext -layout emits exactly one per PDF page
 
@@ -4138,7 +4139,9 @@ def _caption_wrap_line(own_lines: list[str], li: int, table: dict) -> str | None
 
 def render_table_html(table: dict) -> str:
     caption = escape_html_text(table["caption"])
-    rows = table["rows"]
+    # A cell that wrapped onto a second printed line comes back from the
+    # extractor as a second row; put it back (pipeline/table_rows.py).
+    rows = merge_continuation_rows(table["rows"], caption=table["caption"])
     if not rows:
         return ""
     header, body_rows = rows[0], rows[1:]
@@ -12547,10 +12550,12 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
     # Provisions from inside this parse (_cp_known_ids) and must not wipe
     # the outer document's events, so each parse saves what it found on
     # entry and puts it back on exit.
-    saved_events = (list(EQUATION_EVENTS), list(TABLE_CELL_REPAIRS), list(TABLE_CONTINUATIONS))
+    saved_events = (list(EQUATION_EVENTS), list(TABLE_CELL_REPAIRS), list(TABLE_CONTINUATIONS),
+                    list(TABLE_ROW_MERGES))
     EQUATION_EVENTS.clear()
     TABLE_CELL_REPAIRS.clear()
     TABLE_CONTINUATIONS.clear()
+    TABLE_ROW_MERGES.clear()
     raw = Path(txt_path).read_text(encoding="utf-8")
     lines, seam_starts = clean_pages(raw, reg)
     lines, label_fixes_applied = apply_known_label_fixes(reg, lines)
@@ -12642,9 +12647,21 @@ def parse_reg(reg: str, txt_path: str, pdf_path: str | None):
                    "the rows were appended (see extract_tables_from_pdf)"),
              hits=1, expect_hits=1)
         for c in TABLE_CONTINUATIONS
+    ] + [
+        dict(old_label=f"{m['caption'][:60]} (after row {m['row']})",
+             new_label=("row with no text dropped" if m["kind"] == "blank" else
+                        "; ".join(f"{a!r} + {b!r}" for a, b in m["cells"])),
+             line_hint="table",
+             note=("table row with no text in any cell (an empty band of the printed grid) dropped"
+                   if m["kind"] == "blank" else
+                   "table row that continues the row above mid-phrase (a cell wrapped onto a second "
+                   "printed line) merged into it (see pipeline/table_rows.py)"),
+             hits=1, expect_hits=1)
+        for m in unique_merges()
     ]
     anomalies = list(KNOWN_LABEL_ANOMALIES.get(reg, [])) + eq_anomalies + text_artifacts(result)
-    EQUATION_EVENTS[:], TABLE_CELL_REPAIRS[:], TABLE_CONTINUATIONS[:] = saved_events
+    (EQUATION_EVENTS[:], TABLE_CELL_REPAIRS[:], TABLE_CONTINUATIONS[:],
+     TABLE_ROW_MERGES[:]) = saved_events
     return result, unresolved, table_hits, len(tables_by_caption), duplicate_ids, label_fixes_applied, anomalies, marker_audit
 
 
