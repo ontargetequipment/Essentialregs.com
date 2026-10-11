@@ -389,3 +389,14 @@ select furthest, count(*) from (
   from public.tour_events where env = 'production' group by 1) t
 group by 1 order by 1;
 ```
+
+**Could not finish or reproduce.**
+- The Ask tests of `smoke-signed-in` need Voyage and Anthropic keys, so they did not run on the local harness; they ran in the preview smoke on the PR (signed in and out, green).
+- The chained summary runs' spend was not read back (the sandbox's proxy refused the workflow artifacts). Each chained run is capped at $10 a regulation; 23 summaries were regenerated in all.
+- The chained runs opened eight spot-check PRs, #100-#107 (gp08, gp05, 23, 11, gp12, ooooc, ooooa, 25). They are open for a human read, like #71-#78.
+
+**Owner decisions (Brody).**
+- (1) Step 1's word. Keep "frequency", or widen the jump box's index past the first 90 characters (the whole text, or a short keyword list per row) so "sampling" finds VI.D. Widening changes the jump box for every reader, so it is a product call.
+- (2) The GP05 reader's popup for the I.C.1 link still shows a visitor the locked label, with "preview" opening the readable subtree; only the tour goes straight to the preview. Showing the text in the popup when the row is public is a small change in `loadProvisionPreview`.
+- (3) `/regs/<id>` for the 13 newly public Regulation 7 rows links "← Back to sample" (the rule for public rows outside an open reader). It could point to `/regulations/7/preview?p=sec-7-B-I-C-1` instead.
+- (4) Still open from Sprint 6: the GP06 II.A.3 tooltip, the "Source checked" date, Skew Protection.
