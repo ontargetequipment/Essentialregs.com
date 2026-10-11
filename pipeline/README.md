@@ -615,6 +615,25 @@ that true while fixing what text extraction gets wrong:
   (`GP_KEYS` / `SUBSCRIPT_REJOIN_REGS`) so no other regulation's baselined
   output moves; the table-continuation rule runs for every regulation (it
   changed nothing outside the GPs on 4 Oct 2026).
+- **Table continuation rows** (`pipeline/table_rows.py`, 11 Oct 2026) — a cell
+  that wraps onto a second printed line comes back from pdfplumber (and from
+  the eCFR print's layout reader) as a row of its own: GP05 VI.D's Table 2
+  read "Prior to | Any | Any | Every 5" then "Issuance 5 | | | years".
+  `merge_continuation_rows` joins such a row to the row above (a space between
+  the two parts of each cell) when it leaves a cell blank and every cell it
+  fills continues the cell above mid-phrase: the cell above ends with a
+  hyphen, a comma, an opening bracket or a word a phrase cannot end on ("to",
+  "or", "after", "than"), or the cell starts lower-case. A filled cell under
+  a blank one or starting with a list marker never continues, so spanned
+  cells, category rows ("Specialty coatings" with no limit) and units or
+  sub-header rows stay rows; a header takes a continuation only from two or
+  more cells; a row with no text is dropped. It runs in both importers'
+  PDF-table renderers for every regulation; tables read from the eCFR XML
+  (IIII, JJJJ, OOOO, ZZZZ, the 49 CFR parts) never go through it. Every
+  merge is in the diff report's corrections table. On 11 Oct 2026 it changed
+  16 tables in 12 documents (11, 21, 22, 23, 25, 8, GP05, GP08, GP09, GP12,
+  OOOOa, OOOOc) and nothing else in any of the 58: same words, same order
+  within each column, no text outside a table touched.
 - **`python pipeline/source_text_check.py --all-gp --parsed-dir pipeline/out --out pipeline/out/sprint3_source_text_check.md`**
   — the extraction diff check: each general permit's stored text against the
   body of its pdftotext source, word by word, letters and digits only.

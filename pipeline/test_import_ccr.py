@@ -5623,7 +5623,12 @@ class Reg25FullParseTests(unittest.TestCase):
     def test_duplicates_fixes_anomalies(self):
         self.assertEqual(self.dupes, ["sec-25-B-I-L-1-c-(xv)"])
         self.assertTrue(all(f["hits"] == 1 for f in self.fixes), self.fixes)
-        self.assertEqual(len(self.fixes), 3)
+        # Plus the six wrapped description / section cells of Part C I's
+        # rule-history table, put back into their rows (pipeline/table_rows.py).
+        table_rows = [f for f in self.fixes if "pipeline/table_rows.py" in f["note"]]
+        self.assertEqual(len(self.fixes) - len(table_rows), 3)
+        self.assertEqual(len(table_rows), 6)
+        self.assertTrue(all(f["line_hint"] == "table" for f in table_rows))
         xv = re.sub(r"<[^>]+>", " ", self.by_id["sec-25-B-I-L-1-c-(xv)"]["full_text"])
         self.assertIn("High-Performance Architectural Coating", xv)
         self.assertIn("Metallic Coating", xv)
@@ -9068,7 +9073,10 @@ class Reg21FullParseTests(unittest.TestCase):
         self.assertNotIn("sec-21-A-VI-WWWWWW", self.by_id)
 
     def test_label_fixes_all_hit_once(self):
-        self.assertEqual(len(self.fixes), 11)
+        # Plus three textless rows dropped from Table 1 (pipeline/table_rows.py).
+        blank = [f for f in self.fixes if f["new_label"] == "row with no text dropped"]
+        self.assertEqual(len(blank), 3)
+        self.assertEqual(len(self.fixes) - len(blank), 11)
         self.assertTrue(all(f["hits"] == 1 for f in self.fixes), self.fixes)
         self.assertNotIn("sec-21-A-VI-MN", self.by_id)
         self.assertTrue(self.by_id["sec-21-A-VI-N"]["full_text"].startswith("<p>“Anti-static product” means"))
@@ -9130,7 +9138,10 @@ class Reg21FullParseTests(unittest.TestCase):
         a = self.by_id["sec-21-A-II-O"]["full_text"]
         self.assertEqual(a.count("<table"), 1)
         self.assertEqual(a.count("Product category"), 1)  # the reprinted header block appears once
-        self.assertEqual(a.count("<tr>"), 180)
+        # 180 rows as extracted, less three with no text in any cell (empty
+        # bands of the printed grid, dropped by pipeline/table_rows.py).
+        self.assertEqual(a.count("<tr>"), 177)
+        self.assertNotIn("<tr><td></td><td></td><td></td></tr>", a)
         self.assertIn("<td>* Aerosol mist spray</td><td>65</td><td>30</td>", a)
         self.assertIn("<td>Tire or wheel cleaner</td><td></td><td></td></tr><tr><td>* Aerosol</td><td></td><td>8</td>", a)
         self.assertTrue(a.endswith("<td>Wood cleaner</td><td></td><td></td></tr><tr><td>* Aerosol</td><td>17</td><td></td></tr>"
@@ -10533,7 +10544,11 @@ class Reg23FullParseTests(unittest.TestCase):
 
     def test_ids_parents_and_label_sequences(self):
         self.assertEqual(self.dupes, [])
-        self.assertEqual(self.fixes, [])
+        # The one table-row continuation in IV.F.3's third table (Boiler 5's
+        # NOx cell wrapped onto a second printed line); pipeline/table_rows.py.
+        self.assertEqual(len(self.fixes), 1)
+        self.assertIn("pipeline/table_rows.py", self.fixes[0]["note"])
+        self.assertIn("'total for Boilers 1, 2, 4, and 5)'", self.fixes[0]["new_label"])
         self.assertEqual(self.anomalies, [])
         ids = [r["id"] for r in self.rows]
         self.assertEqual(len(ids), len(set(ids)))

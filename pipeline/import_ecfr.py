@@ -42,6 +42,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from method_links import link_method_citations, set_enabled as set_method_links_enabled, write_method_links_report
+from table_rows import TABLE_ROW_MERGES, merge_continuation_rows, unique_merges
 
 try:
     import pdfplumber  # only required when a SUBPART_META entry uses table_algorithm="pdfplumber"
@@ -1469,6 +1470,10 @@ def render_xml_table_html(caption: str, lead_in: str | None, table_elems: list, 
 
 def render_table_html(caption: str, rows: list[list[str]]) -> str:
     cap = escape_html_text(caption)
+    # The print's layout readers (v1/v2/pdfplumber) return a wrapped cell's
+    # second line as a row of its own; put it back (pipeline/table_rows.py).
+    # Tables read from the eCFR XML never come through here.
+    rows = merge_continuation_rows(rows, caption=caption)
     if not rows:
         return f'<div class="doc-table-wrap"><div class="doc-table-caption">{cap}</div></div>'
     header, body_rows = rows[0], rows[1:]
@@ -2350,6 +2355,7 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
     part = meta["part"]
     code = meta["code"]
     raw = Path(txt_path).read_text(encoding="utf-8")
+    TABLE_ROW_MERGES.clear()
     lines = strip_page_furniture(raw)
     lines, label_fixes_applied = apply_known_label_fixes(reg, lines)
     heading_re = re.compile(rf"^Subpart {re.escape(code)}—")
@@ -2941,6 +2947,7 @@ def parse_ecfr(reg: str, pdf_path: str | None, txt_path: str) -> tuple[list[dict
         "n_group_headings": group_counter,
         "n_tables": sum(1 for b in blocks if b["type"] == "table"),
         "table_algo_proof": table_algo_proof,
+        "table_row_merges": unique_merges(),
     }
     return rows, report
 
@@ -3965,6 +3972,9 @@ def cmd_parse(args):
         print(f"  label fix {fx['old_label']} -> {fx['new_label']}: {fx['hits']} hit(s){flag}")
     if report["duplicate_ids"]:
         print(f"  WARNING: duplicate ids: {report['duplicate_ids']}")
+    for m in report.get("table_row_merges", []):
+        what = "row with no text dropped" if m["kind"] == "blank" else "; ".join(f"{a!r} + {b!r}" for a, b in m["cells"])
+        print(f"  TABLE-ROW {m['caption'][:60]!r} after row {m['row']}: {what}")
     for proof in report.get("table_algo_proof", []):
         if "error" in proof:
             print(f"  TABLE-ALGO: {proof['error']}")
