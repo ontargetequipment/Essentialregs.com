@@ -448,8 +448,8 @@ test.describe("anonymous", () => {
     await expect(item.locator(".jr-id")).toHaveText("VI.D.");
     await expect(item.locator(".jr-excerpt mark").first()).toContainText(/sampl/i);
     expect(await item.locator(".jr-excerpt").innerText()).toMatch(/sampling/i);
-    // The excerpt is the match in its sentence, not the first line of the provision.
-    expect(await item.locator(".jr-excerpt").innerText()).not.toMatch(/^Table 2/);
+    // The excerpt reaches past the first-line snippet (90 characters, which ended at "…storage tanks utilizing si…").
+    expect((await item.locator(".jr-excerpt").innerText()).length).toBeGreaterThan(130);
     await expect(results.locator(".jr-empty")).toHaveCount(0);
 
     // A citation: listed first, with no wait for the server, and Enter lands on it.
