@@ -641,8 +641,18 @@ test.describe("signed in", () => {
     const lineBox = await map.getByTestId("ask-finds-line").boundingBox();
     expect(mapped && lineBox && mapped.y < lineBox.y && lineBox.y < mapBox!.y + mapBox!.height).toBe(true);
     // Phone width: no sideways scroll.
+    // On failure the message names what sticks out (the elements in <main>
+    // whose right edge passes the viewport), since the answer is live data.
     await page.setViewportSize({ width: 390, height: 844 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    const overflow = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      const wide = Array.from(document.querySelectorAll("main *"))
+        .filter((el) => el.getBoundingClientRect().right > vw + 1)
+        .slice(0, 8)
+        .map((el) => `${el.tagName.toLowerCase()}.${String((el as HTMLElement).className).slice(0, 60)} [${Math.round(el.getBoundingClientRect().width)}px] ${(el.textContent ?? "").slice(0, 60)}`);
+      return { by: document.documentElement.scrollWidth - vw, wide };
+    });
+    expect(overflow.by, `sideways scroll at 390px; widest: ${overflow.wide.join(" | ")}`).toBeLessThanOrEqual(0);
     await page.setViewportSize({ width: 1280, height: 720 });
 
     // "Show them": the whole map, titled for both fuels, GP06 back, no omitted line.
