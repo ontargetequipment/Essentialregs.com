@@ -39,6 +39,7 @@
  *
  *   npm test
  */
+import { JUMP_DEBOUNCE_MS } from "../src/lib/jump-search";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM, VirtualConsole } from "jsdom";
@@ -637,6 +638,7 @@ async function bootReader(dom: JSDOM) {
 }
 
 test("jump box: combobox ARIA, arrows, Enter, Escape, exact entry", async (t) => {
+  const textSearch = stubFetch(async () => okJson({ results: [] }));
   const r = await bootReader(makeDom());
   const { window, document, $, mount, unmount, click, key, type } = r;
   await mount();
@@ -723,14 +725,17 @@ test("jump box: combobox ARIA, arrows, Enter, Escape, exact entry", async (t) =>
   await t.test("Enter on an exact provision id with no results goes to it; junk does nothing", async () => {
     const before = window.location.hash;
     await type("sec-3-A-II-B-4-a");
-    assert.equal(options().length, 0, "the index does not match raw ids: 'No matches'");
-    assert.equal(shown(), true);
+    assert.equal(options().length, 0, "the index does not match raw ids");
+    await r.sleep(JUMP_DEBOUNCE_MS + 60);
+    assert.equal(shown(), true, "and the text search found nothing either: 'No matches'");
+    assert.match(list.textContent ?? "", /No matches/);
     await key(input, "Enter");
     assert.equal(window.location.hash, "#sec-3-A-II-B-4-a");
     assert.notEqual(window.location.hash, before);
 
     const here = window.location.hash;
     await type("zzzz nothing like it");
+    await r.sleep(JUMP_DEBOUNCE_MS + 60);
     await key(input, "Enter");
     assert.equal(window.location.hash, here, "no match, nowhere to go");
     await key(input, "Escape");
@@ -746,6 +751,217 @@ test("jump box: combobox ARIA, arrows, Enter, Escape, exact entry", async (t) =>
   });
 
   await unmount();
+  textSearch.restore();
+});
+
+// ---------------------------------------------------------------------------
+// 11 Oct 2026: the jump box's text matches come from the server's keyword
+// search inside the open document (/api/reader-search), not from the first 90
+// characters of each provision. Citation matches stay client-side and
+// instant; the text matches join them below, with the highlighted excerpt.
+// ---------------------------------------------------------------------------
+
+test("jump box: the server's text matches join the citation matches", async (t) => {
+  type Pending = { url: string; signal: AbortSignal | undefined; answer: (body: unknown) => void; fail: () => void };
+  const pending: Pending[] = [];
+  const real = globalThis.fetch;
+  globalThis.fetch = (((input: unknown, init?: { signal?: AbortSignal }) =>
+    new Promise<Awaited<ReturnType<FetchStub>>>((resolve, reject) => {
+      const p: Pending = {
+        url: String(input),
+        signal: init?.signal,
+        answer: (body) => resolve(okJson(body)),
+        fail: () => reject(new TypeError("network")),
+      };
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+      pending.push(p);
+    })) as unknown) as typeof fetch;
+
+  const r = await bootReader(makeDom());
+  const { window, document, $, sleep, mount, unmount, click, key, type } = r;
+  await mount();
+  const input = $("#jumpbox") as HTMLInputElement;
+  const list = $("#jump-results");
+  const options = () => Array.from(document.querySelectorAll<HTMLElement>('#jump-results [role="option"]'));
+  const slugs = () => options().map((o) => o.dataset.slug);
+  const shown = () => list.classList.contains("show");
+  const wait = (ms = JUMP_DEBOUNCE_MS + 40) => sleep(ms);
+  const searches = () => pending.filter((p) => p.url.startsWith("/api/reader-search"));
+  const EXCERPT = {
+    id: "sec-3-A-II-B-4",
+    citation: "II.B.4.",
+    headline: "must complete site-specific <mark>emission</mark> factors for each tank",
+  };
+
+  await t.test("a word: nothing on screen while the request is out, then the excerpt with its <mark>", async () => {
+    await type("emission");
+    assert.equal(searches().length, 0, "debounced: no request on the keystroke");
+    assert.equal(shown(), false);
+    await wait();
+    assert.equal(searches().length, 1);
+    assert.equal(searches()[0].url, "/api/reader-search?reg=3&q=emission");
+    assert.equal(shown(), false, "in flight: no spinner, no 'No matches'");
+    assert.equal(list.textContent, "");
+    searches()[0].answer({ results: [EXCERPT] });
+    await sleep(10);
+    assert.equal(shown(), true);
+    assert.deepEqual(slugs(), ["sec-3-A-II-B-4"]);
+    assert.equal(list.querySelector(".jr-id")?.textContent, "II.B.4.");
+    assert.equal(list.querySelector(".jr-excerpt mark")?.textContent, "emission");
+    assert.equal(input.getAttribute("aria-expanded"), "true");
+    await key(input, "Enter");
+    assert.equal(window.location.hash, "#sec-3-A-II-B-4", "Enter opens the first text match");
+    assert.equal(shown(), false);
+  });
+
+  await t.test("typing fast sends one request, for what was typed last", async () => {
+    pending.length = 0;
+    await type("emi");
+    await sleep(40);
+    await type("emiss");
+    await sleep(40);
+    await type("emissions");
+    await wait();
+    assert.deepEqual(searches().map((p) => p.url), ["/api/reader-search?reg=3&q=emissions"]);
+    await key(input, "Escape");
+  });
+
+  await t.test("a citation: matches at once, before any request; the text matches arrive below, once each", async () => {
+    pending.length = 0;
+    await type("II.B.4");
+    assert.equal(shown(), true, "citation matches are instant");
+    const before = slugs();
+    assert.equal(before[0], "sec-3-A-II-B-4");
+    assert.equal(list.querySelector(".jr-excerpt"), null);
+    await wait();
+    assert.equal(searches().length, 1, "the citation is searched in the text too");
+    assert.deepEqual(slugs(), before, "unchanged while in flight");
+    // Enter now opens the citation match without waiting for the server.
+    searches()[0].answer({
+      results: [
+        { id: "sec-3-A-II-B-4", citation: "II.B.4.", headline: "see <mark>II.B.4</mark>" },
+        { id: "sec-3-A-II", citation: "II.", headline: "<mark>II.B.4</mark> is cited here" },
+      ],
+    });
+    await sleep(10);
+    const after = slugs();
+    assert.deepEqual(after.slice(0, before.length), before, "citation matches stay first, in their order");
+    assert.equal(after.filter((x) => x === "sec-3-A-II-B-4").length, 1, "a match in both lists is listed once");
+    assert.ok(after.includes("sec-3-A-II"), "the text-only match is appended");
+    assert.equal(options()[0].querySelector(".jr-excerpt"), null, "the citation match keeps its first-line snippet");
+    assert.ok(options()[after.indexOf("sec-3-A-II")].querySelector(".jr-excerpt mark"));
+    await key(input, "Escape");
+  });
+
+  await t.test("'No matches' only when both lists are empty", async () => {
+    pending.length = 0;
+    await type("zzzz");
+    await wait();
+    assert.equal(shown(), false, "not before the answer");
+    searches()[0].answer({ results: [] });
+    await sleep(10);
+    assert.equal(shown(), true);
+    assert.equal(list.textContent, "No matches");
+    assert.equal(options().length, 0);
+    await key(input, "Escape");
+  });
+
+  await t.test("keyboard: a late answer keeps the option the visitor arrowed to", async () => {
+    pending.length = 0;
+    await type("II.B");
+    await wait();
+    await key(input, "ArrowDown");
+    await key(input, "ArrowDown");
+    const active = options().find((o) => o.getAttribute("aria-selected") === "true")!.dataset.slug;
+    searches()[0].answer({ results: [{ id: "sec-3-A-II", citation: "II.", headline: "<mark>II.B</mark>" }] });
+    await sleep(10);
+    const now = options().find((o) => o.getAttribute("aria-selected") === "true");
+    assert.equal(now?.dataset.slug, active);
+    assert.equal(input.getAttribute("aria-activedescendant"), now?.id);
+    await key(input, "Escape");
+  });
+
+  await t.test("a new query aborts the old request, and its late answer is dropped", async () => {
+    pending.length = 0;
+    await type("alpha");
+    await wait();
+    const old = searches()[0];
+    await type("beta");
+    assert.equal(old.signal?.aborted, true, "the old request is aborted");
+    await wait();
+    assert.equal(searches().length, 2);
+    old.answer({ results: [EXCERPT] });
+    await sleep(10);
+    assert.equal(shown(), false, "alpha's answer is not shown for beta");
+    searches()[1].answer({ results: [{ ...EXCERPT, id: "sec-3-A-II", citation: "II." }] });
+    await sleep(10);
+    assert.deepEqual(slugs(), ["sec-3-A-II"]);
+    await key(input, "Escape");
+  });
+
+  await t.test("Escape (or emptying the box) while a request is out keeps the list closed", async () => {
+    pending.length = 0;
+    await type("gamma");
+    await wait();
+    await key(input, "Escape");
+    assert.equal(searches()[0].signal?.aborted, true);
+    searches()[0].answer({ results: [EXCERPT] });
+    await sleep(10);
+    assert.equal(shown(), false);
+    pending.length = 0;
+    await type("delta");
+    await type("");
+    await wait();
+    assert.equal(searches().length, 0, "an emptied box asks nothing");
+  });
+
+  await t.test("the same query again is answered from the first answer, with no second request", async () => {
+    pending.length = 0;
+    await type("epsilon");
+    await wait();
+    searches()[0].answer({ results: [EXCERPT] });
+    await sleep(10);
+    await key(input, "Escape");
+    assert.equal(shown(), false);
+    await key(input, "ArrowDown"); // reopens the list from the typed value
+    assert.equal(shown(), true);
+    assert.deepEqual(slugs(), ["sec-3-A-II-B-4"]);
+    assert.equal(searches().length, 1);
+    await key(input, "Escape");
+  });
+
+  await t.test("a failed request: the citation matches stay; with none, the list says the text could not be searched, not 'No matches'", async () => {
+    pending.length = 0;
+    await type("II");
+    await wait();
+    const before = slugs();
+    searches()[0].fail();
+    await sleep(10);
+    assert.deepEqual(slugs(), before);
+    pending.length = 0;
+    await type("zeta");
+    await wait();
+    searches()[0].fail();
+    await sleep(10);
+    assert.equal(shown(), true);
+    assert.match(list.textContent ?? "", /Couldn.t search the text/);
+    assert.doesNotMatch(list.textContent ?? "", /No matches/);
+    await key(input, "Escape");
+  });
+
+  await t.test("a click on a text match opens it", async () => {
+    pending.length = 0;
+    await type("eta");
+    await wait();
+    searches()[0].answer({ results: [{ ...EXCERPT, id: "sec-3-A-II-B-3", citation: "II.B.3." }] });
+    await sleep(10);
+    await click($('#jump-results [data-slug="sec-3-A-II-B-3"]'));
+    assert.equal(window.location.hash, "#sec-3-A-II-B-3");
+    assert.equal(shown(), false);
+  });
+
+  await unmount();
+  globalThis.fetch = real;
 });
 
 /** The popup + link fixtures of the cross-regulation tests. */

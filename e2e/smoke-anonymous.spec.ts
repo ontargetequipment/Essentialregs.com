@@ -432,6 +432,99 @@ test.describe("anonymous", () => {
     await expect(page.locator("#backdrop")).not.toHaveClass(/show/);
   });
 
+  // The jump box searches the whole provision text through /api/reader-search
+  // (11 Oct 2026): "sampling" is in GP05 VI.D past the first 90 characters.
+  test("GP05's jump box: 'sampling' lists VI.D with a highlighted excerpt, 'VI.D' still jumps at once, 'zzzz' says No matches", async ({ page }) => {
+    await page.goto("/regulations/gp05");
+    const box = page.locator("#jumpbox");
+    await expect(box).toHaveAttribute("role", "combobox");
+    const results = page.locator("#jump-results");
+    const VI_D = "sec-gp05-VI-D";
+
+    // A word from deep in the text.
+    await box.fill("sampling");
+    const item = results.locator(`.jr-item[data-slug="${VI_D}"]`);
+    await expect(item).toBeVisible();
+    await expect(item.locator(".jr-id")).toHaveText("VI.D.");
+    await expect(item.locator(".jr-excerpt mark").first()).toContainText(/sampl/i);
+    expect(await item.locator(".jr-excerpt").innerText()).toMatch(/sampling/i);
+    // The excerpt reaches past the first-line snippet (90 characters, which ended at "…storage tanks utilizing si…").
+    expect((await item.locator(".jr-excerpt").innerText()).length).toBeGreaterThan(130);
+    await expect(results.locator(".jr-empty")).toHaveCount(0);
+
+    // A citation: listed first, with no wait for the server, and Enter lands on it.
+    await box.fill("VI.D");
+    await expect(results.locator(".jr-item").first()).toHaveAttribute("data-slug", VI_D);
+    await box.press("Enter");
+    await expect.poll(() => new URL(page.url()).hash).toBe(`#${VI_D}`);
+    await expect(results).not.toHaveClass(/show/);
+
+    // Nothing in the document.
+    await box.fill("zzzz");
+    await expect(results).toHaveClass(/show/);
+    await expect(results.locator(".jr-empty")).toHaveText("No matches");
+    await expect(results.locator('.jr-item[role="option"]')).toHaveCount(0);
+    await box.press("Escape");
+    await expect(results).not.toHaveClass(/show/);
+  });
+
+  // -------------------------------------------------------------------------
+  // The leak guard for the jump box's text search: scoped to one document,
+  // read through the visitor's own RLS-bound client, so a locked document
+  // returns nothing and a partly public one only its public rows.
+  // -------------------------------------------------------------------------
+
+  test("/api/reader-search gives a visitor GP05's own rows, only public rows of Regulation 7, and nothing of a locked document", async ({ request }) => {
+    const get = async (reg: string, q: string) => {
+      const res = await request.get(`/api/reader-search?reg=${encodeURIComponent(reg)}&q=${encodeURIComponent(q)}`, { headers: protectionBypassHeaders() });
+      return { res, text: await res.text() };
+    };
+    // GP05: VI.D, highlighted, never cached.
+    const gp05 = await get("gp05", "sampling");
+    expect(gp05.res.status()).toBe(200);
+    expect(gp05.res.headers()["cache-control"]).toContain("no-store");
+    const found = JSON.parse(gp05.text).results as { id: string; citation: string; headline: string | null }[];
+    expect(found.map((r) => r.id)).toContain("sec-gp05-VI-D");
+    expect(found.length).toBeLessThanOrEqual(10);
+    for (const r of found) expect(r.id, r.id).toMatch(/^sec-gp05-/);
+    expect(found.find((r) => r.id === "sec-gp05-VI-D")?.headline).toContain("<mark>");
+    // Latency as the visitor's browser sees it (round trip to the deployment, which asks the database). Logged, not asserted past a generous ceiling.
+    const timings: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      const t0 = Date.now();
+      const again = await get("gp05", "sampling");
+      timings.push(Date.now() - t0);
+      expect(again.res.status()).toBe(200);
+    }
+    console.log(`reader-search latency, GP05 "sampling", 5 requests (ms): ${timings.join(", ")}`);
+    test.info().annotations.push({ type: "reader-search latency ms", description: timings.join(", ") });
+    expect(Math.min(...timings), "a warm request answers well inside the debounce-plus-patience budget").toBeLessThan(3000);
+
+    // A document that is entirely locked: nothing, for a word it certainly has.
+    for (const reg of ["3", "gp12", "26"]) {
+      const locked = await get(reg, "emissions");
+      expect(locked.res.status(), reg).toBe(200);
+      expect(JSON.parse(locked.text).results, `reg ${reg} is locked`).toEqual([]);
+    }
+
+    // Regulation 7: a phrase only a locked row has finds nothing ...
+    const lockedPhrase = await get("7", "13.7 pounds of volatile organic compounds per barrel of condensate");
+    expect(JSON.parse(lockedPhrase.text).results).toEqual([]);
+    expect(lockedPhrase.text).not.toContain("13.7 pounds");
+    // ... and one both a public and a locked row have finds the public row only.
+    const both = await get("7", "separator dumps into the tank");
+    const ids = (JSON.parse(both.text).results as { id: string }[]).map((r) => r.id);
+    expect(ids, "the public subtree row is found").toContain("sec-7-B-I-C-1-a");
+    for (const id of ids) expect(REG7_PUBLIC.has(id), `${id} is not a public row`).toBe(true);
+    expect(both.text).not.toContain("sec-7-B-II-B-2");
+
+    // Not a document key: refused, not searched.
+    for (const reg of ["", "../3", "gp05;drop", "a".repeat(40)]) {
+      const bad = await get(reg, "sampling");
+      expect(bad.res.status(), JSON.stringify(reg)).toBe(400);
+    }
+  });
+
   test("on GP05, a link into Regulation 7 opens a locked popup in place, never a redirect into a 404", async ({ page }) => {
     await page.goto("/regulations/gp05");
     await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");

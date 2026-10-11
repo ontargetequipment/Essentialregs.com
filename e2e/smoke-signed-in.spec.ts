@@ -178,6 +178,26 @@ test.describe("signed in", () => {
     await expect(page.locator("#return-trail")).toBeHidden();
   });
 
+  test("the Regulation 7 jump box searches the whole text: 'enclosed combustion device' lists Part B rows with a highlighted excerpt", async ({ page }) => {
+    await page.goto("/regulations/7");
+    const box = page.locator("#jumpbox");
+    await expect(box).toHaveAttribute("role", "combobox");
+    await box.fill("enclosed combustion device");
+    const items = page.locator('#jump-results .jr-item[role="option"]');
+    await expect(items.first()).toBeVisible();
+    await expect(page.locator("#jump-results .jr-empty")).toHaveCount(0);
+    const slugs = await items.evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.slug ?? ""));
+    expect(slugs.length).toBeGreaterThan(0);
+    expect(slugs.length).toBeLessThanOrEqual(22);
+    for (const slug of slugs) expect(slug, slug).toMatch(/^sec-7-/);
+    expect(slugs.some((slug) => slug.startsWith("sec-7-B-")), "Part B rows are listed").toBe(true);
+    await expect(page.locator("#jump-results .jr-excerpt mark").first()).toBeVisible();
+    // Picking one lands on it.
+    const first = slugs[0];
+    await items.first().click();
+    await expect.poll(() => new URL(page.url()).hash).toBe(`#${first}`);
+  });
+
   test("a citation of a whole document previews it and opens it with a way back (GP12 XII.E → Regulation 8)", async ({ page }, testInfo) => {
     // Acceptance row "Click a citation in GP12 XII.E" (6 Oct 2026): the
     // importer links "Regulation Number 8" to /regulations/8 with no

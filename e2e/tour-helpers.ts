@@ -130,23 +130,23 @@ export async function jump(page: Page, citation: string): Promise<void> {
 }
 
 /** Step 1's search: the word, in the jump box, with VI.D among the matches. */
-export async function typeFrequency(page: Page): Promise<void> {
+export async function typeSampling(page: Page): Promise<void> {
   const box = page.locator("#jumpbox");
   await box.click();
-  await box.fill("frequency");
+  await box.fill("sampling");
   await expect(page.locator("#jump-results")).toHaveClass(/show/);
   await expect(page.locator(`#jump-results .jr-item[data-slug="${VI_D}"]`)).toBeVisible();
 }
 
-/** Step 1 the way the copy says: type frequency, pick VI.D from the matches. */
+/** Step 1 the way the copy says: type sampling, pick VI.D from the matches. */
 export async function jumpToVID(page: Page): Promise<void> {
-  await typeFrequency(page);
+  await typeSampling(page);
   await page.locator(`#jump-results .jr-item[data-slug="${VI_D}"]`).click();
 }
 
 /** Step 1 from the keyboard: arrow to VI.D among the matches, then Enter. */
 export async function jumpToVIDByKeyboard(page: Page): Promise<void> {
-  await typeFrequency(page);
+  await typeSampling(page);
   const box = page.locator("#jumpbox");
   const option = page.locator(`#jump-results .jr-item[data-slug="${VI_D}"]`);
   for (let i = 0; i < 15 && (await option.getAttribute("aria-selected")) !== "true"; i++) await box.press("ArrowDown");
