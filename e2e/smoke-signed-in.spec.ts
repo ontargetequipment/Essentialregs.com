@@ -9,7 +9,24 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, test, withProtectionBypass } from "./fixtures";
 import type { Page, TestInfo } from "@playwright/test";
-import { REG7_IC1, VI_C, boxOf, callout, captureTourEvents, walkToStep5, row } from "./tour-helpers";
+import {
+  CLOSING,
+  COMPLETE,
+  FULL_RUN,
+  REG7_IC1,
+  REG7_IC1_A,
+  VI_C,
+  boxOf,
+  callout,
+  captureTourEvents,
+  expectNoBackBar,
+  inViewportNow,
+  row,
+  sawEvent,
+  summaryControl,
+  tagsOf,
+  walkToStep5,
+} from "./tour-helpers";
 
 /**
  * Where the acceptance screenshots go (6 Oct 2026 review items 1 and 5):
@@ -385,33 +402,77 @@ test.describe("signed in", () => {
     await expect(page.getByTestId("visitor-banner")).toHaveCount(0);
   });
 
-  test("a subscriber gets the walkthrough too: step 5 opens Regulation 7 I.C.1 in the reader and step 6 has no trial button", async ({ page }, testInfo) => {
-    // Sprint 6 (src/lib/tour.ts): the same six steps; the citation goes to the
-    // subscriber's destination (provisionDestination), and the closing
-    // callout drops "Start your 7-day trial".
+  test("a subscriber gets the walkthrough too: steps 6 and 7 run in the Regulation 7 reader with its own return bar, and the closing card has no trial button", async ({ page }, testInfo) => {
+    // Sprint 7 (src/lib/tour.ts): the same seven steps. Step 5's citation
+    // goes to the subscriber's destination (provisionDestination, with the
+    // GP05 row as ?from= and ?tour=1): the Reg 7 reader. Steps 6 and 7 are
+    // anchored callouts there as on GP05; step 7 points at the reader's own
+    // "← Back to GP05 · VI.C" bar, whose click the tour takes to add
+    // ?tour=1. The closing card drops "Start your 7-day trial".
     const events = await captureTourEvents(page);
     await walkToStep5(page);
     const link = row(page, VI_C).locator(`a.xref-external-reg[href$="#${REG7_IC1}"]`);
     await expect(link).toHaveAttribute("data-tour-target", "5");
+    await sawEvent(events, "tour_step:5");
     await link.click();
     await page.waitForURL((url) => url.pathname === "/regulations/7" && url.hash === `#${REG7_IC1}`);
+    // The reader takes ?from= off the URL (it keeps it for the bar); ?tour=1 stays.
+    await expect.poll(() => new URL(page.url()).searchParams.get("from")).toBeNull();
     expect(new URL(page.url()).searchParams.get("tour")).toBe("1");
     await expect(row(page, REG7_IC1)).toBeInViewport({ timeout: 30_000 });
     const c = callout(page);
+    const besideTheText = async () =>
+      expect
+        .poll(async () => {
+          const cb = await boxOf(c);
+          const sidebar = await boxOf(page.locator("#sidebar"));
+          return cb.x + cb.width <= sidebar.x + sidebar.width + 1;
+        }, { message: "in the sidebar column, never over the text" })
+        .toBe(true);
+
+    // 6 -- the cited requirement, in the reader.
     await expect(c).toHaveAttribute("data-step", "6");
+    await expect(c).toHaveAttribute("data-mode", "anchored");
+    await expect(c.getByTestId("tour-count")).toHaveText("Step 6 of 7");
+    await expect(c).toContainText("This is the cited requirement. Open I.C.1.a's summary.");
+    const bar = page.locator("#return-trail-ext");
+    await expect(bar).toBeVisible();
+    await expect(bar).toHaveText("← Back to GP05 · VI.C");
+    await expect(bar).toHaveAttribute("href", `/regulations/gp05#${VI_C}`);
+    const aControl = summaryControl(row(page, REG7_IC1_A));
+    await expect(aControl).toHaveAttribute("data-tour-target", "6");
+    // The reader re-lands the deep link a moment after it mounts; the control is on screen once that has settled.
+    await expect.poll(() => inViewportNow(aControl)).toBe(true);
+    await besideTheText();
+    await shot(page, testInfo, "tour-subscriber-step6");
+
+    // 7 -- the reader's return bar.
+    await aControl.click();
+    await expect(c).toHaveAttribute("data-step", "7");
+    await expect(c.getByTestId("tour-count")).toHaveText("Step 7 of 7");
+    await expect(c).toContainText("Click Back to GP05 VI.C.");
+    await expect(bar).toHaveAttribute("data-tour-target", "7");
+    await expect.poll(() => inViewportNow(bar)).toBe(true);
+    await besideTheText();
+    await shot(page, testInfo, "tour-subscriber-step7");
+    await sawEvent(events, "tour_step:7");
+
+    // The way back keeps the tour on: GP05 at VI.C, the closing card.
+    await bar.click();
+    await page.waitForURL((url) => url.pathname === "/regulations/gp05" && url.searchParams.get("tour") === "1" && url.hash === `#${VI_C}`);
+    await expect(c).toHaveAttribute("data-step", "closing");
+    await expect(c.getByTestId("tour-count")).toHaveText(COMPLETE);
+    await expect(c.getByTestId("tour-closing")).toHaveText(CLOSING);
     await expect(c.getByTestId("tour-trial")).toHaveCount(0);
     await expect(c.getByTestId("tour-explore")).toHaveAttribute("href", "/regulations/gp05");
-    // Beside the provision, in the sidebar column: never over the text.
-    await expect
-      .poll(async () => {
-        const cb = await boxOf(c);
-        const sidebar = await boxOf(page.locator("#sidebar"));
-        return cb.x + cb.width <= sidebar.x + sidebar.width + 1;
-      })
-      .toBe(true);
-    await shot(page, testInfo, "tour-subscriber-step6");
-    expect(events.map((e) => e.event)).toContain("tour_complete");
-    expect(events.map((e) => e.event)).not.toContain("tour_trial_click");
+    await expect(c.getByTestId("tour-skip")).toHaveText("End tour");
+    await expect(row(page, VI_C)).toBeInViewport();
+    await expectNoBackBar(page);
+    await besideTheText();
+    await shot(page, testInfo, "tour-subscriber-closing");
+    await sawEvent(events, "tour_complete:7");
+    expect(tagsOf(events)).toEqual(FULL_RUN);
+    expect(tagsOf(events)).not.toContain("tour_trial_click:7");
   });
 
   test("?tour=1 on another regulation is ignored: /regulations/7?tour=1 is the normal reader", async ({ page }) => {

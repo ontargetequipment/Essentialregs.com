@@ -24,6 +24,7 @@ import {
   popupEyebrow,
   printedEffectiveDate,
   type ProvisionPreviewPayload,
+  READER_TRAIL_RESET_EVENT,
   regulationHref,
   renumberedNote,
   ReturnTrail,
@@ -333,7 +334,7 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json: unknown = await res.json();
         if (isLockedPreview(json, targetId)) {
-          showLockedPreview(json, seq, asDocument);
+          showLockedPreview(json, seq, asDocument, origin);
           return;
         }
         data = json as ProvisionPreviewPayload;
@@ -395,11 +396,18 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
      * /api/provision): the regulation's name, the citation, the provision's
      * title and the "in the full corpus" panel (lockedPopup, reader-nav.ts,
      * which escapes everything). The footer link is hidden: it would lead
-     * into the 404 the reader gives a visitor for that regulation.
+     * into the 404 the reader gives a visitor for that regulation. `origin`
+     * is the row the link was clicked in: the focused preview's link carries
+     * it (`&from=`), so the preview can say where the visitor came from.
      */
-    function showLockedPreview(data: Parameters<typeof lockedPopup>[0], seq: number, asDocument: boolean) {
+    function showLockedPreview(
+      data: Parameters<typeof lockedPopup>[0],
+      seq: number,
+      asDocument: boolean,
+      origin: string | null
+    ) {
       if (seq !== previewSeq || !backdrop || !popupBody || !popupTitle) return;
-      const view = lockedPopup(data, asDocument);
+      const view = lockedPopup(data, asDocument, origin);
       popupSlug = null;
       popupOrigin = null;
       popupRemote = true;
@@ -665,6 +673,26 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
     }
     trailBack?.addEventListener("click", onTrailBack);
     trailDismiss?.addEventListener("click", onTrailDismiss);
+
+    // The guided walkthrough's Restart and Skip (ReaderTour) ask the reader
+    // to forget where it has been, so a finished run leaves nothing in the
+    // next one: the trail, the other-regulation origin, the row remembered
+    // as the place the visitor was reading (touchedId, which would otherwise
+    // name VI.C on the new run's first jump) and the history entry's
+    // `readerReturnFrom`. The bar is re-rendered, hidden.
+    function onTrailReset() {
+      trail.clear();
+      otherOrigin = null;
+      touchedId = null;
+      const state = window.history.state as ReaderHistoryState;
+      if (state?.readerReturnFrom) {
+        const rest = { ...state };
+        delete rest.readerReturnFrom;
+        window.history.replaceState(rest, "", window.location.href);
+      }
+      renderTrail();
+    }
+    window.addEventListener(READER_TRAIL_RESET_EVENT, onTrailReset);
 
     // Back/Forward: the entry carries the provision the reader was on
     // (stamped by goToProvision), else its hash names one. Returning to the
@@ -949,6 +977,7 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       document.removeEventListener("keydown", onKeydown);
       trailBack?.removeEventListener("click", onTrailBack);
       trailDismiss?.removeEventListener("click", onTrailDismiss);
+      window.removeEventListener(READER_TRAIL_RESET_EVENT, onTrailReset);
       window.removeEventListener("popstate", onPopState);
       window.removeEventListener("hashchange", onHashChange);
       toggle?.removeEventListener("click", onToggleClick);
