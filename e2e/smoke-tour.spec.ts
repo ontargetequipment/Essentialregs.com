@@ -562,13 +562,15 @@ test.describe("guided walkthrough", () => {
     await expectDocked(page, 7, page.locator("#preview-return"), H, 1100);
   });
 
-  test("outside the tour, a visitor's click on VI.C's Regulation 7 citation opens the locked popup, and its preview link carries VI.C", async ({ page }) => {
+  test("outside the tour, a visitor's click on VI.C's Regulation 7 citation shows the public row in the popup, and its preview link carries VI.C", async ({ page }) => {
     await page.goto(`/regulations/gp05#${VI_C}`);
     await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
     await row(page, VI_C).locator(`a.xref-external-reg[href$="#${REG7_IC1}"]`).click();
-    const panel = page.locator('#popup-body [data-testid="locked-destination"]');
-    await expect(panel).toBeVisible();
-    const preview = panel.locator("a.locked-secondary");
+    // I.C.1 is public (11 Oct 2026): the popup reads it instead of saying it is in the full corpus.
+    const popup = page.locator("#popup-body");
+    await expect(popup).toContainText("manufacturer specifications and documentation of compliance");
+    await expect(popup.getByTestId("locked-destination")).toHaveCount(0);
+    const preview = page.locator("#popup-goto");
     await expect(preview).toHaveAttribute("href", `/regulations/7/preview?p=${REG7_IC1}&from=${VI_C}`);
     await expect(callout(page)).toHaveCount(0);
     // The preview draws the way back to where the visitor was (no tour: the plain reader link).
