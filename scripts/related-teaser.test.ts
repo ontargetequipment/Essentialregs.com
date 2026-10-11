@@ -36,3 +36,14 @@ test("a row with no regulation key is treated as locked", () => {
   assert.equal(out.summary, null);
   assert.equal(out.path, null);
 });
+
+test("a neighbour in the public Regulation 7 I.C.1 subtree is citation and title only too (Sprint 7)", () => {
+  // The rows are public for the focused preview and /regs/<id>, but Regulation 7 is not a
+  // PUBLIC_READER_REGS regulation: the related teaser (service role) shows no summary or path.
+  const sub = { ...base, id: "sec-7-B-I-C-1-a", reg_key: "7", citation: "I.C.1.a.", title: "" };
+  const out = teaserItem(sub);
+  assert.equal(out.summary, null);
+  assert.equal(out.summary_badge, null);
+  assert.equal(out.path, null);
+  assert.equal(out.citation, "I.C.1.a.");
+});

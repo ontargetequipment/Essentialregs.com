@@ -134,3 +134,13 @@ test("an entitled request is unaffected by the public list", async () => {
   assert.equal(await loadReaderPage("7", d), cached);
   assert.deepEqual(calls, ["isVisible:7", "hasAccess", "fetchVersion:7", "fetchCached:7:6754:2026-09-20T15:13:42Z"]);
 });
+
+test("Regulation 7's reader stays closed to a visitor although its I.C.1 subtree rows are public (Sprint 7)", async () => {
+  // The subtree is public for the focused preview (preview-subtree.ts); marking rows public must
+  // never open the reader: only PUBLIC_READER_REGS does, and it is GP05 alone.
+  const sub = { ...publicRoot, id: "sec-7-B-I-C-1", citation: "I.C.1.", title: "I.C.1. General Requirements", parent_id: "sec-7-B-I-C" };
+  const sample = deps(false, [sub]);
+  delete (sample.d as { publicRegs?: unknown }).publicRegs;
+  assert.equal(await loadReaderPage("7", sample.d), null);
+  assert.deepEqual(sample.calls, ["isVisible:7", "hasAccess"], "no read of any kind, live or cached");
+});
