@@ -23,6 +23,7 @@ import {
   originTrailLabel,
   popupEyebrow,
   printedEffectiveDate,
+  publicPreviewParts,
   type ProvisionPreviewPayload,
   READER_TRAIL_RESET_EVENT,
   regulationHref,
@@ -359,6 +360,7 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       if (popupEyebrowEl) popupEyebrowEl.textContent = name;
       const wrap = document.createElement("div");
       wrap.className = "item";
+      let publicParts: ReturnType<typeof publicPreviewParts> = null;
       if (asDocument) {
         // A whole document (its root row): the document's title, its
         // citation and the date we hold it as of (the manifest, through
@@ -379,14 +381,27 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
         // source-dates.generated.ts, never from this file).
         const renumbered = cited ? renumberedNote(documentShortName(pageKey), cited, data.citation, name) : null;
         setPopupNote(renumbered, versionNote(pageKey, key, printedEffective, renumbered !== null));
-        wrap.innerHTML = data.html; // sanitised server-side (provision-preview.ts)
+        // A row the database marks public (Regulation 7 I.C.1 and below, for a
+        // visitor): its text, its summary control and source link, and its
+        // public sub-rows, rendered the way the reader's own popup shows a row
+        // (publicPreviewParts). Everything else is the text alone.
+        const open = publicPreviewParts(data, name, origin);
+        wrap.innerHTML = open ? open.bodyHtml : data.html; // sanitised and escaped server-side (provision-preview.ts)
+        publicParts = open;
       }
       popupBody.innerHTML = "";
       popupBody.appendChild(wrap);
-      if (popupTextLabel) popupTextLabel.hidden = true;
+      if (popupTextLabel) {
+        // The label that tells the official text from the summary under it,
+        // only when there is a summary to tell it from (as showPopup does).
+        popupTextLabel.textContent = textLabelFor(key);
+        popupTextLabel.hidden = !publicParts?.hasSummary;
+      }
       if (popupGoto) {
-        popupGoto.setAttribute("href", regulationHref(targetId, origin, cited));
-        popupGoto.textContent = asDocument ? `Open ${documentShortName(key)} →` : `Open in ${name} →`;
+        // A visitor's way on from a public row is its focused preview: the
+        // reader would 404 for them.
+        popupGoto.setAttribute("href", publicParts ? publicParts.footerHref : regulationHref(targetId, origin, cited));
+        popupGoto.textContent = publicParts ? publicParts.footerLabel : asDocument ? `Open ${documentShortName(key)} →` : `Open in ${name} →`;
       }
       backdrop.classList.add("show");
     }

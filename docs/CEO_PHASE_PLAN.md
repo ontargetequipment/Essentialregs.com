@@ -403,3 +403,5 @@ group by 1 order by 1;
 - (2) The GP05 reader's popup for the I.C.1 link still shows a visitor the locked label, with "preview" opening the readable subtree; only the tour goes straight to the preview. Showing the text in the popup when the row is public is a small change in `loadProvisionPreview`.
 - (3) `/regs/<id>` for the 13 newly public Regulation 7 rows links "← Back to sample" (the rule for public rows outside an open reader). It could point to `/regulations/7/preview?p=sec-7-B-I-C-1` instead.
 - (4) Still open from Sprint 6: the GP06 II.A.3 tooltip, the "Source checked" date, Skew Protection.
+
+**Follow-up, 11 Oct 2026 (closes decisions 2 and 3 above).** The GP05 reader's popup now shows a public Reg 7 row (I.C.1 and below) as text, summary control, source link and its public sub-rows, with a footer to the focused preview; locked rows keep the label (`/api/provision` reads the visitor's RLS-bound subtree and fences it; leak guard extended in unit tests and smoke), and `/regs/<id>` for public rows of a closed document reads "← Back to Regulation 7" to `/regulations/7/preview?p=sec-7-P-B`.

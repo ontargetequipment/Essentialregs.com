@@ -455,6 +455,33 @@ test.describe("anonymous", () => {
     await page.locator("#popup-close").click();
     await expect(page.locator("#backdrop")).not.toHaveClass(/show/);
 
+    // Outside the tour (no ?tour=1), VI.C's Regulation 7 I.C.1 citation is a PUBLIC row (11 Oct
+    // 2026, after Sprint 7): the popup shows its text instead of the locked label. I.C.1's own
+    // text is a heading, so the requirement itself, I.C.1.a, is read in the popup, with the
+    // summary control and source link of the row, and a footer that opens the focused preview.
+    const ic1 = page.locator('#doc > [id="sec-gp05-VI-C"] a.xref-external-reg[href$="#sec-7-B-I-C-1"]');
+    await expect(ic1).toHaveCount(1);
+    await ic1.scrollIntoViewIfNeeded();
+    await ic1.click();
+    await expect(page.locator("#backdrop")).toHaveClass(/show/);
+    const popup = page.locator("#popup-body");
+    await expect(popup).toContainText("manufacturer specifications and documentation of compliance");
+    await expect(popup.getByTestId("locked-destination")).toHaveCount(0);
+    await expect(popup).not.toContainText("is in the full corpus.");
+    await expect(page.locator("#popup-eyebrow")).toHaveText("Regulation 7");
+    await expect(page.locator("#popup-title")).toHaveText("I.C.1.");
+    const popupPanel = popup.locator("details.summary-panel").first();
+    await expect(popupPanel).not.toHaveAttribute("open", "");
+    await popupPanel.locator(":scope > summary").click();
+    await expect(popupPanel).toHaveAttribute("open", "");
+    await expect(popupPanel.locator(".summary-badge")).toHaveText(BADGE_TEXT);
+    await expect(popupPanel.locator(".summary-status a")).toHaveText("View official source ↗");
+    await expect(popupPanel.locator(".summary-status a")).toHaveAttribute("href", /^https?:\/\//);
+    await expect(page.locator("#popup-goto")).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C");
+    expect(new URL(page.url()).pathname, "the click did not navigate").toBe("/regulations/gp05");
+    await page.locator("#popup-close").click();
+    await expect(page.locator("#backdrop")).not.toHaveClass(/show/);
+
     // The part between the regulation and the section is a link too (11 Oct
     // 2026): VI.A's "Regulation Number 7, Part B, Section I.A.1". Its locked
     // popup offers the focused preview of the part root, and that page opens.
@@ -477,15 +504,43 @@ test.describe("anonymous", () => {
     await expect(page.locator("#preview-return")).toHaveAttribute("href", "/regulations/gp05#sec-gp05-VI-A");
   });
 
-  test("/api/provision answers a visitor with a locked label, no text, never cached", async ({ request }) => {
-    const res = await request.get("/api/provision/sec-7-B-I-D-3-a-(i)", { headers: protectionBypassHeaders() });
+  test("/api/provision answers a visitor with a locked label, no text, never cached, for a locked row", async ({ request }) => {
+    const res = await request.get("/api/provision/sec-7-B-I-B-33", { headers: protectionBypassHeaders() });
     expect(res.status()).toBe(200);
     expect(res.headers()["cache-control"]).toContain("no-store");
     const body = await res.json();
-    expect(body).toMatchObject({ locked: true, id: "sec-7-B-I-D-3-a-(i)", reg_key: "7" });
+    expect(body).toMatchObject({ locked: true, id: "sec-7-B-I-B-33", reg_key: "7" });
     expect(Object.keys(body).sort()).toEqual(["citation", "id", "locked", "path", "reg_key", "title"]);
     const missing = await request.get("/api/provision/sec-7-B-no-such-row", { headers: protectionBypassHeaders() });
     expect(missing.status()).toBe(404);
+  });
+
+  test("/api/provision gives a visitor a public Regulation 7 row's text, summary control and source link, and sub-rows", async ({ request }) => {
+    // 11 Oct 2026, after Sprint 7: the reader's citation popup shows what the preview shows.
+    const leaf = await request.get("/api/provision/sec-7-B-I-C-1-a", { headers: protectionBypassHeaders() });
+    expect(leaf.status()).toBe(200);
+    expect(leaf.headers()["cache-control"]).not.toContain("no-store");
+    const a = await leaf.json();
+    expect(a).toMatchObject({ id: "sec-7-B-I-C-1-a", reg_key: "7", public: true });
+    expect(a.locked).toBeUndefined();
+    expect(a.html).toContain("manufacturer specifications and documentation of compliance");
+    expect(a.panel).toContain('<details class="summary-panel">');
+    expect(a.panel).toContain("View official source");
+    expect(a.below).toBe("");
+    // The parent of the subtree's own text is a heading; the requirement is in the rows under it.
+    const parent = await request.get("/api/provision/sec-7-B-I-C-1", { headers: protectionBypassHeaders() });
+    const ic1 = await parent.json();
+    expect(ic1).toMatchObject({ id: "sec-7-B-I-C-1", public: true });
+    expect(ic1.html).toContain("General Requirements");
+    expect(ic1.below).toContain("manufacturer specifications and documentation of compliance");
+    // Its 12 public descendants, and no more.
+    expect((ic1.below.match(/<div class="item" data-citation="I\.C\.1\./g) ?? []).length).toBe(REG7_SUBTREE.length - 1);
+    expect((ic1.below.match(/<div class="item" data-citation="/g) ?? []).length).toBe(REG7_SUBTREE.length - 1);
+    // The older public sample row is public too.
+    const sample = await request.get("/api/provision/sec-7-B-I-D-3-a-(i)", { headers: protectionBypassHeaders() });
+    expect(await sample.json()).toMatchObject({ id: "sec-7-B-I-D-3-a-(i)", reg_key: "7", public: true });
+    // Nothing outside the subtree rides along.
+    for (const { phrases } of REG7_LOCKED) for (const phrase of phrases.slice(0, 1)) expect(JSON.stringify(ic1), phrase).not.toContain(phrase);
   });
 
   test("the focused preview answers 200 and ignores a ?p= that is not a provision of that regulation", async ({ page }) => {
@@ -808,7 +863,25 @@ test.describe("anonymous", () => {
       "Original regulatory text",
     ]);
     await expect(page.locator("article .summary-badge")).toHaveAttribute("title", /Disclaimer page/);
-    await expect(page.getByRole("link", { name: "← Back to sample" })).toBeVisible();
+    // 11 Oct 2026: a Regulation 7 row goes back to Regulation 7 (the visitor preview, on its Part), not to the sample.
+    const back = page.getByRole("link", { name: "← Back to Regulation 7" });
+    await expect(back).toBeVisible();
+    await expect(back).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-P-B");
+    await expect(page.getByRole("link", { name: "← Back to sample" })).toHaveCount(0);
+  });
+
+  test("each of the 13 public Regulation 7 pages at /regs/<id> links back to Regulation 7's preview on Part B, and the link opens", async ({ page, request }) => {
+    for (const id of REG7_SUBTREE) {
+      const res = await request.get(`/regs/${id}`, { headers: protectionBypassHeaders() });
+      expect(res.status(), id).toBe(200);
+      const html = await res.text();
+      expect(html, id).toMatch(/<a [^>]*href="\/regulations\/7\/preview\?p=sec-7-P-B"[^>]*>← Back to Regulation 7<\/a>/);
+      expect(html, id).not.toContain("Back to sample");
+    }
+    await page.goto("/regs/sec-7-B-I-C-1-a");
+    await page.getByRole("link", { name: "← Back to Regulation 7" }).click();
+    await page.waitForURL((url) => url.pathname === "/regulations/7/preview" && url.searchParams.get("p") === "sec-7-P-B");
+    await expect(page.locator("h1")).toHaveText("PART B");
   });
 
   test("an injection-shaped /regs/<id> returns 404", async ({ page }) => {
