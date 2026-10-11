@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import legacy_writer  # noqa: E402
 import review  # noqa: E402
+from denver_date import today_denver  # noqa: E402
 import summarize as sz  # noqa: E402
 
 OUT_DIR = Path(__file__).resolve().parent / "out"
@@ -384,7 +385,7 @@ def main(argv=None) -> int:
                          for arm, v in verdicts.get(row["id"], {}).items()},
         } for row in rows],
     })
-    md = [f"# Writer proof -- old vs new writer instructions (read-only), {started[:10]}", "",
+    md = [f"# Writer proof -- old vs new writer instructions (read-only), {today_denver(datetime.fromisoformat(started))}", "",
           f"- {len(rows)} provisions the reviewer corrected in October 2026 (seed {args.seed}; groups {info['groups']}; "
           f"eligible {info['eligible_by_group']}; {len(left_out)} left out as over the old 6,000-word cap, outline mode or headings-only)",
           f"- Writer `{args.writer_model}` (temperature 0, batch); reviewer `{args.review_model}` (effort {args.effort}, "

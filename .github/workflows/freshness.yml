@@ -46,6 +46,12 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            // The day a person reads is Colorado's, not the runner's UTC day
+            // (same idiom as todayDenver() in src/lib/changelog.ts and
+            // pipeline/denver_date.py).
+            const denverToday = new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit',
+            }).format(new Date());
             const summary = fs.existsSync('freshness_report.md')
               ? fs.readFileSync('freshness_report.md', 'utf8')
               : '(no report captured)';
@@ -84,7 +90,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issue.number,
-                body: `Re-checked on ${new Date().toISOString().slice(0, 10)} -- still open:\n\n${summary}`,
+                body: `Re-checked on ${denverToday} -- still open:\n\n${summary}`,
               });
             } else {
               await github.rest.issues.create({

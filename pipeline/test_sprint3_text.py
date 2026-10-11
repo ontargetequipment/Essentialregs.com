@@ -267,6 +267,36 @@ class RealGeneralPermitTests(unittest.TestCase):
             "<p>Emission estimates based upon fuel consumption must be calculated using either Eq. 2 with the appropriate emission factor:</p><div class=\"equation-block\">"))
         self.assertEqual(ic.text_artifacts(rows), [])
 
+    def test_gp06_ii_a_2_and_ii_a_3_are_the_permit_as_issued(self):
+        """GP06 Issuance 4 (July 23, 2025) prints the same date, "(January 27,
+        2020)", as the day the 8-hour Ozone Control Area "was re-classified from
+        a moderate to serious" in II.A.2 and as the day it "was re-classified
+        from serious to severe" in II.A.3. Both are in the PDF as written (page
+        6, page 7); the stored rows are the printed words, letter for letter
+        (source_text_check: 0 differences). The permit's own I.C and its
+        revision table put the serious-to-severe change at Issuance 3
+        (November 3, 2022), so II.A.3's date looks carried over from II.A.2.
+        Owner decision (Oct 10 2026): the official text is never altered and
+        no source-text note is added to either condition until the owner says
+        so. This pins the rows to the printed text so a "fix" of the date
+        cannot arrive silently with a re-import."""
+        rows, _, _ = self._rows("gp06")
+        by = {r["id"]: r for r in rows}
+
+        def visible(pid):
+            # A [sic] marker, if the owner ever approves one, is an EssentialRegs note, not permit text.
+            return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", ic._SIC_SPAN_RE.sub("", by[pid]["full_text"])))
+
+        a2, a3 = visible("sec-gp06-II-A-2"), visible("sec-gp06-II-A-3")
+        self.assertIn("prior to the effective date (January 27, 2020) on which that area was re- classified "
+                      "from a moderate to serious and are permitted under the provisions of I.B. above", a2)
+        self.assertIn("is not received by the Division prior to the effective date (January 27, 2020) on which "
+                      "that area was re-classified from serious to severe, facility- wide maximum allowable emissions", a3)
+        # What the same permit says elsewhere about the two reclassifications.
+        self.assertIn("(January 27, 2020) on which the 8-hour Ozone Control Area was re-classified from moderate to serious",
+                      visible("sec-gp06-I-B"))
+        self.assertIn("prior to the effective date of GP06, Issuance 3, (November 3, 2022)", visible("sec-gp06-I-C"))
+
     def test_gp12_nox_header_reads_nox_with_no_stray_x(self):
         rows, fixes, _ = self._rows("gp12")
         by = {r["id"]: r for r in rows}

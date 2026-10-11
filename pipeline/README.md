@@ -654,6 +654,31 @@ prefer generating and reviewing the SQL files above for a manual import.
 See `pipeline/test_import_ccr.py` for the stub-client tests covering its
 chunking, field, and ordering behavior.
 
+### Calendar days are Colorado's (`denver_date.py`)
+
+Any value that names a calendar DAY for people to read -- `last_verified_date`
+(the reader's "source checked"), the day in a removal/addition note, the day
+in `reviewed_by`, a `docs/imports/<day>/` folder, the eCFR "Retrieved" date of
+a test method, "Re-checked on ..." in an issue comment -- is the day in
+America/Denver, the same convention as `todayDenver()` in
+`src/lib/changelog.ts`. The runner's clock is UTC, which is already tomorrow
+after 6 pm MDT / 5 pm MST. In Python use `denver_date.today_denver()` (it
+takes an optional timezone-aware `now` for tests; it never falls back to UTC,
+so a missing zone database is an error); in a workflow step use
+`python pipeline/denver_date.py` (or `python denver_date.py` from
+`working-directory: pipeline`), never `date +%F`. Full timestamps
+(`reviewed_at`, `released_at`, `recorded_at`, `*_at timestamptz`) are instants,
+stay `datetime.now(timezone.utc).isoformat()`, and are converted to the
+Denver calendar by the reader when it prints them. `test_denver_date.py`
+fails if a `utcnow()` / `date.today()` / `date -u +%F` day stamp comes back.
+
+`last_verified_date` is written only when a row is INSERTed (a new id). A
+re-import never moves it on an existing row (`identical` and `changed` rows
+leave it alone, in both the SQL-file and the `--execute` path), so unless it
+was set some other way outside this repo's code, a regulation root's "source
+checked" date is the day the root row was created, not the day of the latest
+import or comparison.
+
 # Automated AI review pass (`review.py`)
 
 Every summary on the site carries a badge: **"AI reviewed · <date>"** when its

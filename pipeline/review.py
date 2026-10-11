@@ -103,6 +103,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import summarize as sz  # noqa: E402  -- the summarizer's prompt assembly is reused as is
 import budget as budget_module  # noqa: E402
+from denver_date import today_denver  # noqa: E402  -- the day in reviewed_by is Colorado's day
 
 PIPELINE_DIR = Path(__file__).resolve().parent
 OUT_DIR = PIPELINE_DIR / "out"
@@ -1238,7 +1239,9 @@ def verdict_from_message(message, review: ReviewInput) -> Verdict:
 # --------------------------------------------------------------------------
 
 def reviewed_by_for(verdict: str, model: str, date: Optional[str] = None) -> str:
-    date = date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # The day printed in reviewed_by names the review on the Colorado calendar,
+    # the same day the reader prints from reviewed_at (an instant, kept UTC).
+    date = date or today_denver()
     template = REVIEWED_BY_CORRECTED if verdict == "corrected" else REVIEWED_BY_PASS
     return template.format(model=model, date=date)
 

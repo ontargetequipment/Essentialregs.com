@@ -71,6 +71,12 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            // The day a person reads is Colorado's, not the runner's UTC day
+            // (same idiom as todayDenver() in src/lib/changelog.ts and
+            // pipeline/denver_date.py).
+            const denverToday = new Intl.DateTimeFormat('en-CA', {
+              timeZone: 'America/Denver', year: 'numeric', month: '2-digit', day: '2-digit',
+            }).format(new Date());
             const body = [
               'One or more summary guard checks is above 0 (scripts/corpus_qa.sql, checks 19, 21 and 25).',
               '',
@@ -88,7 +94,7 @@ jobs:
             if (existing) {
               await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number, body });
               await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: existing.number,
-                body: `Still failing on ${new Date().toISOString().slice(0, 10)}:\n\n${fs.readFileSync('guard_body.md', 'utf8')}` });
+                body: `Still failing on ${denverToday}:\n\n${fs.readFileSync('guard_body.md', 'utf8')}` });
             } else {
               await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title, body });
             }
