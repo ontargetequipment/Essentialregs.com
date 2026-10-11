@@ -29,7 +29,8 @@
 -- could never match; neither exists). LIKE's "_" wildcard is not used.
 --
 -- Applied to production by the CEO session with the Supabase connector's
--- apply_migration, with the read-back below. Recorded like the GP05 unlock:
+-- apply_migration (version 20261011042512, 11 Oct 2026); the read-back below
+-- returned the 13 ids and sec-7-B-I-D-3-a-(i). Recorded like the GP05 unlock:
 -- this file and docs/CEO_PHASE_PLAN.md (Sprint 7). A visibility change logs no
 -- provision_changes row (the trigger fires on full_text only).
 -- Idempotent. To undo: set is_public = false for the same 13 ids (and the
