@@ -32,6 +32,7 @@ import { provisionDestination } from "@/lib/destination";
 import { TRIAL_DAYS } from "@/lib/pricing";
 import { regKeyOf } from "@/lib/regulation-names";
 import { normalizeJumpKey } from "@/lib/snippet";
+import { previewTargetOf } from "@/lib/xref-href";
 import { PROVISION_ID } from "@/lib/types";
 
 /** The one regulation the tour runs on. ?tour=1 on any other reader is ignored. */
@@ -240,9 +241,15 @@ export function jumpTargetFor(query: string, rows: readonly { id: string; citati
   return rows.find((r) => r.citation && normalizeJumpKey(r.citation).replace(/\.+$/, "") === bare)?.id ?? null;
 }
 
-/** The provision id in a "/regulations/<reg>#<id>" link, or null. */
+/**
+ * The provision id in a "/regulations/<reg>#<id>" link, or null. A visitor's
+ * GP05 body carries the same link in its preview form, "/regulations/<reg>/
+ * preview?p=<id>" (Sprint 8, xref-href.ts), which names the same provision.
+ */
 export function linkTargetOf(href: string | null | undefined): string | null {
   if (!href) return null;
+  const previewed = previewTargetOf(href);
+  if (previewed) return previewed;
   const i = href.indexOf("#");
   if (i < 0) return null;
   let raw = href.slice(i + 1);

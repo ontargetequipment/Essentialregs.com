@@ -5,7 +5,7 @@
  * Expected values were read from the corpus on 25 Sep 2026; if the sample
  * rows (is_public) or the regulation roots change, update them here.
  */
-import { expect, protectionBypassHeaders, test } from "./fixtures";
+import { expect, protectionBypassHeaders, test, withProtectionBypass } from "./fixtures";
 import { ANNUAL_PRICE_DISPLAY, MONTHLY_PRICE_DISPLAY } from "../src/lib/pricing";
 import { DISCLAIMER_VERSION } from "../src/lib/disclaimer";
 
@@ -595,7 +595,7 @@ test.describe("anonymous", () => {
     // 2026, after Sprint 7): the popup shows its text instead of the locked label. I.C.1's own
     // text is a heading, so the requirement itself, I.C.1.a, is read in the popup, with the
     // summary control and source link of the row, and a footer that opens the focused preview.
-    const ic1 = page.locator('#doc > [id="sec-gp05-VI-C"] a.xref-external-reg[href$="#sec-7-B-I-C-1"]');
+    const ic1 = page.locator('#doc > [id="sec-gp05-VI-C"] a.xref-external-reg[href$="p=sec-7-B-I-C-1"]');
     await expect(ic1).toHaveCount(1);
     await ic1.scrollIntoViewIfNeeded();
     await ic1.click();
@@ -621,7 +621,7 @@ test.describe("anonymous", () => {
     // The part between the regulation and the section is a link too (11 Oct
     // 2026): VI.A's "Regulation Number 7, Part B, Section I.A.1". Its locked
     // popup offers the focused preview of the part root, and that page opens.
-    const partB = page.locator('#doc > [id="sec-gp05-VI-A"] a.xref-external-reg[href="/regulations/7#sec-7-P-B"]');
+    const partB = page.locator('#doc > [id="sec-gp05-VI-A"] a.xref-external-reg[href="/regulations/7/preview?p=sec-7-P-B"]');
     await expect(partB).toHaveText("Part B");
     await partB.scrollIntoViewIfNeeded();
     await partB.click();
@@ -1099,22 +1099,148 @@ test.describe("anonymous", () => {
     expect(res?.status()).toBe(404);
   });
 
-  test("the full reader /regulations/7 is 404 for an anonymous visitor, with or without the walkthrough's parameters", async ({ page }) => {
+  test("the reader /regulations/7 is never shown to an anonymous visitor, and no longer a 404: the redirect page sends them to the preview", async ({ page }) => {
     // Regulation 7's subtree is public, its reader is not (PUBLIC_READER_REGS is GP05 alone): the
-    // focused preview is the only way in. ?tour=1 and ?from= change nothing for a visitor.
-    for (const url of [
-      "/regulations/7",
-      "/regulations/7?tour=1",
-      "/regulations/7?from=sec-gp05-VI-C&tour=1",
-      "/regulations/7?from=sec-gp05-VI-C&tour=1#sec-7-B-I-C-1",
-    ]) {
+    // focused preview is the only way in. Sprint 8 (11 Oct 2026): the request used to be a 404;
+    // the page now renders a tiny redirect (the hash is read in the browser). ?tour=1 is dropped,
+    // ?from= is carried, a provision in the hash becomes ?p=.
+    const cases: [string, string][] = [
+      ["/regulations/7", "/regulations/7/preview"],
+      ["/regulations/7?tour=1", "/regulations/7/preview"],
+      ["/regulations/7?from=sec-gp05-VI-C&tour=1", "/regulations/7/preview?from=sec-gp05-VI-C"],
+      ["/regulations/7?from=sec-gp05-VI-C&tour=1#sec-7-B-I-C-1", "/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C"],
+    ];
+    for (const [url, expected] of cases) {
       // A URL that differs from the one before it only in its #hash would be
       // a same-document navigation with no response: start each from a blank page.
       await page.goto("about:blank");
-      const res = await page.goto(url);
-      expect(res?.status(), url).toBe(404);
+      // "commit": the page navigates away while it loads (location.replace), which a wait for the load event can report as an interrupted navigation.
+      const res = await page.goto(url, { waitUntil: "commit" });
+      expect(res?.status(), url).toBe(200);
+      await page.waitForURL((u) => u.pathname === "/regulations/7/preview");
+      const landed = new URL(page.url());
+      expect(landed.pathname + landed.search, url).toBe(expected);
       await expect(page.locator("#doc"), url).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 1 }), url).toBeVisible();
     }
+  });
+
+  test("opened directly, a cross-reference into a locked regulation lands on its focused preview (new tab, copied link)", async ({ page }) => {
+    // The ninth review's case: /regulations/7#sec-7-B-I-C-1 typed or pasted, no click in the GP05 reader.
+    await page.goto("about:blank");
+    await page.goto("/regulations/7#sec-7-B-I-C-1", { waitUntil: "commit" });
+    await page.waitForURL((u) => u.pathname === "/regulations/7/preview");
+    expect(page.url().endsWith("/regulations/7/preview?p=sec-7-B-I-C-1"), page.url()).toBe(true);
+    // I.C.1 is public: its subtree is on the page.
+    await expect(page.getByTestId("preview-subtree")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("I.C.1.");
+
+    // A locked row: the focused preview says it is in the full corpus, with the way back.
+    await page.goto("about:blank");
+    await page.goto("/regulations/7?from=sec-gp05-VI-C#sec-7-B-II-B-2", { waitUntil: "commit" });
+    await page.waitForURL((u) => u.pathname === "/regulations/7/preview");
+    expect(page.url().endsWith("/regulations/7/preview?p=sec-7-B-II-B-2&from=sec-gp05-VI-C"), page.url()).toBe(true);
+    await expect(page.getByTestId("locked-destination")).toContainText("is in the full corpus.");
+    await expect(page.locator("#preview-return")).toHaveText("← Back to GP05 · VI.C");
+
+    // An id of another regulation, or junk, in the hash: the plain preview of the regulation asked for.
+    for (const hash of ["#sec-3-A-II-B-5", "#nonsense", "#%E0%A4%A"]) {
+      await page.goto("about:blank");
+      await page.goto(`/regulations/7${hash}`, { waitUntil: "commit" });
+      await page.waitForURL((u) => u.pathname === "/regulations/7/preview");
+      expect(new URL(page.url()).search, hash).toBe("");
+    }
+  });
+
+  test("/regulations/7 with JavaScript off is no 404: a meta refresh and a plain link to the preview, and the page names nothing of the document", async ({ request, browser, baseURL }) => {
+    const res = await request.get("/regulations/7", { headers: protectionBypassHeaders() });
+    expect(res.status()).toBe(200);
+    const html = await res.text();
+    // The no-JavaScript fallback: a refresh (inside <noscript>, so a browser running the script is not raced by it) and a visible link.
+    expect(html).toMatch(/<noscript><meta http-equiv="refresh" content="0;url=\/regulations\/7\/preview"\/><\/noscript>/);
+    expect(html).toMatch(/<a href="\/regulations\/7\/preview"[^>]*>Open the preview of Regulation 7<\/a>/);
+    expect(html).toMatch(/<meta name="robots" content="noindex/);
+    expect(html).toMatch(/<title>Preview of Regulation 7/);
+    // The script is there for the hash.
+    expect(html).toContain("location.replace(");
+    // Nothing of the locked document beyond its name: none of the phrases the leak guard knows.
+    for (const { phrases } of REG7_LOCKED) for (const phrase of phrases) expect(html, phrase).not.toContain(phrase);
+    expect(html).not.toContain("manufacturer specifications and documentation of compliance");
+
+    // A browser with JavaScript off follows the refresh to the plain preview.
+    const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+    try {
+      await withProtectionBypass(context, baseURL);
+      const page = await context.newPage();
+      await page.goto("/regulations/7", { waitUntil: "commit" });
+      await page.waitForURL((u) => u.pathname === "/regulations/7/preview");
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(page.locator("#doc")).toHaveCount(0);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("an unknown regulation is still a 404 (the redirect page is only for one that exists)", async ({ page, request }) => {
+    for (const path of ["/regulations/doesnotexist1", "/regulations/doesnotexist1?from=sec-gp05-VI-C"]) {
+      const res = await page.goto(path);
+      expect(res?.status(), path).toBe(404);
+    }
+    const api = await request.get("/regulations/doesnotexist1", { headers: protectionBypassHeaders() });
+    expect(api.status()).toBe(404);
+    expect(await api.text()).not.toContain("location.replace(");
+    // A key that is not alphanumeric never reaches a query.
+    const bad = await request.get("/regulations/7%3Bdrop", { headers: protectionBypassHeaders() });
+    expect(bad.status()).toBe(404);
+  });
+
+  test("every cross-regulation link in the logged-out GP05 reader opens: none is a 404, and none is the closed reader's form", async ({ page, baseURL }) => {
+    // Sprint 8 (11 Oct 2026). The importer writes /regulations/7#sec-..., the closed reader's URL;
+    // the visitor's body now carries the preview form, so right-click, copy link, middle-click and
+    // JavaScript-off all work. Request each one directly, as a new tab would.
+    test.setTimeout(240_000);
+    const res = await page.goto("/regulations/gp05");
+    expect(res?.status()).toBe(200);
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    const hrefs = await page.locator("#doc a.xref-external-reg").evaluateAll((els) => els.map((a) => a.getAttribute("href") ?? ""));
+    expect(hrefs.length, "GP05 cites other regulations").toBeGreaterThan(0);
+    // Not the reader form of any regulation but GP05 itself.
+    const readerForm = hrefs.filter((h) => /^\/regulations\/(?!gp05(?:[?#]|$))[A-Za-z0-9]+(?:[?#]|$)/i.test(h));
+    expect(readerForm, "links in the reader form of a closed regulation").toEqual([]);
+    const preview = hrefs.filter((h) => /^\/regulations\/[A-Za-z0-9]+\/preview(\?|$)/.test(h));
+    expect(preview.length, "links in the preview form").toBeGreaterThan(0);
+
+    // One request per path + query (a #fragment is never sent).
+    const targets = new Map<string, string>();
+    for (const href of hrefs) {
+      const url = new URL(href, baseURL);
+      targets.set(url.pathname + url.search, href);
+    }
+    const failures: string[] = [];
+    const queue = [...targets.keys()];
+    const worker = async () => {
+      for (let target = queue.shift(); target !== undefined; target = queue.shift()) {
+        const r = await page.request.get(target, { headers: protectionBypassHeaders() });
+        if (r.status() >= 400) failures.push(`${target} -> ${r.status()}`);
+      }
+    };
+    await Promise.all(Array.from({ length: 6 }, worker));
+    test.info().annotations.push({ type: "cross-regulation links", description: `${hrefs.length} links, ${targets.size} distinct requests, ${failures.length} failed` });
+    console.log(`GP05 cross-regulation links: ${hrefs.length} (${targets.size} distinct URLs requested), ${failures.length} failed`);
+    expect(failures, `${failures.length} of ${targets.size} cross-regulation links fail for a visitor:\n${failures.join("\n")}`).toEqual([]);
+  });
+
+  test("a middle-click on a cross-regulation link in GP05 opens the focused preview in a new tab (no popup, no 404)", async ({ page, context }) => {
+    await page.goto("/regulations/gp05");
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    const link = page.locator('#doc > [id="sec-gp05-VI-C"] a.xref-external-reg[href$="p=sec-7-B-I-C-1"]');
+    await link.scrollIntoViewIfNeeded();
+    const [popup] = await Promise.all([context.waitForEvent("page"), link.click({ modifiers: ["ControlOrMeta"] })]);
+    await popup.waitForURL((u) => u.pathname === "/regulations/7/preview");
+    expect(new URL(popup.url()).searchParams.get("p")).toBe("sec-7-B-I-C-1");
+    await expect(popup.getByTestId("preview-subtree")).toBeVisible();
+    await expect(page.locator("#backdrop")).not.toHaveClass(/show/);
+    await popup.close();
   });
 
   // -------------------------------------------------------------------------

@@ -10,7 +10,7 @@
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { loadReaderPage, type ReaderPageDeps } from "../src/lib/reader-page";
+import { loadReaderPage, resolveReaderPage, type ReaderPageDeps } from "../src/lib/reader-page";
 import type { RenderedReader } from "../src/lib/reader-render";
 import type { Provision } from "../src/lib/types";
 
@@ -143,4 +143,88 @@ test("Regulation 7's reader stays closed to a visitor although its I.C.1 subtree
   delete (sample.d as { publicRegs?: unknown }).publicRegs;
   assert.equal(await loadReaderPage("7", sample.d), null);
   assert.deepEqual(sample.calls, ["isVisible:7", "hasAccess"], "no read of any kind, live or cached");
+});
+
+// ---------------------------------------------------------------------------
+// Sprint 8 (11 Oct 2026): no cross-reference ever 404s. A request WITHOUT
+// access for a regulation that exists and is released resolves to "preview"
+// (the page renders a redirect to the focused preview); an unknown or staged
+// one is still "not-found", and so is a subscriber's empty reader.
+// ---------------------------------------------------------------------------
+
+const root7 = { id: "sec-7-top-REG-7", citation: "Code of Colorado Regulations · Regulation Number 7" };
+
+function gate(entitled: boolean, opts: { visible?: boolean; root?: typeof root7 | null; cachedBody?: RenderedReader | null } = {}) {
+  const base = deps(entitled, [publicRoot], opts.visible ?? true, ["gp05"]);
+  const calls = base.calls;
+  const d: ReaderPageDeps = {
+    ...base.d,
+    fetchRoot: async (reg) => {
+      calls.push(`fetchRoot:${reg}`);
+      return opts.root === undefined ? root7 : opts.root;
+    },
+  };
+  if (opts.cachedBody !== undefined) {
+    d.fetchCached = async (reg, version) => {
+      calls.push(`fetchCached:${reg}:${version}`);
+      return opts.cachedBody ?? null;
+    };
+  }
+  return { d, calls };
+}
+
+test("a visitor's request for a regulation that exists but is not public resolves to its preview, with one root read and nothing else", async () => {
+  const { d, calls } = gate(false);
+  assert.deepEqual(await resolveReaderPage("7", d), { kind: "preview", root: root7 });
+  assert.deepEqual(calls, ["isVisible:7", "hasAccess", "fetchRoot:7"], "no fetchLive, fetchVersion or fetchCached");
+  assert.equal(await loadReaderPage("7", d), null, "loadReaderPage keeps answering null: it is not a reader");
+});
+
+test("an unknown regulation is still not-found for a visitor", async () => {
+  const { d, calls } = gate(false, { root: null });
+  assert.deepEqual(await resolveReaderPage("doesnotexist1", d), { kind: "not-found" });
+  assert.deepEqual(calls, ["isVisible:doesnotexist1", "hasAccess", "fetchRoot:doesnotexist1"]);
+});
+
+test("a staged document is not-found before the entitlement gate and before any root read", async () => {
+  for (const entitled of [false, true]) {
+    const { d, calls } = gate(entitled, { visible: false });
+    assert.deepEqual(await resolveReaderPage("oooo", d), { kind: "not-found" });
+    assert.deepEqual(calls, ["isVisible:oooo"]);
+  }
+});
+
+test("an admin without access to a staged document gets not-found too: the root read (the teaser's release rule) finds nothing", async () => {
+  const { d, calls } = gate(false, { visible: true, root: null });
+  assert.deepEqual(await resolveReaderPage("oooo", d), { kind: "not-found" });
+  assert.deepEqual(calls, ["isVisible:oooo", "hasAccess", "fetchRoot:oooo"]);
+});
+
+test("a subscriber whose reader comes back empty keeps the 404: the preview would redirect them straight back (no loop)", async () => {
+  const { d, calls } = gate(true, { cachedBody: null });
+  assert.deepEqual(await resolveReaderPage("7", d), { kind: "not-found" });
+  assert.deepEqual(calls, ["isVisible:7", "hasAccess", "fetchVersion:7", "fetchCached:7:6754:2026-09-20T15:13:42Z"], "no root read");
+});
+
+test("a subscriber's reader is the cached body, whatever fetchRoot would say", async () => {
+  const { d, calls } = gate(true);
+  assert.deepEqual(await resolveReaderPage("7", d), { kind: "reader", reader: cached });
+  assert.ok(!calls.some((c) => c.startsWith("fetchRoot")));
+});
+
+test("the public sample reader renders for a visitor without a root read", async () => {
+  const gp05Root = { ...publicRoot, id: "sec-gp05-top-REG-gp05", citation: "GP05", title: "GP05" };
+  const base = deps(false, [gp05Root], true, ["gp05"]);
+  const d: ReaderPageDeps = { ...base.d, fetchRoot: async () => root7 };
+  const result = await resolveReaderPage("gp05", d);
+  assert.equal(result.kind, "reader");
+  assert.deepEqual(base.calls, ["isVisible:gp05", "hasAccess", "fetchLive:gp05"]);
+});
+
+test("the preview answer carries a name and nothing of the document", async () => {
+  const { d } = gate(false);
+  const result = await resolveReaderPage("7", d);
+  assert.deepEqual(Object.keys(result).sort(), ["kind", "root"]);
+  assert.ok(result.kind === "preview");
+  assert.deepEqual(Object.keys(result.root).sort(), ["citation", "id"]);
 });
