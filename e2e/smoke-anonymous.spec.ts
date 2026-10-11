@@ -1097,7 +1097,11 @@ test.describe("anonymous", () => {
     await page.goto("/regulations/gp05/preview?p=sec-gp05-VI-D&from=sec-7-B-I-C-1");
     await page.waitForURL((url) => url.pathname === "/regulations/gp05");
     expect(new URL(page.url()).hash).toBe("#sec-gp05-VI-D");
-    expect(new URL(page.url()).searchParams.get("from")).toBe("sec-7-B-I-C-1");
+    // The reader takes ?from= off the URL on load (into history.state), so the
+    // proof that it arrived is the return bar it draws from it.
+    const back = page.locator("#return-trail-ext");
+    await expect(back).toHaveText("← Back to Regulation 7 · Part B · I.C.1");
+    await expect(back).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-B-I-C-1");
   });
 
   test("/regs/<id> of a public subtree row shows its text and summary", async ({ page }) => {
