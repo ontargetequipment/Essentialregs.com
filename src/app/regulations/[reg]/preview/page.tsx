@@ -117,7 +117,7 @@ export default async function RegulationPreviewPage(
           {/* The walkthrough's last step (Sprint 6, src/lib/tour.ts): a
               visitor who followed GP05 VI.C's Regulation 7 citation lands
               here with ?tour=1. Shows only while that tour is at step 6. */}
-          {tourRequested(searchParams[TOUR_PARAM]) && <ReaderTour page="destination" hasAccess={false} placement="inline" />}
+          {tourRequested(searchParams[TOUR_PARAM]) && <ReaderTour page="destination" hasAccess={false} placement="floating" />}
         </div>
       )}
       <p className="font-mono text-eyebrow uppercase text-tag">

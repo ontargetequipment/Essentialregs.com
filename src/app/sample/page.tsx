@@ -155,9 +155,9 @@ export default async function SamplePage() {
         See how EssentialRegs answers a real Colorado oil and gas compliance question
       </h1>
       <p className="mt-3 max-w-reading text-sm leading-relaxed text-ink-soft">
-        An operator with a produced water tank battery wants to know what applies. Do the research once yourself in the
-        walkthrough, or open the keyword search and the Ask answer a subscriber gets for it further down. GP05, the general
-        permit for produced water storage tank batteries, is available below in the complete reader.
+        An operator with a produced water tank battery wants to know what applies. Walk through the research yourself, or
+        compare the Search and Ask results below. GP05, the general permit for produced water storage tank batteries, is
+        available below in the complete reader.
       </p>
 
       <section

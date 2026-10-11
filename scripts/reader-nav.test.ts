@@ -1220,6 +1220,64 @@ test("?from= another regulation: return link, stripped from the URL", async (t) 
   }
 });
 
+test("er:reader-trail-reset (the walkthrough's Restart and Skip) makes the reader forget its trail", async (t) => {
+  const FROM = "sec-gp12-I-A";
+  const RESET = "er:reader-trail-reset";
+
+  await t.test("the way back to another regulation, and the history entry that remembers it, are gone; a remount does not bring them back", async () => {
+    const r = await bootReader(makeDom("#sec-3-A-II-B-3", `?from=${FROM}`));
+    const { window, $, mount, unmount, sleep } = r;
+    await mount();
+    await sleep(80);
+    assert.equal($("#return-trail").hidden, false);
+    assert.equal($("#return-trail-ext").hidden, false);
+    assert.equal((window.history.state as { readerReturnFrom?: string }).readerReturnFrom, FROM);
+    window.dispatchEvent(new window.Event(RESET));
+    assert.equal($("#return-trail").hidden, true, "the bar is hidden");
+    assert.equal($("#return-trail-ext").hidden, true, "and so is the link it held");
+    assert.equal((window.history.state as { readerReturnFrom?: string } | null)?.readerReturnFrom, undefined);
+    assert.equal(window.location.hash, "#sec-3-A-II-B-3", "the page itself does not move");
+    await unmount();
+    await mount();
+    await sleep(80);
+    assert.equal($("#return-trail").hidden, true, "a reload / strict-mode remount does not bring it back");
+    await unmount();
+  });
+
+  await t.test("the in-document trail and the row remembered as where the visitor was reading are gone", async () => {
+    const r = await bootReader(makeDom("#sec-3-A-II-B-3"));
+    const { window, document, $, mount, unmount, sleep, click } = r;
+    await mount();
+    await sleep(80);
+    const rows = Array.from(document.querySelectorAll<HTMLElement>("#doc > [id]"));
+    const idx = (id: string) => rows.findIndex((x) => x.id === id);
+    const layout = (topIdx: number) =>
+      rows.forEach((row, i) => {
+        const top = (i - topIdx) * 100 + 100;
+        row.getBoundingClientRect = () => ({ top, bottom: top + 100, left: 0, right: 0, width: 0, height: 100, x: 0, y: top, toJSON() {} }) as DOMRect;
+      });
+    const backLabel = () => $("#return-trail-back").textContent?.replace(/\s+/g, " ").trim();
+    const b3 = idx("sec-3-A-II-B-3");
+    layout(b3 - 1);
+    // Clicked into II.B.3, on screen: it would be the first jump's origin ...
+    await click(document.querySelector<HTMLElement>('#doc > [id="sec-3-A-II-B-3"]')!);
+    window.dispatchEvent(new window.Event(RESET));
+    await click($('#sidebar a.nav-link[href="#sec-3-A-II"]'));
+    assert.equal($("#return-trail").hidden, false);
+    assert.notEqual(backLabel(), "← Back to II.B.3.", "... but the reset forgot it: the viewport-top row is the origin");
+
+    // A trail of two, then a reset: the next jump starts a new one, and its Back is the only way back.
+    await click($('#sidebar a.nav-link[href="#sec-3-A-I"]'));
+    window.dispatchEvent(new window.Event(RESET));
+    assert.equal($("#return-trail").hidden, true);
+    await click($('#sidebar a.nav-link[href="#sec-3-A-II"]'));
+    assert.equal($("#return-trail").hidden, false);
+    await click($("#return-trail-back"));
+    assert.equal($("#return-trail").hidden, true, "nothing of the earlier trail is left under it");
+    await unmount();
+  });
+});
+
 test("isUsablePreview: only the requested row, with a heading, fills a preview", () => {
   const ok = { id: "sec-p190-190.9", citation: "§ 190.9", title: "Petitions", html: "<p>x</p>" };
   assert.equal(isUsablePreview(ok, "sec-p190-190.9"), true);
@@ -1298,6 +1356,16 @@ test("isLockedPreview and lockedPopup (pure)", () => {
   assert.match(p.panelHtml, /href="\/signup">Start your 7-day trial</);
   assert.match(p.panelHtml, /href="\/regulations\/7\/preview\?p=sec-7-B-I-B-33">See what&#39;s in it</);
 
+  // The row the link was clicked in rides along to the focused preview as &from= (html-escaped in the attribute) ...
+  assert.match(
+    lockedPopup(LOCKED, false, "sec-gp05-VI-C").panelHtml,
+    /href="\/regulations\/7\/preview\?p=sec-7-B-I-B-33&amp;from=sec-gp05-VI-C">See what&#39;s in it</
+  );
+  // ... only when it is a provision id of another regulation; a whole-document preview has no focused provision.
+  for (const bad of [null, undefined, "", "nonsense", "<script>", "sec-7-B-I-A"]) {
+    assert.match(lockedPopup(LOCKED, false, bad).panelHtml, /href="\/regulations\/7\/preview\?p=sec-7-B-I-B-33">See what&#39;s in it</, String(bad));
+  }
+
   // A title that only repeats the citation adds nothing: no note line.
   assert.equal(lockedPopup({ ...LOCKED, title: "" }, false).note, null);
   // Parenthesised ids are encoded in ?p= like everywhere else.
@@ -1353,9 +1421,10 @@ test("a visitor's click on a cross-regulation link opens the locked popup, not a
       assert.match(panel.textContent ?? "", /Regulation 7 I\.B\.33\. is in the full corpus\./);
       assert.match(panel.textContent ?? "", /Start your 7-day trial to open it\./);
       assert.equal(panel.querySelector('a[href="/signup"]')?.textContent, "Start your 7-day trial");
+      // The link was clicked in II.B.5: the focused preview gets it as ?from= (its "Back to ..." link).
       assert.equal(
         panel.querySelector("a.locked-secondary")?.getAttribute("href"),
-        "/regulations/7/preview?p=sec-7-B-I-B-33"
+        "/regulations/7/preview?p=sec-7-B-I-B-33&from=sec-3-A-II-B-5"
       );
       // The footer "Open in Regulation 7" link would navigate into a 404: hidden.
       assert.equal(($("#popup-goto") as HTMLElement).style.display, "none");
