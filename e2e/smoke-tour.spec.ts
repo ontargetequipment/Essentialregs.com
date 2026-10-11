@@ -185,7 +185,7 @@ test.describe("guided walkthrough", () => {
     expect(new URL(page.url()).hash).toBe(`#${VI_C}`);
     await expect(count(page)).toHaveText("Step 5 of 7");
     await expect(c).toContainText("Click the Regulation 7 citation.");
-    const link = row(page, VI_C).locator(`a.xref-external-reg[href$="#${REG7_IC1}"]`);
+    const link = row(page, VI_C).locator(`a.xref-external-reg[href$="p=${REG7_IC1}"]`);
     await expect(link).toHaveAttribute("data-tour-target", "5");
     await expect(link).toBeInViewport();
     await expectBesideTheText(page);
@@ -412,7 +412,7 @@ test.describe("guided walkthrough", () => {
     const events = await captureTourEvents(page);
     await walkToStep5(page);
     await sawEvent(events, "tour_step:5");
-    await row(page, VI_C).locator(`a.xref-external-reg[href$="#${REG7_IC1}"]`).click();
+    await row(page, VI_C).locator(`a.xref-external-reg[href$="p=${REG7_IC1}"]`).click();
     await page.waitForURL((url) => url.pathname === "/regulations/7/preview");
     await summaryControl(previewRow(page, REG7_IC1_A)).click();
     await expect(callout(page)).toHaveAttribute("data-step", "7");
@@ -512,7 +512,7 @@ test.describe("guided walkthrough", () => {
     // 5
     await toggle.click();
     await jump(page, "VI.C");
-    const link = row(page, VI_C).locator(`a.xref-external-reg[href$="#${REG7_IC1}"]`);
+    const link = row(page, VI_C).locator(`a.xref-external-reg[href$="p=${REG7_IC1}"]`);
     await expectDocked(page, 5, link, H);
     await shot(page, testInfo, "tour-375-step5");
     await sawEvent(events, "tour_step:5");
@@ -565,7 +565,7 @@ test.describe("guided walkthrough", () => {
   test("outside the tour, a visitor's click on VI.C's Regulation 7 citation shows the public row in the popup, and its preview link carries VI.C", async ({ page }) => {
     await page.goto(`/regulations/gp05#${VI_C}`);
     await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
-    await row(page, VI_C).locator(`a.xref-external-reg[href$="#${REG7_IC1}"]`).click();
+    await row(page, VI_C).locator(`a.xref-external-reg[href$="p=${REG7_IC1}"]`).click();
     // I.C.1 is public (11 Oct 2026): the popup reads it instead of saying it is in the full corpus.
     const popup = page.locator("#popup-body");
     await expect(popup).toContainText("manufacturer specifications and documentation of compliance");
@@ -621,10 +621,13 @@ test.describe("guided walkthrough", () => {
     expect(stored.step).toBe(1);
   });
 
-  test("?tour=1 on another regulation is ignored: Regulation 7's reader is still a 404 for a visitor, with no tour", async ({ page }) => {
+  test("?tour=1 on another regulation is ignored: Regulation 7's reader is not shown to a visitor (it redirects to the preview), with no tour", async ({ page }) => {
     await seedTour(page, 5);
+    // Sprint 8: no reader, and no 404 either -- the redirect page sends a visitor to the plain preview.
     const res = await page.goto("/regulations/7?tour=1");
-    expect(res?.status()).toBe(404);
+    expect(res?.status()).toBe(200);
+    await expect(page.locator("#doc")).toHaveCount(0);
+    await page.waitForURL((url) => url.pathname === "/regulations/7/preview");
     await expect(callout(page)).toHaveCount(0);
   });
 });

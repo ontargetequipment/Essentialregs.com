@@ -13,6 +13,7 @@ import { SOURCE_DATES, type SourceDate } from "@/lib/source-dates.generated";
 import type { SummaryBadgeKind } from "@/lib/snippet";
 import { PROVISION_ID } from "@/lib/types";
 import { provisionDestination } from "@/lib/destination";
+import { previewTargetOf } from "@/lib/xref-href";
 import { TRIAL_DAYS } from "@/lib/pricing";
 
 /** Ancestor labels the popup eyebrow prints before eliding the middle. */
@@ -182,9 +183,17 @@ export function validProvisionId(raw: string | null | undefined): string | null 
   return regKeyOf(raw) ? raw : null;
 }
 
-/** The provision id in a link's "#hash", or null when there is none / it is not a provision id. */
+/**
+ * The provision id a cross-regulation link names, or null when it names none:
+ * in its "#hash" (the reader form, "/regulations/7#sec-7-B-I-C-1") or, since
+ * Sprint 8 (11 Oct 2026), in the `p` of the preview form a visitor's body
+ * carries ("/regulations/7/preview?p=sec-7-B-I-C-1", xref-href.ts), so a
+ * visitor's click finds the same target as before.
+ */
 export function hashTargetOf(href: string | null | undefined): string | null {
   if (!href) return null;
+  const previewed = previewTargetOf(href);
+  if (previewed) return previewed;
   const i = href.indexOf("#");
   if (i < 0) return null;
   let raw = href.slice(i + 1);
@@ -202,14 +211,16 @@ export function hashTargetOf(href: string | null | undefined): string | null {
  * provision (hashTargetOf decides those). The importer writes such a link
  * for a citation that resolves only to a document ("Regulation Number 8" in
  * GP12 XII.E); the reader previews the document through its root row
- * (documentRootOf) instead of leaving the page. Lower-cased, letters and
- * digits only; null for anything else (another path, a provision hash,
- * junk).
+ * (documentRootOf) instead of leaving the page. A visitor's body carries the
+ * same link in its preview form, "/regulations/8/preview" (xref-href.ts),
+ * which names the same document. Lower-cased, letters and digits only; null
+ * for anything else (another path, a provision hash, junk).
  */
-const DOCUMENT_HREF = /^\/regulations\/([A-Za-z0-9]{1,20})(?:\?[^#]*)?$/;
+const DOCUMENT_HREF = /^\/regulations\/([A-Za-z0-9]{1,20})(?:\/preview)?(?:\?[^#]*)?$/;
 export function documentKeyOf(href: string | null | undefined): string | null {
   const m = href ? DOCUMENT_HREF.exec(href) : null;
-  return m ? m[1].toLowerCase() : null;
+  // "/regulations/7/preview?p=<id>" names a provision (hashTargetOf), not the document.
+  return m && !previewTargetOf(href) ? m[1].toLowerCase() : null;
 }
 
 /** The root row's id of a whole-document link ("/regulations/8" -> "sec-8-top-REG-8"), or null when the link is not one. */

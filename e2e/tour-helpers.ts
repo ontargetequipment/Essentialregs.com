@@ -239,7 +239,7 @@ export async function walkToStep5(page: Page): Promise<void> {
 export async function walkToClosing(page: Page, events: { event: string; step: number }[]): Promise<void> {
   await walkToStep5(page);
   await sawEvent(events, "tour_step:5");
-  await row(page, VI_C).locator(`a.xref-external-reg[href$="#${REG7_IC1}"]`).click();
+  await row(page, VI_C).locator(`a.xref-external-reg[href$="p=${REG7_IC1}"]`).click();
   await page.waitForURL((url) => url.pathname === "/regulations/7/preview");
   await expect(callout(page)).toHaveAttribute("data-step", "6");
   await summaryControl(previewRow(page, REG7_IC1_A)).click();

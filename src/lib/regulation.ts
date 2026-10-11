@@ -126,7 +126,7 @@ const READER_RENDER_VERSION = "4";
  * cache scope cannot read cookies() and the body is the same for every
  * entitled subscriber anyway.
  *
- * THE GATE IS NOT HERE. Call this only through loadReaderPage
+ * THE GATE IS NOT HERE. Call this only through resolveReaderPage
  * (reader-page.ts), after getAccessStatus() has said yes on this request;
  * see the invariant there and scripts/reader-gate.test.ts.
  *
@@ -286,6 +286,30 @@ export async function fetchRegulationTeaser(
       : [],
     pendingSummaries,
   };
+}
+
+/**
+ * Whether a regulation exists for a visitor to be sent to its preview
+ * (Sprint 8, 11 Oct 2026), and what to call it: the root row's id and
+ * citation, or null for an unknown key and for a staged (unreleased)
+ * document -- the same answer fetchRegulationTeaser gives for its root, which
+ * the preview page itself 404s on, so a redirect to a preview never leads to
+ * a 404 and never reveals a staged document. One light read instead of the
+ * teaser's four (headings, summaries, pending count): the redirect page needs
+ * a name, not a preview. Service-role like the teaser, and for the same
+ * reason; the columns are the whole point -- NEVER add full_text or
+ * ai_summary. `reg` is validated by the caller (alphanumerics only).
+ */
+export async function fetchRegulationRoot(reg: string): Promise<{ id: string; citation: string } | null> {
+  if (!(await isRegReleased(reg))) return null;
+  const { data, error } = await createAdminClient()
+    .from("provisions")
+    .select("id, citation")
+    .eq("reg_key", reg)
+    .like("id", "%-top-REG-%")
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return (data?.[0] as { id: string; citation: string } | undefined) ?? null;
 }
 
 /** What the focused preview (/regulations/<reg>/preview?p=<id>) shows of one provision. */

@@ -79,6 +79,7 @@ import {
   visitorPreviewHref,
 } from "../src/lib/reader-nav";
 import { renderReaderBody } from "../src/lib/reader-render";
+import { visitorReaderRows } from "../src/lib/reader-visitor";
 import { SOURCE_DATES } from "../src/lib/source-dates.generated";
 import type { Provision } from "../src/lib/types";
 
@@ -468,7 +469,11 @@ test("cross-regulation helpers (pure)", () => {
   assert.equal(documentKeyOf("/regulations/7#sec-7-B-I-B-33"), null, "a provision link is not a document link");
   assert.equal(documentKeyOf("/regulations/7#"), null);
   assert.equal(documentKeyOf("/regulations/"), null);
-  assert.equal(documentKeyOf("/regulations/8/preview"), null);
+  // Since Sprint 8 the preview form (a visitor's body, xref-href.ts) is the same document link; with a provision in ?p= it is a provision link.
+  assert.equal(documentKeyOf("/regulations/8/preview"), "8");
+  assert.equal(documentKeyOf("/regulations/8/preview?cited=I.B.33"), "8");
+  assert.equal(documentKeyOf("/regulations/7/preview?p=sec-7-B-I-C-1"), null);
+  assert.equal(documentKeyOf("/regulations/8/preview/x"), null);
   assert.equal(documentKeyOf("https://example.com/regulations/8"), null);
   assert.equal(documentKeyOf("/regs/sec-8-top-REG-8"), null);
   assert.equal(documentKeyOf("/regulations/" + "x".repeat(30)), null);
@@ -1265,6 +1270,88 @@ test("cross-regulation preview through /api/provision", async (t) => {
 
   void document;
   await unmount();
+});
+
+// A visitor's body carries the preview form of every cross-regulation link (Sprint 8, 11 Oct 2026;
+// visitorReaderRows, reader-visitor.ts). The reader's click handler finds the same targets in it:
+// the popup, the renumbered note and the footer's from= / cited= are what they are for the reader form.
+test("cross-regulation preview from a visitor's body (preview-form hrefs) behaves as for the reader form", async (t) => {
+  const visitorReader = renderReaderBody(visitorReaderRows(rows))!;
+  const messages: string[] = [];
+  const vc = new VirtualConsole();
+  vc.on("jsdomError", (e: Error) => messages.push(e.message));
+  const r = await bootReader(makeDom("#sec-3-A-II-B-5", "", vc, visitorReader));
+  const { window, $, mount, unmount, click, sleep } = r;
+  await mount();
+  await sleep(80);
+
+  const row5 = '#doc > [id="sec-3-A-II-B-5"]';
+  const isShown = () => $("#backdrop").classList.contains("show");
+  const hrefs = Array.from(window.document.querySelectorAll(`${row5} a.xref-external-reg`)).map((a) => a.getAttribute("href"));
+  assert.deepEqual(hrefs, [
+    "/regulations/7/preview?p=sec-7-B-I-B-33",
+    "/regulations/7/preview",
+    "/regulations/gp12/preview",
+    "/regulations/7/preview?p=sec-7-B-I-B-34&cited=I.B.33",
+  ]);
+
+  await t.test("a provision link opens the popup, and the footer opens the reader form with from=", async () => {
+    const f = stubFetch(async () => okJson(PREVIEW));
+    try {
+      const ev = await click($(`${row5} a.xref-external-reg[href="/regulations/7/preview?p=sec-7-B-I-B-33"]`));
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-B-I-B-33"]);
+      assert.equal(ev.defaultPrevented, true);
+      assert.equal(isShown(), true);
+      assert.equal($("#popup-eyebrow").textContent, "Regulation 7");
+      assert.equal($("#popup-title").textContent, "I.B.33.");
+      assert.equal($("#popup-goto").getAttribute("href"), "/regulations/7?from=sec-3-A-II-B-5#sec-7-B-I-B-33");
+    } finally {
+      f.restore();
+    }
+  });
+
+  await t.test("a renumbered definition citation: the note and the footer's cited are read from the preview form", async () => {
+    await click($("#popup-close"));
+    const f = stubFetch(async () => okJson({ ...PREVIEW, id: "sec-7-B-I-B-34", citation: "I.B.34." }));
+    try {
+      await click($(`${row5} a.xref-external-reg[href="/regulations/7/preview?p=sec-7-B-I-B-34&cited=I.B.33"]`));
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-B-I-B-34"]);
+      assert.equal($("#popup-note").textContent, "Regulation 3 cites this as Section I.B.33; in the current Regulation 7 it is I.B.34.");
+      assert.equal($("#popup-goto").getAttribute("href"), "/regulations/7?from=sec-3-A-II-B-5&cited=I.B.33#sec-7-B-I-B-34");
+    } finally {
+      f.restore();
+    }
+  });
+
+  await t.test("a document link previews the document through its root row", async () => {
+    await click($("#popup-close"));
+    const f = stubFetch(async () => okJson({ ...PREVIEW, id: "sec-7-top-REG-7", citation: "Regulation Number 7", html: "" }));
+    try {
+      await click($(`${row5} a.xref-external-reg[href="/regulations/7/preview"]`));
+      assert.deepEqual(f.calls, ["/api/provision/sec-7-top-REG-7"]);
+    } finally {
+      f.restore();
+    }
+  });
+
+  await t.test("a click the popup cannot answer falls back to the link: the preview page, which exists", async () => {
+    await click($("#popup-close"));
+    const f = stubFetch(async () => ({ ok: false, status: 404, json: async () => ({}) }));
+    const doc = $(`${row5} a.xref-external-reg[href="/regulations/gp12/preview"]`);
+    const seen: boolean[] = [];
+    window.addEventListener("click", (e) => seen.push(e.defaultPrevented));
+    try {
+      await click(doc);
+      assert.equal(f.calls.length, 1);
+      assert.equal(isShown(), false);
+      assert.deepEqual(seen.slice(-2), [true, false], "intercepted once, then replayed as plain navigation");
+    } finally {
+      f.restore();
+    }
+  });
+
+  await unmount();
+  assert.deepEqual(messages.filter((m) => !/navigation/i.test(m)), []);
 });
 
 test("version line: a permit older than the regulation it cites", async (t) => {

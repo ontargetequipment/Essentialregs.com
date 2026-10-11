@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { getAccessStatus } from "@/lib/access";
@@ -5,6 +6,7 @@ import { isAdmin } from "@/lib/admin";
 import { isRegReleased } from "@/lib/release";
 import {
   fetchPendingSummaryCounts,
+  fetchRegulationRoot,
   fetchReaderVersion,
   fetchRegulationProvisions,
   fetchRenderedReader,
@@ -12,12 +14,13 @@ import {
 } from "@/lib/regulation";
 import Link from "next/link";
 import { TRIAL_DAYS } from "@/lib/pricing";
-import { loadReaderPage } from "@/lib/reader-page";
+import { resolveReaderPage } from "@/lib/reader-page";
 import { RegulationReader } from "@/components/RegulationReader";
 import { ReaderTour } from "@/components/ReaderTour";
 import { TOUR_PARAM, TOUR_REG, tourRequested } from "@/lib/tour";
-import { jumpboxPlaceholder } from "@/lib/regulation-names";
+import { jumpboxPlaceholder, regulationDisplayName } from "@/lib/regulation-names";
 import { documentShortName } from "@/lib/reader-nav";
+import { ReaderRedirect } from "@/components/ReaderRedirect";
 import "../reader.css";
 
 // `reg` goes straight into an `eq("reg_key", reg)` filter
@@ -31,7 +34,7 @@ const VALID_REG = /^[A-Za-z0-9]+$/;
 // full fetch of the regulation.
 //
 // The entitlement gate and the cross-request body cache live in
-// loadReaderPage; see the invariant there. Everything below it is the
+// resolveReaderPage; see the invariant there. Everything below it is the
 // per-user shell.
 //
 // getAccessStatus is wrapped in cache() so the gate, the staged-document
@@ -41,7 +44,7 @@ const accessOf = cache(getAccessStatus);
 
 /**
  * The live, RLS-bound read an unentitled visitor gets (only for a
- * PUBLIC_READER_REGS regulation, GP05; loadReaderPage decides that). The
+ * PUBLIC_READER_REGS regulation, GP05; resolveReaderPage decides that). The
  * rows are what the visitor's own session may read, and their summaries pass
  * the same public gate /sample and the /preview teaser use (owner decision,
  * 5 Oct 2026): a summary is shown to a logged-out visitor only when its row
@@ -56,24 +59,34 @@ async function fetchPublicSample(reg: string) {
 }
 
 const loadReader = cache((reg: string) =>
-  loadReaderPage(reg, {
+  resolveReaderPage(reg, {
     // A staged document is visible only to an admin (who checks it before release).
     isVisible: async (r) => (await isRegReleased(r)) || isAdmin((await accessOf()).user),
     hasAccess: async () => (await accessOf()).hasAccess,
     fetchLive: fetchPublicSample,
     fetchVersion: fetchReaderVersion,
     fetchCached: fetchRenderedReader,
+    // Sprint 8: a visitor's request for a regulation that exists but whose
+    // reader is closed to them is sent to its preview, not 404'd.
+    fetchRoot: fetchRegulationRoot,
   })
 );
 
-export async function generateMetadata(props: PageProps<"/regulations/[reg]">) {
+export async function generateMetadata(props: PageProps<"/regulations/[reg]">): Promise<Metadata> {
   const { reg } = await props.params;
   if (!VALID_REG.test(reg)) {
     notFound();
   }
-  const reader = await loadReader(reg);
+  const result = await loadReader(reg);
+  if (result.kind === "preview") {
+    // The redirect page (ReaderRedirect): not an index page of its own.
+    return {
+      title: `Preview of ${regulationDisplayName(reg, result.root)}`,
+      robots: { index: false, follow: false },
+    };
+  }
   return {
-    title: reader ? reader.title : "Regulation",
+    title: result.kind === "reader" ? result.reader.title : "Regulation",
   };
 }
 
@@ -82,11 +95,15 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
   if (!VALID_REG.test(reg)) {
     notFound();
   }
-  const reader = await loadReader(reg);
-  if (!reader) {
+  const result = await loadReader(reg);
+  if (result.kind === "preview") {
+    return <ReaderRedirect reg={reg} regName={regulationDisplayName(reg, result.root)} />;
+  }
+  if (result.kind !== "reader") {
     notFound();
   }
-  // Rendering without access means loadReaderPage let a visitor in: reg is
+  const reader = result.reader;
+  // Rendering without access means resolveReaderPage let a visitor in: reg is
   // in PUBLIC_READER_REGS. The client gets the flag (the Recent list and the
   // cross-regulation popup behave for a visitor) and the page a slim banner.
   const publicMode = !(await accessOf()).hasAccess;
