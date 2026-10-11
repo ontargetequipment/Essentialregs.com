@@ -12,6 +12,8 @@ import { lockedPopup, type LockedPreviewPayload } from "../src/lib/reader-nav";
 import {
   CALLOUT_MIN_TOP,
   CALLOUT_WIDTH,
+  FLOATING_MIN_WIDTH,
+  FLOATING_SIDE_MARGIN,
   TOUR_COPY,
   TOUR_EXPLORE_HREF,
   TOUR_START_HREF,
@@ -21,6 +23,7 @@ import {
   citationDestination,
   completeTour,
   destinationTarget,
+  floatingFit,
   inCitedSubtree,
   isTourCitationLink,
   isTourStep,
@@ -331,6 +334,33 @@ test("the visitor's locked popup hands the GP05 row it was opened from to the fo
   // A whole document has no focused provision: its preview link is unchanged.
   const doc = { ...locked, id: "sec-7-top-REG-7", citation: "Regulation Number 7", title: "CONTROL OF OZONE", path: null };
   assert.equal(href(lockedPopup(doc, true, VI_C).panelHtml), "/regulations/7/preview");
+});
+
+test("the preview's card sits in the gutter beside its text column when it fits, else it docks", () => {
+  assert.equal(FLOATING_MIN_WIDTH, 220);
+  assert.equal(FLOATING_SIDE_MARGIN, 12);
+  // 1280px: the max-w-3xl column (768px, 24px padding) ends at 1000, leaving a 280px gutter: 256px of card, 12px each side.
+  assert.deepEqual(floatingFit(1280, 1000), { fits: true, width: 256 });
+  // With a 15px scrollbar the page lays out in 1265px and the column ends at 992.5.
+  assert.deepEqual(floatingFit(1265, 992.5), { fits: true, width: 248 });
+  // A wide window: the usual 296px, however much gutter there is.
+  assert.deepEqual(floatingFit(1920, 1176), { fits: true, width: CALLOUT_WIDTH });
+  assert.deepEqual(floatingFit(1600, 1000), { fits: true, width: CALLOUT_WIDTH });
+  // The threshold: 220px of card plus a 12px margin on both sides is a 244px gutter.
+  assert.deepEqual(floatingFit(1244, 1000), { fits: true, width: 220 });
+  assert.deepEqual(floatingFit(1243, 1000), { fits: false, width: 0 });
+  // 1100px: the column ends at 910, a 190px gutter -- too narrow, the card docks.
+  assert.deepEqual(floatingFit(1100, 910), { fits: false, width: 0 });
+  // Nothing to measure: as if the gutter were wide.
+  assert.deepEqual(floatingFit(1280, null), { fits: true, width: CALLOUT_WIDTH });
+  // Whatever fits stays clear of the text, with the margin on both sides.
+  for (const [vw, col] of [[1208, 964], [1280, 1000], [1440, 1080], [2000, 1376]] as const) {
+    const f = floatingFit(vw, col);
+    assert.ok(f.fits, `${vw}`);
+    const left = vw - FLOATING_SIDE_MARGIN - f.width;
+    assert.ok(left >= col + FLOATING_SIDE_MARGIN, `${vw}: the card starts ${left - col}px right of the text`);
+    assert.ok(f.width >= FLOATING_MIN_WIDTH && f.width <= CALLOUT_WIDTH, `${vw}`);
+  }
 });
 
 // The reader at 1280 x 720: site header 66px, sidebar 0-320, reading column

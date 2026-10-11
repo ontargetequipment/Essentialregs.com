@@ -115,6 +115,9 @@ async function boot(opts: {
   path: string;
   /** The preview's I.C.1.a summary is open from the start. */
   panelOpen?: boolean;
+  /** The window's width, and the right edge of the preview's text column (jsdom has no layout). */
+  viewportWidth?: number;
+  columnRight?: number;
   /** The reader's page (GP05 or a subscriber's Reg 7); omit for the visitor preview. */
   body?: { navHtml: string; docHtml: string };
   placement?: "anchored" | "floating";
@@ -125,6 +128,7 @@ async function boot(opts: {
   extra?: string;
 }) {
   const messages: string[] = [];
+  const viewport = { width: opts.viewportWidth ?? 1280, columnRight: opts.columnRight ?? 1000 };
   const vc = new VirtualConsole();
   vc.on("jsdomError", (e: Error) => messages.push(e.message));
   const dom = new JSDOM(
@@ -132,6 +136,9 @@ async function boot(opts: {
     { url: `http://localhost${opts.path}`, pretendToBeVisual: true, virtualConsole: vc }
   );
   const { window } = dom;
+  Object.defineProperty(window.document.documentElement, "clientWidth", { get: () => viewport.width, configurable: true });
+  const column = window.document.getElementById("preview-doc");
+  if (column) column.getBoundingClientRect = () => ({ right: viewport.columnRight, left: 0, top: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON() {} }) as DOMRect;
   const sent: Sent[] = [];
   const scrolls: number[] = [];
   Object.assign(globalThis, {
@@ -241,7 +248,7 @@ async function boot(opts: {
     await act(async () => root.unmount());
     globalThis.fetch = realFetch;
   };
-  return { window, document, $, click, keydown, type, callout, stored, tags, settle, stop, messages, scrolls, act, sleep };
+  return { window, document, $, click, keydown, type, callout, stored, tags, settle, stop, messages, scrolls, act, sleep, viewport };
 }
 
 const GP05_PATH = "/regulations/gp05?tour=1";
@@ -570,6 +577,38 @@ test("the visitor's focused preview (floating): 5 -> 6 on arrival, 6 -> 7 on a s
     assert.equal(r.callout(), null);
     assert.deepEqual(r.tags(), []);
     assert.equal(r.stored().step, 5);
+    await r.stop();
+  });
+
+  await t.test("the card is in the gutter beside the text column (its width set), and docks when the gutter is too narrow, again on every resize", async () => {
+    const r = await boot({ path, page: "destination", placement: "floating", stored: AT(6), viewportWidth: 1280, columnRight: 1000 });
+    assert.equal(r.callout()?.getAttribute("data-mode"), "floating");
+    assert.equal(r.callout()?.style.width, "256px", "a 280px gutter less 12px each side");
+    // A narrower window: the same column's gutter shrinks to 190px.
+    await r.act(async () => {
+      r.viewport.width = 1100;
+      r.viewport.columnRight = 910;
+      r.window.dispatchEvent(new r.window.Event("resize"));
+      await r.sleep(20);
+    });
+    assert.equal(r.callout()?.getAttribute("data-mode"), "docked");
+    assert.equal(r.window.document.documentElement.hasAttribute("data-tour-docked"), true, "the page gets room at the bottom");
+    // And back.
+    await r.act(async () => {
+      r.viewport.width = 1440;
+      r.viewport.columnRight = 1080;
+      r.window.dispatchEvent(new r.window.Event("resize"));
+      await r.sleep(20);
+    });
+    assert.equal(r.callout()?.getAttribute("data-mode"), "floating");
+    assert.equal(r.callout()?.style.width, "296px", "a wide gutter: the usual width");
+    assert.equal(r.window.document.documentElement.hasAttribute("data-tour-docked"), false);
+    await r.stop();
+  });
+
+  await t.test("opened in a window too narrow for the card in the gutter, it docks at once", async () => {
+    const r = await boot({ path, page: "destination", placement: "floating", stored: AT(6), viewportWidth: 1100, columnRight: 910 });
+    assert.equal(r.callout()?.getAttribute("data-mode"), "docked");
     await r.stop();
   });
 

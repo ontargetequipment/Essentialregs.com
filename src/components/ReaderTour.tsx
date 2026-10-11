@@ -17,6 +17,7 @@ import {
   destinationTarget,
   inCitedSubtree,
   isTourCitationLink,
+  floatingFit,
   jumpTargetFor,
   linkTargetOf,
   parseTourState,
@@ -72,8 +73,12 @@ import "./reader-tour.css";
  * the preview alike. On a wider reader page it is fixed in the sidebar
  * column beside its anchor (placeCallout), or to the right of the text when
  * the window is wide enough: never over the provision text. The preview has
- * no sidebar: there ("floating") it is a card in the bottom-right corner and
- * the anchor is scrolled clear of it. No overlay, nothing dimmed.
+ * no sidebar and is one centred text column: there ("floating") the card
+ * sits in the gutter to the right of that column, bottom-right, when the
+ * gutter is wide enough for it (floatingFit), so none of the column's text is
+ * ever under it; when it is not, the card docks like everywhere else. That is
+ * decided again on every resize. The anchor is always scrolled clear of the
+ * card too. No overlay, nothing dimmed.
  *
  * The callout is hidden until it is placed: each step first scrolls its
  * anchor into view (instantly, never a smooth scroll that would leave the
@@ -143,10 +148,38 @@ const DOCK_QUERY = "(max-width: 860px)";
 function subscribeDock(listener: () => void) {
   const mq = window.matchMedia(DOCK_QUERY);
   mq.addEventListener("change", listener);
-  return () => mq.removeEventListener("change", listener);
+  // The preview's card also docks when the gutter beside its text column is too
+  // narrow (floatingFit), which a window resize changes without crossing 860px.
+  window.addEventListener("resize", listener);
+  return () => {
+    mq.removeEventListener("change", listener);
+    window.removeEventListener("resize", listener);
+  };
 }
 const isDocked = () => window.matchMedia(DOCK_QUERY).matches;
 const serverDocked = () => false;
+
+/**
+ * The right edge of the focused preview's text column, in viewport pixels:
+ * the greater of #preview-doc's own right edge and the content edge (right
+ * edge less its padding) of the nearest ancestor with a max-width -- the
+ * page's max-w-3xl wrapper, which also holds the headings and the locked
+ * panels. null when there is no #preview-doc to measure.
+ */
+function previewColumnRight(): number | null {
+  const doc = document.getElementById("preview-doc");
+  if (!doc) return null;
+  let right = doc.getBoundingClientRect().right;
+  for (let el = doc.parentElement; el && el !== document.body; el = el.parentElement) {
+    const style = window.getComputedStyle(el);
+    if (style.maxWidth && style.maxWidth !== "none") {
+      right = Math.max(right, el.getBoundingClientRect().right - (parseFloat(style.paddingRight) || 0));
+      break;
+    }
+  }
+  return right;
+}
+const previewFit = () => floatingFit(document.documentElement.clientWidth, previewColumnRight());
 
 function newSessionId(): string {
   try {
@@ -301,8 +334,8 @@ const HEADER_PX = 66;
 const LANDING_PX = 130;
 /** The focused preview has no return bar: a little under the header. */
 const FLOATING_LANDING_PX = 96;
-/** The floating card's distance from the viewport's right and bottom edges (reader-tour.css). */
-const FLOATING_MARGIN_PX = 16;
+/** The floating card's distance from the viewport's bottom edge (reader-tour.css). */
+const FLOATING_BOTTOM_PX = 16;
 /** After the reader's own deep-link landing (RegulationReader: 50ms) has had its say. */
 const SETTLE_MS = 150;
 
@@ -346,7 +379,9 @@ export function ReaderTour({
   placement?: Placement;
 }) {
   const state = useSyncExternalStore(subscribeState, getState, serverState);
-  const docked = useSyncExternalStore(subscribeDock, isDocked, serverDocked);
+  // Docked at 860px and below; and on the preview also when the gutter beside its text column is too narrow for the card.
+  const dockedNow = useCallback(() => isDocked() || (placement === "floating" && !previewFit().fits), [placement]);
+  const docked = useSyncExternalStore(subscribeDock, dockedNow, serverDocked);
   // Back from the destination page: state 7 shows the closing card when the reader is at VI.C.
   const atVIC = page === "reader" && state !== null && state.step === TOUR_STEP_COUNT && !state.done && readerAtVIC();
   const view = stepForPage(state, page, atVIC);
@@ -580,7 +615,12 @@ export function ReaderTour({
     let anchor: HTMLElement | null = null;
     const anchorNow = () => (anchor && anchor.isConnected ? anchor : (anchor = anchorFor(view, page, placement)));
     let marked: HTMLElement | null = null;
+    // The preview's card is as wide as its gutter allows, up to the usual 296px.
+    const sizeFloating = () => {
+      box.style.width = `${previewFit().width}px`;
+    };
     const bringAnchorIntoView = () => {
+      if (floating) sizeFloating(); // its height, which the scroll below makes room for, depends on its width
       anchor = anchorFor(view, page, placement);
       if (!anchor) return;
       if (marked !== anchor) {
@@ -590,7 +630,7 @@ export function ReaderTour({
       }
       const height = box.getBoundingClientRect().height;
       if (docked) bringIntoView(anchor, height, LANDING_PX);
-      else if (floating) bringIntoView(anchor, height + FLOATING_MARGIN_PX, FLOATING_LANDING_PX);
+      else if (floating) bringIntoView(anchor, height + FLOATING_BOTTOM_PX, FLOATING_LANDING_PX);
       else bringIntoView(anchor, 0, LANDING_PX);
     };
 
@@ -603,8 +643,11 @@ export function ReaderTour({
       if (docked || floating) {
         box.removeAttribute("data-unanchored");
         unposition();
-        const room = Math.ceil(box.getBoundingClientRect().height) + (floating ? FLOATING_MARGIN_PX : 0);
-        root.style.setProperty("--tour-dock-h", `${room}px`);
+        if (floating) {
+          sizeFloating(); // no room is made at the page's bottom: the card is beside the text, not under it
+        } else {
+          root.style.setProperty("--tour-dock-h", `${Math.ceil(box.getBoundingClientRect().height)}px`);
+        }
         return;
       }
       const target = anchorNow();
@@ -664,7 +707,6 @@ export function ReaderTour({
     };
 
     if (docked) root.setAttribute("data-tour-docked", "");
-    if (floating) root.setAttribute("data-tour-floating", "");
     bringAnchorIntoView();
     update();
     // The reader lands a deep link ~50ms after it mounts (a reload, or
@@ -693,7 +735,6 @@ export function ReaderTour({
       mutations.disconnect();
       marked?.removeAttribute("data-tour-target");
       root.removeAttribute("data-tour-docked");
-      root.removeAttribute("data-tour-floating");
       root.style.removeProperty("--tour-dock-h");
     };
   }, [view, page, placement, docked]);

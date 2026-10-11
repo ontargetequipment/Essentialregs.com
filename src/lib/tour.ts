@@ -437,6 +437,33 @@ export function placeCallout(input: {
 }
 
 // ---------------------------------------------------------------------------
+// The focused preview's card ("floating": a page with no sidebar)
+// ---------------------------------------------------------------------------
+
+/** The narrowest the floating card may be, and the gap it keeps from the text column and from the viewport's right edge. */
+export const FLOATING_MIN_WIDTH = 220;
+export const FLOATING_SIDE_MARGIN = 12;
+
+/**
+ * Where the preview's card goes above 860px. The preview is one centred text
+ * column; the card may only sit in the gutter to the right of it, never over
+ * any of the column's text. `viewportWidth` is the width the page lays out in
+ * (clientWidth, without a scrollbar) and `columnRight` the right edge of the
+ * text column (null: unknown, as if the gutter were wide).
+ *
+ *   gutter = viewportWidth - columnRight
+ *   gutter >= MIN_WIDTH + 2 * MARGIN  -> fits: width min(CALLOUT_WIDTH, gutter - 2 * MARGIN),
+ *                                        right-aligned with a MARGIN gap to the viewport's edge
+ *   narrower                          -> does not fit: the card docks to the bottom, as at 860px and below
+ */
+export function floatingFit(viewportWidth: number, columnRight: number | null): { fits: boolean; width: number } {
+  if (columnRight === null) return { fits: true, width: CALLOUT_WIDTH };
+  const gutter = viewportWidth - columnRight;
+  if (gutter < FLOATING_MIN_WIDTH + 2 * FLOATING_SIDE_MARGIN) return { fits: false, width: 0 };
+  return { fits: true, width: Math.floor(Math.min(CALLOUT_WIDTH, gutter - 2 * FLOATING_SIDE_MARGIN)) };
+}
+
+// ---------------------------------------------------------------------------
 // Counting (POST /api/tour-event -> public.tour_events)
 // ---------------------------------------------------------------------------
 
