@@ -4,13 +4,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthStatus } from "@/components/AuthStatus";
+import { Emblem } from "@/components/Emblem";
 import { MobileNav } from "@/components/MobileNav";
-import { SITE_URL } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
-
-const SITE_NAME = "EssentialRegs";
-const SITE_DESCRIPTION =
-  "State and federal regulations with plain-English summaries and linked cross-references. Now featuring Colorado oil & gas rules alongside the federal EPA and PHMSA rules they reference.";
 
 // Display headings and regulation text; citations and eyebrow labels. Body/UI
 // copy stays on the system sans stack (see --font-sans in globals.css).
@@ -113,10 +110,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             context, so on the page they paint at the header's level. */}
         <header className="sticky top-0 z-[45] h-[66px] border-b border-line bg-panel">
           <div className="mx-auto flex h-full max-w-shell items-center justify-between px-6">
+            {/* The ER emblem (src/components/Emblem.tsx) at 28px beside the
+                wordmark, one home link; the text names it, the mark is
+                aria-hidden. */}
             <Link
               href="/"
-              className="font-serif text-[20px] font-bold tracking-tight text-ink"
+              className="flex items-center gap-2 font-serif text-[20px] font-bold tracking-tight text-ink"
             >
+              <Emblem size={28} className="shrink-0" />
               EssentialRegs
             </Link>
             <MobileNav

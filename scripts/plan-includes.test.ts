@@ -38,7 +38,7 @@ test("Ask is described as finding provisions, not deciding applicability", () =>
 });
 
 // The plan buttons on /pricing (Sprint 5, 10 Oct 2026): "Start your 7-day free
-// trial" wherever a trial is granted, the destination unchanged.
+// trial!" wherever a trial is granted, the destination unchanged.
 const NO_USER = {
   user: null,
   hasAccess: false,
@@ -51,9 +51,9 @@ const NO_USER = {
   plan: null,
 };
 
-test("PlanChoice trialButtons: a visitor's two plan buttons read 'Start your 7-day free trial' and still go to /signup?plan=", () => {
+test("PlanChoice trialButtons: a visitor's two plan buttons read 'Start your 7-day free trial!' and still go to /signup?plan=", () => {
   const html = renderToStaticMarkup(createElement(PlanChoice, { access: NO_USER, trialButtons: true }));
-  assert.equal(html.match(/Start your 7-day free trial/g)?.length, 2);
+  assert.equal(html.match(/Start your 7-day free trial!/g)?.length, 2);
   assert.ok(!html.includes("Create an account to subscribe"));
   assert.ok(html.includes('href="/signup?plan=month"') && html.includes('href="/signup?plan=year"'));
   // The amounts are the owner's, once each.

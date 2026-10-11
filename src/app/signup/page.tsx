@@ -2,13 +2,13 @@ import Link from "next/link";
 import { PLAN_NAMES, PRICE_DISPLAY, TRIAL_DAYS, parseBillingInterval } from "@/lib/pricing";
 import { PlanCards, TrialNote } from "@/components/PlanChoice";
 import { DisclaimerIntro, DisclaimerSections } from "@/components/DisclaimerText";
+import { buttonClass } from "@/lib/ui";
 import { SignupSteps } from "./SignupSteps";
 
 export const metadata = { title: "Sign up" };
 
 const INLINE_LINK = "font-medium text-ink underline underline-offset-2";
-const CHOOSE =
-  "block w-full rounded-md bg-accent px-5 py-3 text-center text-sm font-semibold text-white hover:bg-accent/90";
+const CHOOSE = buttonClass({ width: "full" });
 
 // Signing up is three screens (owner, 28 Sep 2026): pick a plan, read the
 // disclaimer, then create the account. Screen 1 is /signup (no valid

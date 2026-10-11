@@ -3,6 +3,7 @@ import { getAccessStatus, type AccessStatus } from "@/lib/access";
 import { ANNUAL_PLAN_NAME, planDisplayName } from "@/lib/pricing";
 import { logout } from "@/app/auth/actions";
 import { PlanChoice } from "@/components/PlanChoice";
+import { buttonClass } from "@/lib/ui";
 
 export const metadata = { title: "Your account" };
 
@@ -109,10 +110,7 @@ export default async function AccountPage(props: PageProps<"/account">) {
       <div className="mt-8 flex flex-wrap items-center gap-3">
         {access.stripeCustomerId && (
           <form method="post" action="/api/stripe/portal">
-            <button
-              type="submit"
-              className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink-soft hover:bg-accent-soft"
-            >
+            <button type="submit" className={buttonClass()}>
               Manage billing
             </button>
           </form>

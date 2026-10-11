@@ -3,23 +3,17 @@ import { getAccessStatus } from "@/lib/access";
 import { PLAN_TAGLINE } from "@/lib/pricing";
 import { PlanChoice } from "@/components/PlanChoice";
 import { SubscribeControl } from "@/components/SubscribeControl";
+import { FREE_PILL, buttonClass } from "@/lib/ui";
 
-// Hero buttons. Full-width 44px rows below `sm` (tap targets), inline from
-// `sm` up (wrapping where three don't fit). The federal button lands on the
-// federal list and the state button on the /states picker, whether or not
-// the visitor is signed in (the index pages read the roots through the
-// anonymous-safe fetchRegulationRoots).
-const BUTTON =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-5 py-3 text-sm font-semibold";
-const BUTTON_PRIMARY = `${BUTTON} bg-accent text-white hover:bg-accent/90`;
-// "See how it works" sits on its own row below the three: outline, taller
-// and larger type, and from `sm` up at least as wide as two buttons above.
-const BUTTON_TOUR =
-  "inline-flex min-h-14 items-center justify-center rounded-md border border-line bg-panel px-8 py-3 text-base font-semibold text-ink hover:bg-accent-soft sm:min-w-96 sm:self-start";
-// The "FREE" pill inside the green Test Methods button: paper on accent
-// (about 6.8:1), existing tokens only, so it reads as free at a glance.
-const FREE_PILL =
-  "rounded-full bg-paper px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wide text-accent";
+// Hero buttons (src/lib/ui.ts). Full-width 44px rows below `sm` (tap
+// targets), inline from `sm` up (wrapping where three don't fit). The federal
+// button lands on the federal list and the state button on the /states
+// picker, whether or not the visitor is signed in (the index pages read the
+// roots through the anonymous-safe fetchRegulationRoots).
+const BUTTON = buttonClass();
+// "See how it works!" sits on its own row below the three: the large size,
+// and from `sm` up at least as wide as two buttons above.
+const BUTTON_TOUR = buttonClass({ size: "lg", className: "sm:min-w-96 sm:self-start" });
 
 // The six things the reader does. `lead` is a short serif label; `detail`
 // is the reviewer-approved sentence, kept word for word.
@@ -63,19 +57,19 @@ export default async function Home() {
 
         <div className="mt-8 flex flex-col gap-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link href="/federal" className={BUTTON_PRIMARY}>
+            <Link href="/federal" className={BUTTON}>
               Federal Regulations
             </Link>
-            <Link href="/states" className={BUTTON_PRIMARY}>
+            <Link href="/states" className={BUTTON}>
               State Regulations
             </Link>
-            <Link href="/test-methods" className={BUTTON_PRIMARY}>
+            <Link href="/test-methods" className={BUTTON}>
               Test Methods
               <span className={FREE_PILL}>Free</span>
             </Link>
           </div>
           <Link href="/sample" className={BUTTON_TOUR}>
-            See how it works
+            See how it works!
           </Link>
         </div>
 

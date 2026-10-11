@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 
 import type { BillingInterval } from "@/lib/pricing";
 import { DISCLAIMER_LAST_UPDATED } from "@/components/DisclaimerText";
 import { SignupForm } from "./SignupForm";
+import { buttonClass } from "@/lib/ui";
 
 const INLINE_LINK = "font-medium text-ink underline underline-offset-2";
 
@@ -126,7 +127,7 @@ function DisclaimerGate({ children, onContinue }: { children: ReactNode; onConti
         type="button"
         onClick={onContinue}
         disabled={!reachedEnd || !ticked}
-        className="mt-4 w-full rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
+        className={buttonClass({ width: "full", className: "mt-4" })}
       >
         Continue
       </button>

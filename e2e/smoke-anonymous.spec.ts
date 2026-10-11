@@ -27,7 +27,7 @@ async function expectPlanCtas(
 }
 
 /** The /pricing plan buttons (Sprint 5, 10 Oct 2026): same destination, the trial named. */
-const PRICING_BUTTON = "Start your 7-day free trial";
+const PRICING_BUTTON = "Start your 7-day free trial!";
 
 /**
  * What a review-status badge says (summaryStatusBadge): "AI-generated ·
@@ -88,7 +88,7 @@ test.describe("anonymous", () => {
     const res = await page.goto("/");
     expect(res?.status()).toBe(200);
     // The hero's four buttons, in order: the federal and state indexes,
-    // the free Test Methods reference, then "See how it works" (the sample)
+    // the free Test Methods reference, then "See how it works!" (the sample)
     // on its own row. The Test Methods link
     // carries a FREE pill so it reads as free at a glance.
     const hero = page.locator("h1 ~ div").first();
@@ -97,7 +97,7 @@ test.describe("anonymous", () => {
       "Federal Regulations",
       "State Regulations",
       /^Test Methods\s*Free$/,
-      "See how it works",
+      "See how it works!",
     ]);
     const hrefs = await buttons.evaluateAll((els) => els.map((a) => a.getAttribute("href")));
     expect(hrefs).toEqual(["/federal", "/states", "/test-methods", "/sample"]);
@@ -126,7 +126,7 @@ test.describe("anonymous", () => {
     await expect(page.getByRole("heading", { name: "Choose your plan" })).toBeVisible();
     await expect(page.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toBeVisible();
     await expect(page.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();
-    // Logged out: the prices and a trial link per plan (Sprint 5: "Start your 7-day free trial",
+    // Logged out: the prices and a trial link per plan (Sprint 5: "Start your 7-day free trial!",
     // still the plan-first signup, /signup?plan=<interval>).
     await expectPlanCtas(page, PRICING_BUTTON);
     // No plan picked yet: neither box is marked as the choice.
@@ -298,7 +298,7 @@ test.describe("anonymous", () => {
     await expect(page.locator("main")).toContainText("is available below in the complete reader");
     const top = page.getByTestId("sample-top-cta");
     await expect(top.getByRole("link", { name: "Open the free GP05 reader" })).toHaveAttribute("href", "/regulations/gp05");
-    await expect(top.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
+    await expect(top.getByRole("link", { name: "Start your 7-day trial!" })).toHaveAttribute("href", "/signup");
     // Sprint 6: the search and Ask example is a collapsed second section, under
     // the walkthrough (smoke-tour.spec.ts checks the walkthrough itself).
     const example = page.getByTestId("sample-example");
@@ -353,7 +353,7 @@ test.describe("anonymous", () => {
 
     // The closing buttons, after the Ask section: the same two as at the top, and the search link.
     const cta = page.getByTestId("sample-cta");
-    await expect(cta.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
+    await expect(cta.getByRole("link", { name: "Start your 7-day trial!" })).toHaveAttribute("href", "/signup");
     await expect(cta.getByRole("link", { name: "Open the free GP05 reader" })).toHaveAttribute("href", "/regulations/gp05");
     await expect(cta.getByRole("link", { name: "Search the free GP05 sample" })).toHaveAttribute("href", "/search");
     const askBox = await ask.boundingBox();

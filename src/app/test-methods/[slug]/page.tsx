@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { TestMethodBody } from "@/components/TestMethodBody";
 import { TEST_METHODS, TEST_METHOD_BY_SLUG, titleWithoutMethodName, type TestMethod } from "@/data/test-methods";
 import { fetchCitedBy, type CitedByGroup } from "@/lib/test-method-citations";
+import { buttonClass } from "@/lib/ui";
 
 /**
  * One Test Methods reference page. Free and public: no getAccessStatus(),
@@ -139,7 +140,7 @@ export default async function TestMethodPage(props: PageProps<"/test-methods/[sl
             href={method.ecfrUrl}
             target="_blank"
             rel="noopener"
-            className="inline-flex min-h-11 items-center rounded-md border border-line bg-panel px-4 text-sm font-semibold text-accent hover:bg-accent-soft"
+            className={buttonClass()}
           >
             Read the method on the eCFR →
           </a>
