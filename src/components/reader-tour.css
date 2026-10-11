@@ -1,18 +1,30 @@
 /*
  * The guided GP05 walkthrough's callout (ReaderTour.tsx, Sprint 6, 10 Oct
- * 2026). Three placements, set on data-mode:
+ * 2026; seven steps in Sprint 7). Three placements, set on data-mode:
  *
- *   anchored  wide screens on a reader page: fixed, beside its anchor in the
- *             sidebar column or right of the text (placeCallout, tour.ts).
- *             z-index 35: over the sidebar's tree, under the jump results
- *             (40), the site header (45) and the reader's popup (100).
- *   inline    the focused preview on a wide screen: in the page's flow,
- *             under the locked panel.
- *   docked    860px and below (the reader's own breakpoint): fixed to the
- *             bottom of the viewport, over the off-canvas sidebar (55) so
- *             the jump-box steps stay readable, under "Contents" (60), which
- *             moves up above it. The page gets the dock's height as bottom
- *             padding, so nothing ends up permanently under it.
+ *   anchored  wide screens on a reader page (GP05, a subscriber's Reg 7
+ *             reader): fixed, beside its anchor in the sidebar column or
+ *             right of the text (placeCallout, tour.ts). z-index 35: over the
+ *             sidebar's tree, under the jump results (40), the site header
+ *             (45) and the reader's popup (100).
+ *   floating  the focused preview on a wide screen, which has no sidebar:
+ *             fixed in the bottom-right corner, in the gutter to the right
+ *             of its text column. ReaderTour sets the width (the gutter less
+ *             2 x 12px, at most 296px; floatingFit, tour.ts) and docks the
+ *             card instead when the gutter is narrower than 244px, so none of
+ *             the column's text is ever under it. Its height is capped below
+ *             the 66px site header.
+ *   docked    860px and below (the reader's own breakpoint), on any page, and
+ *             on the preview whenever its gutter is too narrow for the
+ *             floating card: fixed to the bottom of the viewport, over the off-canvas
+ *             sidebar (55) so the jump-box steps stay readable, under
+ *             "Contents" (60), which moves up above it. The page gets the
+ *             dock's height as bottom padding, so nothing ends up
+ *             permanently under it.
+ *
+ * Until ReaderTour has scrolled the step's anchor into view and placed the
+ * card, it is visibility:hidden (inline), so a card never shows before the
+ * control it points at is on screen.
  *
  * Nothing dims or blocks the page; there is no overlay.
  */
@@ -56,9 +68,15 @@
   right: 16px;
   bottom: 16px;
 }
-.tour-callout[data-mode="inline"] {
-  position: relative;
-  margin-top: 24px;
+.tour-callout[data-mode="floating"] {
+  position: fixed;
+  right: 12px;
+  bottom: 16px;
+  width: 296px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 66px - 32px);
+  overflow-y: auto;
+  z-index: 35;
 }
 .tour-callout[data-mode="docked"] {
   position: fixed;
@@ -222,7 +240,10 @@ html[data-tour-docked] .reg-reader #mobile-toggle {
   border-color: var(--tour-accent);
 }
 
-/* What the current step points at: a ring, never a cover. */
+/* What the current step points at: a ring, never a cover. The destination
+   page's rows are #doc's (a subscriber's Reg 7 reader) or #preview-doc's (the
+   focused preview); its way back is the preview's own link or the reader's
+   return bar. */
 #jumpbox[data-tour-target] {
   box-shadow: 0 0 0 3px rgba(47, 93, 80, 0.35);
 }
@@ -235,7 +256,8 @@ html[data-tour-docked] .reg-reader #mobile-toggle {
   outline: 2px solid rgba(47, 93, 80, 0.45);
   outline-offset: 4px;
 }
-#doc details.summary-panel > summary[data-tour-target] {
+#doc details.summary-panel > summary[data-tour-target],
+#preview-doc details.summary-panel > summary[data-tour-target] {
   outline: 2px solid #2f5d50;
   outline-offset: 3px;
   border-radius: 4px;
@@ -245,4 +267,12 @@ html[data-tour-docked] .reg-reader #mobile-toggle {
   outline: 2px solid #b8892b;
   outline-offset: 1px;
   border-radius: 3px;
+}
+#preview-return[data-tour-target] {
+  outline: 2px solid #2f5d50;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+#return-trail-ext[data-tour-target] {
+  box-shadow: 0 0 0 3px rgba(47, 93, 80, 0.45), 0 4px 14px rgba(20, 30, 25, 0.14);
 }

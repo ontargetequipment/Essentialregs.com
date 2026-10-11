@@ -345,3 +345,58 @@ Where people stop (furthest step per run): `select furthest, count(*) from (sele
 **Migration parity.** `20261010120000_gp05_public_sample` (Sprint 4) has no row in `schema_migrations`, although its data is in place (all 111 GP05 rows are `is_public`). `20261009005000` was recorded by hand (no statements stored). One parity check of the folder against `schema_migrations` is worth running.
 
 **Part links (PR #98, 11 Oct 2026).** "Regulation Number 7, Part B, Section I.C.1" now links "Part B" to `/regulations/7#sec-7-P-B` (a visitor gets the locked popup and `/regulations/7/preview?p=sec-7-P-B`): the importer (`_emit_xreg_clauses`) for every future import, and 604 rows in 26 regulations (797 links) by one UPDATE in place (`supabase/migrations/RUN_ME_20261011_cross_reg_part_links.sql`, logged `links_updated`, no re-embedding); still plain: parts with no root (Reg 7 D and E, Reg 10 B), "Parts A and B" (8), and until those documents are re-imported "Regulation Number 3, Part B. Section ..." with a period (16 rows, GP05 II.B.1 among them) and "Regulation Number 6 Part B," (1).
+
+## Sprint 7: the walkthrough finished, Oct 11 2026 (PRs #99 and #108)
+
+The eighth outside review (11 Oct, logged out) called the walkthrough a convincing demonstration but unfinished: GP05 VI.D's Table 2 was malformed, the Regulation 7 I.C.1 click ended at a subscription preview, and the tour asked the visitor to type "VI.D". Built in one Claude Code session (Opus 5.5): the importer fix by the session itself, the tour, the preview and a local test harness by three Sonnet 5.5 agents, reviewed and merged by the session. Pricing, the Vercel plan and the rest of Regulation 7 untouched.
+
+**PR #99, table continuation rows (merged; re-imports done).**
+- `pipeline/table_rows.py` `merge_continuation_rows`: a row joins the row above (cells joined with a space) when it leaves a cell blank and every cell it fills continues the cell above mid-phrase (the cell above ends with a hyphen, comma, opening bracket, slash, "&" or a word a phrase cannot end on; or the cell starts lower-case). A filled cell under a blank one or starting with a list marker never continues; a header takes a continuation only from two or more cells; a row with no text is dropped. Both importers' PDF-table renderers; eCFR XML tables never pass through it. "Mostly empty" alone was not used: the corpus's legitimate sub-header, units and category rows are mostly empty.
+- All 58 documents parsed before and after: 16 tables in 16 provisions of 12 documents change, same words, nothing outside the tables. The brief's regex (a `<tr>` with an empty `<td>`) found 68 provisions in 29 documents; the other 52 are legitimate blank cells (spanned engine classes, "Specialty coatings", "Inches (Millimeters)", the eCFR XML tables of IIII/JJJJ/OOOO/ZZZZ/49 CFR). Every table before and after: `docs/imports/2026-10-11/table_continuation_rows.md`.
+- Re-imported on main 99b37a7 (after PR #98's Part links, so nothing of that work was undone), dry run then execute, 11 Oct 03:54-04:08 UTC: gp05, gp08, gp09, gp12, 11, 21, 22, 23, 25, 8, ooooa, ooooc. Production after, body rows per table (before -> after): GP05 VI.D 9 -> 7 (4 header cells), GP05 IV.B.4 11 -> 9, GP08 IV.C 10 -> 9, GP08 VI.D 8 -> 7, GP09 VI.A.2 11 -> 10, GP12 VI.E.5.h 10 -> 9, GP12 VII.C.2.c.(ii) 10 -> 9, Reg 11 App. A 2.11(f) 11 -> 10, Reg 23 IV.F.3 table 3 38 -> 37, Reg 25 Part C I 32 -> 26, OOOOa Table 3 20 -> 19, OOOOc Table 4 21 -> 20, and rows with no text dropped: Reg 21 II.O 179 -> 176, Reg 22 I.E.1 51 -> 39, Reg 22 I.E.2 11 -> 8, Reg 8 II.B.2 5 -> 3.
+- The same runs applied older markup the parser already produced: GP05/GP08/GP09 II.B.1-type Part links (PR #98's expected leftovers) and 9 OOOOa / 16 OOOOc citations now deep-linked to the exact OOOOb section. Markup only.
+- Summaries: 11 provisions' letters moved, so the chained run regenerated, reviewed and embedded 23 summaries (those rows and their ancestors) in 8 documents; 0 pending afterwards in every affected document. Changelog: 11 `transcription_corrected` (changelog_sources.py) plus the five rows whose letters did not move, relabelled from `links_updated` to `transcription_corrected` by hand (`RUN_ME_20261011_table_rows_changelog.sql`); snapshot refreshed.
+
+**PR #108, walkthrough v2 and the Regulation 7 unlock.**
+- Data (applied before the PR's CI): `sec-7-B-I-C-1` and its 12 descendants are `is_public` (`20261011042512_reg7_ic1_public_subtree.sql`; read-back: those 13 plus the older sample row I.D.3.a.(i), 14 public Regulation 7 rows). Recorded like the GP05 unlock: the migration file and this doc (a visibility change logs no `provision_changes` row). Corpus QA check 7 counts the subtree as a public set (reads 4). `tour_events.step` takes 1-7 (`20261011033831_tour_events_seven_steps.sql`).
+- The visitor preview (`/regulations/7/preview?p=sec-7-B-I-C-1`) reads the subtree through the visitor's RLS-bound client, fences it again in code (`publicSubtree`), and renders it as the reader does: row markup and depth, official text, summary panels with badge, tooltip and source link where `gatePublicSummaries` allows (10 of the 13 rows), links that never 404, then "The rest of Regulation 7 is in the full corpus." `?from=` draws "← Back to GP05 · VI.C". The GP05 reader's locked popup carries `&from=`. `PUBLIC_READER_REGS` is still `["gp05"]`.
+- Seven steps (`src/lib/tour.ts`, `ReaderTour.tsx`): 1 type "frequency", pick VI.D (advances only through the jump box); 2 read VI.D and Table 2; 3 open the summary (instant scroll before the card shows); 4 jump to VI.C; 5 the I.C.1 citation (advances on arrival); 6 "This is the cited requirement. Open I.C.1.a's summary."; 7 "Click Back to GP05 VI.C." (advances on arrival at VI.C), then the closing card. Restart and Skip send `er:reader-trail-reset` (the reader forgets its trail, origin and remembered row); a reload resumes on every page. Subscribers: the Regulation 7 reader and its own return bar, no trial button.
+- **Different from the brief:** step 1's word is "frequency". The reader's jump box matches citations, then only the first 90 characters of each provision's text (`SNIPPET_LEN`); VI.D's end at "…storage tanks utilizing si…", so neither "sampling" nor "site-specific sampling" lists it (the keyword search behind /search does find VI.D for those). "frequency" is in VI.D's indexed text and in no other GP05 row's.
+- `/sample`: one sentence, "Walk through the research yourself, or compare the Search and Ask results below."
+- Tests: a local production-build harness (`e2e/harness/`: mock Supabase with RLS, `next build` + `next start`, fixtures from the importer's parse plus production summaries). On it: smoke-tour + smoke-anonymous 72/72 three times in a row; smoke-signed-in all but the Ask tests (they need Voyage/Anthropic), the subscriber walkthrough included. Unit 447 pass.
+
+**Counts (seven steps since PR 2).** `tour_step` carries the step reached, 1-7 (step 1 included, sent with `tour_start`); `tour_complete` (step 7) is sent on arrival back at GP05 VI.C; `tour_trial_click` is step 7; `tour_skip` carries the step shown (the closing card counts as 7). Rows before PR 2's deploy are the six-step tour (`tour_complete` at 6); filter on `created_at` to read either alone. In the SQL editor:
+
+```sql
+-- starts, completions, trial clicks
+select count(*) filter (where event = 'tour_start') as starts,
+       count(*) filter (where event = 'tour_complete') as completions,
+       count(*) filter (where event = 'tour_trial_click') as trial_clicks
+from public.tour_events where env = 'production';
+
+-- drop-off by step: runs that reached each step, and the share of starts
+select step, count(distinct session_id) as runs,
+       round(100.0 * count(distinct session_id)
+             / nullif((select count(distinct session_id) from public.tour_events
+                       where env = 'production' and event = 'tour_start'), 0), 1) as pct_of_starts
+from public.tour_events
+where env = 'production' and event = 'tour_step'
+group by step order by step;
+
+-- where people stop (furthest step per run; 8 = came back to VI.C and saw the closing card)
+select furthest, count(*) from (
+  select session_id, max(case when event = 'tour_complete' then 8 else step end) as furthest
+  from public.tour_events where env = 'production' group by 1) t
+group by 1 order by 1;
+```
+
+**Could not finish or reproduce.**
+- The Ask tests of `smoke-signed-in` need Voyage and Anthropic keys, so they did not run on the local harness; they ran in the preview smoke on the PR (signed in and out, green).
+- The chained summary runs' spend was not read back (the sandbox's proxy refused the workflow artifacts). Each chained run is capped at $10 a regulation; 23 summaries were regenerated in all.
+- The chained runs opened eight spot-check PRs, #100-#107 (gp08, gp05, 23, 11, gp12, ooooc, ooooa, 25). They are open for a human read, like #71-#78.
+
+**Owner decisions (Brody).**
+- (1) Step 1's word. Keep "frequency", or widen the jump box's index past the first 90 characters (the whole text, or a short keyword list per row) so "sampling" finds VI.D. Widening changes the jump box for every reader, so it is a product call.
+- (2) The GP05 reader's popup for the I.C.1 link still shows a visitor the locked label, with "preview" opening the readable subtree; only the tour goes straight to the preview. Showing the text in the popup when the row is public is a small change in `loadProvisionPreview`.
+- (3) `/regs/<id>` for the 13 newly public Regulation 7 rows links "← Back to sample" (the rule for public rows outside an open reader). It could point to `/regulations/7/preview?p=sec-7-B-I-C-1` instead.
+- (4) Still open from Sprint 6: the GP06 II.A.3 tooltip, the "Source checked" date, Skew Protection.

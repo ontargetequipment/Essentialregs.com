@@ -1,0 +1,43 @@
+/*
+ * The focused preview's rows (PreviewSubtree.tsx, Sprint 7, 11 Oct 2026).
+ *
+ * The rows are the reader's markup and take the reader's rules from
+ * reader.css (.item, .depth-N, .item-id, .xref, the summary panel and its
+ * badge, .doc-table). That file styles a page, not just rows: its `.reg-reader`
+ * rule is the reader's whole-page flex container with the paper background
+ * and a top border, and `#doc` / `#main-scroll` / `#sidebar` are the reader's
+ * columns. Only `.reg-reader` is used here, as the wrapper that carries the
+ * reader's colour tokens and type (--ink, --accent, the serif at 16px/1.55);
+ * the page-level parts of it are undone below, and the id the rows sit in is
+ * #preview-doc, so none of the `#doc` rules (760px column, 48px padding, 200px
+ * of bottom room) reach it. Every rule in reader.css starts with
+ * `.reg-reader`, so nothing in it applies anywhere else on the page.
+ */
+.reg-reader.preview-reader {
+  display: block;
+  background: transparent;
+  border-top: 0;
+  margin-top: 1.5rem;
+}
+
+/* What `.reg-reader #doc` gives the reader's column that the rows need as
+   well: long runs break rather than push the page sideways (6 Oct 2026). */
+.preview-reader #preview-doc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The first row starts at the block's top edge, not 14px or 34px below it. */
+.preview-reader #preview-doc > :first-child {
+  margin-top: 0;
+}
+
+/* A link to a row of this page lands it below the site header (66px, sticky)
+   and flashes it, as the reader's own jumps do (.flash, set by a script the
+   preview does not run). */
+.preview-reader #preview-doc > [id] {
+  scroll-margin-top: 90px;
+}
+.preview-reader #preview-doc > .item:target {
+  animation: reg-reader-flashbg 1.6s ease;
+}

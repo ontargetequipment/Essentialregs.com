@@ -452,10 +452,13 @@ checks as (
 
   union all
   select 7, 'GUARD', 'public_sample_rows',
-         (count(*) filter (where is_public and reg_key is distinct from 'gp05'))
-           + (count(*) filter (where not is_public and reg_key = 'gp05')), 4,
-         'Rows visible to logged-out visitors outside the GP05 sample, plus any GP05 row that is NOT public. Must be exactly 4: the four /regs/<id> sample cards (Reg 7 I.D.3.a.(i), GP02 II.A.2, ECMC 604.a.(1), CP I.G.90) and nothing else. Since Sprint 4 (10 Oct 2026, migration 20261010120000_gp05_public_sample.sql) every GP05 row is public by design, the free sample read in the real reader (PUBLIC_READER_REGS in src/lib/destination.ts). More than 4 means paid content outside GP05 is leaking past the paywall, or a GP05 row (a re-import) lost its flag and the public reader has a hole.'
-  from provisions
+         (count(*) filter (where is_public and reg_key is distinct from 'gp05' and not reg7_ic1))
+           + (count(*) filter (where not is_public and reg_key = 'gp05'))
+           + (count(*) filter (where not is_public and reg7_ic1)), 4,
+         'Rows visible to logged-out visitors outside the two public sets, plus any row of those sets that is NOT public. Must be exactly 4: the four /regs/<id> sample cards (Reg 7 I.D.3.a.(i), GP02 II.A.2, ECMC 604.a.(1), CP I.G.90) and nothing else. The public sets: every GP05 row since Sprint 4 (10 Oct 2026, 20261010120000_gp05_public_sample.sql; the free sample read in the real reader, PUBLIC_READER_REGS in src/lib/destination.ts), and since Sprint 7 (11 Oct 2026, 20261011042512_reg7_ic1_public_subtree.sql) the 13 rows of Regulation 7 Part B I.C.1 (sec-7-B-I-C-1 and every id starting sec-7-B-I-C-1-), the requirement the walkthrough follows from GP05 VI.C, read on the visitor preview. More than 4 means paid content is leaking past the paywall, or a row of a public set (a re-import) lost its flag and the public reader or the walkthrough has a hole.'
+  from (select p.*, (p.reg_key = '7' and (p.id = 'sec-7-B-I-C-1'
+                     or left(p.id, length('sec-7-B-I-C-1-')) = 'sec-7-B-I-C-1-')) as reg7_ic1
+        from provisions p) pv
 
   -- ---- REVIEW: expected to be non-zero; watch the trend -----------------
 

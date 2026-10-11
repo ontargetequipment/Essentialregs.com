@@ -220,3 +220,20 @@ test("a whole-document preview carries the root's title and the two-sentence ove
   assert.equal(previewSummary({ ai_summary: null, summary_status: "pending", reviewed_at: null }), null);
   assert.equal(previewSummary({ ai_summary: "   ", summary_status: "approved", reviewed_at: null }), null);
 });
+
+test("a visitor asking for a public Regulation 7 subtree row (I.C.1.a) still gets the label alone, as before the subtree opened (Sprint 7)", async () => {
+  // /api/provision is unchanged: only PUBLIC_READER_REGS (GP05) answers a visitor with text. The
+  // subtree's text is on the focused preview and /regs/<id>, not here.
+  const row: PreviewRow = { id: "sec-7-B-I-C-1-a", citation: "I.C.1.a.", full_text: "<p>All air pollution control equipment.</p>", ai_summary: "Summary." };
+  const { d, calls } = deps({
+    signedIn: false,
+    hasAccess: false,
+    row,
+    label: { id: "sec-7-B-I-C-1-a", citation: "I.C.1.a.", title: "I.C.1.a.", context_path: "PART B › I. › I.C. General Provisions" },
+  });
+  const res = await loadProvisionPreview("sec-7-B-I-C-1-a", d);
+  assert.equal(res.status, 200);
+  assert.deepEqual(Object.keys(res.body).sort(), ["citation", "id", "locked", "path", "reg_key", "title"]);
+  assert.deepEqual(calls.fetch, [], "the text read never ran");
+  assert.doesNotMatch(JSON.stringify(res.body), /air pollution control equipment|Summary/);
+});

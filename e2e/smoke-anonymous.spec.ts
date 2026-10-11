@@ -37,6 +37,52 @@ const PRICING_BUTTON = "Start your 7-day free trial";
  */
 const BADGE_TEXT = /^(AI-generated · automated check against source text( · [A-Z][a-z]+ \d{1,2}, \d{4})?|AI-generated · not yet reviewed|Reviewed( · [A-Z][a-z]+ \d{1,2}, \d{4})?)$/;
 
+/**
+ * The Regulation 7 I.C.1 subtree, public since Sprint 7 (11 Oct 2026), in
+ * document order. Every other Regulation 7 row is locked for a visitor except
+ * the older sample row I.D.3.a.(i); the parent sec-7-B-I-C and siblings such
+ * as sec-7-B-I-C-2 are locked. Approved summaries are on a, b, c, d, e,
+ * e-(i), e-(ii), e-(iv), f-(i) and f-(ii); I.C.1, e-(iii) and f have none
+ * (read from production on 11 Oct 2026; update here if that changes).
+ */
+const REG7_SUBTREE = [
+  "sec-7-B-I-C-1",
+  "sec-7-B-I-C-1-a",
+  "sec-7-B-I-C-1-b",
+  "sec-7-B-I-C-1-c",
+  "sec-7-B-I-C-1-d",
+  "sec-7-B-I-C-1-e",
+  "sec-7-B-I-C-1-e-(i)",
+  "sec-7-B-I-C-1-e-(ii)",
+  "sec-7-B-I-C-1-e-(iii)",
+  "sec-7-B-I-C-1-e-(iv)",
+  "sec-7-B-I-C-1-f",
+  "sec-7-B-I-C-1-f-(i)",
+  "sec-7-B-I-C-1-f-(ii)",
+];
+const REG7_WITH_SUMMARY = REG7_SUBTREE.filter((id) => !["sec-7-B-I-C-1", "sec-7-B-I-C-1-e-(iii)", "sec-7-B-I-C-1-f"].includes(id));
+const REG7_PUBLIC = new Set([...REG7_SUBTREE, "sec-7-B-I-D-3-a-(i)"]);
+
+/**
+ * Locked Regulation 7 rows and words of their official text (or, for a
+ * heading, of the rows below it) from pipeline/sources/REG_7.txt, each on one
+ * line of the source. None of them may reach a visitor by any path: the
+ * focused preview, /regs, /api/provision or /search.
+ */
+const REG7_LOCKED = [
+  // I.C. General Provisions: the parent of the subtree; its own text is a heading.
+  { id: "sec-7-B-I-C", phrases: ["13.7 pounds of volatile organic", "manufacturer specifications and documentation of compliance"] },
+  // I.C.2.: the next sibling of I.C.1.
+  { id: "sec-7-B-I-C-2", phrases: ["must be demonstrated using one of the following emission factors", "13.7 pounds of volatile organic"] },
+  // I.B.33.: a definition, in Part B Section I.
+  { id: "sec-7-B-I-B-33", phrases: ["emission reductions from all atmospheric condensate storage tanks"] },
+  // II.B.2.: another section's General Requirements (Section II.B.2.a is a near copy of I.C.1.a).
+  {
+    id: "sec-7-B-II-B-2",
+    phrases: ["General requirements for air pollution control equipment used to comply", "reasonably foreseeable fluctuations in emissions of VOCs", "installation of controls on storage"],
+  },
+];
+
 test.describe("anonymous", () => {
   test("home page returns 200 with the four hero buttons, Test Methods marked free", async ({ page }) => {
     const res = await page.goto("/");
@@ -420,12 +466,15 @@ test.describe("anonymous", () => {
     const partPanel = page.locator("#popup-body [data-testid=locked-destination]");
     await expect(partPanel).toContainText("Regulation 7 PART B is in the full corpus.");
     const inside = partPanel.getByRole("link", { name: "See what's in it" });
-    await expect(inside).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-P-B");
+    // Sprint 7: the link carries the GP05 row it came from, and the preview offers the way back.
+    await expect(inside).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-P-B&from=sec-gp05-VI-A");
     expect(new URL(page.url()).pathname).toBe("/regulations/gp05");
     await inside.click();
     await page.waitForURL((url) => url.pathname === "/regulations/7/preview" && url.searchParams.get("p") === "sec-7-P-B");
     await expect(page.locator("h1")).toHaveText("PART B");
     await expect(page.locator("[data-testid=locked-destination]")).toContainText("Regulation 7 PART B is in the full corpus.");
+    await expect(page.locator("#preview-return")).toHaveText("← Back to GP05 · VI.A");
+    await expect(page.locator("#preview-return")).toHaveAttribute("href", "/regulations/gp05#sec-gp05-VI-A");
   });
 
   test("/api/provision answers a visitor with a locked label, no text, never cached", async ({ request }) => {
@@ -767,8 +816,337 @@ test.describe("anonymous", () => {
     expect(res?.status()).toBe(404);
   });
 
-  test("the full reader /regulations/7 is 404 for an anonymous visitor", async ({ page }) => {
-    const res = await page.goto("/regulations/7");
-    expect(res?.status()).toBe(404);
+  test("the full reader /regulations/7 is 404 for an anonymous visitor, with or without the walkthrough's parameters", async ({ page }) => {
+    // Regulation 7's subtree is public, its reader is not (PUBLIC_READER_REGS is GP05 alone): the
+    // focused preview is the only way in. ?tour=1 and ?from= change nothing for a visitor.
+    for (const url of [
+      "/regulations/7",
+      "/regulations/7?tour=1",
+      "/regulations/7?from=sec-gp05-VI-C&tour=1",
+      "/regulations/7?from=sec-gp05-VI-C&tour=1#sec-7-B-I-C-1",
+    ]) {
+      // A URL that differs from the one before it only in its #hash would be
+      // a same-document navigation with no response: start each from a blank page.
+      await page.goto("about:blank");
+      const res = await page.goto(url);
+      expect(res?.status(), url).toBe(404);
+      await expect(page.locator("#doc"), url).toHaveCount(0);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // The leak guard (Sprint 7, 11 Oct 2026). A logged-out request for a
+  // Regulation 7 row outside the I.C.1 subtree gets no text and no summary,
+  // by any path: the focused preview, /regs, /api/provision, /search.
+  // -------------------------------------------------------------------------
+
+  for (const { id, phrases } of REG7_LOCKED) {
+    test(`Regulation 7 ${id}: the focused preview is the locked panel, with no text, no summary and no subtree`, async ({ page }) => {
+      const res = await page.goto(`/regulations/7/preview?p=${encodeURIComponent(id)}`);
+      expect(res?.status()).toBe(200);
+      // The HTML as the server sent it, flight data included.
+      const html = (await res?.text()) ?? "";
+      await expect(page.getByTestId("locked-destination")).toBeVisible();
+      await expect(page.getByTestId("locked-destination")).toContainText("is in the full corpus.");
+      await expect(page.getByTestId("preview-subtree")).toHaveCount(0);
+      await expect(page.locator("#preview-doc")).toHaveCount(0);
+      await expect(page.getByTestId("locked-rest")).toHaveCount(0);
+      await expect(page.locator("details.summary-panel")).toHaveCount(0);
+      await expect(page.locator(".summary-badge")).toHaveCount(0);
+      for (const phrase of phrases) expect(html, `"${phrase}" is in the page for ${id}`).not.toContain(phrase);
+      // A locked parent shows nothing of its public child either (I.C.1.a's wording, not its summary's).
+      expect(html).not.toContain("manufacturer specifications and documentation of compliance");
+    });
+
+    test(`Regulation 7 ${id}: /regs/<id> and /api/provision/<id> give a visitor no text and no summary`, async ({ request }) => {
+      // /regs/<id> reads through the visitor's own client, so a locked row is not found: 404.
+      const card = await request.get(`/regs/${id}`, { headers: protectionBypassHeaders() });
+      expect(card.status()).toBe(404);
+      const cardHtml = await card.text();
+      for (const phrase of phrases) expect(cardHtml, `"${phrase}" is in /regs/${id}`).not.toContain(phrase);
+
+      // /api/provision answers a visitor with the label alone (never cached) -- exactly these keys.
+      const api = await request.get(`/api/provision/${id}`, { headers: protectionBypassHeaders() });
+      expect(api.status()).toBe(200);
+      expect(api.headers()["cache-control"]).toContain("no-store");
+      const text = await api.text();
+      const body = JSON.parse(text);
+      expect(body).toMatchObject({ locked: true, id, reg_key: "7" });
+      expect(Object.keys(body).sort()).toEqual(["citation", "id", "locked", "path", "reg_key", "title"]);
+      for (const phrase of phrases) expect(text, `"${phrase}" is in /api/provision/${id}`).not.toContain(phrase);
+    });
+  }
+
+  test("a keyword search for a phrase only a locked Regulation 7 row has returns no card or snippet for it", async ({ page }) => {
+    // I.C.2.a.(i): the default emission factor. A visitor's search reads public rows only.
+    const phrase = "13.7 pounds of volatile organic compounds per barrel of condensate";
+    const res = await page.goto(`/search?q=${encodeURIComponent(phrase)}`);
+    expect(res?.status()).toBe(200);
+    await expect(page.getByText("Search isn't available right now")).toHaveCount(0);
+    const cards = page.locator("ol > li > a");
+    const hrefs = await cards.evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
+    const texts = await cards.allInnerTexts();
+    expect(hrefs.filter((h) => h.includes("/regulations/7/")), "no Regulation 7 card").toEqual([]);
+    for (const t of texts) expect(t).not.toContain("13.7 pounds");
+  });
+
+  test("a keyword search that matches both a public and a locked Regulation 7 row shows only the public one", async ({ page }) => {
+    // I.C.1.a (public) and II.B.2.a (locked) both say "when the separator dumps into the tank".
+    const res = await page.goto(`/search?q=${encodeURIComponent("separator dumps into the tank")}`);
+    expect(res?.status()).toBe(200);
+    const hrefs = await page.locator("ol > li > a").evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
+    const reg7 = hrefs.filter((h) => h.includes("/regulations/7/"));
+    expect(reg7, "the public subtree row is found").toContain("/regulations/7/preview?p=sec-7-B-I-C-1-a");
+    for (const href of reg7) {
+      const p = new URL(href, "https://x.test").searchParams.get("p") ?? "";
+      expect(REG7_PUBLIC.has(p), `${href} is not a public row`).toBe(true);
+    }
+    expect(hrefs.join("\n")).not.toContain("sec-7-B-II-B-2");
+  });
+
+  // -------------------------------------------------------------------------
+  // The preview of the public subtree
+  // -------------------------------------------------------------------------
+
+  test("the focused preview of Regulation 7 I.C.1 shows the 13 public rows, their text and summaries, and the rest locked", async ({ page, baseURL }) => {
+    test.setTimeout(120_000);
+    const res = await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1");
+    expect(res?.status()).toBe(200);
+    const html = (await res?.text()) ?? "";
+    // The focused heading block stays.
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("I.C.1.");
+    await expect(page.getByTestId("locked-destination")).toHaveCount(0);
+    await expect(page).toHaveTitle(/I\.C\.1\./);
+    // Not indexed, and not described as locked.
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+    expect(await page.locator('meta[name="description"]').getAttribute("content")).not.toMatch(/in the full EssentialRegs corpus|locked/i);
+
+    // The 13 rows, in order, as the direct children of #preview-doc; nothing outside the subtree.
+    const doc = page.locator("#preview-doc");
+    await expect(doc).toBeVisible();
+    await expect(page.getByTestId("preview-subtree")).toHaveAttribute("id", "preview-doc");
+    expect(await doc.locator(":scope > *").evaluateAll((els) => els.map((e) => e.id))).toEqual(REG7_SUBTREE);
+    for (const id of REG7_SUBTREE) {
+      const row = doc.locator(`:scope > [id="${id}"]`);
+      await expect(row, id).toHaveClass(/\bitem depth-\d\b/);
+      await expect(row, id).toHaveAttribute("data-citation", /^I\.C\.1/);
+    }
+
+    // The official text, with its id badge.
+    const a = doc.locator(':scope > [id="sec-7-B-I-C-1-a"]');
+    await expect(a).toContainText("manufacturer specifications and documentation of compliance");
+    await expect(a).toContainText("separator dumps into the tank");
+    await expect(a.locator("span.item-id").first()).toHaveText("I.C.1.a.");
+    await expect(doc.locator(':scope > [id="sec-7-B-I-C-1-e-(iv)"]')).toContainText("January 1, 2018");
+    await expect(doc.locator(':scope > [id="sec-7-B-I-C-1"]')).toContainText("General Requirements");
+
+    // Nothing of a locked row.
+    for (const { phrases } of REG7_LOCKED) for (const phrase of phrases.slice(0, 1)) expect(html).not.toContain(phrase);
+    expect(html).not.toContain("13.7 pounds");
+
+    // The summary panels: on the ten rows that have a summary, none on the three that do not.
+    expect(await doc.locator(":scope > .item").evaluateAll((els) => els.filter((e) => e.querySelector(":scope > details.summary-panel")).map((e) => e.id))).toEqual(
+      REG7_WITH_SUMMARY,
+    );
+    const panel = a.locator(":scope > details.summary-panel");
+    await expect(panel).not.toHaveAttribute("open", "");
+    await panel.locator(":scope > summary").click();
+    await expect(panel).toHaveAttribute("open", "");
+    const badge = panel.locator(".summary-badge");
+    await expect(badge).toHaveText(BADGE_TEXT);
+    await expect(badge).toHaveAttribute("title", /Disclaimer page/);
+    const source = panel.locator(".summary-status a");
+    await expect(source).toHaveText("View official source ↗");
+    await expect(source).toHaveAttribute("href", /^https?:\/\//);
+    await expect(source).toHaveAttribute("target", "_blank");
+    // A summary that has not been checked is never offered.
+    for (const text of await doc.locator(".summary-badge").allTextContents()) expect(text).not.toMatch(/not yet reviewed/);
+    // A parent's panel lists the rows below it, each a link to that row on this page.
+    const parentList = doc.locator(':scope > [id="sec-7-B-I-C-1-e"] a.summary-child-link');
+    if ((await parentList.count()) > 0) {
+      for (const href of await parentList.evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""))) {
+        expect(REG7_SUBTREE).toContain(href.slice(1));
+      }
+    }
+
+    // The rest stays locked.
+    const rest = page.getByTestId("locked-rest");
+    await expect(rest).toBeVisible();
+    await expect(rest).toContainText("The rest of Regulation 7 is in the full corpus.");
+    await expect(rest.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
+    await expect(rest.getByRole("link", { name: "Log in" })).toHaveAttribute("href", /^\/login\?next=/);
+    const docBox = await doc.boundingBox();
+    const restBox = await rest.boundingBox();
+    expect(docBox && restBox && restBox.y >= docBox.y + docBox.height - 1, "locked-rest is below the rows").toBe(true);
+
+    // Every link in the text answers, none is 404, and none points at the closed reader.
+    const hrefs = await doc.locator("a[href]").evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
+    expect(hrefs.filter((h) => /^\/regulations\/7#/.test(h)), "no link into the closed Regulation 7 reader").toEqual([]);
+    for (const h of hrefs.filter((x) => x.startsWith("#"))) {
+      await expect(page.locator(`[id="${h.slice(1)}"]`), h).toHaveCount(1);
+    }
+    const targets = new Set<string>();
+    for (const href of hrefs.filter((x) => !x.startsWith("#"))) {
+      const url = new URL(href, baseURL);
+      if (url.origin === new URL(baseURL ?? url.origin).origin) targets.add(url.pathname + url.search);
+    }
+    expect(targets.size, "the text links onward (Sections I.D., I.J., I.K.)").toBeGreaterThan(0);
+    const failures: string[] = [];
+    for (const target of targets) {
+      const r = await page.request.get(target, { headers: protectionBypassHeaders() });
+      if (r.status() === 404) failures.push(`${target} -> 404`);
+    }
+    expect(failures, failures.join("\n")).toEqual([]);
+  });
+
+  test("the preview's rows look like the reader's: its indentation, its summary panel, and none of its page layout", async ({ page }) => {
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1");
+    const doc = page.locator("#preview-doc");
+    await expect(doc).toBeVisible();
+    const margin = (id: string) => doc.locator(`:scope > [id="${id}"]`).evaluate((el) => getComputedStyle(el).marginLeft);
+    // reader.css: depth-4 is 36px, depth-5 54px, depth-6 72px.
+    expect(await margin("sec-7-B-I-C-1")).toBe("36px");
+    expect(await margin("sec-7-B-I-C-1-a")).toBe("54px");
+    expect(await margin("sec-7-B-I-C-1-e-(i)")).toBe("72px");
+    // The summary panel: the reader's tinted box.
+    const panel = doc.locator(":scope > [id=\"sec-7-B-I-C-1-a\"] > details.summary-panel");
+    expect(await panel.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(228, 236, 232)");
+    expect(await panel.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe("6px");
+    // The reader's page rules stay in the reader: this is a block in the page's column, not a flex shell with a gutter.
+    const wrapper = page.locator(".preview-reader");
+    expect(await wrapper.evaluate((el) => getComputedStyle(el).display)).toBe("block");
+    expect(await wrapper.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+    expect(await wrapper.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe("0px");
+    expect(await doc.evaluate((el) => getComputedStyle(el).paddingLeft)).toBe("0px");
+    await expect(page.locator("#sidebar, #jumpbox, #main-scroll")).toHaveCount(0);
+  });
+
+  test("the preview has no horizontal scroll at phone width", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1");
+    await expect(page.locator("#preview-doc")).toBeVisible();
+    const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(over).toBeLessThanOrEqual(0);
+  });
+
+  test("a deeper public row is its own focused preview: I.C.1.e and the rows below it", async ({ page }) => {
+    const res = await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1-e");
+    expect(res?.status()).toBe(200);
+    expect(await page.locator("#preview-doc > *").evaluateAll((els) => els.map((e) => e.id))).toEqual([
+      "sec-7-B-I-C-1-e",
+      "sec-7-B-I-C-1-e-(i)",
+      "sec-7-B-I-C-1-e-(ii)",
+      "sec-7-B-I-C-1-e-(iii)",
+      "sec-7-B-I-C-1-e-(iv)",
+    ]);
+    await expect(page.getByTestId("locked-rest")).toBeVisible();
+  });
+
+  test("the preview draws the way back to the provision the visitor came from, and keeps the walkthrough's parameter", async ({ page }) => {
+    // Public focused provision, from GP05 VI.C.
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C");
+    const back = page.locator("#preview-return");
+    await expect(back).toHaveCount(1);
+    await expect(page.getByTestId("preview-return")).toHaveText("← Back to GP05 · VI.C");
+    await expect(back).toHaveAttribute("href", "/regulations/gp05#sec-gp05-VI-C");
+    // At the top of the focused block, above the regulation's name and the heading.
+    const backBox = await back.boundingBox();
+    const h1Box = await page.getByRole("heading", { level: 1 }).boundingBox();
+    expect(backBox && h1Box && backBox.y < h1Box.y).toBe(true);
+    await expect(page.getByTestId("preview-subtree")).toBeVisible();
+
+    // With the walkthrough on: tour=1 carried to the reader.
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C&tour=1");
+    await expect(page.locator("#preview-return")).toHaveAttribute("href", "/regulations/gp05?tour=1#sec-gp05-VI-C");
+    await expect(page.locator("#preview-return")).toHaveText("← Back to GP05 · VI.C");
+
+    // A locked provision draws it too.
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-C-2&from=sec-gp05-VI-C");
+    await expect(page.getByTestId("locked-destination")).toBeVisible();
+    await expect(page.locator("#preview-return")).toHaveAttribute("href", "/regulations/gp05#sec-gp05-VI-C");
+    await expect(page.getByTestId("preview-subtree")).toHaveCount(0);
+
+    // Not for a missing, junk or same-regulation origin, nor without a focused provision.
+    for (const query of [
+      "p=sec-7-B-I-C-1",
+      "p=sec-7-B-I-C-1&from=sec-7-B-I-D",
+      "p=sec-7-B-I-C-1&from=not-an-id",
+      "p=sec-7-B-I-C-1&from=%3Cscript%3E",
+      "from=sec-gp05-VI-C",
+    ]) {
+      await page.goto(`/regulations/7/preview?${query}`);
+      await expect(page.locator("#preview-return"), query).toHaveCount(0);
+    }
+
+    // And the link works: back in the GP05 reader at VI.C.
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C");
+    await page.locator("#preview-return").click();
+    await page.waitForURL((url) => url.pathname === "/regulations/gp05");
+    expect(new URL(page.url()).hash).toBe("#sec-gp05-VI-C");
+    await expect(page.locator("#jumpbox")).toBeVisible();
+  });
+
+  test("a stale or unknown ?p= on Regulation 7 is the plain preview; a GP05 link opens the reader and keeps ?from=", async ({ page }) => {
+    for (const p of ["sec-7-B-I-C-1-zz", "sec-gp05-VI-D", "not%20an%20id"]) {
+      const res = await page.goto(`/regulations/7/preview?p=${p}`);
+      expect(res?.status(), p).toBe(200);
+      await expect(page.getByTestId("preview-subtree"), p).toHaveCount(0);
+      await expect(page.getByTestId("locked-destination"), p).toHaveCount(0);
+    }
+    // GP05 is open to everyone: its focused preview sends the visitor to the reader, keeping ?from= (the reader's return bar reads it).
+    await page.goto("/regulations/gp05/preview?p=sec-gp05-VI-D&from=sec-7-B-I-C-1");
+    await page.waitForURL((url) => url.pathname === "/regulations/gp05");
+    expect(new URL(page.url()).hash).toBe("#sec-gp05-VI-D");
+    // The reader takes ?from= off the URL on load (into history.state), so the
+    // proof that it arrived is the return bar it draws from it.
+    const back = page.locator("#return-trail-ext");
+    await expect(back).toHaveText("← Back to Regulation 7 · Part B · I.C.1");
+    await expect(back).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-B-I-C-1");
+  });
+
+  test("/regs/<id> of a public subtree row shows its text and summary", async ({ page }) => {
+    const res = await page.goto("/regs/sec-7-B-I-C-1-a");
+    expect(res?.status()).toBe(200);
+    await expect(page).toHaveTitle(/^I\.C\.1\.a\. · Regulation 7/);
+    await expect(page.locator("article > h2")).toContainText("I.C.1.a.");
+    await expect(page.locator("article")).toContainText("manufacturer specifications and documentation of compliance");
+    await expect(page.locator("article details > summary")).toHaveText([
+      /^Plain-English summary\s*AI-generated · automated check against source text$/,
+      "Original regulatory text",
+    ]);
+    await expect(page.locator("article .summary-badge")).toHaveAttribute("title", /Disclaimer page/);
+  });
+
+  test("the related teaser on a public subtree card page shows no summary and no path for a neighbour outside GP05", async ({ page }) => {
+    await page.goto("/regs/sec-7-B-I-C-1-a");
+    const related = page.locator("section").filter({ has: page.getByRole("heading", { name: "Related by meaning, not cited" }) });
+    if ((await related.count()) === 0) {
+      // No neighbours are stored for this row on this deployment; the GP12 VI.A.1 test above covers the teaser itself.
+      test.info().annotations.push({ type: "note", description: "no related neighbours stored for sec-7-B-I-C-1-a here" });
+      return;
+    }
+    const links = related.getByRole("link");
+    const count = await links.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i++) {
+      const link = links.nth(i);
+      const href = (await link.getAttribute("href")) ?? "";
+      if (/^\/regulations\/gp05#/.test(href)) continue; // GP05's reader shows its summaries to everyone
+      await expect(link, href).not.toContainText("Plain-English summary");
+      await expect(link.locator("p.line-clamp-2"), href).toHaveCount(0);
+      await expect(link.locator("p.leading-snug"), `${href}: no breadcrumb`).toHaveCount(0);
+      await expect(link, href).toContainText("Summary available to subscribers.");
+    }
+  });
+
+  test("GP05's Table 2 (VI.D) has four header cells and seven body rows", async ({ page }) => {
+    // Needs the Sprint 7 GP05 re-import (the table used to be flattened into text).
+    await page.goto("/regulations/gp05");
+    const table = page.locator("#doc > #sec-gp05-VI-D table.doc-table");
+    await expect(table).toHaveCount(1);
+    await expect(table.locator("thead th")).toHaveCount(4);
+    await expect(table.locator("thead th").nth(3)).toHaveText("Frequency");
+    await expect(table.locator("tbody tr")).toHaveCount(7);
+    await expect(table.locator("tbody tr").first()).toContainText("Prior to Issuance 5");
   });
 });

@@ -81,3 +81,14 @@ test("GP05 is the one regulation whose reader is open to a visitor (Sprint 4, 10
     "/regulations/7/preview?p=sec-7-B-V-C-2-w"
   );
 });
+
+test("Regulation 7's public I.C.1 subtree opens its focused preview for a visitor, never the closed reader (Sprint 7)", () => {
+  assert.deepEqual([...PUBLIC_READER_REGS], ["gp05"]);
+  for (const id of ["sec-7-B-I-C-1", "sec-7-B-I-C-1-a", "sec-7-B-I-C-1-e-(iv)"]) {
+    assert.equal(
+      provisionDestination({ id, reg_key: "7" }, { hasAccess: false }),
+      `/regulations/7/preview?p=${encodeURIComponent(id)}`
+    );
+    assert.equal(provisionDestination({ id, reg_key: "7" }, { hasAccess: true }), `/regulations/7#${id}`);
+  }
+});

@@ -74,3 +74,7 @@ pipeline/out/review_report.json
 
 # Acceptance screenshots written by e2e/smoke-signed-in.spec.ts (uploaded by CI)
 /e2e-screenshots/
+
+# Production-build test harness: fixtures built from the importer's output, logs, the Playwright
+# browser-path shim (e2e/harness/README.md)
+/e2e/harness/generated/

@@ -20,6 +20,17 @@ export const EYEBROW_MAX_LEVELS = 4;
 /** Provisions the return trail remembers. */
 export const TRAIL_CAP = 10;
 
+/**
+ * The window event that makes the reader forget where it has been
+ * (`window.dispatchEvent(new Event(READER_TRAIL_RESET_EVENT))`): its in-memory
+ * trail, the other-regulation origin behind "Back to GP05 · VI.C", the row it
+ * remembered as the place the visitor was reading, and `readerReturnFrom` in
+ * the history entry; the bar is re-rendered, hidden. The guided walkthrough
+ * sends it on Restart and Skip (src/components/ReaderTour.tsx) so nothing of
+ * a finished run shows in the next one.
+ */
+export const READER_TRAIL_RESET_EVENT = "er:reader-trail-reset";
+
 /** The heading words a citation can open with, stored shouting. */
 const HEADING_WORD = /^(PART|APPENDIX|ATTACHMENT|SUBPART|SECTION|CHAPTER|SERIES|RULE)\b/;
 
@@ -528,10 +539,18 @@ function escapeLockedHtml(s: string): string {
  * regulation's preview page. Every string from the payload is escaped here;
  * `panelHtml` is the only markup, and nothing in it comes unescaped from
  * the network. Pure, so scripts/reader-nav.test.ts can check it.
+ *
+ * `fromId` is the row of THIS document the link was clicked in (a GP05
+ * provision, for the visitor reading the free sample): the focused preview's
+ * link carries it as `&from=<id>` so the preview can draw its "Back to
+ * GP05 · VI.C" link. Only a valid provision id of another regulation than the
+ * target is carried; a whole-document link has no focused provision and gets
+ * none.
  */
 export function lockedPopup(
   data: LockedPreviewPayload,
-  asDocument: boolean
+  asDocument: boolean,
+  fromId?: string | null
 ): { eyebrow: string; title: string; note: string | null; panelHtml: string } {
   const key = regKeyOf(data.id) ?? data.reg_key;
   const name = key ? regulationDisplayName(key) : data.id;
@@ -539,9 +558,11 @@ export function lockedPopup(
   // business (the API sends the stored title); show it only when it adds
   // something to the citation.
   const title = data.title && data.title !== data.citation ? data.title : "";
+  const from = fromId ? validProvisionId(fromId) : null;
+  const carryFrom = from !== null && regKeyOf(from)?.toLowerCase() !== key.toLowerCase() ? `&from=${encodeURIComponent(from)}` : "";
   const previewHref = asDocument
     ? `/regulations/${encodeURIComponent(key)}/preview`
-    : provisionDestination({ id: data.id, reg_key: key }, { hasAccess: false, publicRegs: [] });
+    : provisionDestination({ id: data.id, reg_key: key }, { hasAccess: false, publicRegs: [] }) + carryFrom;
   const what = asDocument ? name : `${name} ${data.citation}`;
   const panelHtml =
     `<section class="locked-destination" data-testid="locked-destination">` +
