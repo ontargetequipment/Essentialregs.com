@@ -1543,7 +1543,7 @@ test("a Part B link opens the part root: the reader for a subscriber, the focuse
     await click($("#popup-close"));
   });
 
-  await t.test("a visitor: the locked popup's \"See what's in it\" is /regulations/7/preview?p=sec-7-P-B", async () => {
+  await t.test("a visitor: the locked popup's \"See what's in it\" is /regulations/7/preview?p=sec-7-P-B, with the way back", async () => {
     const before = window.location.href;
     const f = stubFetch(async () => okJson({ ...LOCKED, id: "sec-7-P-B", citation: "PART B", title: "OIL AND NATURAL GAS", path: null }));
     try {
@@ -1552,7 +1552,8 @@ test("a Part B link opens the part root: the reader for a subscriber, the focuse
       assert.equal(isShown(), true);
       const panel = $('#popup-body [data-testid="locked-destination"]');
       assert.match(panel.textContent ?? "", /Regulation 7 PART B is in the full corpus\./);
-      assert.equal(panel.querySelector("a.locked-secondary")?.getAttribute("href"), "/regulations/7/preview?p=sec-7-P-B");
+      // Sprint 7: the preview draws "Back to GP05 · VI.A" from `from`.
+      assert.equal(panel.querySelector("a.locked-secondary")?.getAttribute("href"), "/regulations/7/preview?p=sec-7-P-B&from=sec-gp05-VI-A");
       assert.equal(window.location.href, before, "no navigation");
     } finally {
       f.restore();
