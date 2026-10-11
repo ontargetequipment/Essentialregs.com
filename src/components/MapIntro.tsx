@@ -19,14 +19,21 @@ export function MapIntro({ factors, hasAccess }: { factors: IntroSentence[]; has
           {i > 0 && " "}
           {sentence.text}
           {sentence.cites.length > 0 && (
-            <span className="whitespace-nowrap text-xs text-muted">
+            // Each citation stays on one line, but the list may wrap between
+            // them (Sprint 8, 11 Oct 2026): the whole list was one nowrap
+            // span, and a sentence citing four federal paragraphs ran 545px
+            // wide, so /sample scrolled sideways on a phone.
+            <span className="text-xs text-muted">
               {" "}
               {sentence.cites.map((id, j) => (
                 <span key={id}>
-                  {j > 0 && ", "}
-                  <Link href={provisionDestination({ id, reg_key: citeRegKey(id) }, { hasAccess })} className="underline hover:text-accent">
-                    {citeLabel(id)}
-                  </Link>
+                  <span className="whitespace-nowrap">
+                    <Link href={provisionDestination({ id, reg_key: citeRegKey(id) }, { hasAccess })} className="underline hover:text-accent">
+                      {citeLabel(id)}
+                    </Link>
+                    {j < sentence.cites.length - 1 && ","}
+                  </span>
+                  {j < sentence.cites.length - 1 && " "}
                 </span>
               ))}
             </span>

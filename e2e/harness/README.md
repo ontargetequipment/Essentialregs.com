@@ -94,7 +94,7 @@ here, so the stricter rule changes nothing.)
 
 **RPCs** (`/rest/v1/rpc/<fn>`): `search_provisions` (below), `provision_path`,
 `changelog_snapshot_public`, `changelog_public`, `refresh_changelog_snapshot`,
-`search_queries_recent_count`, `search_provisions_in_document` (the reader's jump-box text matches: the same matcher as `search_provisions`, scoped to `doc_key` before the limit, columns id, citation, title, headline, rank). `match_provisions` / `match_provisions_hybrid` (Ask): 403
+`search_queries_recent_count`, `search_provisions_in_document` (the reader's jump-box text matches: the same matcher as `search_provisions`, scoped to `doc_key` before the limit, columns id, citation, title, headline, rank), `count_provisions_matching` (the visitor's "the full library has N provisions" line: the same matcher over every released row whatever the caller's RLS, as a bare integer; a staged document is left out). `match_provisions` / `match_provisions_hybrid` (Ask): 403
 for anon as in production; for a subscriber `[]` and a note in the unhandled log.
 
 **`search_provisions`** is *not* Postgres full-text search. It is a case-insensitive

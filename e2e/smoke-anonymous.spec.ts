@@ -341,8 +341,31 @@ test.describe("anonymous", () => {
     await expect(ask.getByTestId("map-intro")).toBeVisible();
     expect(await ask.getByTestId("locked-result").count()).toBeGreaterThan(0);
     await expect(ask.getByText("Not shown because you said produced water:")).toBeVisible();
+
+    // Sprint 8 (11 Oct 2026): the answer is a research map first. The line that
+    // says what Ask is, then the table (one row per group, every provision a
+    // link), then the map's introduction under the smaller "Reading of the
+    // provisions above", then the cards behind the one disclosure.
+    const map = ask.getByTestId("ask-map");
+    await expect(map.getByTestId("ask-finds-line")).toHaveText("It finds provisions; it does not decide what applies to you.");
+    await expect(map.getByRole("columnheader")).toHaveText(["Question component", "Provision", "Why it matters"]);
+    const mapRows = map.getByTestId("ask-map-row");
+    expect(await mapRows.count()).toBeGreaterThan(3);
+    const mapHrefs = await map.locator("tbody a").evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
+    expect(mapHrefs.length).toBeGreaterThan(5);
+    // A visitor's destinations are the cards' own: GP05 opens the reader, everything else the focused preview.
+    expect(mapHrefs.some((h) => h.startsWith("/regulations/gp05#"))).toBe(true);
+    expect(mapHrefs.some((h) => /\/preview\?p=/.test(h))).toBe(true);
+    for (const href of mapHrefs) expect(href, href).toMatch(/^\/regulations\/gp05#|\/preview\?p=/);
+    const reading = ask.getByTestId("ask-reading");
+    await expect(reading.getByRole("heading", { level: 3, name: "Reading of the provisions above" })).toBeVisible();
+    await expect(reading.getByTestId("map-intro")).toBeVisible();
+    const [lineBox, tableBox, readingBox] = [await map.getByTestId("ask-finds-line").boundingBox(), await map.locator("table").boundingBox(), await reading.boundingBox()];
+    expect(lineBox && tableBox && readingBox && lineBox.y + lineBox.height <= tableBox.y + 1 && tableBox.y + tableBox.height <= readingBox.y + 1).toBe(true);
     const askMore = ask.getByTestId("sample-ask-more");
     await expect(askMore.locator("summary")).toContainText("See the complete sample answer");
+    const moreBox = await askMore.boundingBox();
+    expect(readingBox && moreBox && readingBox.y + readingBox.height <= moreBox.y + 1).toBe(true);
     const openAtFirst = await ask.locator("ol > li:visible").count();
     expect(await askMore.locator("ol > li").count()).toBeGreaterThan(0);
     await askMore.locator("summary").click();
@@ -366,6 +389,25 @@ test.describe("anonymous", () => {
     expect(text).not.toContain("is open in the full reader");
     // The stamp is 03:46 UTC on 10 Oct: still 9 Oct in Colorado.
     expect(text).toContain("snapshot from 9 Oct 2026");
+  });
+
+  test("the /sample Ask research map stacks at phone width: no sideways scroll, the labels move into each row", async ({ page }) => {
+    // Sprint 8, 11 Oct 2026: below md the table is not a table; each row is a
+    // block with its three labels (the column headers are hidden there).
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto("/sample");
+    await page.getByTestId("sample-example").locator(":scope > summary").click();
+    const map = page.getByTestId("ask-map");
+    await expect(map).toBeVisible();
+    await expect(map.getByRole("columnheader")).toHaveCount(0);
+    const first = map.getByTestId("ask-map-row").first();
+    await expect(first.getByText("Provision", { exact: true })).toBeVisible();
+    await expect(first.getByText("Why it matters", { exact: true })).toBeVisible();
+    const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(over).toBeLessThanOrEqual(0);
+    // The map itself stays inside the viewport.
+    const box = await map.boundingBox();
+    expect(box && box.x >= 0 && box.x + box.width <= 375).toBe(true);
   });
 
   test("a related link on a public card page opens the focused preview of that provision, not the whole-document preview (GP12 VI.A.1)", async ({ page }) => {
@@ -931,6 +973,39 @@ test.describe("anonymous", () => {
     await expect(loginNotice.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
     await expect(loginNotice.getByRole("link", { name: "start your 7-day trial" })).toHaveAttribute("href", "/signup");
     expect(await page.locator("body").innerText()).not.toMatch(/\bbeta\b/i);
+  });
+
+  test("a logged-out search that GP05 cannot answer says how many provisions the full library has; a nonsense search says neither", async ({ page }) => {
+    // Sprint 8, 11 Oct 2026 (src/lib/library-count.ts, migration
+    // 20261011210829_count_provisions_matching). "dehydrator" is in no GP05
+    // row (pipeline/sources/GP05.txt has none) and in no other public row, and
+    // it is in Regulation 7, ECMC and the NSPS subparts, so the free search
+    // finds nothing and the count is above 0. It passes against production once
+    // the migration is applied; before that the RPC does not exist, the line is
+    // hidden by design, and this step fails on the missing line.
+    const term = "dehydrator";
+    const res = await page.goto(`/search?q=${encodeURIComponent(term)}`);
+    expect(res?.status()).toBe(200);
+    const main = page.getByRole("main");
+    await expect(main.getByText(`No results for “${term}”`)).toBeVisible();
+    const line = main.getByTestId("library-count");
+    await expect(line).toBeVisible();
+    const m = /^No matches in GP05\. The full library has ([\d,]+) provisions? matching “dehydrator”\./.exec((await line.innerText()).replace(/\s+/g, " "));
+    expect(m, await line.innerText()).not.toBeNull();
+    expect(Number(m![1].replace(/,/g, ""))).toBeGreaterThan(0);
+    await expect(line.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
+    // Leak check: the count is the only thing that came from outside GP05. No result
+    // card, no link into another document, no locked citation anywhere in main.
+    await expect(main.locator("ol > li")).toHaveCount(0);
+    const hrefs = await main.locator("a").evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
+    for (const href of hrefs) expect(href, href).not.toMatch(/\/regulations\/(?!gp05)|\/preview|\/regs\/sec-/);
+    expect(await main.innerText()).not.toMatch(/Regulation \d|Subpart [IJOZ]|§ ?\d|ECMC/);
+
+    // Nonsense: no count, no line.
+    await page.goto(`/search?q=${encodeURIComponent("zzqxjvkwy")}`);
+    await expect(main.getByText("No results for", { exact: false })).toBeVisible();
+    await expect(main.getByTestId("library-count")).toHaveCount(0);
+    expect(await main.innerText()).not.toMatch(/The full library has|No matches in GP05/);
   });
 
   test("clicking the Ask tab switches the page on click (not only on Enter), carries the typed query, and Keyword switches back", async ({ page }) => {

@@ -916,6 +916,27 @@ function searchProvisions(args, ctx, docKey = null) {
   });
 }
 
+/**
+ * count_provisions_matching(q) (migration 20261011210829): the same matcher as
+ * searchProvisions, over every released row regardless of RLS (SECURITY
+ * DEFINER), as a bare integer. The input is trimmed and cut to 200 characters;
+ * a query with no lexemes counts 0. Statements of Basis are excluded in
+ * production; the fixtures mark none (is_basis is always false above), so
+ * nothing is left out here for that reason.
+ */
+function countProvisionsMatching(args) {
+  const clauses = parseWebQuery(String(args.q ?? "").trim().slice(0, 200));
+  if (!clauses.length) return 0;
+  const staged = stagedRegs();
+  let n = 0;
+  for (const p of T.provisions) {
+    if (staged.has(p.reg_key)) continue;
+    const ix = indexOf(p);
+    if (clauses.some((c) => clauseMatches(c, ix))) n += 1;
+  }
+  return n;
+}
+
 // ---------------------------------------------------------------------------
 // RPCs
 // ---------------------------------------------------------------------------
@@ -928,6 +949,9 @@ function rpc(name, args, ctx, req) {
       return searchProvisions({ q: args.q, lim: Math.min(Number(args.lim ?? 10) || 10, 50) }, ctx, String(args.doc_key ?? "").trim().toLowerCase()).map(
         ({ id, citation, title, headline, rank }) => ({ id, citation, title, headline, rank }),
       );
+    case "count_provisions_matching":
+      // SECURITY DEFINER in production: one integer over every released row, whatever the caller's RLS (a staged document is not counted).
+      return countProvisionsMatching(args);
     case "provision_path":
       return provisionPath(String(args.p_id ?? ""), ctx);
     case "changelog_snapshot_public":

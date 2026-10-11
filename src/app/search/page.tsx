@@ -6,7 +6,10 @@ import { displayCitation } from "@/lib/federal-citation";
 import { CITATION_EYEBROW_CLASS } from "@/lib/ui";
 import { provisionDestination } from "@/lib/destination";
 import { SummaryBadge } from "@/components/SummaryBadge";
-import { MapIntro } from "@/components/MapIntro";
+import { AskReading, AskResearchMap } from "@/components/AskResearchMap";
+import { askMapRows } from "@/lib/ask-map-rows";
+import { LibraryCountNotice } from "@/components/LibraryCountNotice";
+import { fetchLibraryMatchCount } from "@/lib/library-count";
 import { AskCard, PROVENANCE_LABEL_CLASS, textNoun, type AskRow, type ReviewRow } from "@/components/AskCard";
 import { detectTestMethod } from "@/lib/test-method-search";
 import { createClient } from "@/lib/supabase/server";
@@ -241,6 +244,17 @@ export default async function SearchPage(props: PageProps<"/search">) {
       searchError = e instanceof Error ? e.message : String(e);
     }
   }
+  // A visitor's free search found nothing (11 Oct 2026): say how many
+  // provisions the full library has for the same words. One count-only RPC
+  // through the visitor's own client (count_provisions_matching is SECURITY
+  // DEFINER and returns an integer, nothing else); never for a subscriber,
+  // whose search already covers the library, and never when the search
+  // errored or a test-method card answers the query. Any failure leaves it
+  // null and the line is not shown (src/lib/library-count.ts).
+  let libraryCount: number | null = null;
+  if (q && mode === "keyword" && !searchError && hits.length === 0 && !methodHit && !access.hasAccess) {
+    libraryCount = await fetchLibraryMatchCount(supabase, q);
+  }
   if (q && mode === "ask" && access.hasAccess) {
     try {
       ({ hits: askHits, map: askMap } = await semanticSearch(q, {
@@ -343,6 +357,25 @@ export default async function SearchPage(props: PageProps<"/search">) {
       for (const r of (rows ?? []) as ReviewRow[]) reviewOf.set(r.id, r);
     }
   }
+
+  // The research map above the Ask answer (Sprint 8, 11 Oct 2026): one row
+  // per group the layout above produced, built by the same askMapRows the
+  // /sample page calls. The "Why it matters" falls back to a summary sentence
+  // only for a summary the automated review approved or edited (the same
+  // status the card's badge reads); every link is the card's own (hrefForHit).
+  const researchRows =
+    askMap && grouped
+      ? askMapRows({
+          map: askMap,
+          grouped,
+          source: (id) => mapRows.get(id),
+          hrefFor: hrefForHit,
+          summaryOf: (id) => {
+            const r = reviewOf.get(id);
+            return r && (r.summary_status === "approved" || r.summary_status === "edited") ? r.ai_summary : null;
+          },
+        })
+      : [];
 
   // Heading-only rows among the Ask hits (a section, not a provision: its
   // text is nothing but its heading, the same test search_provisions uses to
@@ -460,12 +493,15 @@ export default async function SearchPage(props: PageProps<"/search">) {
                 </label>
               ))}
             </span>
-            <label className="inline-flex items-center gap-2">
+            {/* min-w-0 / max-w-full: a <select> is as wide as its longest
+                option, and the longest document name ran it to 403px, past a
+                390px phone (Sprint 8, 11 Oct 2026); it now shrinks to the row. */}
+            <label className="inline-flex min-w-0 max-w-full items-center gap-2">
               <span>Regulation</span>
               <select
                 name="reg"
                 defaultValue={regFilter}
-                className="rounded-md border border-line bg-panel px-2 py-1 text-sm text-ink"
+                className="min-w-0 max-w-full rounded-md border border-line bg-panel px-2 py-1 text-sm text-ink"
               >
                 <option value="">Any</option>
                 {regOptions.map((r) => (
@@ -612,6 +648,9 @@ export default async function SearchPage(props: PageProps<"/search">) {
           )}
         </p>
       )}
+      {mode === "keyword" && q && !searchError && hits.length === 0 && !methodHit && !access.hasAccess && (
+        <LibraryCountNotice query={q} count={libraryCount} signedIn={!!user} />
+      )}
 
       {mode === "ask" && q && access.hasAccess && !askError && askHits.length === 0 && !grouped && (
         <p className="mt-10 text-sm text-muted">
@@ -742,13 +781,17 @@ export default async function SearchPage(props: PageProps<"/search">) {
                 {premise.sentences.map((sentence, i) => (
                   <li key={i}>
                     {sentence.text}{" "}
-                    <span className="whitespace-nowrap text-xs text-muted">
+                    {/* Each citation on one line, the list free to wrap between them (Sprint 8, 11 Oct 2026; see MapIntro). */}
+                    <span className="text-xs text-muted">
                       {sentence.cites.map((id, j) => (
                         <span key={id}>
-                          {j > 0 && ", "}
-                          <Link href={provisionDestination({ id, reg_key: citeRegKey(id) }, { hasAccess: access.hasAccess })} className="underline hover:text-accent">
-                            {citeLabel(id)}
-                          </Link>
+                          <span className="whitespace-nowrap">
+                            <Link href={provisionDestination({ id, reg_key: citeRegKey(id) }, { hasAccess: access.hasAccess })} className="underline hover:text-accent">
+                              {citeLabel(id)}
+                            </Link>
+                            {j < sentence.cites.length - 1 && ","}
+                          </span>
+                          {j < sentence.cites.length - 1 && " "}
                         </span>
                       ))}
                     </span>
@@ -768,9 +811,14 @@ export default async function SearchPage(props: PageProps<"/search">) {
             <span className="font-mono text-eyebrow uppercase text-tag">Mapped question:</span>{" "}
             <span className="font-semibold text-ink">{mapTitle(askMap, stated)}</span>
           </p>
-          {/* The introduction, sentence by sentence with the provisions that
-              support each (9 Oct 2026), the way a premise note shows them. */}
-          <MapIntro factors={askMap.factors} hasAccess={access.hasAccess} />
+          {/* The research map first (Sprint 8, 11 Oct 2026): one row per group,
+              Question component | Provision | Why it matters, under the line
+              that says what Ask is. The map's introduction -- sentence by
+              sentence with the provisions that support each (9 Oct 2026), the
+              way a premise note shows them -- follows it as "Reading of the
+              provisions above", and the cards after that. */}
+          <AskResearchMap rows={researchRows} />
+          <AskReading factors={askMap.factors} hasAccess={access.hasAccess} />
           <p className="mt-1 text-xs text-muted">
             <Link href={askUrl(includeBasis, jurisdiction, regFilter, true)} className="font-medium text-ink-soft underline">
               Show as a flat list
