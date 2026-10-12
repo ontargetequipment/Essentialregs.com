@@ -12,4 +12,4 @@ export const SITE_NAME = "EssentialRegs";
 
 /** The site's meta description, and the line under the name on the Open Graph image. */
 export const SITE_DESCRIPTION =
-  "State and federal regulations with plain-English summaries and linked cross-references. Now featuring Colorado oil & gas rules alongside the federal EPA and PHMSA rules they reference.";
+  "EssentialRegs brings Colorado oil and gas regulations, General Permits, federal EPA standards, and PHMSA pipeline requirements into one searchable reader.";
