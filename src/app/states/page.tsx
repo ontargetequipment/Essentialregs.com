@@ -49,7 +49,16 @@ export default async function StatesIndexPage() {
           ))}
         </ul>
 
-        <p className="mt-6 text-sm text-muted">More states are on the way.</p>
+        <p className="mt-6 text-sm text-muted">
+          More states are on the way. Don&rsquo;t see your state?{" "}
+          <Link
+            href="/request"
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
+          >
+            Request it
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );

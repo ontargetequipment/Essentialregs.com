@@ -58,6 +58,17 @@ export default async function FederalIndexPage() {
         </p>
 
         <RegulationList regs={regs} access={access} mode="federal" appliesTo={APPLIES_TO} />
+
+        <p className="mt-6 text-sm text-muted">
+          Need a part we don&rsquo;t have yet?{" "}
+          <Link
+            href="/request"
+            className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
+          >
+            Request it
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );
