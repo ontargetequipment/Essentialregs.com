@@ -714,14 +714,15 @@ test.describe("anonymous", () => {
     await expect(page.getByRole("heading", { name: "Subscribe to open the full regulations" })).toBeVisible();
   });
 
-  test("the Regulations nav lists the two jurisdictions and Test Methods; General Permits hang off Colorado", async ({ page }) => {
+  test("the Regulations nav lists the two jurisdictions, Test Methods and the request link; General Permits hang off Colorado", async ({ page }) => {
     // The APCD General Permits are a Colorado category, not a jurisdiction,
     // so the header dropdown, the mobile drawer and the footer's Regulations
-    // column each carry exactly Federal Regulations, State Regulations and
-    // (since 9 Oct 2026) the free Test Methods reference, in that order. The
-    // permits index keeps its URL (sitemap, external links) and is reached
-    // from the Colorado index's group heading.
-    const TWO = ["Federal Regulations", "State Regulations", "Test Methods"];
+    // column each carry exactly Federal Regulations, State Regulations,
+    // (since 9 Oct 2026) the free Test Methods reference and (since 12 Oct
+    // 2026) "Request a regulation" last, in that order. The permits index
+    // keeps its URL (sitemap, external links) and is reached from the
+    // Colorado index's group heading.
+    const TWO = ["Federal Regulations", "State Regulations", "Test Methods", "Request a regulation"];
     await page.goto("/states/colorado");
     const footer = page.getByRole("navigation", { name: "Footer" }).locator("ul").first();
     await expect(footer.getByRole("link")).toHaveText(TWO);

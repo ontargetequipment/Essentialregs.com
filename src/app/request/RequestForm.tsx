@@ -44,6 +44,9 @@ export function RequestForm({ renderedAt, userEmail }: { renderedAt: number; use
   }
 
   const fieldErrors = state && !state.ok ? state.fieldErrors ?? {} : {};
+  // What was typed, carried back after an error (React resets the form when
+  // the action returns); empty on first render.
+  const v = state && !state.ok ? state.values : null;
 
   return (
     <form action={formAction} className="flex flex-col gap-5" noValidate={false}>
@@ -67,6 +70,7 @@ export function RequestForm({ renderedAt, userEmail }: { renderedAt: number; use
           minLength={LIMITS.regulationMin}
           maxLength={LIMITS.regulationMax}
           placeholder="e.g. OSHA 29 CFR 1910, or Wyoming Oil & Gas Conservation Commission rules"
+          defaultValue={v?.regulation}
           className={INPUT}
           aria-invalid={fieldErrors.regulation ? true : undefined}
         />
@@ -85,7 +89,7 @@ export function RequestForm({ renderedAt, userEmail }: { renderedAt: number; use
           id="request-jurisdiction"
           name="jurisdiction"
           required
-          defaultValue=""
+          defaultValue={v?.jurisdiction || ""}
           className={INPUT}
           aria-invalid={fieldErrors.jurisdiction ? true : undefined}
         >
@@ -111,6 +115,7 @@ export function RequestForm({ renderedAt, userEmail }: { renderedAt: number; use
           type="text"
           maxLength={LIMITS.agencyMax}
           placeholder="e.g. Texas Commission on Environmental Quality"
+          defaultValue={v?.agency}
           className={INPUT}
           aria-invalid={fieldErrors.agency ? true : undefined}
         />
@@ -128,6 +133,7 @@ export function RequestForm({ renderedAt, userEmail }: { renderedAt: number; use
           inputMode="url"
           maxLength={LIMITS.sourceUrlMax}
           placeholder="https://"
+          defaultValue={v?.source_url}
           className={INPUT}
           aria-invalid={fieldErrors.source_url ? true : undefined}
         />
@@ -144,6 +150,7 @@ export function RequestForm({ renderedAt, userEmail }: { renderedAt: number; use
           rows={4}
           maxLength={LIMITS.reasonMax}
           placeholder="The permit, audit or project this is for, and how often you'd use it."
+          defaultValue={v?.reason}
           className={INPUT}
           aria-invalid={fieldErrors.reason ? true : undefined}
         />
@@ -161,7 +168,7 @@ export function RequestForm({ renderedAt, userEmail }: { renderedAt: number; use
           required
           maxLength={LIMITS.emailMax}
           autoComplete="email"
-          defaultValue={userEmail ?? undefined}
+          defaultValue={userEmail ?? v?.email}
           readOnly={userEmail !== null}
           className={`${INPUT} ${userEmail ? "bg-paper text-ink-soft" : ""}`}
           aria-invalid={fieldErrors.email ? true : undefined}
@@ -185,6 +192,7 @@ export function RequestForm({ renderedAt, userEmail }: { renderedAt: number; use
           type="text"
           maxLength={LIMITS.companyMax}
           autoComplete="organization"
+          defaultValue={v?.company}
           className={INPUT}
           aria-invalid={fieldErrors.company ? true : undefined}
         />

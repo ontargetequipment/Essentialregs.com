@@ -17,17 +17,20 @@ import {
   submittedTooFast,
   validateRegulationRequest,
   type RequestFieldErrors,
+  type RequestFields,
 } from "@/lib/regulation-request";
 
 /**
  * The /request form's result. `ok: true` is the success state ("Thanks — it's
  * in the queue. We'll email you at <email> ..."); `ok: false` re-shows the
  * form with one message at the top and, when a field is at fault, a message
- * under it.
+ * under it. `values` carries what was typed back to the form: React 19 resets
+ * a form after its action returns, so without them a too-fast or invalid
+ * submission would wipe the fields and the person would have to start over.
  */
 export type RequestFormState =
   | { ok: true; email: string }
-  | { ok: false; error: string; fieldErrors?: RequestFieldErrors }
+  | { ok: false; error: string; fieldErrors?: RequestFieldErrors; values: RequestFields }
   | undefined;
 
 const TOO_FAST = "That was quick. Take a moment to check the form, then send it again.";
@@ -77,7 +80,7 @@ export async function submitRegulationRequest(
     return { ok: true, email: fields.email.trim().toLowerCase() || "you" };
   }
   if (submittedTooFast(formData.get(RENDERED_AT_FIELD))) {
-    return { ok: false, error: TOO_FAST };
+    return { ok: false, error: TOO_FAST, values: fields };
   }
 
   // A signed-in requester's email is their account's, whatever the (read-only)
@@ -90,7 +93,7 @@ export async function submitRegulationRequest(
 
   const validated = validateRegulationRequest(fields);
   if (!validated.ok) {
-    return { ok: false, error: "Please fix the highlighted fields.", fieldErrors: validated.errors };
+    return { ok: false, error: "Please fix the highlighted fields.", fieldErrors: validated.errors, values: fields };
   }
   const value = validated.value;
 
@@ -119,10 +122,10 @@ export async function submitRegulationRequest(
   ]);
   if (byEmail.error || byIp.error) {
     console.error("[request] cap check failed", byEmail.error?.message ?? byIp.error?.message);
-    return { ok: false, error: FAILED };
+    return { ok: false, error: FAILED, values: fields };
   }
   if ((byEmail.count ?? 0) >= MAX_PER_EMAIL_PER_DAY || (byIp.count ?? 0) >= MAX_PER_IP_PER_DAY) {
-    return { ok: false, error: TOO_MANY };
+    return { ok: false, error: TOO_MANY, values: fields };
   }
 
   const { data: row, error } = await admin
@@ -143,7 +146,7 @@ export async function submitRegulationRequest(
     .single();
   if (error || !row) {
     console.error("[request] insert failed", error?.message);
-    return { ok: false, error: FAILED };
+    return { ok: false, error: FAILED, values: fields };
   }
 
   // The notification is best-effort: the request is saved either way, and
