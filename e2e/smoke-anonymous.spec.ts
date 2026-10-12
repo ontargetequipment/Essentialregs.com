@@ -827,6 +827,18 @@ test.describe("anonymous", () => {
     expect(new URL(location, baseURL).pathname).toBe("/states/colorado");
   });
 
+  test("/contact-sales is a permanent redirect to /pricing", async ({ page, baseURL }) => {
+    // Multi-seat pricing is not offered (12 Oct 2026); the page is gone and
+    // next.config.ts sends indexed links to the plans.
+    const res = await page.request.get("/contact-sales", {
+      maxRedirects: 0,
+      headers: protectionBypassHeaders(),
+    });
+    expect(res.status()).toBe(308);
+    const location = res.headers()["location"] ?? "";
+    expect(new URL(location, baseURL).pathname).toBe("/pricing");
+  });
+
   test("an unknown state is 404", async ({ page }) => {
     const res = await page.goto("/states/atlantis");
     expect(res?.status()).toBe(404);
