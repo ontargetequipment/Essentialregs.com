@@ -15,6 +15,7 @@ const REGULATION_LINKS = [
   { href: "/federal", label: "Federal Regulations" },
   { href: "/states", label: "State Regulations" },
   { href: "/test-methods", label: "Test Methods" },
+  { href: "/request", label: "Request a regulation" },
 ] as const;
 
 /** Small magnifying-glass glyph for the header search button/link. */

@@ -67,8 +67,12 @@ export default function ContactPage() {
             relevant.
           </li>
           <li>
-            <strong>Coverage requests</strong> — which regulation you would
-            like added next, and roughly how often you need it.
+            <strong>Coverage requests</strong> — use the{" "}
+            <Link href="/request" className="underline underline-offset-2">
+              Request a regulation
+            </Link>{" "}
+            form, which asks for the regulation, its jurisdiction and what
+            you are working on, and goes straight into our build queue.
           </li>
         </LegalList>
       </LegalSection>

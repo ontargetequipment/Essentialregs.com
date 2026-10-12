@@ -714,14 +714,15 @@ test.describe("anonymous", () => {
     await expect(page.getByRole("heading", { name: "Subscribe to open the full regulations" })).toBeVisible();
   });
 
-  test("the Regulations nav lists the two jurisdictions and Test Methods; General Permits hang off Colorado", async ({ page }) => {
+  test("the Regulations nav lists the two jurisdictions, Test Methods and the request link; General Permits hang off Colorado", async ({ page }) => {
     // The APCD General Permits are a Colorado category, not a jurisdiction,
     // so the header dropdown, the mobile drawer and the footer's Regulations
-    // column each carry exactly Federal Regulations, State Regulations and
-    // (since 9 Oct 2026) the free Test Methods reference, in that order. The
-    // permits index keeps its URL (sitemap, external links) and is reached
-    // from the Colorado index's group heading.
-    const TWO = ["Federal Regulations", "State Regulations", "Test Methods"];
+    // column each carry exactly Federal Regulations, State Regulations,
+    // (since 9 Oct 2026) the free Test Methods reference and (since 12 Oct
+    // 2026) "Request a regulation" last, in that order. The permits index
+    // keeps its URL (sitemap, external links) and is reached from the
+    // Colorado index's group heading.
+    const TWO = ["Federal Regulations", "State Regulations", "Test Methods", "Request a regulation"];
     await page.goto("/states/colorado");
     const footer = page.getByRole("navigation", { name: "Footer" }).locator("ul").first();
     await expect(footer.getByRole("link")).toHaveText(TWO);
@@ -837,6 +838,73 @@ test.describe("anonymous", () => {
     expect(res.status()).toBe(308);
     const location = res.headers()["location"] ?? "";
     expect(new URL(location, baseURL).pathname).toBe("/pricing");
+  });
+
+  test("/request renders the regulation request form for a visitor", async ({ page }) => {
+    // Request a regulation (12 Oct 2026): the public form, no sign-in needed.
+    const res = await page.goto("/request");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1, name: "Request a regulation" })).toBeVisible();
+    await expect(page.getByText("What people ask for decides what we build next.")).toBeVisible();
+    const form = page.locator("form").filter({ has: page.locator('input[name="regulation"]') });
+    await expect(form).toHaveCount(1);
+    await expect(form.locator('input[name="regulation"]')).toHaveAttribute("required", "");
+    await expect(form.locator('select[name="jurisdiction"]')).toHaveAttribute("required", "");
+    // Federal first, the fifty states, Other last (plus the "Choose one" placeholder).
+    const options = form.locator('select[name="jurisdiction"] option');
+    await expect(options).toHaveCount(53);
+    await expect(options.nth(1)).toHaveText("Federal");
+    await expect(options.nth(2)).toHaveText("Alabama");
+    await expect(options.last()).toHaveText("Other");
+    for (const name of ["agency", "source_url", "reason", "email", "company"]) {
+      await expect(form.locator(`[name="${name}"]`), name).toHaveCount(1);
+    }
+    // Logged out, the email field is editable and empty.
+    await expect(form.locator('input[name="email"]')).toBeEditable();
+    await expect(form.locator('input[name="email"]')).toHaveValue("");
+    // The hidden render time and the honeypot are there, and the honeypot is empty and not announced.
+    await expect(form.locator('input[name="rendered_at"]')).toHaveCount(1);
+    const honeypot = form.locator('input[name="website"]');
+    await expect(honeypot).toHaveCount(1);
+    await expect(honeypot).toHaveValue("");
+    await expect(honeypot).not.toBeInViewport();
+    await expect(form.getByRole("button", { name: "Send request" })).toBeVisible();
+    // No "legal advice" language on the page.
+    await expect(page.locator("main")).not.toContainText(/legal advice/i);
+  });
+
+  test("/request at 375px: no horizontal overflow, the button is a full row", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto("/request");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+    const button = page.getByRole("button", { name: "Send request" });
+    const box = await button.boundingBox();
+    expect(box && box.height >= 44).toBe(true);
+    expect(box && box.width >= 300).toBe(true);
+  });
+
+  test("the six entry points link to /request", async ({ page }) => {
+    await page.goto("/");
+    // Homepage coverage line and the footer's Regulations group.
+    await expect(page.getByRole("link", { name: "Request a regulation →" })).toHaveAttribute("href", "/request");
+    await expect(page.locator("footer").getByRole("link", { name: "Request a regulation" })).toHaveAttribute("href", "/request");
+    await page.goto("/states");
+    await expect(page.getByRole("main").getByRole("link", { name: "Request it" })).toHaveAttribute("href", "/request");
+    await page.goto("/federal");
+    await expect(page.getByRole("main").getByRole("link", { name: "Request it" })).toHaveAttribute("href", "/request");
+    await page.goto("/contact");
+    await expect(page.getByRole("main").getByRole("link", { name: "Request a regulation" })).toHaveAttribute("href", "/request");
+    const sitemap = await page.request.get("/sitemap.xml", { headers: protectionBypassHeaders() });
+    expect(sitemap.status()).toBe(200);
+    expect(await sitemap.text()).toContain("/request</loc>");
+  });
+
+  test("/admin/requests sends a visitor to /login", async ({ page, baseURL }) => {
+    const res = await page.request.get("/admin/requests", { maxRedirects: 0, headers: protectionBypassHeaders() });
+    expect([302, 303, 307, 308]).toContain(res.status());
+    const location = res.headers()["location"] ?? "";
+    expect(new URL(location, baseURL).pathname).toBe("/login");
   });
 
   test("an unknown state is 404", async ({ page }) => {

@@ -25,6 +25,7 @@ const STATIC_ROUTES: Array<{
   { path: "/general-permits", changeFrequency: "weekly", priority: 0.8 },
   { path: "/federal", changeFrequency: "weekly", priority: 0.8 },
   { path: "/test-methods", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/request", changeFrequency: "yearly", priority: 0.5 },
   { path: "/changelog", changeFrequency: "daily", priority: 0.5 },
   { path: "/about", changeFrequency: "monthly", priority: 0.6 },
   { path: "/contact", changeFrequency: "yearly", priority: 0.4 },
