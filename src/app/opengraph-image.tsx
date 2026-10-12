@@ -11,7 +11,8 @@ import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 // Google Fonts files (src/assets/fonts, SIL Open Font License); satori cannot
 // read woff2.
 
-export const alt = `${SITE_NAME} — ${SITE_DESCRIPTION}`;
+// The description opens with the site name, so the alt text is the description alone.
+export const alt = SITE_DESCRIPTION;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

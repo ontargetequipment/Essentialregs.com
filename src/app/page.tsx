@@ -40,22 +40,27 @@ export default async function Home() {
         </p>
         <h1 className="mt-4 max-w-[900px] font-serif text-[36px] font-bold leading-[1.1] tracking-tight text-ink sm:text-display">
           State and federal regulations — searchable, cross-referenced, and
-          easier to use.
+          easier to understand.
         </h1>
+        {/* Owner wording, 12 Oct 2026. The first sentence is SITE_DESCRIPTION
+            (src/lib/site.ts). Two paragraphs make the hero taller on a
+            phone, so below `sm` the gaps around the second one are tighter
+            (mt-3, and mt-6 above the buttons); the type scale is unchanged. */}
         <p className="mt-6 max-w-reading text-lg leading-relaxed text-ink-soft">
-          <span className="font-medium text-ink">
-            Find the rule yourself before you pay someone to find it for you.
-          </span>{" "}
-          EssentialRegs puts state air-quality rules, oil &amp; gas
-          requirements, General Permits, federal EPA standards and PHMSA
-          pipeline regulations in one connected reader, with a plain-English
-          summary beside every official provision. Answer the routine
-          questions in minutes, see which ones are worth a consultant’s hourly
-          rate, and — if you own land with oil and gas on it — know what the
-          operator is actually required to do.
+          EssentialRegs brings Colorado oil and gas regulations, General
+          Permits, federal EPA standards, and PHMSA pipeline requirements into
+          one searchable reader. Whether you manage compliance, advise clients,
+          operate a facility, or want to understand activities near your home
+          or land, you can find relevant provisions, follow related
+          requirements, and read the rules in context.
+        </p>
+        <p className="mt-3 max-w-reading text-lg leading-relaxed text-ink-soft sm:mt-4">
+          Clearly labeled plain-English summaries help you get oriented
+          quickly, while links to official sources let you check the
+          underlying regulatory text.
         </p>
 
-        <div className="mt-8 flex flex-col gap-3">
+        <div className="mt-6 flex flex-col gap-3 sm:mt-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link href="/federal" className={BUTTON}>
               Federal Regulations
@@ -74,8 +79,8 @@ export default async function Home() {
         </div>
 
         <p className="mt-6 max-w-reading text-sm text-ink-soft">
-          Built for compliance staff, operators, and landowners who’d rather
-          read the rule than guess.
+          Spend less time finding rules, handle routine research yourself, and
+          make more of the time you spend with a consultant.
         </p>
 
         {/* Coverage line. Names only what is in the corpus today; the
