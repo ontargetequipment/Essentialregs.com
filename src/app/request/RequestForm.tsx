@@ -85,7 +85,12 @@ export function RequestForm({ renderedAt, userEmail }: { renderedAt: number; use
         <label htmlFor="request-jurisdiction" className={LABEL}>
           Jurisdiction <span className="text-red-700">*</span>
         </label>
+        {/* Keyed on the carried value: React applies a select's defaultValue
+            as the browser's default selection only on mount, so after the
+            post-action form reset an un-keyed select would snap back to the
+            placeholder (seen on the preview, 12 Oct 2026). */}
         <select
+          key={`jurisdiction-${v?.jurisdiction ?? ""}`}
           id="request-jurisdiction"
           name="jurisdiction"
           required
