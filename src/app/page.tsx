@@ -144,19 +144,6 @@ export default async function Home() {
               You&apos;ll be taken to Stripe&apos;s secure checkout and returned here.
             </p>
           )}
-          <p className="mt-4 text-xs text-muted">
-            Need multiple seats for your team?{" "}
-            {/* inline-flex + min-h-11 below `sm` grows this inline link to a
-                44px-tall tap target (the line it sits on grows with it);
-                `sm:` puts it back to a plain inline link in the sentence. */}
-            <Link
-              href="/contact-sales"
-              className="inline-flex min-h-11 items-center font-medium text-ink-soft underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
-            >
-              Contact sales
-            </Link>
-            .
-          </p>
         </div>
       </section>
     </div>

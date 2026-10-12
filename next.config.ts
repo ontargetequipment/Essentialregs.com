@@ -51,6 +51,9 @@ const nextConfig: NextConfig = {
       { source: "/regulations", destination: "/states/colorado", permanent: true },
       // Old bookmarks of the Colorado index (fifth review, 9 Oct 2026).
       { source: "/colorado", destination: "/states/colorado", permanent: true },
+      // Multi-seat / team pricing is not offered (12 Oct 2026); the
+      // /contact-sales page is gone, so indexed links land on the plans.
+      { source: "/contact-sales", destination: "/pricing", permanent: true },
     ];
   },
   async headers() {

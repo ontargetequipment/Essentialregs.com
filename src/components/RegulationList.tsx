@@ -77,18 +77,6 @@ export function RegulationList({
               box's "Create an account" link goes to /signup?plan=<interval>
               with that plan already chosen. */}
           <PlanChoice access={access} className="mt-5" />
-          <p className="mt-4 text-xs text-muted">
-            Need multiple seats for your team?{" "}
-            {/* inline-flex + min-h-11 below `sm` grows this inline link to a
-                44px-tall tap target; `sm:` puts it back to a plain inline link. */}
-            <Link
-              href="/contact-sales"
-              className="inline-flex min-h-11 items-center font-medium text-ink-soft underline underline-offset-2 hover:text-accent sm:inline sm:min-h-0"
-            >
-              Contact sales
-            </Link>
-            .
-          </p>
         </div>
       )}
 
