@@ -405,7 +405,7 @@ test.describe("guided walkthrough", () => {
     // Enter in the jump box on the VI.D match is the jump box: it moves on.
     await jumpToVIDByKeyboard(page);
     await expect(c).toHaveAttribute("data-step", "2");
-    expect(tagsOf(events)).toEqual(["tour_start:1", "tour_step:1", "tour_step:2"]);
+    expect(tagsOf(events)).toEqual(["tour_start:0", "tour_step:0", "tour_step:1", "tour_step:2"]);
   });
 
   test("step 1 also takes a citation typed with Enter (VI.D), as the jump box resolves it", async ({ page }) => {
