@@ -352,7 +352,7 @@ test.describe("guided walkthrough", () => {
     expect(await storedTrail(page)).toBeNull();
     await shot(page, testInfo, "tour-1280-closing");
 
-    await sawEvent(events, "tour_complete:7");
+    await sawEvent(events, "tour_complete:9");
     expect(tagsOf(events)).toEqual(FULL_RUN);
 
     // Explore GP05 yourself: the tour is over, in place, the spotlight gone.
@@ -494,7 +494,7 @@ test.describe("guided walkthrough", () => {
     await callout(page).getByTestId("tour-trial").click();
     await page.waitForURL((url) => url.pathname === "/signup");
     await expect(page.getByRole("heading", { name: "Choose your plan" })).toBeVisible();
-    expect(events).toContainEqual({ event: "tour_trial_click", step: 7 });
+    expect(events).toContainEqual({ event: "tour_trial_click", step: 9 });
     expect(await storedTour(page)).toBeNull();
   });
 
@@ -520,8 +520,8 @@ test.describe("guided walkthrough", () => {
       await expect(callout(page), `step ${step} after reload`).toHaveCount(0);
       expect(await storedTour(page), `step ${step} after reload`).toBeNull();
     }
-    // The step shown is the step counted (countedStep: 0 and 1 as 1, 7-9 and the closing card as 7).
-    expect(events.filter((e) => e.event === "tour_skip").map((e) => e.step)).toEqual([1, 1, 2, 3, 4, 5, 6, 7, 7, 7, 7]);
+    // The step shown is the step sent (the closing card counts as 9).
+    expect(events.filter((e) => e.event === "tour_skip").map((e) => e.step)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9]);
   });
 
   test("Restart at step 4 goes back to the introduction with no Back bar; Start focuses the jump box; the counts are not repeated", async ({ page }) => {
@@ -555,7 +555,7 @@ test.describe("guided walkthrough", () => {
     test.setTimeout(120_000);
     const events = await captureTourEvents(page);
     await walkToClosing(page, events);
-    await sawEvent(events, "tour_complete:7");
+    await sawEvent(events, "tour_complete:9");
     await callout(page).getByTestId("tour-restart").click();
     await expect(callout(page)).toHaveAttribute("data-step", "0");
     expect(new URL(page.url()).hash).toBe("");
@@ -761,7 +761,7 @@ test.describe("guided walkthrough", () => {
     await expect(callout(page).getByTestId("tour-trial")).toBeVisible();
     await expect(callout(page).getByTestId("tour-explore")).toHaveClass(/bg-accent/);
     await shot(page, testInfo, "tour-375-closing");
-    await sawEvent(events, "tour_complete:7");
+    await sawEvent(events, "tour_complete:9");
     expect(tagsOf(events)).toEqual(FULL_RUN);
   });
 
@@ -853,7 +853,7 @@ test.describe("guided walkthrough", () => {
     await page.goto(TOUR);
     await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
     await expect(callout(page)).toHaveAttribute("data-step", "0");
-    await sawEvent(events, "tour_start:1");
+    await sawEvent(events, "tour_start:0");
     const stored = JSON.parse((await storedTour(page)) ?? "{}");
     expect(stored.v).toBe(3);
     expect(stored.step).toBe(0);

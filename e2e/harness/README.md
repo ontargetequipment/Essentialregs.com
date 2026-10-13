@@ -72,8 +72,8 @@ PostgREST and GoTrue that the app uses (found by reading every `.from()`,
 - `Prefer: count=exact` with `GET` and `HEAD` and a `Content-Range`;
   `Accept: application/vnd.pgrst.object+json` (one object, or `406 PGRST116`).
 - `POST` inserts (`tour_events`, `search_queries`; the `tour_events` check
-  constraints are enforced, `step` 1-7 so the seven-step tour of the next sprint
-  also works), service-role `PATCH` / `DELETE`.
+  constraints are enforced, `step` 0-9 as migration 20261013034619 has it: the
+  walkthrough's introduction and nine steps), service-role `PATCH` / `DELETE`.
 - Unknown columns, tables, relationships and operators are honest PostgREST-shaped
   errors, not silent empties.
 

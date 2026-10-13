@@ -75,12 +75,13 @@ export async function sawEvent(events: { event: string; step: number }[], tag: s
 }
 
 /**
- * The events of a whole run, in order: the start, each COUNTED step as it is
- * reached (tour.ts countedStep: the introduction and step 1 both count as 1;
- * steps 7, 8 and 9 all as 7), the completion.
+ * The events of a whole run, in order: the start (the introduction, 0),
+ * each view as it is reached, the completion (9). tour_events.step takes
+ * 0-9 since migration 20261013034619.
  */
 export const FULL_RUN = [
-  "tour_start:1",
+  "tour_start:0",
+  "tour_step:0",
   "tour_step:1",
   "tour_step:2",
   "tour_step:3",
@@ -88,7 +89,9 @@ export const FULL_RUN = [
   "tour_step:5",
   "tour_step:6",
   "tour_step:7",
-  "tour_complete:7",
+  "tour_step:8",
+  "tour_step:9",
+  "tour_complete:9",
 ];
 
 /**

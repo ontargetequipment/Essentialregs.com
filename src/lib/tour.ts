@@ -36,15 +36,13 @@
  * The state (step, the closing-card flag, an anonymous session id, the steps
  * already counted) is in sessionStorage, so a reload resumes on any page.
  *
- * COUNTING (public.tour_events, migration 20261011033831): the table's step
- * column takes 1-7, the seven steps of v2. v3 has ten views and no new
- * migration, so each view is counted as `countedStep(view)`, the v2 step it
- * corresponds to (the mapping is in that function), and a view whose counted
- * step was already sent is not sent again. The drop-off queries in
- * docs/CEO_PHASE_PLAN.md keep their meaning for steps 1-6; step 7 now means
- * "opened I.C.1.a's summary or further", and tour_complete still means the
- * return to VI.C. A migration widening the check to 0-9 would let each view
- * be counted on its own.
+ * COUNTING (public.tour_events): each view is counted as itself, 0 (the
+ * introduction) to 9, since migration 20261013034619 widened the table's
+ * step check from 1-7 to 0-9 (v2's seven steps; 13 Oct 2026). tour_start
+ * and the first tour_step carry 0, tour_complete and tour_trial_click carry
+ * 9. Rows before that migration are the seven-step tour (tour_complete at
+ * 7); filter on created_at to read either run alone (docs/CEO_PHASE_PLAN.md,
+ * Walkthrough v3, has the queries).
  */
 import { provisionDestination } from "@/lib/destination";
 import { TRIAL_DAYS } from "@/lib/pricing";
@@ -191,7 +189,7 @@ export function newTourState(sid: string): TourState {
   return { v: 3, step: TOUR_INTRO_STEP, done: false, completed: false, sid, reported: [TOUR_INTRO_STEP] };
 }
 
-/** A fresh run: its state and the two events it counts (tour_start, and the introduction reached). */
+/** A fresh run: its state and the two events it counts (tour_start, and the introduction reached, both step 0). */
 export function startTour(sid: string): { state: TourState; events: TourEventInput[] } {
   return {
     state: newTourState(sid),
@@ -219,7 +217,7 @@ export function advanceTour(state: TourState, step: TourStep): { state: TourStat
 
 /**
  * Arrival back at VI.C after step 9: the closing card, and tour_complete
- * (counted step 7) the first time this run gets there. Nothing happens from
+ * (step 9) the first time this run gets there. Nothing happens from
  * any other step.
  */
 export function completeTour(state: TourState): { state: TourState; events: TourEventInput[] } {
@@ -260,7 +258,7 @@ export function stepForPage(state: TourState | null, page: "reader" | "destinati
   return state.step >= 6 ? 5 : state.step;
 }
 
-/** The step a view counts as in events (the closing card is the last step, counted as 7). */
+/** The step a view counts as in events (the closing card is the last step, 9). */
 export function viewStep(view: TourView): CountedStep {
   return countedStep(view === "closing" ? TOUR_STEP_COUNT : view);
 }
@@ -633,25 +631,21 @@ export function floatingFit(viewportWidth: number, columnRight: number | null): 
 // Counting (POST /api/tour-event -> public.tour_events)
 // ---------------------------------------------------------------------------
 
-/** The steps public.tour_events accepts (migration 20261011033831: step between 1 and 7). */
-export type CountedStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-export const COUNTED_STEP_MAX = 7;
+/** The step public.tour_events accepts (migration 20261013034619: step between 0 and 9): a view's own number. */
+export type CountedStep = TourStep;
+export const COUNTED_STEP_MAX = TOUR_STEP_COUNT;
 
 /**
- * The v2 step a v3 view is counted as (see the file comment). Each of 1-6
- * means what it meant in v2; the introduction (0) counts with step 1 (it is
- * what tour_start marks), and 7, 8 and 9 all count as 7:
- *
- *   0 intro -> 1   1 jump box -> 1   2 VI.D -> 2   3 summary control -> 3
- *   4 open summary -> 4   5 citation -> 5   6 I.C.1.a's summary -> 6
- *   7 second hop -> 7   8 Back to I.C.1 -> 7   9 Back to GP05 -> 7
+ * The step a view is counted as: itself. (Until migration 20261013034619
+ * the table took 1-7, and 0 and 7-9 were folded into 1 and 7; the function
+ * stays as the one place the events get their step from.)
  */
 export function countedStep(step: TourStep): CountedStep {
-  return clamp(step, 1, COUNTED_STEP_MAX) as CountedStep;
+  return step;
 }
 
 export function isCountedStep(n: unknown): n is CountedStep {
-  return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= COUNTED_STEP_MAX;
+  return isTourStep(n);
 }
 
 /**

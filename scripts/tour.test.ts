@@ -3,7 +3,7 @@
  * steps in Sprint 7; an introduction, nine steps, two hops and the candidate
  * placement in v3, 13 Oct 2026): how the typed citations resolve, which
  * links steps 5 and 7 follow and where they go, the stored state and its
- * closing-card flag, the counted events and the v3 -> 1-7 mapping, which
+ * closing-card flag, the counted events (each view as itself, 0-9), which
  * step each page shows, the destination pages' provisions and hops, and
  * where a callout sits -- the overlap cases included.
  * Run by `npm test` (tsx --test scripts/*.test.ts).
@@ -203,19 +203,18 @@ test("a stored state survives a round trip; v2, v1, junk and anything else read 
   assert.equal(TOUR_INTRO_STEP, 0);
 });
 
-test("every view is counted as a step public.tour_events accepts (1-7): the v2 mapping, documented in tour.ts", () => {
-  assert.equal(COUNTED_STEP_MAX, 7);
-  const expected: Record<TourStep, number> = { 0: 1, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 7, 9: 7 };
-  for (const [step, counted] of Object.entries(expected)) assert.equal(countedStep(Number(step) as TourStep), counted, `step ${step}`);
-  assert.equal(viewStep("closing"), 7);
-  assert.equal(viewStep(0), 1);
-  assert.equal(viewStep(8), 7);
+test("every view is counted as itself (0-9), what public.tour_events accepts since migration 20261013034619", () => {
+  assert.equal(COUNTED_STEP_MAX, 9);
+  for (const step of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const) assert.equal(countedStep(step), step, `step ${step}`);
+  assert.equal(viewStep("closing"), 9);
+  assert.equal(viewStep(0), 0);
+  assert.equal(viewStep(8), 8);
   assert.equal(viewStep(3), 3);
 });
 
 test("a run counts tour_start and every counted step once, then tour_complete on the way back to VI.C", () => {
   const fresh = startTour(SID);
-  assert.deepEqual(tags(fresh.events), ["tour_start:1", "tour_step:1"]);
+  assert.deepEqual(tags(fresh.events), ["tour_start:0", "tour_step:0"]);
   assert.deepEqual(fresh.state, newTourState(SID));
 
   let s = fresh.state;
@@ -227,13 +226,12 @@ test("a run counts tour_start and every counted step once, then tour_complete on
     assert.equal(s.step, step);
     assert.equal(s.done, false, `step ${step} has no closing card`);
   }
-  // Step 1 counts with the introduction (both 1); steps 8 and 9 count with 7. Reaching 9 is not
-  // the completion: that is the arrival back at VI.C.
-  assert.deepEqual(seen, ["tour_step:2", "tour_step:3", "tour_step:4", "tour_step:5", "tour_step:6", "tour_step:7"]);
+  // Every step once, as itself. Reaching 9 is not the completion: that is the arrival back at VI.C.
+  assert.deepEqual(seen, ["tour_step:1", "tour_step:2", "tour_step:3", "tour_step:4", "tour_step:5", "tour_step:6", "tour_step:7", "tour_step:8", "tour_step:9"]);
   assert.deepEqual(s.reported, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], "every view reached is remembered, counted or not");
 
   const done = completeTour(s);
-  assert.deepEqual(tags(done.events), ["tour_complete:7"]);
+  assert.deepEqual(tags(done.events), ["tour_complete:9"]);
   assert.equal(done.state.done, true);
   assert.equal(done.state.step, 9);
   // Arriving at VI.C again does not count a second completion.
@@ -257,9 +255,9 @@ test("a run counts tour_start and every counted step once, then tour_complete on
 
   // A run that skipped a view (a reload landed it further on) still counts the step it reached.
   const jump = advanceTour(newTourState(SID), 8);
-  assert.deepEqual(tags(jump.events), ["tour_step:7"]);
-  assert.deepEqual(advanceTour(jump.state, 9).events, [], "9 counts as 7, already sent");
-  assert.deepEqual(advanceTour(jump.state, 7).events, [], "so does 7");
+  assert.deepEqual(tags(jump.events), ["tour_step:8"]);
+  assert.deepEqual(tags(advanceTour(jump.state, 9).events), ["tour_step:9"], "the next view counts on its own");
+  assert.deepEqual(advanceTour(jump.state, 8).events, [], "a view reached before is not counted again");
 });
 
 test("completeTour only acts at step 9; leaving step 9 puts the closing card away", () => {
@@ -338,21 +336,21 @@ test("the destination pages: the provision from the location, the subtree, I.C.1
   assert.equal(pickSummaryRow(IC1, []), null);
 });
 
-test("the event route accepts the five events with a step 1-7 and a session id, nothing else", () => {
-  const ok = { event: "tour_start", step: 1, sid: SID };
+test("the event route accepts the five events with a step 0-9 and a session id, nothing else", () => {
+  const ok = { event: "tour_start", step: 0, sid: SID };
   assert.deepEqual(parseTourEvent(ok), ok);
   for (const event of ["tour_step", "tour_complete", "tour_trial_click", "tour_skip"]) {
     assert.ok(parseTourEvent({ ...ok, event }), event);
   }
-  for (const step of [1, 2, 3, 4, 5, 6, 7]) assert.ok(parseTourEvent({ ...ok, event: "tour_step", step }), `step ${step}`);
-  assert.deepEqual(parseTourEvent({ ...ok, event: "tour_complete", step: 7 }), { ...ok, event: "tour_complete", step: 7 });
+  for (const step of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) assert.ok(parseTourEvent({ ...ok, event: "tour_step", step }), `step ${step}`);
+  assert.deepEqual(parseTourEvent({ ...ok, event: "tour_complete", step: 9 }), { ...ok, event: "tour_complete", step: 9 });
   for (const bad of [
     null,
     "tour_start",
     { ...ok, event: "pageview" },
-    { ...ok, step: 0 },
-    { ...ok, step: 8 },
-    { ...ok, step: 9 },
+    { ...ok, step: -1 },
+    { ...ok, step: 10 },
+    { ...ok, step: 1.5 },
     { ...ok, step: "2" },
     { ...ok, sid: "short" },
     { ...ok, sid: "has spaces in it" },

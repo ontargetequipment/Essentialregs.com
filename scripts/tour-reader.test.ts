@@ -304,7 +304,9 @@ const GP05_PATH = "/regulations/gp05?tour=1";
 /** The jump box asks the server ~150 ms after the last keystroke; wait that and the answer. */
 const JUMP_WAIT = 260;
 const rowIn = (document: Document, id: string) => document.querySelector<HTMLElement>(`#doc > [id="${id}"]`)!;
-const START = ["tour_start:1", "tour_step:1"];
+const START = ["tour_start:0", "tour_step:0"];
+/** ... and Start taken: step 1 counted on its own. */
+const STARTED = [...START, "tour_step:1"];
 
 test("the introduction, then step 1 only through the jump box; steps 2-4 move as the visitor acts; step 5 is taken, and moves nothing", async (t) => {
   const r = await boot({ path: GP05_PATH, body: gp05, page: "reader" });
@@ -322,11 +324,11 @@ test("the introduction, then step 1 only through the jump box; steps 2-4 move as
     assert.ok($('[data-testid="tour-start"]').className.includes("bg-accent"), "the green button");
   });
 
-  await t.test("Start: step 1, counted with the introduction (no new event), the spotlight on the jump box", async () => {
+  await t.test("Start: step 1, counted on its own, the spotlight on the jump box", async () => {
     await click($('[data-testid="tour-start"]'));
     assert.equal(step(), "1");
     assert.equal($('[data-testid="tour-count"]').textContent, "Step 1 of 9");
-    assert.deepEqual(tags(), START);
+    assert.deepEqual(tags(), STARTED);
     assert.equal($("#jumpbox").getAttribute("data-tour-target"), "1");
     assert.equal(document.activeElement, $("#jumpbox"));
     assert.match($('[data-testid="tour-callout"]').textContent ?? "", /Type sampling in the box\. One match comes up/);
@@ -350,7 +352,7 @@ test("the introduction, then step 1 only through the jump box; steps 2-4 move as
     await settle();
     assert.equal(window.location.hash, "#sec-gp05-VI-D");
     assert.equal(step(), "1", "Forward onto VI.D");
-    assert.deepEqual(tags(), START);
+    assert.deepEqual(tags(), STARTED);
   });
 
   await t.test("sampling typed but nothing picked: still step 1; the match for VI.D is offered, with the spotlight on it", async () => {
@@ -374,7 +376,7 @@ test("the introduction, then step 1 only through the jump box; steps 2-4 move as
     await settle();
     assert.equal(step(), "2");
     assert.equal($('[data-testid="tour-count"]').textContent, "Step 2 of 9");
-    assert.deepEqual(tags(), [...START, "tour_step:2"]);
+    assert.deepEqual(tags(), [...STARTED, "tour_step:2"]);
     assert.equal(rowIn(document, "sec-gp05-VI-D").getAttribute("data-tour-target"), "2");
     assert.equal($("#jumpbox").hasAttribute("data-tour-target"), false, "the spotlight left the box");
     assert.equal(document.querySelectorAll("[data-tour-target]").length, 1, "one spotlight at a time");
@@ -425,8 +427,8 @@ test("the introduction, then step 1 only through the jump box; steps 2-4 move as
     assert.equal($("#return-trail").hidden, true);
     assert.equal(window.location.hash, "");
     assert.equal(rowIn(document, "sec-gp05-VI-D").querySelector<HTMLDetailsElement>(":scope > details.summary-panel")!.open, false);
-    assert.equal(tags().filter((x) => x === "tour_start:1").length, 1);
-    assert.deepEqual(tags(), [...START, "tour_step:2", "tour_step:3", "tour_step:4", "tour_step:5"]);
+    assert.equal(tags().filter((x) => x === "tour_start:0").length, 1);
+    assert.deepEqual(tags(), [...STARTED, "tour_step:2", "tour_step:3", "tour_step:4", "tour_step:5"]);
     await click($('[data-testid="tour-start"]'));
     assert.equal(step(), "1");
     assert.equal(document.activeElement, $("#jumpbox"));
@@ -478,7 +480,7 @@ const AT = (step: number, extra: Record<string, unknown> = {}) => ({
 test("a tour at step 9 shows the closing card at VI.C (and step 5 elsewhere); the completion is counted once; Explore ends it in place", async (t) => {
   const stored = AT(9);
 
-  await t.test("arrived back at VI.C: the closing card, tour_complete:7 once, the spotlight on its button", async () => {
+  await t.test("arrived back at VI.C: the closing card, tour_complete:9 once, the spotlight on its button", async () => {
     const r = await boot({ path: `/regulations/gp05?tour=1#sec-gp05-VI-C`, body: gp05, page: "reader", stored });
     assert.equal(r.step(), "closing");
     assert.equal(r.$('[data-testid="tour-count"]').textContent, "Walkthrough complete");
@@ -491,14 +493,14 @@ test("a tour at step 9 shows the closing card at VI.C (and step 5 elsewhere); th
     assert.equal(r.$('[data-testid="tour-trial"]').getAttribute("href"), "/signup");
     assert.equal(r.$('[data-testid="tour-trial"]').className, "tour-secondary");
     assert.equal(r.$('[data-testid="tour-skip"]').textContent, "End tour");
-    assert.deepEqual(r.tags(), ["tour_complete:7"]);
+    assert.deepEqual(r.tags(), ["tour_complete:9"]);
     assert.equal(r.stored().done, true);
     assert.equal(r.$("#return-trail").hidden, true, "arriving draws no Back bar");
 
     // It stays wherever the reader goes afterwards; nothing is counted again.
     await r.click(r.$('#sidebar a.nav-link[href="#sec-gp05-VI-D"]'));
     assert.equal(r.step(), "closing");
-    assert.deepEqual(r.tags(), ["tour_complete:7"]);
+    assert.deepEqual(r.tags(), ["tour_complete:9"]);
 
     // Restart from it: the introduction, no Back bar (the jump above left one), nothing counted.
     assert.equal(r.$("#return-trail").hidden, false);
@@ -507,7 +509,7 @@ test("a tour at step 9 shows the closing card at VI.C (and step 5 elsewhere); th
     assert.equal(r.stored().done, false);
     assert.equal(r.$("#return-trail").hidden, true);
     assert.equal(r.window.location.hash, "");
-    assert.deepEqual(r.tags(), ["tour_complete:7"]);
+    assert.deepEqual(r.tags(), ["tour_complete:9"]);
     await r.stop();
   });
 
@@ -523,7 +525,7 @@ test("a tour at step 9 shows the closing card at VI.C (and step 5 elsewhere); th
     assert.equal(r.window.location.pathname, "/regulations/gp05");
     assert.equal(r.document.querySelectorAll("[data-tour-target]").length, 0);
     assert.ok(!r.messages.some((m) => /navigation/i.test(m)), "no page load");
-    assert.deepEqual(r.tags(), ["tour_complete:7"], "Explore is not a skip");
+    assert.deepEqual(r.tags(), ["tour_complete:9"], "Explore is not a skip");
     await r.stop();
   });
 
@@ -535,7 +537,7 @@ test("a tour at step 9 shows the closing card at VI.C (and step 5 elsewhere); th
     await r.keydown(r.$("#jumpbox"), "Enter");
     await r.settle();
     assert.equal(r.step(), "closing");
-    assert.deepEqual(r.tags(), ["tour_complete:7"]);
+    assert.deepEqual(r.tags(), ["tour_complete:9"]);
     await r.stop();
   });
 
@@ -624,7 +626,7 @@ test("a subscriber's Regulation 7 reader: 5 -> 6 on arrival, 6 -> 7 on a subtree
     assert.equal(document.activeElement, document.querySelector(`#doc > [id="${ID}"]`));
     assert.equal(step(), "8");
     assert.equal($('[data-testid="tour-count"]').textContent, "Step 8 of 9");
-    assert.deepEqual(tags(), ["tour_step:6", "tour_step:7"], "8 counts as 7, already sent");
+    assert.deepEqual(tags(), ["tour_step:6", "tour_step:7", "tour_step:8"], "the arrival at I.D counts step 8");
     assert.equal($("#return-trail").hidden, false);
     assert.equal(($("#return-trail-back") as HTMLElement).hidden, false);
     assert.equal($("#return-trail-label").textContent, "I.C.1.c.");
@@ -638,7 +640,7 @@ test("a subscriber's Regulation 7 reader: 5 -> 6 on arrival, 6 -> 7 on a subtree
     assert.equal(window.location.hash, `#${IC1}-c`);
     assert.equal(step(), "9");
     assert.equal($('[data-testid="tour-count"]').textContent, "Step 9 of 9");
-    assert.deepEqual(tags(), ["tour_step:6", "tour_step:7"]);
+    assert.deepEqual(tags(), ["tour_step:6", "tour_step:7", "tour_step:8", "tour_step:9"]);
     assert.equal(($("#return-trail-ext") as HTMLElement).hidden, false);
     assert.equal($("#return-trail-ext").getAttribute("data-tour-target"), "9", "the reader's bar to GP05 is step 9's anchor");
     assert.equal(($("#return-trail-back") as HTMLElement).hidden, true);
@@ -662,7 +664,7 @@ test("a subscriber's Regulation 7 reader: 5 -> 6 on arrival, 6 -> 7 on a subtree
     assert.equal(window.location.search, "");
     assert.equal($("#return-trail").hidden, true);
     assert.equal(($("#return-trail-ext") as HTMLElement).hidden, true);
-    assert.ok(tags().includes("tour_skip:7"));
+    assert.ok(tags().includes("tour_skip:9"), "the step shown, 9, is what the skip carries");
     await settle();
   });
   await r.stop();
@@ -704,7 +706,7 @@ test("the visitor's focused previews (floating): 5 -> 6 on arrival at I.C.1, 6 -
     const r = await boot({ path: idPath, shell: "id", page: "destination", placement: "floating", stored: AT(7) });
     assert.equal(r.step(), "8");
     assert.equal(r.$('[data-testid="tour-count"]').textContent, "Step 8 of 9");
-    assert.deepEqual(r.tags(), [], "8 counts as 7, already sent");
+    assert.deepEqual(r.tags(), ["tour_step:8"], "the arrival counts step 8 on its own");
     assert.equal(r.$("#preview-return").getAttribute("data-tour-target"), "8");
     assert.equal(r.$("#preview-return").textContent, "← Back to Regulation 7 · I.C.1");
     assert.match(r.callout()?.textContent ?? "", /Click Back to Regulation 7 I\.C\.1\./);
@@ -726,7 +728,7 @@ test("the visitor's focused previews (floating): 5 -> 6 on arrival at I.C.1, 6 -
     const r = await boot({ path: ic1Path, page: "destination", placement: "floating", stored: AT(8) });
     assert.equal(r.step(), "9");
     assert.equal(r.$('[data-testid="tour-count"]').textContent, "Step 9 of 9");
-    assert.deepEqual(r.tags(), []);
+    assert.deepEqual(r.tags(), ["tour_step:9"]);
     assert.equal(r.$("#preview-return").getAttribute("data-tour-target"), "9");
     assert.match(r.callout()?.textContent ?? "", /Click Back to GP05 VI\.C\./);
     await r.stop();

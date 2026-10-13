@@ -556,7 +556,7 @@ test.describe("signed in", () => {
     await expectNoBackBar(page);
     await onThePage();
     await shot(page, testInfo, "tour-subscriber-closing");
-    await sawEvent(events, "tour_complete:7");
+    await sawEvent(events, "tour_complete:9");
     expect(tagsOf(events)).toEqual(FULL_RUN);
     expect(tagsOf(events)).not.toContain("tour_trial_click:7");
     // Explore ends it where it is.
