@@ -47,3 +47,4 @@ export async function fetchSubtreeRows(reg: string, id: string): Promise<Subtree
   })[];
   return raw.map((r) => withReviewerKind(r)) as SubtreeRow[];
 }
+

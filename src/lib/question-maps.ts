@@ -206,6 +206,15 @@ export type QuestionMap = {
   factors: IntroSentence[];
   /** Canonical rows, in display order. Every id must exist in provisions (corpus_qa.sql check 20). */
   provisions: MapProvision[];
+  /**
+   * One curated line per group for the research map's "Why it matters"
+   * cell (v3.1, 13 Oct 2026; ask-map-rows.ts), used where no sentence of
+   * the introduction cites the group's provisions. Written by hand, never
+   * generated: a reviewed description of what the group decides. OTHER_GROUP
+   * may have one too; it must hold for any question, since the hits there
+   * vary.
+   */
+  notes?: Partial<Record<MapGroup | typeof OTHER_GROUP, string>>;
   /** The facets this map branches on, with the title to use when the question states one value. */
   facets?: Partial<Record<FacetName, { titles: Record<string, string> }>>;
   /**
@@ -451,6 +460,20 @@ export const QUESTION_MAPS: QuestionMap[] = [
       WINDOW_MODIFY,
       s("Each subpart sets its own storage vessel test in paragraph (e) of its applicability section: a single vessel with a potential for VOC emissions of 6 tons per year or more under Subparts OOOO and OOOOa, a tank battery with a potential for VOC emissions of 6 tons per year or more or for methane emissions of 20 tons per year or more under Subpart OOOOb, and a tank battery with a potential for methane emissions of 20 tons per year or more under Subpart OOOOc.", "sec-oooo-60.5365-(e)", "sec-ooooa-60.5365a-(e)", "sec-oooob-60.5365b-(e)-(1)", "sec-ooooc-60.5386c-(e)-(1)"),
     ],
+    // The research map's "Why it matters" where the introduction says
+    // nothing about a group (v3.1, 13 Oct 2026): the /sample example printed
+    // a canonical row's short reason for Definitions and a dash for Other
+    // matches (the ninth and tenth reviews).
+    notes: {
+      "Colorado permitting and APEN":
+        "Regulation 3 decides whether the tank battery must file an APEN and hold a construction permit, or is exempt from either, before any emission standard applies.",
+      Definitions:
+        "Whether a vessel is a storage tank, and whether it sits at a well production facility, decides which Colorado standards reach it; Regulation 7 Part B defines the terms once for Section I and again for Section II, and the NSPS define storage vessel and tank battery for the federal rules.",
+      "ECMC rules":
+        "The Commission's own rules for the tanks, flowlines and venting at the site apply alongside the air regulations; an air permit does not satisfy them.",
+      [OTHER_GROUP]:
+        "Provisions the search matched by meaning or by your words outside the groups above; read each against the question before relying on it.",
+    },
     provisions: [
       // Colorado permitting and APEN
       { id: "sec-3-A-II-A", group: "Colorado permitting and APEN", why: "APENs are required for new, modified and existing sources unless exempt under II.D" },
@@ -542,6 +565,20 @@ export const QUESTION_MAPS: QuestionMap[] = [
       s("Section II.D.3 also turns on whether a building unit or designated outside activity area is located within 1,320 feet of the facility.", "sec-7-B-II-D-3", "sec-7-B-II-D-3-b"),
       s("40 CFR 63 Subpart HH is not in this corpus, so this map has no federal NESHAP group."),
     ],
+    // The research map's "Why it matters" where the introduction says
+    // nothing about a group (v3.1, 13 Oct 2026): the /sample example printed
+    // a canonical row's short reason for Definitions and a dash for Other
+    // matches (the ninth and tenth reviews).
+    notes: {
+      "Colorado permitting and APEN":
+        "Regulation 3 decides whether the tank battery must file an APEN and hold a construction permit, or is exempt from either, before any emission standard applies.",
+      Definitions:
+        "Whether a vessel is a storage tank, and whether it sits at a well production facility, decides which Colorado standards reach it; Regulation 7 Part B defines the terms once for Section I and again for Section II, and the NSPS define storage vessel and tank battery for the federal rules.",
+      "ECMC rules":
+        "The Commission's own rules for the tanks, flowlines and venting at the site apply alongside the air regulations; an air permit does not satisfy them.",
+      [OTHER_GROUP]:
+        "Provisions the search matched by meaning or by your words outside the groups above; read each against the question before relying on it.",
+    },
     provisions: [
       // Colorado permitting and APEN
       { id: "sec-3-A-II-A", group: "Colorado permitting and APEN", why: "APENs are required for new, modified and existing sources unless exempt under II.D" },

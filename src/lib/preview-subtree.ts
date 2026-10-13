@@ -24,6 +24,13 @@
  *   3. renderSubtreeHtml re-applies layer 2 itself, so a caller cannot render
  *      rows it has not fenced, and links in the text are rewritten so a click
  *      never reaches a reader that would 404 for a visitor.
+ *
+ * What is left out is said (v3.1, 13 Oct 2026): where the subtree has rows
+ * the visitor is not shown, the page carries the eyebrow "Selected provisions
+ * — not the complete section" and, under each shown row that locked rows
+ * follow, "… N more provisions in the full corpus" (omittedAfter). N comes
+ * from a service-role read of ids and order only (fetchSubtreeShape): a
+ * locked row is counted, never named or quoted.
  */
 import sanitizeHtmlLib from "sanitize-html";
 import {
@@ -301,6 +308,71 @@ export function rewriteSubtreeLinks(html: string, ctx: LinkContext): string {
 }
 
 // ---------------------------------------------------------------------------
+// What is left out
+// ---------------------------------------------------------------------------
+
+/**
+ * One row of the subtree as the omitted-row count reads it (v3.1, 13 Oct
+ * 2026): its id and order, public or not. fetchSubtreeShape reads these two
+ * columns of every row below the focused one with the service role; no text
+ * and no title ever come this way, so a locked row contributes a count and
+ * nothing else.
+ */
+export type SubtreeShape = { id: string; sort_order?: number | null };
+
+/** The eyebrow above an excerpt that leaves locked rows out. */
+export const PARTIAL_EXCERPT_EYEBROW = "Selected provisions — not the complete section";
+
+/** The marker printed where `n` locked rows are left out. */
+export function omittedMarkerText(n: number): string {
+  return `… ${n} more provision${n === 1 ? "" : "s"} in the full corpus`;
+}
+
+export type OmittedRows = {
+  /** For a shown row's id, how many subtree rows follow it in document order and are not shown, up to the next shown row. */
+  after: Map<string, number>;
+  /** All of them. 0 when every row of the subtree is shown (or nothing is). */
+  total: number;
+};
+
+/**
+ * Where the subtree's locked rows are, as the page shows it. Walks the whole
+ * subtree (`shape`) in document order -- sort_order, then id; the focused row
+ * first whatever its order -- and counts, for each shown row, the rows that
+ * follow it and are not among `shownIds`, until the next shown row. The
+ * count lands on the shown row the omitted rows come after, which is where
+ * the marker reads right: a row whose own text ends in a lead-in ("if the
+ * following conditions are met:") and whose children are locked gets its
+ * marker directly under it. A subtree whose focused row is not shown counts
+ * nothing: the page shows nothing of it.
+ */
+export function omittedAfter(shape: readonly SubtreeShape[], shownIds: readonly string[], focusedId: string): OmittedRows {
+  const shown = new Set(shownIds);
+  const after = new Map<string, number>();
+  if (!shown.has(focusedId)) return { after, total: 0 };
+  const seen = new Set<string>([focusedId]);
+  const rows = shape
+    .filter((r) => inSubtree(r.id, focusedId) && !seen.has(r.id) && !!seen.add(r.id))
+    .sort((a, b) => (a.sort_order ?? Number.MAX_SAFE_INTEGER) - (b.sort_order ?? Number.MAX_SAFE_INTEGER) || a.id.localeCompare(b.id));
+  let current = focusedId;
+  let total = 0;
+  for (const r of rows) {
+    if (shown.has(r.id)) {
+      current = r.id;
+      continue;
+    }
+    after.set(current, (after.get(current) ?? 0) + 1);
+    total++;
+  }
+  return { after, total };
+}
+
+/** The marker as the row carries it: in flow, under the row's text, before its summary panel; "" for nothing left out there. */
+export function omittedMarkerHtml(n: number | undefined): string {
+  return n ? `<p class="omitted-rows" data-omitted="${n}">${escapeHtml(omittedMarkerText(n))}</p>` : "";
+}
+
+// ---------------------------------------------------------------------------
 // The rows
 // ---------------------------------------------------------------------------
 
@@ -351,6 +423,8 @@ export type SubtreeRender = {
   ids: string[];
   /** The children of #preview-doc; "" when nothing may be shown. */
   html: string;
+  /** How many rows of the subtree are left out (omittedAfter's total): above 0 the page carries PARTIAL_EXCERPT_EYEBROW. 0 without `shape`. */
+  omitted: number;
 };
 
 export type SubtreeOptions = {
@@ -369,6 +443,12 @@ export type SubtreeOptions = {
   tour?: boolean;
   /** The hops behind this page (previewReturnLink's `chain`): same-document links carry them on (targetHref). */
   chain?: readonly string[];
+  /**
+   * Every row below the focused one, public or not, as ids and order only
+   * (fetchSubtreeShape): what the omitted-row markers are counted from
+   * (omittedAfter). Omitted, or empty: no markers and `omitted` 0.
+   */
+  shape?: readonly SubtreeShape[];
 };
 
 /**
@@ -386,7 +466,7 @@ export type SubtreeOptions = {
  */
 export function renderSubtreeHtml(rows: readonly SubtreeRow[], opts: SubtreeOptions): SubtreeRender {
   const fenced = publicSubtree(rows, opts.focusedId);
-  if (fenced.length === 0) return { ids: [], html: "" };
+  if (fenced.length === 0) return { ids: [], html: "", omitted: 0 };
 
   const key = regKeyOf(opts.focusedId) ?? opts.reg;
   const gated = gatePublicSummaries(fenced, new Map([[key, opts.pendingSummaries]])).map((r) => ({
@@ -405,6 +485,8 @@ export function renderSubtreeHtml(rows: readonly SubtreeRow[], opts: SubtreeOpti
   const byId = new Map(gated.map((r) => [r.id, r]));
   const depths = subtreeDepths(gated, opts.focusedId);
   const links: LinkContext = { ids, reg: key, focusedId: opts.focusedId, tour: opts.tour === true, chain: opts.chain };
+  // Where locked rows are left out (v3.1): a marker under the row they follow.
+  const omitted = omittedAfter(opts.shape ?? [], Array.from(ids), opts.focusedId);
 
   const html = gated
     .map((p) => {
@@ -427,10 +509,10 @@ export function renderSubtreeHtml(rows: readonly SubtreeRow[], opts: SubtreeOpti
       const text = withItemIdBadge(promoteHeadingParagraph(rewriteSubtreeLinks(p.full_text, links)), p.citation);
       return `<div id="${escapeHtml(p.id)}" class="item depth-${depths.get(p.id)}${isFedRoot ? " fed-block" : ""}" data-citation="${escapeHtml(
         p.citation
-      )}">${text}${panel}</div>`;
+      )}">${text}${omittedMarkerHtml(omitted.after.get(p.id))}${panel}</div>`;
     })
     .join("");
-  return { ids: gated.map((r) => r.id), html };
+  return { ids: gated.map((r) => r.id), html, omitted: omitted.total };
 }
 
 /** What renderPopupRows returns: the parts of a public row's citation popup. */

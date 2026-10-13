@@ -23,14 +23,17 @@ import { splitSentences, summaryOverview, summaryParagraphs, titleWithoutCitatio
  *                "sec-7-B-I-D"). The sentence that cites the most of the
  *                group's provisions wins; a sentence is used for one row only,
  *                the strongest pairing first.
- *   2. "map"     else the `why` of the group's first canonical row, the same
+ *   2. "note"    else the map's curated line for the group (QuestionMap.notes,
+ *                v3.1, 13 Oct 2026): written by hand for the groups whose
+ *                cell read weakly on /sample (a canonical row's short reason
+ *                for Definitions, a dash for Other matches).
+ *   3. "map"     else the `why` of the group's first canonical row, the same
  *                line its card prints after "Why it's here:".
- *   3. "summary" else the first sentence of the overview of the top
+ *   4. "summary" else the first sentence of the overview of the top
  *                provision's summary (the overview the reader prints), only
  *                when that summary was approved or edited by the automated
  *                review -- the caller decides and passes `summaryOf`.
- *   otherwise no text: the cell prints a dash. The groups themselves have no
- *   description in question-maps.ts, so there was nothing to prefer there.
+ *   otherwise no text: the cell prints a dash.
  */
 
 /** The line printed above the map. Same sentence as the pricing page's Ask bullet (plan-includes.ts). */
@@ -51,7 +54,7 @@ export type AskMapProvision = {
   href: string;
 };
 
-export type AskMapWhySource = "intro" | "map" | "summary";
+export type AskMapWhySource = "intro" | "note" | "map" | "summary";
 
 export type AskMapRow = {
   /** The group's name: a MapGroup or "Other matches". */
@@ -88,7 +91,7 @@ export function summaryFirstSentence(summary: string | null | undefined): string
  * may be quoted (approved or edited).
  */
 export function askMapRows<T extends GroupableHit & { citation: string }>(args: {
-  map: Pick<QuestionMap, "factors">;
+  map: Pick<QuestionMap, "factors" | "notes">;
   grouped: Pick<GroupedHits<T>, "groups" | "other">;
   source: (id: string) => AskMapSource | undefined;
   hrefFor: (row: { id: string; reg_key: string | null }) => string;
@@ -144,7 +147,9 @@ export function askMapRows<T extends GroupableHit & { citation: string }>(args: 
   return drafts.map((d, row) => {
     const i = introFor.get(row);
     let why: AskMapRow["why"] = null;
+    const note = map.notes?.[d.component as keyof NonNullable<QuestionMap["notes"]>];
     if (i !== undefined) why = { text: map.factors[i].text, source: "intro" };
+    else if (note) why = { text: note, source: "note" };
     else if (d.whyMap) why = { text: d.whyMap, source: "map" };
     else {
       for (const p of d.provisions) {

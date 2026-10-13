@@ -104,15 +104,27 @@ export const TOUR_COPY = {
     "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about a minute.",
   introCount: "Guided walkthrough",
   start: "Start",
-  scenario: "You run storage tanks under GP05 using site-specific emission factors. How often do you have to sample?",
+  /**
+   * The fictional facility is one row of GP05 VI.D's Table 2 (Sampling
+   * Frequencies; columns Effective Date of Registration | Classification |
+   * Permitted VOC Emissions | Frequency): registered on or after Issuance 5,
+   * Severe Ozone Non-Attainment, greater than or equal to 15 TPY -> Annually,
+   * the table's seventh and last body row (v3.1, 13 Oct 2026). Step 2 says the
+   * answer out loud (step2Answer).
+   */
+  scenario:
+    "You run a produced-water tank battery under GP05, registered on or after Issuance 5, in a Severe ozone non-attainment area, with permitted VOC emissions of 20 tons per year, using site-specific emission factors. How often do you have to sample?",
   /** "sampling" matches exactly one GP05 row (VI.D, the only one whose text has sample/sampling; search_provisions_in_document stems both). */
   step1: "Type sampling in the box. One match comes up — the site-specific sampling provision. Click it.",
   step1Docked: "Tap Contents, then type sampling in the box at the top. One match comes up — the site-specific sampling provision. Tap it.",
-  step2: "This is the regulation as issued. Table 2 below sets the parameters and frequency.",
+  step2: "This is the regulation as issued. Table 2 below sets the frequency.",
+  /** The answer to the scenario's question, from Table 2's row for the facility and VI.D's own 180-day floor. */
+  step2Answer:
+    "Table 2, row 7 (registered on or after Issuance 5, Severe Ozone Non-Attainment, permitted VOC emissions of 15 TPY or more): your facility samples annually, and VI.D adds that sampling events must be at least 180 days apart.",
   step3: "Open the plain-English summary.",
   /** Not carried by the summary panel itself (its badge tooltip says only "The source text controls"), so the callout says it. */
   officialControls: "The official text controls; the summary is a reading aid.",
-  step4: "Now jump to VI.C.",
+  step4: "Next, see how this permit pulls its control-equipment requirements from Regulation 7. Jump to VI.C.",
   step4Hint: "Type VI.C in the jump box and press Enter.",
   step4HintDocked: "Tap Contents, type VI.C and press Enter.",
   step5: "Click the Regulation 7 citation.",

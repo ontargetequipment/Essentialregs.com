@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { READER_TRAIL_RESET_EVENT } from "@/lib/reader-nav";
 import { PREVIEW_TRAIL_KEY } from "@/lib/preview-trail";
+import { OPEN_SUMMARIES_KEY } from "@/lib/open-summaries";
 import { buttonClass } from "@/lib/ui";
 import {
   CALLOUT_WIDTH,
@@ -250,15 +251,26 @@ function finish(): void {
 /**
  * Tells the reader to forget its return trail (RegulationReader listens),
  * and empties the preview's trail of hops (PreviewReturn re-reads it on the
- * same event), so nothing of this run's way back shows in the next one.
+ * same event) and the summaries it remembers as open (open-summaries.ts,
+ * v3.1), so nothing of this run's way back shows in the next one.
  */
 function resetTrails(): void {
+  forgetOpenSummaries();
   try {
     session()?.removeItem(PREVIEW_TRAIL_KEY);
   } catch {
     /* blocked storage: nothing stored to forget */
   }
   window.dispatchEvent(new Event(READER_TRAIL_RESET_EVENT));
+}
+
+/** The preview pages re-open the summaries a visitor opened (PreviewSummaryMemory); a run of the tour starts and ends with none. */
+function forgetOpenSummaries(): void {
+  try {
+    session()?.removeItem(OPEN_SUMMARIES_KEY);
+  } catch {
+    /* blocked storage: nothing stored to forget */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -530,6 +542,9 @@ export function ReaderTour({
   // reload, or Back from a destination page) resumes instead.
   useEffect(() => {
     if (page !== "reader" || getState()) return;
+    // A panel opened on a preview before this run would otherwise re-open at
+    // step 6 and count as the step done.
+    forgetOpenSummaries();
     const fresh = startTour(newSessionId());
     saveState(fresh.state);
     for (const e of fresh.events) sendTourEvent(e, fresh.state.sid);
@@ -1084,7 +1099,14 @@ function StepBody({ view, docked, placement }: { view: TourView; docked: boolean
         </>
       );
     case 2:
-      return <p className="tour-text">{TOUR_COPY.step2}</p>;
+      return (
+        <>
+          <p className="tour-text">{TOUR_COPY.step2}</p>
+          <p className="tour-text" data-testid="tour-answer">
+            {TOUR_COPY.step2Answer}
+          </p>
+        </>
+      );
     case 3:
       return <p className="tour-text">{TOUR_COPY.step3}</p>;
     case 4:

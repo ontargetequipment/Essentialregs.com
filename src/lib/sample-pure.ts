@@ -62,6 +62,8 @@ export type SampleLabel = {
   reg_key: string | null;
   jurisdiction_level: "state" | "federal" | "county";
   context_path: string | null;
+  /** The row is public (v3.1, 13 Oct 2026): its focused preview shows its text, so its card is not a locked one. */
+  is_public?: boolean | null;
 };
 
 /** The summary columns, hydrated only for rows a visitor may read (and only after the public summary gate). */
@@ -146,6 +148,18 @@ export function sampleIds(snapshot: SampleSnapshot = SNAPSHOT): string[] {
  */
 export function isOpenForViewer(regKey: string | null, hasAccess: boolean): boolean {
   return hasAccess || isPublicReaderReg(regKey);
+}
+
+/**
+ * Whether a result's card is an open one for this viewer: the viewer may open
+ * its regulation (isOpenForViewer), or the row itself is public (v3.1, 13 Oct
+ * 2026: the eight Regulation 7 rows the Ask example cites, migration
+ * 20261013044338), so the focused preview it links to shows its text rather
+ * than the subscribe wall. The card's destination is unchanged
+ * (sampleHref); only the lock goes.
+ */
+export function isOpenCard(row: Pick<SampleLabel, "reg_key" | "is_public"> | undefined, regKey: string | null, hasAccess: boolean): boolean {
+  return isOpenForViewer(regKey, hasAccess) || row?.is_public === true;
 }
 
 /** Where a result opens: the reader if the viewer may open it, else the focused preview (provisionDestination). */
