@@ -1066,20 +1066,23 @@ test.describe("anonymous", () => {
 
   test("a logged-out search that GP05 cannot answer says how many provisions the full library has; a nonsense search says neither", async ({ page }) => {
     // Sprint 8, 11 Oct 2026 (src/lib/library-count.ts, migration
-    // 20261011210829_count_provisions_matching). "dehydrator" is in no GP05
-    // row (pipeline/sources/GP05.txt has none) and in no other public row, and
-    // it is in Regulation 7, ECMC and the NSPS subparts, so the free search
-    // finds nothing and the count is above 0. It passes against production once
-    // the migration is applied; before that the RPC does not exist, the line is
-    // hidden by design, and this step fails on the missing line.
-    const term = "dehydrator";
+    // 20261011210829_count_provisions_matching). "glycol dehydrator" is in no
+    // GP05 row (pipeline/sources/GP05.txt has neither word) and in no other
+    // public row, and it is in Regulation 7, ECMC and the NSPS subparts, so the
+    // free search finds nothing and the count is above 0 (38 on 13 Oct 2026). It
+    // was "dehydrator" until walkthrough v3.1 made Regulation 7 I.B.34 public,
+    // whose "well production facility" definition names dehydration. It passes
+    // against production once the migration is applied; before that the RPC
+    // does not exist, the line is hidden by design, and this step fails on the
+    // missing line.
+    const term = "glycol dehydrator";
     const res = await page.goto(`/search?q=${encodeURIComponent(term)}`);
     expect(res?.status()).toBe(200);
     const main = page.getByRole("main");
     await expect(main.getByText(`No results for “${term}”`)).toBeVisible();
     const line = main.getByTestId("library-count");
     await expect(line).toBeVisible();
-    const m = /^No matches in GP05\. The full library has ([\d,]+) provisions? matching “dehydrator”\./.exec((await line.innerText()).replace(/\s+/g, " "));
+    const m = /^No matches in GP05\. The full library has ([\d,]+) provisions? matching “glycol dehydrator”\./.exec((await line.innerText()).replace(/\s+/g, " "));
     expect(m, await line.innerText()).not.toBeNull();
     expect(Number(m![1].replace(/,/g, ""))).toBeGreaterThan(0);
     await expect(line.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
