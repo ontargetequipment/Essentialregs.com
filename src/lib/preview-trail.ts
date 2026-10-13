@@ -36,6 +36,9 @@ export const PREVIEW_TRAIL_CAP = 10;
 /** One hop: the provision left behind, where its page is, and the bar's text for it ("← Back to GP05 · VI.C"). */
 export type PreviewHop = { id: string; href: string; label: string };
 
+/** What a page hands reconcilePreviewTrail: its nearest hop, as a PreviewHop; any further fields (the URL's chain) are not stored. */
+export type PreviewOrigin = Pick<PreviewHop, "id" | "href" | "label">;
+
 const isId = (s: unknown): s is string => typeof s === "string" && s.length <= 200 && PROVISION_ID.test(s) && !!regKeyOf(s);
 /** A same-site path the bar may link to: nothing that could leave the site. */
 const isHref = (s: unknown): s is string => typeof s === "string" && s.length <= 500 && /^\/[^/\\]/.test(s);
@@ -86,12 +89,13 @@ export function withFromParam(href: string, fromId: string | null | undefined): 
  *                                      the hop below it (the page it leads
  *                                      back to can then draw its own bar)
  */
-export function reconcilePreviewTrail(trail: readonly PreviewHop[], origin: PreviewHop | null, reg: string): PreviewHop[] {
+export function reconcilePreviewTrail(trail: readonly PreviewHop[], origin: PreviewOrigin | null, reg: string): PreviewHop[] {
   if (!origin) return [];
+  const hop: PreviewHop = { id: origin.id, href: origin.href, label: origin.label };
   const top = trail[trail.length - 1];
-  if (top && top.id === origin.id) return [...trail];
-  if ((regKeyOf(origin.id) ?? "").toLowerCase() !== reg.toLowerCase()) return [origin];
-  const next = [...trail, { ...origin, href: withFromParam(origin.href, top?.id) }];
+  if (top && top.id === hop.id) return [...trail];
+  if ((regKeyOf(hop.id) ?? "").toLowerCase() !== reg.toLowerCase()) return [hop];
+  const next = [...trail, { ...hop, href: withFromParam(hop.href, top?.id) }];
   return next.slice(-PREVIEW_TRAIL_CAP);
 }
 
@@ -109,10 +113,15 @@ export function popPreviewTrail(trail: readonly PreviewHop[]): PreviewHop[] {
  */
 export function previewTrailBar(
   trail: readonly PreviewHop[],
-  origin: PreviewHop | null
+  origin: PreviewOrigin | null
 ): { href: string; label: string; count: number; then: string | null } | null {
   const top = trail[trail.length - 1];
   if (!origin || !top || top.id !== origin.id) return null;
   const under = trail[trail.length - 2];
-  return { href: top.href, label: top.label, count: trail.length, then: under ? under.label : null };
+  return { href: top.href, label: top.label, count: trail.length, then: under ? hopName(under.label) : null };
+}
+
+/** "← Back to GP05 · VI.C" -> "GP05 · VI.C": the hop as the "then" part of the bar names it. */
+export function hopName(label: string): string {
+  return label.replace(/^\u2190\s*Back to\s+/, "");
 }

@@ -10,6 +10,7 @@ import {
   reconcilePreviewTrail,
   type PreviewHop,
 } from "@/lib/preview-trail";
+import type { PreviewReturn as PreviewReturnLink } from "@/lib/preview-subtree";
 
 /**
  * The focused preview's "← Back to …" bar (walkthrough v3, 13 Oct 2026).
@@ -19,13 +20,15 @@ import {
  * shows the trail's top hop with how many hops there are and where the next
  * Back goes ("← Back to Regulation 7 · I.C.1 · then GP05 · VI.C").
  *
- * The server markup and the first client render are the same (`origin`),
- * so there is nothing to hydrate differently; the trail is read after
- * mount (useSyncExternalStore, a null server snapshot) and reconciled with
- * the page's origin in an effect. Taking the link pops the top hop. The
+ * The server markup and the first client render are the same (`origin`:
+ * the URL's hops, which a same-document link carries on as repeated
+ * `from=` values, so a click before this script runs, or a browser with
+ * storage off, still finds its way back through both), so there is nothing
+ * to hydrate differently; the trail is read after mount
+ * (useSyncExternalStore, a null server snapshot) and reconciled with the
+ * page's origin in an effect. Taking the link pops the top hop. The
  * walkthrough's Restart and Skip clear the key and send
- * READER_TRAIL_RESET_EVENT, which re-reads it. Storage can be blocked: the
- * bar is then the server's, for this page only.
+ * READER_TRAIL_RESET_EVENT, which re-reads it.
  */
 
 const listeners = new Set<() => void>();
@@ -57,7 +60,7 @@ function writeTrail(trail: readonly PreviewHop[]): void {
 }
 const serverRaw = () => null;
 
-export function PreviewReturn({ origin, reg }: { origin: PreviewHop; reg: string }) {
+export function PreviewReturn({ origin, reg }: { origin: PreviewReturnLink; reg: string }) {
   const raw = useSyncExternalStore(subscribe, readRaw, serverRaw);
   const trail = parsePreviewTrail(raw);
 
@@ -68,7 +71,8 @@ export function PreviewReturn({ origin, reg }: { origin: PreviewHop; reg: string
     if (JSON.stringify(next) !== JSON.stringify(parsePreviewTrail(readRaw()))) writeTrail(next);
   }, [origin, reg]);
 
-  const bar = previewTrailBar(trail, origin);
+  // The stored trail when it vouches for this page's origin, else the URL's hops.
+  const bar = previewTrailBar(trail, origin) ?? { href: origin.href, label: origin.label, count: origin.chain.length + 1, then: origin.then };
   const onClick = useCallback(() => {
     writeTrail(popPreviewTrail(parsePreviewTrail(readRaw())));
   }, []);
@@ -77,13 +81,13 @@ export function PreviewReturn({ origin, reg }: { origin: PreviewHop; reg: string
     <a
       id="preview-return"
       data-testid="preview-return"
-      data-hops={bar ? bar.count : 1}
-      href={bar ? bar.href : origin.href}
+      data-hops={bar.count}
+      href={bar.href}
       onClick={onClick}
       className="mb-5 inline-flex min-h-11 flex-wrap items-center gap-x-1 rounded-full border border-line bg-panel px-4 text-sm font-semibold text-accent shadow-sm hover:bg-accent-soft"
     >
-      <span>{bar ? bar.label : origin.label}</span>
-      {bar && bar.then && (
+      <span>{bar.label}</span>
+      {bar.then && (
         <span className="font-normal text-muted" data-testid="preview-return-then">
           · then {bar.then}
         </span>

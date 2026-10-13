@@ -382,6 +382,10 @@ test("rewriteSubtreeLinks: a same-document link off the page carries the way bac
   assert.equal(touring["Sections I.D."], "/regulations/7/preview?p=sec-7-B-I-D&from=sec-7-B-I-C-1&tour=1");
   assert.equal(touring["I.J."], "/regulations/7/preview?p=sec-7-B-I-J&from=sec-7-B-I-C-1&tour=1");
   assert.equal(touring["GP05 VI.C"], "/regulations/gp05#sec-gp05-VI-C", "a cross-regulation link is not the tour's to change");
+  // The page's own hops ride along after its id, nearest first (the walkthrough's I.C.1 page, from GP05 VI.C).
+  const chained = hrefs(rewriteSubtreeLinks(html, { ids: new Set(SUBTREE), reg: "7", focusedId: "sec-7-B-I-C-1", tour: true, chain: ["sec-gp05-VI-C"] }));
+  assert.equal(chained["Sections I.D."], "/regulations/7/preview?p=sec-7-B-I-D&from=sec-7-B-I-C-1&from=sec-gp05-VI-C&tour=1");
+  assert.equal(chained["GP05 VI.C"], "/regulations/gp05#sec-gp05-VI-C");
   // Without a page context (the context before v3): the plain destinations.
   assert.equal(hrefs(rewriteSubtreeLinks(html, LINKS))["Sections I.D."], "/regulations/7/preview?p=sec-7-B-I-D");
   // Through the renderer: the I.C.1 subtree's own I.C.1.c citation, with the tour.
@@ -417,23 +421,30 @@ test("rewriteSubtreeLinks: the sanitiser still has the last word", () => {
 // ---------------------------------------------------------------------------
 
 test("previewReturnLink: back to a provision of ANOTHER regulation, with the tour carried", () => {
+  const one = { chain: [], then: null };
   assert.deepEqual(previewReturnLink({ from: "sec-gp05-VI-C" }, "7"), {
     id: "sec-gp05-VI-C",
     href: "/regulations/gp05#sec-gp05-VI-C",
     label: "\u2190 Back to GP05 \u00b7 VI.C",
+    ...one,
   });
   assert.deepEqual(previewReturnLink({ from: "sec-gp05-VI-C", tour: "1" }, "7"), {
     id: "sec-gp05-VI-C",
     href: "/regulations/gp05?tour=1#sec-gp05-VI-C",
     label: "\u2190 Back to GP05 \u00b7 VI.C",
+    ...one,
   });
-  // A repeated parameter: the first one; tour only for exactly "1".
-  assert.equal(previewReturnLink({ from: ["sec-gp05-VI-C", "sec-gp12-I"], tour: "yes" }, "7")?.href, "/regulations/gp05#sec-gp05-VI-C");
+  // A repeated parameter: the first one is the hop, the rest the hops behind it; tour only for exactly "1".
+  const two = previewReturnLink({ from: ["sec-gp05-VI-C", "sec-gp12-I"], tour: "yes" }, "7");
+  assert.equal(two?.href, "/regulations/gp05#sec-gp05-VI-C", "a foreign hop's page keeps its own trail; nothing is appended");
+  assert.deepEqual(two?.chain, ["sec-gp12-I"]);
+  assert.equal(two?.then, "GP12 \u00b7 I");
   // An origin in a regulation whose reader is closed goes to its focused preview.
   assert.deepEqual(previewReturnLink({ from: "sec-gp12-VI-A-1", tour: "1" }, "7"), {
     id: "sec-gp12-VI-A-1",
     href: "/regulations/gp12/preview?p=sec-gp12-VI-A-1&tour=1",
     label: "\u2190 Back to GP12 \u00b7 VI.A.1",
+    ...one,
   });
   assert.equal(previewReturnLink({ from: "sec-3-A-II-B" }, "7")?.href, "/regulations/3/preview?p=sec-3-A-II-B");
 });
@@ -444,12 +455,29 @@ test("previewReturnLink: back to a provision of THIS regulation (the walkthrough
     id: "sec-7-B-I-C-1",
     href: "/regulations/7/preview?p=sec-7-B-I-C-1",
     label: "\u2190 Back to Regulation 7 \u00b7 I.C.1",
+    chain: [],
+    then: null,
   });
   assert.deepEqual(previewReturnLink({ p: "sec-7-B-I-D", from: "sec-7-B-I-C-1", tour: "1" }, "7"), {
     id: "sec-7-B-I-C-1",
     href: "/regulations/7/preview?p=sec-7-B-I-C-1&tour=1",
     label: "\u2190 Back to Regulation 7 \u00b7 I.C.1",
+    chain: [],
+    then: null,
   });
+  // The walkthrough's I.D page: the URL carries both hops (I.C.1.c's link wrote them), so the way back to
+  // I.C.1 carries GP05 VI.C as that page's own from= -- the chain survives with no storage at all.
+  assert.deepEqual(previewReturnLink({ p: "sec-7-B-I-D", from: ["sec-7-B-I-C-1", "sec-gp05-VI-C"], tour: "1" }, "7"), {
+    id: "sec-7-B-I-C-1",
+    href: "/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C&tour=1",
+    label: "\u2190 Back to Regulation 7 \u00b7 I.C.1",
+    chain: ["sec-gp05-VI-C"],
+    then: "GP05 \u00b7 VI.C",
+  });
+  // A junk later value ends the chain there; a repeat of the hop itself too; at most FROM_CHAIN_MAX values are read.
+  assert.deepEqual(previewReturnLink({ p: "sec-7-B-I-D", from: ["sec-7-B-I-C-1", "<x>", "sec-gp05-VI-C"] }, "7")?.chain, []);
+  assert.deepEqual(previewReturnLink({ p: "sec-7-B-I-D", from: ["sec-7-B-I-C-1", "sec-7-B-I-C-1", "sec-gp05-VI-C"] }, "7")?.chain, []);
+  assert.equal(previewReturnLink({ p: "sec-7-B-I-D", from: ["sec-7-B-I-C-1", "sec-7-B-I-J", "sec-7-B-I-K", "sec-7-B-I-C-2", "sec-gp05-VI-C", "sec-gp05-VI-D"] }, "7")?.chain.length, 4);
   // The Part is left out within a document; a general permit goes by its number.
   assert.equal(sameDocumentTrailLabel("sec-7-B-I-C-1"), "Regulation 7 \u00b7 I.C.1");
   assert.equal(sameDocumentTrailLabel("sec-7-B-I-C-1-c"), "Regulation 7 \u00b7 I.C.1.c");

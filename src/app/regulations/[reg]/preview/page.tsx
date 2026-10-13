@@ -138,18 +138,20 @@ export default async function RegulationPreviewPage(
   const regName = regulationDisplayName(reg, root);
   const rootHeading = titleWithoutCitation(root.title, root.citation) || root.citation;
   const tourOn = tourRequested(searchParams[TOUR_PARAM]);
-  // The focused provision when the visitor's own session may read it (it is
-  // public), as the reader's rows; empty html when it is locked. The summary
-  // gate takes the regulation's real pending count, the one the teaser uses.
-  // With the walkthrough on, the subtree's same-document links carry it.
-  const subtree = id
-    ? renderSubtreeHtml(subtreeRows, { reg, focusedId: id, rootSourceUrl: root.source_url, pendingSummaries, tour: tourOn })
-    : { ids: [], html: "" };
   // "← Back to GP05 · VI.C" when the visitor came from a provision of another
   // regulation (?from=), or "← Back to Regulation 7 · I.C.1" from one of this
   // regulation (walkthrough v3), for a public and a locked provision alike.
   // PreviewReturn adds the hops behind it from sessionStorage once mounted.
   const returnLink = focused ? previewReturnLink(searchParams, reg) : null;
+  // The focused provision when the visitor's own session may read it (it is
+  // public), as the reader's rows; empty html when it is locked. The summary
+  // gate takes the regulation's real pending count, the one the teaser uses.
+  // The subtree's same-document links carry this page's hops on, and the
+  // walkthrough when it is on.
+  const chain = returnLink ? [returnLink.id, ...returnLink.chain] : undefined;
+  const subtree = id
+    ? renderSubtreeHtml(subtreeRows, { reg, focusedId: id, rootSourceUrl: root.source_url, pendingSummaries, tour: tourOn, chain })
+    : { ids: [], html: "" };
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">

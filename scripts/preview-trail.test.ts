@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import {
   PREVIEW_TRAIL_CAP,
   PREVIEW_TRAIL_KEY,
+  hopName,
   parsePreviewTrail,
   popPreviewTrail,
   previewTrailBar,
@@ -38,7 +39,7 @@ test("the walkthrough's two hops, there and back: GP05 VI.C -> I.C.1 preview -> 
     href: "/regulations/7/preview?p=sec-7-B-I-C-1&tour=1&from=sec-gp05-VI-C",
     label: IC1.label,
     count: 2,
-    then: VIC.label,
+    then: "GP05 \u00b7 VI.C",
   });
 
   // Back (the bar's link is taken): the top comes off; landing on I.C.1 with ?from=sec-gp05-VI-C keeps the rest.
@@ -97,6 +98,12 @@ test("a stored trail round-trips; junk, a bad id, an off-site href or a long lab
   const many = Array.from({ length: 14 }, (_, i) => ({ id: `sec-7-B-I-C-${i}`, href: "/regulations/7/preview", label: "x" }));
   assert.equal(parsePreviewTrail(JSON.stringify(many)).length, PREVIEW_TRAIL_CAP);
   assert.equal(parsePreviewTrail(JSON.stringify(many))[0].id, "sec-7-B-I-C-4");
+});
+
+test("hopName is the bar's label without its arrow", () => {
+  assert.equal(hopName("\u2190 Back to GP05 \u00b7 VI.C"), "GP05 \u00b7 VI.C");
+  assert.equal(hopName("\u2190 Back to Regulation 7 \u00b7 I.C.1"), "Regulation 7 \u00b7 I.C.1");
+  assert.equal(hopName("GP05 \u00b7 VI.C"), "GP05 \u00b7 VI.C");
 });
 
 test("withFromParam adds from= once, before the hash, and only for a provision id", () => {
