@@ -14,13 +14,16 @@
  *   [ { GP05 VI.C } ]                              back on the I.C.1 page
  *   [ ]                                            back in the GP05 reader
  *
- * The URL's `from=` stays the no-storage fallback and the only source of
- * the TOP hop: a page shows the stored trail only when the trail's top is
- * the `from=` the page arrived with (reconcilePreviewTrail makes that so on
- * every load), so a stale trail from an earlier visit can never draw a bar
- * the URL does not vouch for. What storage adds is the count and, for a
- * same-document hop, the `from=` of the page below it, so the next Back
- * lands on a page that can draw its own bar even if storage is then gone.
+ * The URL is the source of the bar's link and label: a same-document link
+ * writes the hops behind its page as further `from=` values
+ * (preview-subtree.ts), so the way back through both hops works with no
+ * storage at all, and the link always carries the page's own `tour=1`. A
+ * page shows the stored trail only when the trail's top is the `from=` the
+ * page arrived with (reconcilePreviewTrail makes that so on every load, and
+ * refreshes the top's link from the URL), so a stale trail from an earlier
+ * visit can never draw a bar the URL does not vouch for. What storage adds
+ * is the count and the hop under the top one ("then GP05 · VI.C") for a
+ * chain the URL does not carry.
  *
  * Shape: a sibling of the reader's own trail (ReturnTrail in reader-nav.ts
  * is in-memory and in-document; this one spans page loads), under its own
@@ -82,7 +85,10 @@ export function withFromParam(href: string, fromId: string | null | undefined): 
  *   no origin                       -> []: a page reached from a search result
  *                                      or a bookmark starts no chain, and an
  *                                      old one must not show on it
- *   origin already on top           -> unchanged: a reload, or a Back landing
+ *   origin already on top           -> unchanged but for the top's link and
+ *                                      label, refreshed from the URL (a reload,
+ *                                      a Back landing; the page may have gained
+ *                                      or lost tour=1 since the hop was stored)
  *   origin in ANOTHER regulation    -> [origin]: the first hop into this
  *                                      document starts the chain afresh
  *   origin in THIS regulation       -> pushed, its href carrying `from=` of
@@ -93,7 +99,7 @@ export function reconcilePreviewTrail(trail: readonly PreviewHop[], origin: Prev
   if (!origin) return [];
   const hop: PreviewHop = { id: origin.id, href: origin.href, label: origin.label };
   const top = trail[trail.length - 1];
-  if (top && top.id === hop.id) return [...trail];
+  if (top && top.id === hop.id) return [...trail.slice(0, -1), hop];
   if ((regKeyOf(hop.id) ?? "").toLowerCase() !== reg.toLowerCase()) return [hop];
   const next = [...trail, { ...hop, href: withFromParam(hop.href, top?.id) }];
   return next.slice(-PREVIEW_TRAIL_CAP);
@@ -105,20 +111,17 @@ export function popPreviewTrail(trail: readonly PreviewHop[]): PreviewHop[] {
 }
 
 /**
- * What the bar shows from a (reconciled) trail, for a page whose `?from=`
- * resolved to `origin`: the top hop's link and label, how many hops the
- * trail holds, and the hop under the top one ("then GP05 · VI.C"). null
- * when the trail does not vouch for the page's origin -- the page then
- * keeps the server-rendered bar (the URL's one hop).
+ * What the stored trail adds to the bar, for a page whose `?from=` resolved
+ * to `origin`: how many hops the trail holds, and the hop under the top one
+ * ("then GP05 · VI.C"). The link and label are the origin's own (the URL's).
+ * null when the trail does not vouch for the page's origin -- the page then
+ * shows what the URL carries alone.
  */
-export function previewTrailBar(
-  trail: readonly PreviewHop[],
-  origin: PreviewOrigin | null
-): { href: string; label: string; count: number; then: string | null } | null {
+export function previewTrailBar(trail: readonly PreviewHop[], origin: PreviewOrigin | null): { count: number; then: string | null } | null {
   const top = trail[trail.length - 1];
   if (!origin || !top || top.id !== origin.id) return null;
   const under = trail[trail.length - 2];
-  return { href: top.href, label: top.label, count: trail.length, then: under ? hopName(under.label) : null };
+  return { count: trail.length, then: under ? hopName(under.label) : null };
 }
 
 /** "← Back to GP05 · VI.C" -> "GP05 · VI.C": the hop as the "then" part of the bar names it. */

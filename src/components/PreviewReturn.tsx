@@ -71,8 +71,9 @@ export function PreviewReturn({ origin, reg }: { origin: PreviewReturnLink; reg:
     if (JSON.stringify(next) !== JSON.stringify(parsePreviewTrail(readRaw()))) writeTrail(next);
   }, [origin, reg]);
 
-  // The stored trail when it vouches for this page's origin, else the URL's hops.
-  const bar = previewTrailBar(trail, origin) ?? { href: origin.href, label: origin.label, count: origin.chain.length + 1, then: origin.then };
+  // The link and label are the URL's; the stored trail, when it vouches for this page's origin, adds its count and next hop.
+  const stored = previewTrailBar(trail, origin);
+  const bar = { href: origin.href, label: origin.label, count: stored?.count ?? origin.chain.length + 1, then: stored?.then ?? origin.then };
   const onClick = useCallback(() => {
     writeTrail(popPreviewTrail(parsePreviewTrail(readRaw())));
   }, []);

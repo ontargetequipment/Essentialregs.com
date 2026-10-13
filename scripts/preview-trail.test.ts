@@ -26,27 +26,27 @@ test("the walkthrough's two hops, there and back: GP05 VI.C -> I.C.1 preview -> 
   // Arrival on the I.C.1 preview from GP05 VI.C (another regulation): the chain starts.
   let trail = reconcilePreviewTrail([], VIC, "7");
   assert.deepEqual(trail, [VIC]);
-  assert.deepEqual(previewTrailBar(trail, VIC), { href: VIC.href, label: VIC.label, count: 1, then: null });
-  // A reload: unchanged.
+  assert.deepEqual(previewTrailBar(trail, VIC), { count: 1, then: null });
+  // A reload: unchanged. The same page reached without the tour: the top's link follows the URL.
   assert.deepEqual(reconcilePreviewTrail(trail, VIC, "7"), [VIC]);
+  const plain = { ...VIC, href: "/regulations/gp05#sec-gp05-VI-C" };
+  assert.deepEqual(reconcilePreviewTrail(trail, plain, "7"), [plain]);
+  assert.deepEqual(reconcilePreviewTrail([plain], VIC, "7"), [VIC], "and back, with tour=1 again");
 
   // The I.D preview, from I.C.1.c's citation (?from=sec-7-B-I-C-1): I.C.1 is pushed, and its link
   // back carries the hop under it as from=, so the I.C.1 page can draw "Back to GP05" on its own.
   trail = reconcilePreviewTrail(trail, IC1, "7");
   assert.deepEqual(trail, [VIC, { ...IC1, href: "/regulations/7/preview?p=sec-7-B-I-C-1&tour=1&from=sec-gp05-VI-C" }]);
-  const bar = previewTrailBar(trail, IC1);
-  assert.deepEqual(bar, {
-    href: "/regulations/7/preview?p=sec-7-B-I-C-1&tour=1&from=sec-gp05-VI-C",
-    label: IC1.label,
-    count: 2,
-    then: "GP05 \u00b7 VI.C",
-  });
+  assert.deepEqual(previewTrailBar(trail, IC1), { count: 2, then: "GP05 \u00b7 VI.C" });
+  // A link that already carries the hop under it (the URL's chain, preview-subtree.ts) is kept as it is.
+  const chained = { ...IC1, href: "/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C&tour=1" };
+  assert.deepEqual(reconcilePreviewTrail([VIC], chained, "7"), [VIC, chained]);
 
   // Back (the bar's link is taken): the top comes off; landing on I.C.1 with ?from=sec-gp05-VI-C keeps the rest.
   trail = popPreviewTrail(trail);
   assert.deepEqual(trail, [VIC]);
   assert.deepEqual(reconcilePreviewTrail(trail, VIC, "7"), [VIC]);
-  assert.equal(previewTrailBar(trail, VIC)?.count, 1);
+  assert.deepEqual(previewTrailBar(trail, VIC), { count: 1, then: null });
   // Back again: nothing left.
   assert.deepEqual(popPreviewTrail(trail), []);
   assert.deepEqual(popPreviewTrail([]), []);
