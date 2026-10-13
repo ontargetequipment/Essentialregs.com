@@ -32,7 +32,7 @@ import {
   applicabilityContextKey,
 } from "@/lib/applicability-context";
 import { isPublicReaderReg, provisionDestination } from "@/lib/destination";
-import { foreignOriginOf, originTrailLabel, validProvisionId } from "@/lib/reader-nav";
+import { citationLabelFromId, documentShortName, foreignOriginOf, originTrailLabel, validProvisionId } from "@/lib/reader-nav";
 import {
   escapeHtml,
   gatePublicSummaries,
@@ -168,6 +168,17 @@ function subtreeDepths(rows: readonly SubtreeRow[], focusedId: string): Map<stri
 export type LinkContext = {
   /** Ids of the rows on the page. */
   ids: ReadonlySet<string>;
+  /**
+   * The page's regulation key and focused provision, and whether the
+   * walkthrough is on (walkthrough v3, 13 Oct 2026). A link to a provision
+   * of THIS regulation that is not on the page then carries
+   * `from=<focusedId>` (the preview it lands on draws "← Back to Regulation
+   * 7 · I.C.1") and, with the tour on, `tour=1`. Omitted: the links are the
+   * plain destinations, as before v3.
+   */
+  reg?: string;
+  focusedId?: string;
+  tour?: boolean;
 };
 
 const REG_LINK = /^\/regulations\/([^/?#]+)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/;
@@ -180,10 +191,24 @@ function safeDecode(raw: string): string {
   }
 }
 
-/** Where a click on provision `target` goes from the preview: this page for a row on it, else the destination a visitor can open. */
+/**
+ * Where a click on provision `target` goes from the preview: this page for a
+ * row on it, else the destination a visitor can open. A same-document
+ * provision off the page (I.C.1.c's "Sections I.D." on the I.C.1 preview:
+ * the walkthrough's second hop, 13 Oct 2026) is its own focused preview --
+ * the public I.D subtree, or the locked panel for a locked target, exactly as
+ * before -- now with `from=` naming this page's focused provision so that
+ * preview can draw its way back here, and `tour=1` while the walkthrough is
+ * on, so it shows the next step on arrival. A cross-regulation link is
+ * unchanged.
+ */
 function targetHref(target: string, ctx: LinkContext): string {
   if (ctx.ids.has(target)) return `#${target}`;
-  return provisionDestination({ id: target, reg_key: regKeyOf(target) }, { hasAccess: false });
+  const href = provisionDestination({ id: target, reg_key: regKeyOf(target) }, { hasAccess: false });
+  const sameDocument = !!ctx.reg && !!ctx.focusedId && (regKeyOf(target) ?? "").toLowerCase() === ctx.reg.toLowerCase();
+  if (!sameDocument) return href;
+  const withFrom = `${href}${href.includes("?") ? "&" : "?"}from=${encodeURIComponent(ctx.focusedId as string)}`;
+  return ctx.tour ? withTourParam(withFrom) : withFrom;
 }
 
 /**
@@ -329,6 +354,8 @@ export type SubtreeOptions = {
    * shown (gatePublicSummaries, owner decision 5 Oct 2026).
    */
   pendingSummaries: number;
+  /** The walkthrough is on (?tour=1): same-document links carry it (targetHref). */
+  tour?: boolean;
 };
 
 /**
@@ -364,7 +391,7 @@ export function renderSubtreeHtml(rows: readonly SubtreeRow[], opts: SubtreeOpti
   }
   const byId = new Map(gated.map((r) => [r.id, r]));
   const depths = subtreeDepths(gated, opts.focusedId);
-  const links: LinkContext = { ids };
+  const links: LinkContext = { ids, reg: key, focusedId: opts.focusedId, tour: opts.tour === true };
 
   const html = gated
     .map((p) => {
@@ -443,22 +470,47 @@ export function renderPopupRows(rows: readonly SubtreeRow[], opts: SubtreeOption
 // The way back, and the redirect that keeps it
 // ---------------------------------------------------------------------------
 
+/** One hop of the way back, as the bar prints it (PreviewReturn.tsx keeps a trail of them, preview-trail.ts). */
+export type PreviewReturn = { id: string; href: string; label: string };
+
 /**
- * The preview's return link: "← Back to GP05 · VI.C" when ?from= is a
- * provision of ANOTHER regulation (foreignOriginOf, the reader's own check),
- * to where a visitor opens that provision (provisionDestination: GP05's
- * reader, otherwise its focused preview), carrying ?tour=1 when this page has
- * it. null for no ?from=, a junk one, or one in this regulation.
+ * The bar's text for a hop within the same document: the document's short
+ * name and the citation, without the Part the full label carries
+ * ("Regulation 7 · I.C.1", not "Regulation 7 · Part B · I.C.1"): inside
+ * one document the Part says nothing the reader does not already know.
  */
-export function previewReturnLink(searchParams: SearchParams, reg: string): { href: string; label: string } | null {
+export function sameDocumentTrailLabel(originId: string): string {
+  const citation = (citationLabelFromId(originId) ?? "").replace(/^Part [^·]+ · /, "");
+  return [documentShortName(regKeyOf(originId)), citation].filter(Boolean).join(" · ");
+}
+
+/**
+ * The preview's return link, from ?from=:
+ *
+ *   a provision of ANOTHER regulation (foreignOriginOf, the reader's own
+ *   check): "← Back to GP05 · VI.C", to where a visitor opens that provision
+ *   (provisionDestination: GP05's reader, otherwise its focused preview);
+ *
+ *   a provision of THIS regulation (walkthrough v3, 13 Oct 2026: the I.D
+ *   preview reached from I.C.1.c's citation): "← Back to Regulation 7 ·
+ *   I.C.1", to that provision's focused preview -- unless it is the focused
+ *   provision itself, which is no way back.
+ *
+ * Both carry ?tour=1 when this page has it. null for no ?from= or a junk one.
+ */
+export function previewReturnLink(searchParams: SearchParams, reg: string): PreviewReturn | null {
   const from = firstValue(searchParams.from);
   if (typeof from !== "string") return null;
-  const origin = foreignOriginOf(`?${new URLSearchParams({ from }).toString()}`, reg);
-  if (!origin) return null;
+  const foreign = foreignOriginOf(`?${new URLSearchParams({ from }).toString()}`, reg);
+  const own = foreign ? null : validProvisionId(from);
+  const focused = firstValue(searchParams.p);
+  if (!foreign && (!own || own === focused || (regKeyOf(own) ?? "").toLowerCase() !== reg.toLowerCase())) return null;
+  const origin = (foreign ?? own) as string;
   const href = provisionDestination({ id: origin, reg_key: regKeyOf(origin) }, { hasAccess: false });
   return {
+    id: origin,
     href: tourRequested(searchParams[TOUR_PARAM]) ? withTourParam(href) : href,
-    label: `← Back to ${originTrailLabel(origin)}`,
+    label: `← Back to ${foreign ? originTrailLabel(origin) : sameDocumentTrailLabel(origin)}`,
   };
 }
 

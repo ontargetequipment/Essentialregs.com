@@ -14,6 +14,7 @@ import { regKeyOf, regulationDisplayName } from "@/lib/regulation-names";
 import { getAccessStatus } from "@/lib/access";
 import { LockedDestination } from "@/components/LockedDestination";
 import { PreviewSubtree } from "@/components/PreviewSubtree";
+import { PreviewReturn } from "@/components/PreviewReturn";
 import { isPublicReaderReg } from "@/lib/destination";
 import { PRICE_SUMMARY } from "@/lib/pricing";
 import { displayCitation } from "@/lib/federal-citation";
@@ -136,30 +137,25 @@ export default async function RegulationPreviewPage(
   }
   const regName = regulationDisplayName(reg, root);
   const rootHeading = titleWithoutCitation(root.title, root.citation) || root.citation;
+  const tourOn = tourRequested(searchParams[TOUR_PARAM]);
   // The focused provision when the visitor's own session may read it (it is
   // public), as the reader's rows; empty html when it is locked. The summary
   // gate takes the regulation's real pending count, the one the teaser uses.
+  // With the walkthrough on, the subtree's same-document links carry it.
   const subtree = id
-    ? renderSubtreeHtml(subtreeRows, { reg, focusedId: id, rootSourceUrl: root.source_url, pendingSummaries })
+    ? renderSubtreeHtml(subtreeRows, { reg, focusedId: id, rootSourceUrl: root.source_url, pendingSummaries, tour: tourOn })
     : { ids: [], html: "" };
   // "← Back to GP05 · VI.C" when the visitor came from a provision of another
-  // regulation (?from=), for a public and a locked provision alike.
+  // regulation (?from=), or "← Back to Regulation 7 · I.C.1" from one of this
+  // regulation (walkthrough v3), for a public and a locked provision alike.
+  // PreviewReturn adds the hops behind it from sessionStorage once mounted.
   const returnLink = focused ? previewReturnLink(searchParams, reg) : null;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12">
       {focused && (
         <div className="mb-10 border-b border-line pb-10">
-          {returnLink && (
-            <a
-              id="preview-return"
-              data-testid="preview-return"
-              href={returnLink.href}
-              className="mb-5 inline-flex min-h-11 items-center rounded-full border border-line bg-panel px-4 text-sm font-semibold text-accent shadow-sm hover:bg-accent-soft"
-            >
-              {returnLink.label}
-            </a>
-          )}
+          {returnLink && <PreviewReturn origin={returnLink} reg={reg} />}
           <p className="text-sm text-ink-soft">{regName}</p>
           <h1 className="mt-1 font-serif text-section font-bold tracking-tight text-ink">
             {displayCitation(reg, focused.citation)}
@@ -182,10 +178,11 @@ export default async function RegulationPreviewPage(
               readerHref={`/regulations/${reg}#${focused.id}`}
             />
           )}
-          {/* The walkthrough's last step (Sprint 6, src/lib/tour.ts): a
-              visitor who followed GP05 VI.C's Regulation 7 citation lands
-              here with ?tour=1. Shows only while that tour is at step 6. */}
-          {tourRequested(searchParams[TOUR_PARAM]) && <ReaderTour page="destination" hasAccess={false} placement="floating" />}
+          {/* The walkthrough's Regulation 7 steps (Sprint 6, src/lib/tour.ts;
+              two hops since v3): a visitor who followed GP05 VI.C's citation
+              lands here with ?tour=1, and again on the I.D preview from
+              I.C.1.c's. Shows only while that tour is past step 5. */}
+          {tourOn && <ReaderTour page="destination" hasAccess={false} placement="floating" />}
         </div>
       )}
       <p className={CITATION_EYEBROW_CLASS}>
