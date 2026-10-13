@@ -28,6 +28,7 @@ import {
   readerRedirectHref,
   renderSubtreeHtml,
   rewriteSubtreeLinks,
+  sameDocumentTrailLabel,
   subtreeLikePattern,
   type SubtreeRow,
 } from "../src/lib/preview-subtree";
@@ -360,6 +361,44 @@ test("rewriteSubtreeLinks: links and cross-reference spans, in the reader's own 
   assert.doesNotMatch(out, /data-target/);
 });
 
+test("rewriteSubtreeLinks: a same-document link off the page carries the way back here, and the tour while it is on (walkthrough v3)", () => {
+  const html = sanitizeHtml(
+    '<p>Comply with <span class="xref" data-target="sec-7-B-I-D">Sections I.D.</span>, <span class="xref" data-target="sec-7-B-I-J">I.J.</span> and ' +
+      '<span class="xref" data-target="sec-7-B-I-C-1-e">I.C.1.e.</span>; <a class="xref-external-reg" href="/regulations/7#sec-7-B-II-B-2">Reg 7 II.B.2</a>, ' +
+      '<a class="xref-external-reg" href="/regulations/gp05#sec-gp05-VI-C">GP05 VI.C</a> and <a class="xref-external-reg" href="/regulations/3#sec-3-A-II-B">Reg 3 II.B</a>.</p>'
+  );
+  const hrefs = (out: string) => Object.fromEntries([...dom(out).querySelectorAll("a")].map((a) => [a.textContent, a.getAttribute("href")]));
+  // The I.C.1 preview, outside the tour: the I.D preview can draw "← Back to Regulation 7 · I.C.1"; a locked target (I.J) the same, to its locked panel.
+  const plain = hrefs(rewriteSubtreeLinks(html, { ids: new Set(SUBTREE), reg: "7", focusedId: "sec-7-B-I-C-1" }));
+  assert.equal(plain["Sections I.D."], "/regulations/7/preview?p=sec-7-B-I-D&from=sec-7-B-I-C-1");
+  assert.equal(plain["I.J."], "/regulations/7/preview?p=sec-7-B-I-J&from=sec-7-B-I-C-1");
+  assert.equal(plain["Reg 7 II.B.2"], "/regulations/7/preview?p=sec-7-B-II-B-2&from=sec-7-B-I-C-1");
+  // On the page: an anchor, as before. Another regulation: unchanged.
+  assert.equal(plain["I.C.1.e."], "#sec-7-B-I-C-1-e");
+  assert.equal(plain["GP05 VI.C"], "/regulations/gp05#sec-gp05-VI-C");
+  assert.equal(plain["Reg 3 II.B"], "/regulations/3/preview?p=sec-3-A-II-B");
+  // With the walkthrough on: tour=1 too, after from.
+  const touring = hrefs(rewriteSubtreeLinks(html, { ids: new Set(SUBTREE), reg: "7", focusedId: "sec-7-B-I-C-1", tour: true }));
+  assert.equal(touring["Sections I.D."], "/regulations/7/preview?p=sec-7-B-I-D&from=sec-7-B-I-C-1&tour=1");
+  assert.equal(touring["I.J."], "/regulations/7/preview?p=sec-7-B-I-J&from=sec-7-B-I-C-1&tour=1");
+  assert.equal(touring["GP05 VI.C"], "/regulations/gp05#sec-gp05-VI-C", "a cross-regulation link is not the tour's to change");
+  // The page's own hops ride along after its id, nearest first (the walkthrough's I.C.1 page, from GP05 VI.C).
+  const chained = hrefs(rewriteSubtreeLinks(html, { ids: new Set(SUBTREE), reg: "7", focusedId: "sec-7-B-I-C-1", tour: true, chain: ["sec-gp05-VI-C"] }));
+  assert.equal(chained["Sections I.D."], "/regulations/7/preview?p=sec-7-B-I-D&from=sec-7-B-I-C-1&from=sec-gp05-VI-C&tour=1");
+  assert.equal(chained["GP05 VI.C"], "/regulations/gp05#sec-gp05-VI-C");
+  // Without a page context (the context before v3): the plain destinations.
+  assert.equal(hrefs(rewriteSubtreeLinks(html, LINKS))["Sections I.D."], "/regulations/7/preview?p=sec-7-B-I-D");
+  // Through the renderer: the I.C.1 subtree's own I.C.1.c citation, with the tour.
+  const rendered = renderSubtreeHtml(reg7().map(asRow), { reg: "7", focusedId: "sec-7-B-I-C-1", rootSourceUrl: SOURCE, pendingSummaries: 0, tour: true });
+  const c = dom(rendered.html).querySelector('[id="sec-7-B-I-C-1-c"]')!;
+  const id = [...c.querySelectorAll("a")].find((a) => a.textContent === "Sections I.D.")!;
+  assert.equal(id.getAttribute("href"), "/regulations/7/preview?p=sec-7-B-I-D&from=sec-7-B-I-C-1&tour=1");
+  assert.equal(id.className, "xref");
+  const off = renderSubtreeHtml(reg7().map(asRow), { reg: "7", focusedId: "sec-7-B-I-C-1", rootSourceUrl: SOURCE, pendingSummaries: 0 });
+  assert.match(off.html, /href="\/regulations\/7\/preview\?p=sec-7-B-I-D&amp;from=sec-7-B-I-C-1"/);
+  assert.doesNotMatch(off.html, /tour=1/);
+});
+
 test("rewriteSubtreeLinks: the sanitiser still has the last word", () => {
   const out = rewriteSubtreeLinks(
     '<p>x<a href="javascript:alert(1)">bad</a><img src="x" onerror="alert(2)"><script>alert(3)</script>' +
@@ -382,31 +421,81 @@ test("rewriteSubtreeLinks: the sanitiser still has the last word", () => {
 // ---------------------------------------------------------------------------
 
 test("previewReturnLink: back to a provision of ANOTHER regulation, with the tour carried", () => {
+  const one = { chain: [], then: null };
   assert.deepEqual(previewReturnLink({ from: "sec-gp05-VI-C" }, "7"), {
+    id: "sec-gp05-VI-C",
     href: "/regulations/gp05#sec-gp05-VI-C",
     label: "\u2190 Back to GP05 \u00b7 VI.C",
+    ...one,
   });
   assert.deepEqual(previewReturnLink({ from: "sec-gp05-VI-C", tour: "1" }, "7"), {
+    id: "sec-gp05-VI-C",
     href: "/regulations/gp05?tour=1#sec-gp05-VI-C",
     label: "\u2190 Back to GP05 \u00b7 VI.C",
+    ...one,
   });
-  // A repeated parameter: the first one; tour only for exactly "1".
-  assert.equal(previewReturnLink({ from: ["sec-gp05-VI-C", "sec-gp12-I"], tour: "yes" }, "7")?.href, "/regulations/gp05#sec-gp05-VI-C");
+  // A repeated parameter: the first one is the hop, the rest the hops behind it; tour only for exactly "1".
+  const two = previewReturnLink({ from: ["sec-gp05-VI-C", "sec-gp12-I"], tour: "yes" }, "7");
+  assert.equal(two?.href, "/regulations/gp05#sec-gp05-VI-C", "a foreign hop's page keeps its own trail; nothing is appended");
+  assert.deepEqual(two?.chain, ["sec-gp12-I"]);
+  assert.equal(two?.then, "GP12 \u00b7 I");
   // An origin in a regulation whose reader is closed goes to its focused preview.
   assert.deepEqual(previewReturnLink({ from: "sec-gp12-VI-A-1", tour: "1" }, "7"), {
+    id: "sec-gp12-VI-A-1",
     href: "/regulations/gp12/preview?p=sec-gp12-VI-A-1&tour=1",
     label: "\u2190 Back to GP12 \u00b7 VI.A.1",
+    ...one,
   });
   assert.equal(previewReturnLink({ from: "sec-3-A-II-B" }, "7")?.href, "/regulations/3/preview?p=sec-3-A-II-B");
 });
 
-test("previewReturnLink: no link for an absent, junk or same-regulation origin", () => {
-  for (const from of [undefined, "", "not an id", "sec-7-B-I-D", "SEC-GP05-VI-C", "sec-gp05-VI-C<script>", "x".repeat(300), "/regulations/gp05", "sec-nokey", ["", "sec-gp05-VI-C"]]) {
+test("previewReturnLink: back to a provision of THIS regulation (the walkthrough's second hop), to its focused preview", () => {
+  // The I.D preview, reached from I.C.1.c's citation on the I.C.1 preview.
+  assert.deepEqual(previewReturnLink({ p: "sec-7-B-I-D", from: "sec-7-B-I-C-1" }, "7"), {
+    id: "sec-7-B-I-C-1",
+    href: "/regulations/7/preview?p=sec-7-B-I-C-1",
+    label: "\u2190 Back to Regulation 7 \u00b7 I.C.1",
+    chain: [],
+    then: null,
+  });
+  assert.deepEqual(previewReturnLink({ p: "sec-7-B-I-D", from: "sec-7-B-I-C-1", tour: "1" }, "7"), {
+    id: "sec-7-B-I-C-1",
+    href: "/regulations/7/preview?p=sec-7-B-I-C-1&tour=1",
+    label: "\u2190 Back to Regulation 7 \u00b7 I.C.1",
+    chain: [],
+    then: null,
+  });
+  // The walkthrough's I.D page: the URL carries both hops (I.C.1.c's link wrote them), so the way back to
+  // I.C.1 carries GP05 VI.C as that page's own from= -- the chain survives with no storage at all.
+  assert.deepEqual(previewReturnLink({ p: "sec-7-B-I-D", from: ["sec-7-B-I-C-1", "sec-gp05-VI-C"], tour: "1" }, "7"), {
+    id: "sec-7-B-I-C-1",
+    href: "/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C&tour=1",
+    label: "\u2190 Back to Regulation 7 \u00b7 I.C.1",
+    chain: ["sec-gp05-VI-C"],
+    then: "GP05 \u00b7 VI.C",
+  });
+  // A junk later value ends the chain there; a repeat of the hop itself too; at most FROM_CHAIN_MAX values are read.
+  assert.deepEqual(previewReturnLink({ p: "sec-7-B-I-D", from: ["sec-7-B-I-C-1", "<x>", "sec-gp05-VI-C"] }, "7")?.chain, []);
+  assert.deepEqual(previewReturnLink({ p: "sec-7-B-I-D", from: ["sec-7-B-I-C-1", "sec-7-B-I-C-1", "sec-gp05-VI-C"] }, "7")?.chain, []);
+  assert.equal(previewReturnLink({ p: "sec-7-B-I-D", from: ["sec-7-B-I-C-1", "sec-7-B-I-J", "sec-7-B-I-K", "sec-7-B-I-C-2", "sec-gp05-VI-C", "sec-gp05-VI-D"] }, "7")?.chain.length, 4);
+  // The Part is left out within a document; a general permit goes by its number.
+  assert.equal(sameDocumentTrailLabel("sec-7-B-I-C-1"), "Regulation 7 \u00b7 I.C.1");
+  assert.equal(sameDocumentTrailLabel("sec-7-B-I-C-1-c"), "Regulation 7 \u00b7 I.C.1.c");
+  assert.equal(sameDocumentTrailLabel("sec-7-P-B"), "Regulation 7 \u00b7 Part B");
+  assert.equal(sameDocumentTrailLabel("sec-gp12-VI-A-1"), "GP12 \u00b7 VI.A.1");
+  assert.equal(previewReturnLink({ p: "sec-gp12-VI-A", from: "sec-gp12-VI-A-1" }, "gp12")?.label, "\u2190 Back to GP12 \u00b7 VI.A.1");
+  // The focused provision itself is no way back; the regulation's key is matched without case.
+  assert.equal(previewReturnLink({ p: "sec-7-B-I-C-1", from: "sec-7-B-I-C-1" }, "7"), null);
+  assert.equal(previewReturnLink({ p: "sec-gp12-VI-A", from: "sec-gp12-VI-A-1" }, "GP12")?.href, "/regulations/gp12/preview?p=sec-gp12-VI-A-1");
+});
+
+test("previewReturnLink: no link for an absent or junk origin", () => {
+  for (const from of [undefined, "", "not an id", "SEC-GP05-VI-C", "sec-gp05-VI-C<script>", "x".repeat(300), "/regulations/gp05", "sec-nokey", ["", "sec-gp05-VI-C"]]) {
     assert.equal(previewReturnLink({ from }, "7"), null, JSON.stringify(from));
   }
   assert.equal(previewReturnLink({}, "7"), null);
-  assert.equal(previewReturnLink({ from: "sec-7-B-I-D" }, "7"), null, "the same regulation's own trail is the reader's");
-  assert.equal(previewReturnLink({ from: "sec-gp05-VI-C" }, "gp05"), null);
+  // GP05's own preview never renders (its reader is open), but the rule holds: a same-document origin links back within it.
+  assert.equal(previewReturnLink({ from: "sec-gp05-VI-C" }, "gp05")?.href, "/regulations/gp05#sec-gp05-VI-C");
 });
 
 test("readerRedirectHref keeps ?from= and ?tour=1, and is the old link without them", () => {

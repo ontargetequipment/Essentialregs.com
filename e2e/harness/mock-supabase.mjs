@@ -700,8 +700,8 @@ function checkInsert(table, row, ctx) {
       const extra = Object.keys(row).filter((k) => !allowed.includes(k));
       if (extra.length && !service) throw pgError(403, "42501", "permission denied for table tour_events");
       if (!TOUR_EVENTS.includes(row.event)) throw pgError(400, "23514", 'new row for relation "tour_events" violates check constraint "tour_events_event_check"');
-      // This branch's migration allows 1-6; the Sprint 7 tour (seven steps) widens it to 1-7. The harness takes either.
-      if (!Number.isInteger(row.step) || row.step < 1 || row.step > 7) throw pgError(400, "23514", 'new row for relation "tour_events" violates check constraint "tour_events_step_check"');
+      // Migration 20261013034619 (walkthrough v3): an introduction (0) and nine steps.
+      if (!Number.isInteger(row.step) || row.step < 0 || row.step > 9) throw pgError(400, "23514", 'new row for relation "tour_events" violates check constraint "tour_events_step_check"');
       if (!/^[A-Za-z0-9-]{8,64}$/.test(String(row.session_id ?? ""))) throw pgError(400, "23514", 'new row for relation "tour_events" violates check constraint "tour_events_session_id_check"');
       const env = row.env ?? "production";
       if (!["production", "preview", "development"].includes(env)) throw pgError(400, "23514", 'new row for relation "tour_events" violates check constraint "tour_events_env_check"');

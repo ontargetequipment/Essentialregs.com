@@ -111,11 +111,14 @@ await check("a refresh token yields a new session", async () => {
 });
 
 console.log("row-level security: provisions");
-await check("anon reads all 111 GP05 rows and exactly 14 of Regulation 7's (the 13-id subtree plus I.D.3.a.(i))", async () => {
+await check("anon reads all 111 GP05 rows and exactly 16 of Regulation 7's (the 13-id subtree, I.D and I.D.4, plus I.D.3.a.(i))", async () => {
   eq((await allIds("gp05", ANON)).length, 111);
   const reg7 = await allIds("7", ANON);
-  eq(reg7.length, 14);
+  eq(reg7.length, 16);
   eq(reg7.filter((i) => i === "sec-7-B-I-C-1" || i.startsWith("sec-7-B-I-C-1-")).length, 13);
+  // The walkthrough's second hop (13 Oct 2026): the I.D heading and its one substantive child, nothing else under I.D.
+  for (const id of ["sec-7-B-I-D", "sec-7-B-I-D-4"]) if (!reg7.includes(id)) throw new Error(`${id} is not public`);
+  for (const id of ["sec-7-B-I-D-1", "sec-7-B-I-D-3", "sec-7-B-I-D-4-a"]) if (reg7.includes(id)) throw new Error(`${id} must stay locked`);
   if (!reg7.includes("sec-7-B-I-D-3-a-(i)")) throw new Error("the older sample row is missing");
 });
 await check("anon reads nothing else: a locked row by id is not there, a locked regulation is empty", async () => {
@@ -132,9 +135,9 @@ await check("the service role reads every row of Regulation 7 (2182), count=exac
   const h = await rest("/rest/v1/provisions?select=id&reg_key=eq.7", { token: SERVICE, method: "HEAD", headers: { prefer: "count=exact" } });
   eq(h.headers.get("content-range").split("/")[1], "2182");
 });
-await check("the subscriber reads all of Regulation 7; a signed-in visitor with no access reads only the public 14", async () => {
+await check("the subscriber reads all of Regulation 7; a signed-in visitor with no access reads only the public 16", async () => {
   eq((await allIds("7", SUB)).length, 2182);
-  eq((await allIds("7", VIS)).length, 14);
+  eq((await allIds("7", VIS)).length, 16);
 });
 await check("the PostgREST row cap is 1000 per request, and a ranged read returns the next page", async () => {
   const r = await rest("/rest/v1/provisions?select=id&reg_key=eq.7&order=sort_order.asc", { token: SERVICE });

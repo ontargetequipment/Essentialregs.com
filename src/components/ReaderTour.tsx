@@ -3,33 +3,40 @@
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { READER_TRAIL_RESET_EVENT } from "@/lib/reader-nav";
+import { PREVIEW_TRAIL_KEY } from "@/lib/preview-trail";
+import { buttonClass } from "@/lib/ui";
 import {
+  CALLOUT_WIDTH,
+  TOUR_CITATION,
   TOUR_COPY,
-  TOUR_EXPLORE_HREF,
+  TOUR_INTRO_STEP,
   TOUR_JUMPS,
+  TOUR_SECOND_HOP,
   TOUR_START_HREF,
   TOUR_STEP_COUNT,
   TOUR_STORAGE_KEY,
   TOUR_TRIAL_HREF,
   advanceTour,
+  chooseCalloutPlacement,
   citationDestination,
   completeTour,
   destinationTarget,
   inCitedSubtree,
+  inTourSection,
+  isSecondHopLink,
   isTourCitationLink,
   floatingFit,
   jumpTargetFor,
   linkTargetOf,
   parseTourState,
   pickSummaryRow,
-  placeCallout,
   restartTour,
   searchWithoutTour,
   startTour,
   stepForPage,
   viewStep,
   withTourParam,
-  type CalloutPlacement,
+  type Rect,
   type TourEventInput,
   type TourState,
   type TourStep,
@@ -39,8 +46,8 @@ import "./reader-tour.css";
 
 /**
  * The guided GP05 walkthrough (Sprint 6, 10 Oct 2026; v2 in Sprint 7, 11 Oct
- * 2026). See src/lib/tour.ts for the seven steps and the state; this is the
- * part that touches the page.
+ * 2026; v3 on 13 Oct 2026). See src/lib/tour.ts for the introduction, the
+ * nine steps and the state; this is the part that touches the page.
  *
  * It never drives the reader. RegulationReader stays exactly what a visitor
  * gets without the tour; this component only watches it -- a row taking
@@ -56,29 +63,40 @@ import "./reader-tour.css";
  *     waits a couple of seconds for the landing.
  *   - Step 5's click goes to the provision's destination page (the focused
  *     preview, or the Reg 7 reader for a subscriber) instead of the reader's
- *     in-place popup, because steps 6 and 7 live there. It calls
+ *     in-place popup, because steps 6-9 live there. It calls
  *     preventDefault in the capture phase, which RegulationReader's own
  *     click handler already respects ("a click something else already
  *     handled"). The destination page, not the click, moves the step on.
- *   - Step 7 on a subscriber's Reg 7 reader takes the reader's own "Back to
+ *   - Step 9 on a subscriber's Reg 7 reader takes the reader's own "Back to
  *     GP05" link the same way, adding ?tour=1 so GP05 knows the tour is on.
+ *
+ * Step 7's citation (I.C.1.c's "Sections I.D.") and the two Back clicks are
+ * left to the page: on the preview they are plain links (the preview's own
+ * return bar keeps the trail of hops, PreviewReturn.tsx); in a subscriber's
+ * reader the citation opens the reader's popup, "Go to full section" lands
+ * on I.D, and the reader's own bar comes back through I.C.1.c. Each arrival
+ * moves the step on (7 -> 8 at I.D, 8 -> 9 back at I.C.1).
  *
  * Mounted by /regulations/[reg] when ?tour=1 (`page="reader"` on GP05,
  * `page="destination"` on any other regulation, where only a tour already
  * past step 5 shows) and by the focused preview (`placement="floating"`).
  *
- * Where the callout sits: on a phone (the reader's 860px breakpoint, where
- * the sidebar goes off-canvas) it docks to the bottom of the viewport and
- * the page gets that much room at the bottom -- GP05, the Reg 7 reader and
- * the preview alike. On a wider reader page it is fixed in the sidebar
- * column beside its anchor (placeCallout), or to the right of the text when
- * the window is wide enough: never over the provision text. The preview has
- * no sidebar and is one centred text column: there ("floating") the card
- * sits in the gutter to the right of that column, bottom-right, when the
- * gutter is wide enough for it (floatingFit), so none of the column's text is
- * ever under it; when it is not, the card docks like everywhere else. That is
- * decided again on every resize. The anchor is always scrolled clear of the
- * card too. No overlay, nothing dimmed.
+ * Where the callout sits (v3): on a phone (the reader's 860px breakpoint,
+ * where the sidebar goes off-canvas) it docks to the bottom of the viewport
+ * and the page gets that much room at the bottom -- GP05, the Reg 7 reader
+ * and the preview alike. On a wider screen it is fixed at the first of an
+ * ordered list of positions that covers nothing the step asks the visitor
+ * to use (chooseCalloutPlacement, tour.ts: the reading pane's top-right,
+ * its bottom-right, its top-left, beside the anchor in the sidebar column,
+ * else the dock), checked again on every scroll, resize and change of the
+ * jump results. The preview has no sidebar and is one centred text column:
+ * there ("floating") the card is as wide as the gutter beside the column
+ * allows (floatingFit), so the corners it takes are in the gutter and none
+ * of the column's text is ever under it; when the gutter is too narrow the
+ * card docks. The anchor is always scrolled clear of the card too. No
+ * overlay, nothing dimmed: the step's target gets the spotlight instead
+ * (data-tour-target, reader-tour.css), taken off the moment the step is
+ * done.
  *
  * The callout is hidden until it is placed: each step first scrolls its
  * anchor into view (instantly, never a smooth scroll that would leave the
@@ -223,14 +241,23 @@ function commit(to: TourStep): void {
   if (state) apply(state, advanceTour(state, to));
 }
 
-/** Arrival back at VI.C after step 7: the closing card, and tour_complete. */
+/** Arrival back at VI.C after step 9: the closing card, and tour_complete. */
 function finish(): void {
   const state = getState();
   if (state) apply(state, completeTour(state));
 }
 
-/** Tells the reader to forget its return trail (RegulationReader listens). */
-function resetReaderTrail(): void {
+/**
+ * Tells the reader to forget its return trail (RegulationReader listens),
+ * and empties the preview's trail of hops (PreviewReturn re-reads it on the
+ * same event), so nothing of this run's way back shows in the next one.
+ */
+function resetTrails(): void {
+  try {
+    session()?.removeItem(PREVIEW_TRAIL_KEY);
+  } catch {
+    /* blocked storage: nothing stored to forget */
+  }
   window.dispatchEvent(new Event(READER_TRAIL_RESET_EVENT));
 }
 
@@ -280,6 +307,41 @@ function citationLinkOf(row: HTMLElement | null): HTMLAnchorElement | null {
   return null;
 }
 
+/**
+ * Step 7's citation: inside the cited provision's subtree (I.C.1 and below),
+ * the first same-document cross-reference that names the second hop's
+ * section -- the reader's <span class="xref" data-target>, or the <a
+ * class="xref" href> the preview made of it.
+ */
+function secondHopLinkOf(root: HTMLElement): HTMLElement | null {
+  for (const row of childRows(root)) {
+    if (!inTourSection(row.id, TOUR_CITATION)) continue;
+    for (const el of Array.from(row.querySelectorAll<HTMLElement>(".xref, a.xref-external-reg"))) {
+      const target = el.getAttribute("data-target") ?? linkTargetOf(el.getAttribute("href"));
+      if (isSecondHopLink(target, el.textContent)) return el;
+    }
+  }
+  return null;
+}
+
+/**
+ * The way back a destination page offers: the focused preview's own link,
+ * or whichever of the reader's two pills is showing (the in-document "Back
+ * to I.C.1.c." button, or the "Back to GP05 · VI.C" link to the other
+ * regulation).
+ */
+function backBarOf(): HTMLElement | null {
+  const preview = document.getElementById("preview-return");
+  if (preview) return preview;
+  const bar = document.getElementById("return-trail");
+  if (!bar || bar.hidden) return null;
+  for (const id of ["return-trail-ext", "return-trail-back"]) {
+    const el = document.getElementById(id);
+    if (el && !el.hidden) return el;
+  }
+  return null;
+}
+
 function hashId(): string | null {
   const raw = window.location.hash.slice(1);
   if (!raw) return null;
@@ -306,16 +368,17 @@ function readerAtVIC(): boolean {
 /** The element a view's callout points at, or null. */
 function anchorFor(view: TourView, page: TourPage, placement: Placement): HTMLElement | null {
   if (page === "destination") {
-    // The way back: the focused preview's link, or the Reg 7 reader's own bar.
-    if (view === 7) return document.getElementById("preview-return") ?? document.getElementById("return-trail-ext");
-    if (view !== 6) return null;
+    if (view === 8 || view === 9) return backBarOf();
     const root = destinationRoot(placement);
+    if (!root) return null;
+    if (view === 7) return secondHopLinkOf(root);
+    if (view !== 6) return null;
     const cited = destinationTarget(placement, window.location.search, window.location.hash);
-    if (!root || !cited) return null;
+    if (!cited) return null;
     const rows = childRows(root).map((el) => ({ id: el.id, hasSummary: !!summaryPanelOf(el) }));
     return summaryControlOf(rowOf(root, pickSummaryRow(cited, rows)));
   }
-  if (view === 1) return document.getElementById("jumpbox");
+  if (view === TOUR_INTRO_STEP || view === 1) return document.getElementById("jumpbox");
   const doc = docEl();
   if (!doc) return null;
   const rows = readerRows(doc);
@@ -328,22 +391,91 @@ function anchorFor(view: TourView, page: TourPage, placement: Placement): HTMLEl
   return null;
 }
 
+/** The jump results, when they are showing. */
+function openJumpResults(): HTMLElement | null {
+  const results = document.getElementById("jump-results");
+  return results?.classList.contains("show") ? results : null;
+}
+
+/**
+ * The elements the step's spotlight goes on (data-tour-target): the anchor;
+ * at step 1 also VI.D's match while the jump results are open; on the
+ * closing card the card's own first button (the anchor, VI.C, is only
+ * scrolled to).
+ */
+function spotlightsFor(view: TourView, page: TourPage, anchor: HTMLElement | null, closingButton: HTMLElement | null): HTMLElement[] {
+  if (view === "closing") return closingButton ? [closingButton] : [];
+  if (view === 4 && page === "reader") {
+    // Step 4's action is typing VI.C: the spotlight goes on the jump box, not
+    // on the open summary the card is beside (the card's own words say what
+    // the summary is). On a phone the box is in the closed Contents drawer,
+    // so nothing is lit until it opens; the hint says to tap Contents.
+    const box = document.getElementById("jumpbox");
+    return box ? [box] : [];
+  }
+  const out = anchor ? [anchor] : [];
+  if (view === 1 && page === "reader") {
+    const results = openJumpResults();
+    const doc = docEl();
+    const target = doc ? jumpTargetFor(TOUR_JUMPS.first, readerRows(doc)) : null;
+    if (results && target) {
+      for (const item of Array.from(results.querySelectorAll<HTMLElement>(".jr-item"))) {
+        if (item.dataset.slug === target) {
+          out.push(item);
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+const rectOf = (el: Element): Rect => {
+  const r = el.getBoundingClientRect();
+  return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
+};
+
+/**
+ * What the callout must not cover for this step: its target, the jump
+ * results when open, the way-back pills, and at step 4 the summary the
+ * visitor has just opened (the card beside it says what the summary is).
+ * Only elements with a box count.
+ */
+function obstaclesFor(view: TourView, page: TourPage, anchor: HTMLElement | null): Rect[] {
+  const els: (Element | null)[] = [anchor, openJumpResults(), document.getElementById("preview-return")];
+  const bar = document.getElementById("return-trail");
+  if (bar && !bar.hidden) {
+    for (const id of ["return-trail-ext", "return-trail-back", "return-trail-dismiss"]) {
+      const el = document.getElementById(id);
+      if (el && !el.hidden) els.push(el);
+    }
+  }
+  if (view === 4 && page === "reader") {
+    const doc = docEl();
+    if (doc) els.push(summaryPanelOf(rowOf(doc, jumpTargetFor(TOUR_JUMPS.first, readerRows(doc)))));
+    // The box is the step's spotlight (spotlightsFor), not its anchor.
+    els.push(document.getElementById("jump-wrap"));
+  }
+  return els
+    .filter((el): el is Element => el !== null)
+    .map(rectOf)
+    .filter((r) => (r.width ?? 0) > 0 && (r.height ?? 0) > 0);
+}
+
 /** The site header's height (layout.tsx: h-[66px], sticky). */
 const HEADER_PX = 66;
 /** Where the reader lands a row (scroll-margin-top in reader.css): under the header and the return bar. */
 const LANDING_PX = 130;
 /** The focused preview has no return bar: a little under the header. */
 const FLOATING_LANDING_PX = 96;
-/** The floating card's distance from the viewport's bottom edge (reader-tour.css). */
-const FLOATING_BOTTOM_PX = 16;
 /** After the reader's own deep-link landing (RegulationReader: 50ms) has had its say. */
 const SETTLE_MS = 150;
 
 /**
  * Scrolls the anchor, instantly, into the part of the viewport the callout
  * leaves free -- only when it is not already there. `reserve` is the height
- * the callout takes at the bottom of the viewport (the dock, or the
- * floating card); `landing` is where the anchor's top is put.
+ * the callout takes at the bottom of the viewport (the dock); `landing` is
+ * where the anchor's top is put.
  */
 function bringIntoView(anchor: HTMLElement, reserve: number, landing: number): void {
   // The jump box (sticky, or behind Contents on a phone) and the return bar (sticky) never move.
@@ -363,6 +495,9 @@ function plainLeftClick(e: MouseEvent): boolean {
   return !e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 }
 
+/** The green button: the site's one call-to-action style (src/lib/ui.ts), at the card's 14px. */
+const PRIMARY = buttonClass({ className: "tour-primary" });
+
 // ---------------------------------------------------------------------------
 // The component
 // ---------------------------------------------------------------------------
@@ -373,25 +508,26 @@ export function ReaderTour({
   placement = "anchored",
 }: {
   page: TourPage;
-  /** A subscriber: step 5 opens the Reg 7 reader, steps 6-7 run there, and the closing card has no trial button. */
+  /** A subscriber: step 5 opens the Reg 7 reader, steps 6-9 run there, and the closing card has no trial button. */
   hasAccess: boolean;
-  /** "floating": the focused preview, which has no sidebar -- a card in the bottom-right corner instead of one beside its anchor. */
+  /** "floating": the focused preview, which has no sidebar -- a card in the gutter beside its text column. */
   placement?: Placement;
 }) {
   const state = useSyncExternalStore(subscribeState, getState, serverState);
   // Docked at 860px and below; and on the preview also when the gutter beside its text column is too narrow for the card.
   const dockedNow = useCallback(() => isDocked() || (placement === "floating" && !previewFit().fits), [placement]);
   const docked = useSyncExternalStore(subscribeDock, dockedNow, serverDocked);
-  // Back from the destination page: state 7 shows the closing card when the reader is at VI.C.
+  // Back from the destination pages: state 9 shows the closing card when the reader is at VI.C.
   const atVIC = page === "reader" && state !== null && state.step === TOUR_STEP_COUNT && !state.done && readerAtVIC();
   const view = stepForPage(state, page, atVIC);
   const storedStep = state?.step ?? null;
   const storedDone = state?.done ?? false;
   const boxRef = useRef<HTMLElement>(null);
   const arrowRef = useRef<HTMLSpanElement>(null);
+  const exploreRef = useRef<HTMLButtonElement>(null);
 
   // A fresh tour: GP05 with ?tour=1 and nothing stored. A stored state (a
-  // reload, or Back from the destination page) resumes instead.
+  // reload, or Back from a destination page) resumes instead.
   useEffect(() => {
     if (page !== "reader" || getState()) return;
     const fresh = startTour(newSessionId());
@@ -399,17 +535,45 @@ export function ReaderTour({
     for (const e of fresh.events) sendTourEvent(e, fresh.state.sid);
   }, [page]);
 
-  // Arrival on the destination page (steps 5 -> 6): the cited provision is on
-  // the page -- in the preview's subtree, or in a subscriber's reader with the
-  // hash on it. The click on the citation did not move the step.
+  // Arrivals on the destination pages, which move three steps on -- the
+  // clicks that lead there did not:
+  //   5 -> 6  the cited provision (I.C.1) is on the page: the preview's
+  //           subtree, or a subscriber's reader with the hash on it;
+  //   7 -> 8  the second hop (I.D): the I.D preview, or the reader landing
+  //           on it from the popup's "Go to full section";
+  //   8 -> 9  the cited provision again: the I.C.1 preview by its way back,
+  //           or the reader's bar landing on I.C.1.c.
+  // A page load is the arrival on the preview; in the reader it is the row
+  // taking focus after goToProvision (which pushes state, no hashchange),
+  // or hashchange/popstate.
   useEffect(() => {
-    if (page !== "destination" || storedStep !== 5) return;
+    if (page !== "destination" || storedStep === null || storedStep < 5 || storedStep > 8) return;
     const root = destinationRoot(placement);
-    const cited = destinationTarget(placement, window.location.search, window.location.hash);
-    if (root && cited && rowOf(root, cited)) commit(6);
+    if (!root) return;
+    const check = () => {
+      const id = destinationTarget(placement, window.location.search, window.location.hash);
+      if (!id || !rowOf(root, id)) return;
+      const step = getState()?.step;
+      if (step === 5 && inTourSection(id, TOUR_CITATION)) commit(6);
+      else if (step === 7 && inTourSection(id, TOUR_SECOND_HOP)) commit(8);
+      else if (step === 8 && inTourSection(id, TOUR_CITATION)) commit(9);
+    };
+    check();
+    if (placement !== "anchored") return;
+    const onFocus = (e: FocusEvent) => {
+      if (e.target instanceof HTMLElement && e.target.parentElement === root) check();
+    };
+    document.addEventListener("focusin", onFocus);
+    window.addEventListener("hashchange", check);
+    window.addEventListener("popstate", check);
+    return () => {
+      document.removeEventListener("focusin", onFocus);
+      window.removeEventListener("hashchange", check);
+      window.removeEventListener("popstate", check);
+    };
   }, [page, placement, storedStep]);
 
-  // Arrival back at VI.C after step 7 (steps 7 -> the closing card): by the
+  // Arrival back at VI.C after step 9 (steps 9 -> the closing card): by the
   // way-back link, by Back, or by any later landing on VI.C.
   useEffect(() => {
     if (page !== "reader" || storedStep !== TOUR_STEP_COUNT || storedDone) return;
@@ -470,12 +634,13 @@ export function ReaderTour({
         return () => root.removeEventListener("toggle", onToggle, true);
       }
 
-      if (view === 7 && placement === "anchored") {
-        // A subscriber's way back is the reader's own bar ("← Back to GP05 ·
-        // VI.C", #return-trail-ext), whose href is the plain reader URL. The
-        // tour takes the click in the capture phase and loads the same href
-        // with ?tour=1 added, so GP05 knows the walkthrough is still on. (The
-        // visitor's link, #preview-return, already carries it.)
+      if ((view === 8 || view === 9) && placement === "anchored") {
+        // A subscriber's last hop home is the reader's own bar ("← Back to
+        // GP05 · VI.C", #return-trail-ext), whose href is the plain reader
+        // URL. The tour takes the click in the capture phase and loads the
+        // same href with ?tour=1 added, so GP05 knows the walkthrough is
+        // still on. (The in-document pill is a button the reader handles;
+        // the visitor's link, #preview-return, already carries it.)
         const onClick = (e: MouseEvent) => {
           if (!plainLeftClick(e)) return;
           const link = e.target instanceof Element ? e.target.closest("#return-trail-ext") : null;
@@ -596,11 +761,12 @@ export function ReaderTour({
   }, [page, placement, view, hasAccess]);
 
   // The anchor and the callout, before the browser paints: the callout is
-  // hidden, the anchor marked for its ring and scrolled (instantly) into the
-  // part of the viewport the callout leaves free, and only then is the
-  // callout placed and shown -- so the control a step points at is on screen
-  // the moment its card is. Then kept in place on scroll, resize and layout
-  // changes (the summary opening, the jump results showing).
+  // hidden, the anchor marked for its spotlight and scrolled (instantly)
+  // into the part of the viewport the callout leaves free, and only then is
+  // the callout placed and shown -- so the control a step points at is on
+  // screen the moment its card is. Then kept in place, clear of what the
+  // step needs, on scroll, resize and layout changes (the summary opening,
+  // the jump results showing or changing).
   useLayoutEffect(() => {
     const box = boxRef.current;
     if (view === null || !box) return;
@@ -614,7 +780,23 @@ export function ReaderTour({
     // a lookup walks the reader's rows -- thousands of them in Regulation 7.
     let anchor: HTMLElement | null = null;
     const anchorNow = () => (anchor && anchor.isConnected ? anchor : (anchor = anchorFor(view, page, placement)));
-    let marked: HTMLElement | null = null;
+    // The spotlight: data-tour-target on the step's elements, re-checked on
+    // every update because the jump results are rebuilt on every search.
+    const marked = new Set<HTMLElement>();
+    const mark = (els: HTMLElement[]) => {
+      for (const el of marked) if (!els.includes(el) || !el.isConnected) {
+        el.removeAttribute("data-tour-target");
+        marked.delete(el);
+      }
+      for (const el of els) if (!marked.has(el)) {
+        el.setAttribute("data-tour-target", String(view));
+        marked.add(el);
+      }
+    };
+    const unmark = () => {
+      for (const el of marked) el.removeAttribute("data-tour-target");
+      marked.clear();
+    };
     // The preview's card is as wide as its gutter allows, up to the usual 296px.
     const sizeFloating = () => {
       box.style.width = `${previewFit().width}px`;
@@ -622,84 +804,109 @@ export function ReaderTour({
     const bringAnchorIntoView = () => {
       if (floating) sizeFloating(); // its height, which the scroll below makes room for, depends on its width
       anchor = anchorFor(view, page, placement);
+      mark(spotlightsFor(view, page, anchor, exploreRef.current));
       if (!anchor) return;
-      if (marked !== anchor) {
-        marked?.removeAttribute("data-tour-target");
-        anchor.setAttribute("data-tour-target", String(view));
-        marked = anchor;
-      }
       const height = box.getBoundingClientRect().height;
       if (docked) bringIntoView(anchor, height, LANDING_PX);
-      else if (floating) bringIntoView(anchor, height + FLOATING_BOTTOM_PX, FLOATING_LANDING_PX);
-      else bringIntoView(anchor, 0, LANDING_PX);
+      else bringIntoView(anchor, 0, floating ? FLOATING_LANDING_PX : LANDING_PX);
     };
 
     const unposition = () => {
       box.style.top = box.style.left = box.style.width = box.style.visibility = "";
       if (arrowRef.current) arrowRef.current.hidden = true;
     };
+    const setDockRoom = () => {
+      root.setAttribute("data-tour-docked", "");
+      root.style.setProperty("--tour-dock-h", `${Math.ceil(box.getBoundingClientRect().height)}px`);
+    };
     const update = () => {
       raf = 0;
-      if (docked || floating) {
+      const target = anchorNow();
+      mark(spotlightsFor(view, page, target, exploreRef.current));
+      if (docked) {
         box.removeAttribute("data-unanchored");
+        box.removeAttribute("data-dock");
         unposition();
-        if (floating) {
-          sizeFloating(); // no room is made at the page's bottom: the card is beside the text, not under it
-        } else {
-          root.style.setProperty("--tour-dock-h", `${Math.ceil(box.getBoundingClientRect().height)}px`);
-        }
+        setDockRoom();
         return;
       }
-      const target = anchorNow();
       const sidebar = document.getElementById("sidebar");
       // Nothing to point at (the page is not what the tour expects): the
       // callout still shows, in the corner, so Skip and Restart stay reachable.
-      box.toggleAttribute("data-unanchored", !target || !sidebar);
-      if (!target || !sidebar) {
+      box.toggleAttribute("data-unanchored", !target);
+      if (!target) {
+        box.removeAttribute("data-dock");
+        root.removeAttribute("data-tour-docked");
         unposition();
+        if (floating) sizeFloating();
         return;
       }
-      const doc = docEl();
-      let textRight: number | null = null;
-      if (doc) {
-        const r = doc.getBoundingClientRect();
-        textRight = r.right - (parseFloat(window.getComputedStyle(doc).paddingRight) || 0);
+      const viewport = { width: window.innerWidth, height: window.innerHeight };
+      const width = floating ? previewFit().width : CALLOUT_WIDTH;
+      // The card's natural height at that width, before any position of its own.
+      const dockedNow = box.hasAttribute("data-dock");
+      if (dockedNow) {
+        box.removeAttribute("data-dock");
+        unposition();
       }
-      let minTop: number | undefined;
-      const inSidebar = !!target.closest("#sidebar");
-      if (view === 4) {
-        // Step 4's action is in the jump box: never sit on it, or on its results.
-        const wrap = document.getElementById("jump-wrap")?.getBoundingClientRect();
-        const results = document.getElementById("jump-results");
-        const resultsBottom = results?.classList.contains("show") ? results.getBoundingClientRect().bottom : 0;
-        if (wrap) minTop = Math.max(wrap.bottom, resultsBottom) + 12;
+      if (floating) sizeFloating();
+      const height = box.offsetHeight;
+      let beside: Parameters<typeof chooseCalloutPlacement>[0]["beside"] = null;
+      if (!floating && sidebar) {
+        const doc = docEl();
+        let textRight: number | null = null;
+        if (doc) {
+          const r = doc.getBoundingClientRect();
+          textRight = r.right - (parseFloat(window.getComputedStyle(doc).paddingRight) || 0);
+        }
+        const inSidebar = !!target.closest("#sidebar");
+        let minTop: number | undefined;
+        if (view === 4) {
+          // Step 4's action is in the jump box: never sit on it, or on its results.
+          const wrap = document.getElementById("jump-wrap")?.getBoundingClientRect();
+          const resultsBottom = openJumpResults()?.getBoundingClientRect().bottom ?? 0;
+          if (wrap) minTop = Math.max(wrap.bottom, resultsBottom) + 12;
+        }
+        const belowFrom = inSidebar ? openJumpResults()?.getBoundingClientRect().bottom : undefined;
+        beside = {
+          anchor: target.getBoundingClientRect(),
+          height,
+          viewport,
+          sidebar: sidebar.getBoundingClientRect(),
+          textRight,
+          anchorInSidebar: inSidebar,
+          minTop,
+          belowFrom,
+        };
       }
-      let belowFrom: number | undefined;
-      if (inSidebar) {
-        const results = document.getElementById("jump-results");
-        if (results?.classList.contains("show")) belowFrom = results.getBoundingClientRect().bottom;
-      }
-      const p: CalloutPlacement = placeCallout({
-        anchor: target.getBoundingClientRect(),
-        height: box.offsetHeight,
-        viewport: { width: window.innerWidth, height: window.innerHeight },
-        sidebar: sidebar.getBoundingClientRect(),
-        textRight,
-        anchorInSidebar: inSidebar,
-        minTop,
-        belowFrom,
+      const choice = chooseCalloutPlacement({
+        box: { width, height },
+        viewport,
+        paneLeft: floating || !sidebar ? 0 : sidebar.getBoundingClientRect().right,
+        obstacles: obstaclesFor(view, page, target),
+        beside,
       });
+      if (choice.mode === "dock") {
+        // Nothing fixed is clear of what the step needs: the bottom sheet, with the anchor scrolled above it.
+        unposition();
+        box.setAttribute("data-dock", "");
+        setDockRoom();
+        bringIntoView(target, box.getBoundingClientRect().height, LANDING_PX);
+        return;
+      }
+      root.removeAttribute("data-tour-docked");
       box.style.visibility = "";
-      box.style.top = `${Math.round(p.top)}px`;
-      box.style.left = `${Math.round(p.left)}px`;
-      box.style.width = `${Math.round(p.width)}px`;
+      box.style.top = `${Math.round(choice.top)}px`;
+      box.style.left = `${Math.round(choice.left)}px`;
+      box.style.width = `${Math.round(choice.width)}px`;
+      box.dataset.placement = choice.candidate;
       const arrow = arrowRef.current;
       if (arrow) {
-        arrow.dataset.side = p.arrow ?? "";
-        arrow.hidden = p.arrow === null;
-        const vertical = p.arrow === "left" || p.arrow === "right";
-        arrow.style.top = vertical ? `${Math.round(p.arrowAt)}px` : "";
-        arrow.style.left = vertical ? "" : `${Math.round(p.arrowAt)}px`;
+        arrow.dataset.side = choice.arrow ?? "";
+        arrow.hidden = choice.arrow === null;
+        const vertical = choice.arrow === "left" || choice.arrow === "right";
+        arrow.style.top = vertical ? `${Math.round(choice.arrowAt)}px` : "";
+        arrow.style.left = vertical ? "" : `${Math.round(choice.arrowAt)}px`;
       }
     };
     const schedule = () => {
@@ -721,11 +928,14 @@ export function ReaderTour({
     window.addEventListener("resize", schedule);
     const resize = new ResizeObserver(schedule);
     resize.observe(box);
-    const doc = docEl();
+    const doc = docEl() ?? document.getElementById("preview-doc");
     if (doc) resize.observe(doc);
-    const results = document.getElementById("jump-results");
     const mutations = new MutationObserver(schedule);
+    const results = document.getElementById("jump-results");
     if (results) mutations.observe(results, { attributes: true, attributeFilter: ["class"], childList: true });
+    // The reader's way-back pills come and go as the visitor moves (a subscriber's steps 8 and 9).
+    const bar = document.getElementById("return-trail");
+    if (bar) mutations.observe(bar, { attributes: true, attributeFilter: ["hidden", "href"], childList: true, subtree: true });
     return () => {
       if (raf) cancelAnimationFrame(raf);
       clearTimeout(settle);
@@ -733,30 +943,54 @@ export function ReaderTour({
       window.removeEventListener("resize", schedule);
       resize.disconnect();
       mutations.disconnect();
-      marked?.removeAttribute("data-tour-target");
+      unmark();
+      box.removeAttribute("data-dock");
+      delete box.dataset.placement;
       root.removeAttribute("data-tour-docked");
       root.style.removeProperty("--tour-dock-h");
     };
   }, [view, page, placement, docked]);
 
+  /** Off for good, without a reload: the state, the trails and ?tour=1 go; the reader stays where it is. */
+  const dropTour = useCallback(() => {
+    saveState(null);
+    resetTrails();
+    const { pathname, search, hash } = window.location;
+    window.history.replaceState(window.history.state, "", `${pathname}${searchWithoutTour(search)}${hash}`);
+  }, []);
+
   const skip = useCallback(() => {
     const s = getState();
     if (s && view !== null) sendTourEvent({ event: "tour_skip", step: viewStep(view) }, s.sid);
-    saveState(null);
-    // The walkthrough's jumps leave a "Back to ..." bar behind; it goes with it.
-    resetReaderTrail();
-    // Off for good: a reload must not start it again.
-    const { pathname, search, hash } = window.location;
-    window.history.replaceState(window.history.state, "", `${pathname}${searchWithoutTour(search)}${hash}`);
-  }, [view]);
+    dropTour();
+  }, [view, dropTour]);
+
+  /** The closing card's "Explore GP05 yourself": the tour ends on the reader, at VI.C, the spotlight gone with it. */
+  const explore = useCallback(() => {
+    dropTour();
+  }, [dropTour]);
+
+  const focusJumpBox = useCallback(() => {
+    const jumpbox = document.getElementById("jumpbox") as HTMLInputElement | null;
+    // On a phone the jump box is behind "Contents"; focusing it there would
+    // scroll an off-canvas panel, so the callout says where it is instead.
+    if (jumpbox && !isDocked()) jumpbox.focus({ preventScroll: true });
+  }, []);
+
+  /** The introduction's Start: step 1, with the cursor in the box it points at. */
+  const start = useCallback(() => {
+    commit(1);
+    focusJumpBox();
+  }, [focusJumpBox]);
 
   const restart = useCallback(() => {
     const s = getState();
     if (!s) return;
     // Nothing of the finished run may show in the new one: the reader forgets
     // its return trail (the bar naming VI.C, the remembered origin row, the
-    // way back to another regulation) before step 1 comes up.
-    resetReaderTrail();
+    // way back to another regulation) and the preview its hops, before the
+    // introduction comes up.
+    resetTrails();
     if (page === "destination") {
       saveState(restartTour(s));
       window.location.assign(TOUR_START_HREF);
@@ -773,21 +1007,19 @@ export function ReaderTour({
     window.scrollTo({ top: 0, behavior: "auto" });
     const jumpbox = document.getElementById("jumpbox") as HTMLInputElement | null;
     if (jumpbox) jumpbox.value = "";
-    // On a phone the jump box is behind "Contents"; focusing it there would
-    // scroll an off-canvas panel, so the callout says where it is instead.
-    if (jumpbox && !isDocked()) jumpbox.focus({ preventScroll: true });
   }, [page]);
 
-  const leave = useCallback(() => saveState(null), []);
   const trialClick = useCallback(() => {
     const s = getState();
-    if (s) sendTourEvent({ event: "tour_trial_click", step: TOUR_STEP_COUNT }, s.sid);
+    if (s) sendTourEvent({ event: "tour_trial_click", step: viewStep("closing") }, s.sid);
     saveState(null);
+    resetTrails();
   }, []);
 
   if (view === null) return null;
 
   const closing = view === "closing";
+  const count = view === TOUR_INTRO_STEP ? TOUR_COPY.introCount : closing ? TOUR_COPY.complete : `Step ${view} of ${TOUR_STEP_COUNT}`;
   return (
     <aside
       ref={boxRef}
@@ -802,26 +1034,31 @@ export function ReaderTour({
       <span ref={arrowRef} className="tour-arrow" aria-hidden="true" hidden />
       <div className="tour-head">
         <span className="tour-count" data-testid="tour-count">
-          {closing ? TOUR_COPY.complete : `Step ${view} of ${TOUR_STEP_COUNT}`}
+          {count}
         </span>
         <button type="button" className="tour-quiet" data-testid="tour-skip" onClick={skip}>
           {closing ? "End tour" : "Skip tour"}
         </button>
       </div>
-      <StepBody view={view} docked={docked} />
+      <StepBody view={view} docked={docked} placement={placement} />
       <div className="tour-actions">
+        {view === TOUR_INTRO_STEP && (
+          <button type="button" className={PRIMARY} data-testid="tour-start" onClick={start}>
+            {TOUR_COPY.start}
+          </button>
+        )}
         {view === 2 && (
-          <button type="button" className="tour-primary" data-testid="tour-next" onClick={() => commit(3)}>
+          <button type="button" className={PRIMARY} data-testid="tour-next" onClick={() => commit(3)}>
             Next
           </button>
         )}
         {closing && (
           <>
-            <Link href={TOUR_EXPLORE_HREF} className="tour-secondary" data-testid="tour-explore" onClick={leave}>
+            <button ref={exploreRef} type="button" className={PRIMARY} data-testid="tour-explore" onClick={explore}>
               {TOUR_COPY.explore}
-            </Link>
+            </button>
             {!hasAccess && (
-              <Link href={TOUR_TRIAL_HREF} className="tour-primary" data-testid="tour-trial" onClick={trialClick}>
+              <Link href={TOUR_TRIAL_HREF} className="tour-secondary" data-testid="tour-trial" onClick={trialClick}>
                 {TOUR_COPY.trial}
               </Link>
             )}
@@ -835,8 +1072,10 @@ export function ReaderTour({
   );
 }
 
-function StepBody({ view, docked }: { view: TourView; docked: boolean }) {
+function StepBody({ view, docked, placement }: { view: TourView; docked: boolean; placement: Placement }) {
   switch (view) {
+    case TOUR_INTRO_STEP:
+      return <p className="tour-text">{TOUR_COPY.intro}</p>;
     case 1:
       return (
         <>
@@ -868,7 +1107,26 @@ function StepBody({ view, docked }: { view: TourView; docked: boolean }) {
     case 6:
       return <p className="tour-text">{TOUR_COPY.step6}</p>;
     case 7:
-      return <p className="tour-text">{TOUR_COPY.step7}</p>;
+      return (
+        <>
+          <p className="tour-text">{TOUR_COPY.step7}</p>
+          <p className="tour-hint">{placement === "anchored" ? TOUR_COPY.step7HintReader : TOUR_COPY.step7Hint}</p>
+        </>
+      );
+    case 8:
+      return (
+        <>
+          <p className="tour-text">{TOUR_COPY.step8}</p>
+          <p className="tour-hint">{TOUR_COPY.step8Hint}</p>
+        </>
+      );
+    case 9:
+      return (
+        <>
+          <p className="tour-text">{TOUR_COPY.step9}</p>
+          <p className="tour-hint">{TOUR_COPY.step9Hint}</p>
+        </>
+      );
     case "closing":
       return (
         <p className="tour-text" data-testid="tour-closing">
