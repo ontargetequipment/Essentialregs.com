@@ -1,32 +1,39 @@
 /*
  * The guided GP05 walkthrough's callout (ReaderTour.tsx, Sprint 6, 10 Oct
- * 2026; seven steps in Sprint 7). Three placements, set on data-mode:
+ * 2026; seven steps in Sprint 7; an introduction, nine steps and a spotlight
+ * in v3, 13 Oct 2026). Three placements, set on data-mode:
  *
  *   anchored  wide screens on a reader page (GP05, a subscriber's Reg 7
- *             reader): fixed, beside its anchor in the sidebar column or
- *             right of the text (placeCallout, tour.ts). z-index 35: over the
+ *             reader): fixed, where chooseCalloutPlacement (tour.ts) puts it
+ *             -- the reading pane's top-right corner by default, then its
+ *             bottom-right, its top-left, then beside the anchor in the
+ *             sidebar column (placeCallout), whichever first covers nothing
+ *             the step asks the visitor to use. z-index 35: over the
  *             sidebar's tree, under the jump results (40), the site header
  *             (45) and the reader's popup (100).
  *   floating  the focused preview on a wide screen, which has no sidebar:
- *             fixed in the bottom-right corner, in the gutter to the right
- *             of its text column. ReaderTour sets the width (the gutter less
- *             2 x 12px, at most 296px; floatingFit, tour.ts) and docks the
- *             card instead when the gutter is narrower than 244px, so none of
- *             the column's text is ever under it. Its height is capped below
- *             the 66px site header.
- *   docked    860px and below (the reader's own breakpoint), on any page, and
- *             on the preview whenever its gutter is too narrow for the
- *             floating card: fixed to the bottom of the viewport, over the off-canvas
- *             sidebar (55) so the jump-box steps stay readable, under
- *             "Contents" (60), which moves up above it. The page gets the
- *             dock's height as bottom padding, so nothing ends up
- *             permanently under it.
+ *             fixed, in the gutter to the right of its text column (top-right,
+ *             then bottom-right, then the left gutter), as wide as the gutter
+ *             allows (floatingFit, tour.ts: 2 x 12px less, at most 296px),
+ *             so none of the column's text is ever under it. When the gutter
+ *             is narrower than 244px the card docks instead. Its height is
+ *             capped below the 66px site header.
+ *   docked    860px and below (the reader's own breakpoint), on any page, on
+ *             the preview whenever its gutter is too narrow for the floating
+ *             card, and on a wide screen when no fixed candidate is clear of
+ *             the step's target (data-dock, the last candidate): fixed to the
+ *             bottom of the viewport, over the off-canvas sidebar (55) so the
+ *             jump-box steps stay readable, under "Contents" (60), which
+ *             moves up above it. The page gets the dock's height as bottom
+ *             padding, so nothing ends up permanently under it.
  *
  * Until ReaderTour has scrolled the step's anchor into view and placed the
  * card, it is visibility:hidden (inline), so a card never shows before the
  * control it points at is on screen.
  *
- * Nothing dims or blocks the page; there is no overlay.
+ * Nothing dims or blocks the page; there is no overlay. What a step asks the
+ * visitor to use carries data-tour-target: the spotlight at the end of this
+ * file.
  */
 
 .tour-callout {
@@ -55,34 +62,34 @@
   box-sizing: border-box;
 }
 
-.tour-callout[data-mode="anchored"] {
+.tour-callout[data-mode="anchored"],
+.tour-callout[data-mode="floating"] {
   position: fixed;
   top: 0;
   left: 0;
-  width: 296px;
-  z-index: 35;
-}
-.tour-callout[data-mode="anchored"][data-unanchored] {
-  top: auto;
-  left: auto;
-  right: 16px;
-  bottom: 16px;
-}
-.tour-callout[data-mode="floating"] {
-  position: fixed;
-  right: 12px;
-  bottom: 16px;
   width: 296px;
   max-width: calc(100vw - 24px);
   max-height: calc(100vh - 66px - 32px);
   overflow-y: auto;
   z-index: 35;
 }
-.tour-callout[data-mode="docked"] {
+/* Nothing to point at (the page is not what the tour expects): the corner, so Skip and Restart stay reachable. */
+.tour-callout[data-mode="anchored"][data-unanchored],
+.tour-callout[data-mode="floating"][data-unanchored] {
+  top: auto;
+  left: auto;
+  right: 16px;
+  bottom: 16px;
+}
+.tour-callout[data-mode="docked"],
+.tour-callout[data-dock] {
   position: fixed;
+  top: auto;
   left: 0;
   right: 0;
   bottom: 0;
+  width: auto;
+  max-width: none;
   z-index: 57;
   max-height: 46vh;
   overflow-y: auto;
@@ -142,7 +149,8 @@ html[data-tour-docked] .reg-reader #mobile-toggle {
   margin-left: auto;
 }
 
-.tour-primary,
+/* The green button (Start, Next, Explore GP05 yourself) is buttonClass() from
+   src/lib/ui.ts, the site's one call-to-action style; these are the rest. */
 .tour-secondary,
 .tour-quiet {
   display: inline-flex;
@@ -157,20 +165,12 @@ html[data-tour-docked] .reg-reader #mobile-toggle {
   cursor: pointer;
   text-decoration: none;
 }
-.tour-primary {
-  background: var(--tour-accent);
-  color: #ffffff;
-  border: 1px solid var(--tour-accent);
-  padding: 8px 14px;
-}
-.tour-primary:hover {
-  background: #264d42;
-}
 .tour-secondary {
   background: #ffffff;
   color: var(--tour-accent);
   border: 1px solid var(--tour-line);
   padding: 8px 14px;
+  min-height: 44px;
 }
 .tour-secondary:hover {
   background: var(--tour-accent-soft);
@@ -187,21 +187,18 @@ html[data-tour-docked] .reg-reader #mobile-toggle {
 .tour-quiet:hover {
   color: var(--tour-ink);
 }
-.tour-primary:focus-visible,
 .tour-secondary:focus-visible,
 .tour-quiet:focus-visible {
   outline: 2px solid var(--tour-accent);
   outline-offset: 2px;
 }
 @media (max-width: 860px) {
-  .tour-primary,
-  .tour-secondary,
   .tour-quiet {
     min-height: 44px;
   }
 }
 
-/* The pointer: a small square turned 45 degrees on the edge facing the anchor. */
+/* The pointer: a small square turned 45 degrees on the edge facing the anchor (the "beside" placement only). */
 .tour-arrow {
   position: absolute;
   width: 12px;
@@ -240,39 +237,51 @@ html[data-tour-docked] .reg-reader #mobile-toggle {
   border-color: var(--tour-accent);
 }
 
-/* What the current step points at: a ring, never a cover. The destination
-   page's rows are #doc's (a subscriber's Reg 7 reader) or #preview-doc's (the
-   focused preview); its way back is the preview's own link or the reader's
-   return bar. */
-#jumpbox[data-tour-target] {
-  box-shadow: 0 0 0 3px rgba(47, 93, 80, 0.35);
+/* ---------- The spotlight (v3, 13 Oct 2026) ----------
+   What the current step asks the visitor to use carries data-tour-target
+   (ReaderTour sets it on the exact element and takes it off the moment the
+   step is done): the jump box, the one match in its results, a row, a
+   summary control, a citation link, the way-back bar, the closing card's
+   button. A 2px ring in the site's accent and a soft glow in its tint, in
+   the tokens reader.css and globals.css already define (--accent,
+   --accent-soft), and one pulse as the step appears. Outline and box-shadow
+   only: nothing here changes a border, a margin or a size, so the page does
+   not shift. The pulse is skipped for a visitor who asked for less motion. */
+[data-tour-target] {
+  outline: 2px solid var(--accent, #2f5d50);
+  outline-offset: 3px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 6px var(--accent-soft, #e4ece8);
+  animation: tour-spotlight 1s ease-out 1;
 }
-#doc > [data-tour-target] {
-  outline: 2px dashed rgba(47, 93, 80, 0.45);
+@keyframes tour-spotlight {
+  0% {
+    box-shadow: 0 0 0 1px var(--accent, #2f5d50);
+  }
+  55% {
+    box-shadow: 0 0 0 12px var(--accent-soft, #e4ece8);
+  }
+  100% {
+    box-shadow: 0 0 0 6px var(--accent-soft, #e4ece8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-tour-target] {
+    animation: none;
+  }
+}
+/* A whole row (step 2's VI.D): the ring round the row, with room from its text. */
+.reg-reader #doc > [data-tour-target] {
   outline-offset: 6px;
-  border-radius: 4px;
 }
-#doc details.summary-panel[data-tour-target] {
-  outline: 2px solid rgba(47, 93, 80, 0.45);
-  outline-offset: 4px;
+/* A match in the jump results, which clip at their edges: the ring sits inside the row. */
+.reg-reader #jump-results .jr-item[data-tour-target] {
+  outline-offset: -3px;
+  box-shadow: none;
+  border-radius: 0;
 }
-#doc details.summary-panel > summary[data-tour-target],
-#preview-doc details.summary-panel > summary[data-tour-target] {
-  outline: 2px solid #2f5d50;
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-#doc a.xref-external-reg[data-tour-target] {
-  background: #fbf0c9;
-  outline: 2px solid #b8892b;
-  outline-offset: 1px;
-  border-radius: 3px;
-}
+/* The reader's way-back pills and the preview's are already rounded. */
+#return-trail [data-tour-target],
 #preview-return[data-tour-target] {
-  outline: 2px solid #2f5d50;
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-#return-trail-ext[data-tour-target] {
-  box-shadow: 0 0 0 3px rgba(47, 93, 80, 0.45), 0 4px 14px rgba(20, 30, 25, 0.14);
+  border-radius: 999px;
 }
