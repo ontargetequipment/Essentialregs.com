@@ -400,7 +400,7 @@ test.describe("guided walkthrough", () => {
     // Typed into the jump box but not picked.
     await typeSampling(page);
     await stays("sampling typed, nothing picked");
-    expect(tagsOf(events)).toEqual(["tour_start:1", "tour_step:1"]);
+    expect(tagsOf(events)).toEqual(["tour_start:0", "tour_step:0", "tour_step:1"]);
 
     // Enter in the jump box on the VI.D match is the jump box: it moves on.
     await jumpToVIDByKeyboard(page);
@@ -548,7 +548,7 @@ test.describe("guided walkthrough", () => {
     await callout(page).getByTestId("tour-next").click();
     await summaryControl(row(page, VI_D)).click();
     await expect(callout(page)).toHaveAttribute("data-step", "4");
-    expect(tagsOf(events)).toEqual(["tour_start:1", "tour_step:1", "tour_step:2", "tour_step:3", "tour_step:4"]);
+    expect(tagsOf(events)).toEqual(["tour_start:0", "tour_step:0", "tour_step:1", "tour_step:2", "tour_step:3", "tour_step:4"]);
   });
 
   test("Restart from the closing card: no Back bar anywhere, the introduction again, and the next jump does not offer Back to VI.C", async ({ page }) => {
