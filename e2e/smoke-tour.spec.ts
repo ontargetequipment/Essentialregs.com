@@ -30,7 +30,7 @@
  */
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { expect, test } from "./fixtures";
+import { expect, test, withProtectionBypass } from "./fixtures";
 import type { Locator, Page, TestInfo } from "@playwright/test";
 import {
   CLOSING,
@@ -217,7 +217,7 @@ test.describe("guided walkthrough", () => {
     await expect(c.getByTestId("tour-official-controls")).toBeVisible();
     await expect(c).toContainText("Now jump to VI.C.");
     await expect(c).toContainText("Type VI.C in the jump box and press Enter.");
-    await expectSpotlight(page, 4, summaryPanel(row(page, VI_D)));
+    await expectSpotlight(page, 4, page.locator("#jumpbox"));
     await expectFixedOnPage(page);
     await expectClear(page, "step 4");
     await shot(page, testInfo, "tour-1280-step4");
@@ -438,7 +438,7 @@ test.describe("guided walkthrough", () => {
     expect(await inViewportNow(control)).toBe(true);
   });
 
-  test("the spotlight pulses once and moves no layout: outline and shadow only, none for reduced motion", async ({ page, browser }) => {
+  test("the spotlight pulses once and moves no layout: outline and shadow only, none for reduced motion", async ({ page, browser, baseURL }) => {
     await captureTourEvents(page);
     await openTour(page);
     const box = page.locator("#jumpbox");
@@ -459,7 +459,9 @@ test.describe("guided walkthrough", () => {
     expect(plain.width).toBe(styled.rect.width);
     expect(plain.height).toBe(styled.rect.height);
     // A visitor who asked for less motion gets the ring without the pulse.
-    const quiet = await browser.newContext({ reducedMotion: "reduce" });
+    // A context of its own (the fixture's carries the deployment's protection bypass; this one must too).
+    const quiet = await browser.newContext({ reducedMotion: "reduce", baseURL });
+    await withProtectionBypass(quiet, baseURL);
     const p2 = await quiet.newPage();
     await captureTourEvents(p2);
     await openTour(p2);

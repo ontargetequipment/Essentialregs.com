@@ -391,7 +391,8 @@ test("the introduction, then step 1 only through the jump box; steps 2-4 move as
     });
     assert.equal(step(), "4");
     assert.equal($('[data-testid="tour-official-controls"]').textContent, "The official text controls; the summary is a reading aid.");
-    assert.equal(panel.getAttribute("data-tour-target"), "4");
+    assert.equal($("#jumpbox").getAttribute("data-tour-target"), "4", "step 4's action is in the jump box, so it is the spotlight");
+    assert.equal(panel.hasAttribute("data-tour-target"), false, "the open summary is beside the card, not lit");
   });
 
   await t.test("step 4 -> 5 when the reader lands on VI.C, however it got there", async () => {

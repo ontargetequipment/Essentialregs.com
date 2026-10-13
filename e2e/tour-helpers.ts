@@ -270,9 +270,11 @@ export async function obstaclesNow(page: Page): Promise<Measured[]> {
     }
     const vid = document.querySelector('#doc > [id="sec-gp05-VI-D"]');
     if (vid) {
+      // The control, not the open panel's body: VI.D's real summary runs
+      // past a 375px viewport, so a docked card must be allowed under its
+      // tail (the page pads for the dock; the visitor scrolls). The card
+      // never covers the toggle itself.
       add(vid.querySelector(":scope > details.summary-panel > summary"), "VI.D summary control");
-      const panel = vid.querySelector(":scope > details.summary-panel");
-      if (panel instanceof HTMLDetailsElement && panel.open) add(panel, "VI.D open summary");
     }
     const vic = document.querySelector('#doc > [id="sec-gp05-VI-C"]');
     if (vic) add(vic.querySelector('a.xref-external-reg[href*="sec-7-B-I-C-1"]'), "VI.C citation link");

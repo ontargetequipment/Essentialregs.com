@@ -405,6 +405,14 @@ function openJumpResults(): HTMLElement | null {
  */
 function spotlightsFor(view: TourView, page: TourPage, anchor: HTMLElement | null, closingButton: HTMLElement | null): HTMLElement[] {
   if (view === "closing") return closingButton ? [closingButton] : [];
+  if (view === 4 && page === "reader") {
+    // Step 4's action is typing VI.C: the spotlight goes on the jump box, not
+    // on the open summary the card is beside (the card's own words say what
+    // the summary is). On a phone the box is in the closed Contents drawer,
+    // so nothing is lit until it opens; the hint says to tap Contents.
+    const box = document.getElementById("jumpbox");
+    return box ? [box] : [];
+  }
   const out = anchor ? [anchor] : [];
   if (view === 1 && page === "reader") {
     const results = openJumpResults();
@@ -445,6 +453,8 @@ function obstaclesFor(view: TourView, page: TourPage, anchor: HTMLElement | null
   if (view === 4 && page === "reader") {
     const doc = docEl();
     if (doc) els.push(summaryPanelOf(rowOf(doc, jumpTargetFor(TOUR_JUMPS.first, readerRows(doc)))));
+    // The box is the step's spotlight (spotlightsFor), not its anchor.
+    els.push(document.getElementById("jump-wrap"));
   }
   return els
     .filter((el): el is Element => el !== null)
