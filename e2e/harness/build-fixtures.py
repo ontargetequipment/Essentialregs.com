@@ -13,7 +13,8 @@ and the harness works after the files move, as long as the arguments say where):
   --reg7     Regulation 7, same shape
   --overlay  harness_overlay.json: production summary_status / ai_summary /
              reviewed_by / reviewed_at / source_url for the rows the walkthrough
-             touches, the 13-id Regulation 7 public subtree and the ids that
+             touches, the 13-id Regulation 7 public subtree, the two rows of
+             its second hop (I.D and I.D.4, 13 Oct 2026) and the ids that
              were public before Sprint 7
   --docs-dir every other document, reg<key>_parsed.json (the importer's output
              directory). GP05 and Regulation 7 in it are replaced by --gp05 and
@@ -27,8 +28,10 @@ What it derives (the real database's columns, not invented ones):
   issuing_body        same
   source_url          the root row: REG_META's; GP05's rows carry the root's
                       (production does); the overlay wins where it speaks
-  is_public           every GP05 row, the 13 Regulation 7 subtree ids, and the
-                      four older sample rows (overlay: public_ids_outside_gp05_before_sprint7)
+  is_public           every GP05 row, the 13 Regulation 7 subtree ids, the two
+                      second-hop rows (overlay: reg7_public_second_hop; migration
+                      20261013014006, walkthrough v3) and the four older sample
+                      rows (overlay: public_ids_outside_gp05_before_sprint7)
   summary_status      'pending' with no summary, unless the overlay says
                       otherwise (the invented exceptions are listed below)
 
@@ -100,6 +103,11 @@ FALLBACK_REG7_SUBTREE = [
     "sec-7-B-I-C-1-e", "sec-7-B-I-C-1-e-(i)", "sec-7-B-I-C-1-e-(ii)", "sec-7-B-I-C-1-e-(iii)",
     "sec-7-B-I-C-1-e-(iv)", "sec-7-B-I-C-1-f", "sec-7-B-I-C-1-f-(i)", "sec-7-B-I-C-1-f-(ii)",
 ]
+
+# Regulation 7 I.D and I.D.4 (migration 20261013014006_reg7_id_and_id4_public_second_hop.sql,
+# 13 Oct 2026): the walkthrough's second citation hop, from I.C.1.c's "Sections I.D." to the
+# Storage Tank Emission Controls heading. I.D.1-3 and I.D.4's children stay locked, as in production.
+FALLBACK_REG7_SECOND_HOP = ["sec-7-B-I-D", "sec-7-B-I-D-4"]
 
 # Production has GP12 VI.A.1 as the rank-3 neighbour of Regulation 7 I.D.3.a.(i)
 # (smoke-anonymous.spec.ts, "a related link on a public card page ...").
@@ -269,8 +277,9 @@ def main():
 
     sample_ids = overlay.get("public_ids_outside_gp05_before_sprint7") or FALLBACK_SAMPLE_IDS
     subtree_ids = overlay.get("reg7_public_subtree") or FALLBACK_REG7_SUBTREE
+    second_hop_ids = overlay.get("reg7_public_second_hop") or FALLBACK_REG7_SECOND_HOP
     ov_rows = overlay.get("rows", {})
-    public_ids = set(sample_ids) | set(subtree_ids)
+    public_ids = set(sample_ids) | set(subtree_ids) | set(second_hop_ids)
 
     provisions = []
     seen = set()
@@ -314,7 +323,7 @@ def main():
             provisions.append(row)
 
     by_id = {r["id"]: r for r in provisions}
-    missing = [i for i in list(ov_rows) + sample_ids + subtree_ids if i not in by_id]
+    missing = [i for i in list(ov_rows) + sample_ids + subtree_ids + second_hop_ids if i not in by_id]
     if missing and not only:
         die(f"overlay/sample ids not in the corpus: {missing}")
 
