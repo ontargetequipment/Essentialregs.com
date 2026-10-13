@@ -61,7 +61,9 @@ const REG7_SUBTREE = [
   "sec-7-B-I-C-1-f-(ii)",
 ];
 const REG7_WITH_SUMMARY = REG7_SUBTREE.filter((id) => !["sec-7-B-I-C-1", "sec-7-B-I-C-1-e-(iii)", "sec-7-B-I-C-1-f"].includes(id));
-const REG7_PUBLIC = new Set([...REG7_SUBTREE, "sec-7-B-I-D-3-a-(i)"]);
+/** The second hop of the walkthrough (13 Oct 2026, migration 20261013014006): I.D's heading and its one substantive child. */
+const REG7_SECOND_HOP = ["sec-7-B-I-D", "sec-7-B-I-D-4"];
+const REG7_PUBLIC = new Set([...REG7_SUBTREE, ...REG7_SECOND_HOP, "sec-7-B-I-D-3-a-(i)"]);
 
 /**
  * Locked Regulation 7 rows and words of their official text (or, for a
@@ -1555,10 +1557,26 @@ test.describe("anonymous", () => {
     await expect(page.locator("#preview-return")).toHaveAttribute("href", "/regulations/gp05#sec-gp05-VI-C");
     await expect(page.getByTestId("preview-subtree")).toHaveCount(0);
 
-    // Not for a missing, junk or same-regulation origin, nor without a focused provision.
+    // A same-regulation origin (walkthrough v3, 13 Oct 2026: the second hop's way back) draws it too, to that provision's
+    // preview. This session came GP05 VI.C -> I.C.1 -> I.D, so the bar's trail (sessionStorage) names the hop after it.
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-D&from=sec-7-B-I-C-1");
+    await expect(page.locator("#preview-return > span").first()).toHaveText("← Back to Regulation 7 · I.C.1");
+    await expect(page.locator("#preview-return")).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-B-I-C-1");
+    await expect(page.getByTestId("preview-return-then")).toHaveText("· then GP05 · VI.C");
+    await expect(page.locator("#preview-return")).toHaveAttribute("data-hops", "2");
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-7-B-I-D&tour=1");
+    await expect(page.locator("#preview-return > span").first()).toHaveText("← Back to Regulation 7 · I.D");
+    await expect(page.locator("#preview-return")).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-B-I-D&tour=1");
+    // A fresh session, no trail: the URL's one hop alone.
+    await page.evaluate(() => sessionStorage.removeItem("er:preview-trail"));
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-D&from=sec-7-B-I-C-1");
+    await expect(page.locator("#preview-return")).toHaveText("← Back to Regulation 7 · I.C.1");
+    await expect(page.locator("#preview-return")).toHaveAttribute("data-hops", "1");
+
+    // Not for a missing or junk origin, the focused provision itself, nor without a focused provision.
     for (const query of [
       "p=sec-7-B-I-C-1",
-      "p=sec-7-B-I-C-1&from=sec-7-B-I-D",
+      "p=sec-7-B-I-C-1&from=sec-7-B-I-C-1",
       "p=sec-7-B-I-C-1&from=not-an-id",
       "p=sec-7-B-I-C-1&from=%3Cscript%3E",
       "from=sec-gp05-VI-C",
@@ -1573,6 +1591,36 @@ test.describe("anonymous", () => {
     await page.waitForURL((url) => url.pathname === "/regulations/gp05");
     expect(new URL(page.url()).hash).toBe("#sec-gp05-VI-C");
     await expect(page.locator("#jumpbox")).toBeVisible();
+  });
+
+  test("the focused preview of Regulation 7 I.D (the walkthrough's second hop) shows its public rows and nothing of I.D.1-3 or I.D.4's children", async ({ page }) => {
+    // 13 Oct 2026 (migration 20261013014006): I.D and I.D.4 are public; the older sample row I.D.3.a.(i) sits under I.D too.
+    const res = await page.goto("/regulations/7/preview?p=sec-7-B-I-D");
+    expect(res?.status()).toBe(200);
+    const html = (await res?.text()) ?? "";
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("I.D.");
+    await expect(page.getByTestId("locked-destination")).toHaveCount(0);
+    const doc = page.locator("#preview-doc");
+    expect(await doc.locator(":scope > *").evaluateAll((els) => els.map((e) => e.id))).toEqual(["sec-7-B-I-D", "sec-7-B-I-D-3-a-(i)", "sec-7-B-I-D-4"]);
+    await expect(doc.locator(':scope > [id="sec-7-B-I-D"]')).toContainText("Storage Tank Emission Controls");
+    await expect(doc.locator(':scope > [id="sec-7-B-I-D-4"]')).toContainText("Alternative emissions control equipment and pollution prevention devices");
+    // The repealed stubs I.D.1 and I.D.2, the I.D.3 heading and I.D.4's children stay locked: none of their words.
+    expect(html).not.toContain("Repealed (December 16, 2022)");
+    expect(html).not.toContain("obtains a construction permit authorizing such use of the alternative emissions control equipment");
+    expect(html).not.toContain("Storage Tank Control Strategy");
+    await expect(page.getByTestId("locked-rest")).toBeVisible();
+    // I.D.4's own citation back to I.D is a link to the row on this page; a citation to a locked row carries the way back here.
+    const self = doc.locator(':scope > [id="sec-7-B-I-D-4"] a.xref[href="#sec-7-B-I-D"]');
+    await expect(self).toHaveCount(1);
+    // The I.C.1 preview's citation into I.D (the hop the walkthrough follows) carries from=, so this page draws its way back.
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1");
+    const hop = page.locator('#preview-doc > [id="sec-7-B-I-C-1-c"] a.xref[href^="/regulations/7/preview?p=sec-7-B-I-D"]');
+    await expect(hop).toHaveText("Sections I.D.");
+    await expect(hop).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-B-I-D&from=sec-7-B-I-C-1");
+    await expect(page.locator('#preview-doc > [id="sec-7-B-I-C-1-c"] a.xref[href^="/regulations/7/preview?p=sec-7-B-I-J"]')).toHaveAttribute(
+      "href",
+      "/regulations/7/preview?p=sec-7-B-I-J&from=sec-7-B-I-C-1",
+    );
   });
 
   test("a stale or unknown ?p= on Regulation 7 is the plain preview; a GP05 link opens the reader and keeps ?from=", async ({ page }) => {
