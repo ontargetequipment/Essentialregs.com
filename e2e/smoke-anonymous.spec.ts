@@ -111,7 +111,7 @@ test.describe("anonymous", () => {
   test("the pricing card offers both prices, each with its own call to action", async ({ page }) => {
     await page.goto("/#pricing");
     const card = page.locator("#pricing");
-    // Each amount and its period share one <p> ("$25" + " / month"), so
+    // Each amount and its period share one <p> ("$10" + " / month"), so
     // match the whole display string, which is also what pricing.ts promises.
     await expect(card.getByText(MONTHLY_PRICE_DISPLAY, { exact: true })).toBeVisible();
     await expect(card.getByText(ANNUAL_PRICE_DISPLAY, { exact: true })).toBeVisible();

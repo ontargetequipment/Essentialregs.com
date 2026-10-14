@@ -5,6 +5,7 @@ import {
   PLAN_NAMES,
   PRICE_DISPLAY,
   PRICE_LOOKUP,
+  PRICE_SUMMARY,
   TRIAL_DAYS,
   parseBillingInterval,
   type BillingInterval,
@@ -14,7 +15,7 @@ import { PLAN_INCLUDES } from "@/lib/plan-includes";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "EssentialRegs is $25 / month or $250 / year, with a 7-day free trial on either plan.",
+  description: `EssentialRegs is ${PRICE_SUMMARY}, with a ${TRIAL_DAYS}-day free trial on either plan.`,
 };
 
 // The plan choice and nothing else, so it is the first thing on screen on a

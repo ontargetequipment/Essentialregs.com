@@ -2,18 +2,20 @@
 // the Price objects behind the checkout say — these strings are NOT read from
 // Stripe, so keep the two in sync by hand.
 //
-// Prices set by the owner on 26 Sep 2026: $25 / month or $250 / year (the
-// annual plan is two months free: 12 × $25 = $300). The checkout finds the
-// matching Stripe Price objects by lookup key (PRICE_LOOKUP below; created by
-// `npm run stripe:setup`, see docs/stripe-setup.md). Change the amount in the
-// Stripe dashboard and in this file at the same time.
-export const MONTHLY_PRICE_DISPLAY = "$25 / month";
-export const ANNUAL_PRICE_DISPLAY = "$250 / year";
+// Prices set by the owner on 14 Oct 2026: $10 / month or $100 / year (the
+// annual plan is two months free: 12 × $10 = $120). Before that, 26 Sep
+// 2026: $25 / $250. The checkout finds the matching Stripe Price objects by
+// lookup key (PRICE_LOOKUP below; created by `npm run stripe:setup`, see
+// docs/stripe-setup.md). scripts/stripe-setup.ts reads its amounts from the
+// two strings below, so change them here and then run the script with
+// --replace-prices ("Changing the price" in docs/stripe-setup.md).
+export const MONTHLY_PRICE_DISPLAY = "$10 / month";
+export const ANNUAL_PRICE_DISPLAY = "$100 / year";
 
-/** Both options in one phrase, for running text ("... is $25 / month or $250 / year"). */
+/** Both options in one phrase, for running text ("... is $10 / month or $100 / year"). */
 export const PRICE_SUMMARY = `${MONTHLY_PRICE_DISPLAY} or ${ANNUAL_PRICE_DISPLAY}`;
 
-/** Why annual is the better value. Factual: 12 × $25 − $250 = $50. */
+/** Why annual is the better value. Still factual at $10 / $100: 12 × $10 − $100 = $20, two months' worth. */
 export const ANNUAL_SAVINGS_NOTE = "two months free";
 
 export const MONTHLY_PLAN_NAME = "Monthly";
@@ -40,7 +42,7 @@ export type BillingInterval = keyof typeof PRICE_LOOKUP;
 export const TRIAL_DAYS = 7;
 
 /**
- * The Stripe amount behind a display string: "$25 / month" → 2500 cents,
+ * The Stripe amount behind a display string: "$10 / month" → 1000 cents,
  * interval "month". This is how scripts/stripe-setup.ts turns the copy above
  * into Price objects, so the copy stays the single place an amount is typed.
  */

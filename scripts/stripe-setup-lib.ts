@@ -1,6 +1,7 @@
 /**
  * The pure decisions behind scripts/stripe-setup.ts, kept free of I/O so
  * scripts/stripe-billing.test.ts can exercise them without a Stripe client.
+ * The calls that act on them are in stripe-setup-sync.ts.
  */
 import type Stripe from "stripe";
 import { PLAN_NAMES, PRICE_DISPLAY, PRICE_LOOKUP, parsePriceDisplay, type BillingInterval } from "../src/lib/pricing";
@@ -9,25 +10,26 @@ export const DEFAULT_SITE = "https://www.essentialregs.com";
 
 export type SetupArgs = {
   dryRun: boolean;
-  replace: boolean;
+  /** --replace-prices (or the older --replace): see decidePrice. */
+  replacePrices: boolean;
   live: boolean;
   site: string;
 };
 
 /** Parse the command line. Throws with a plain message on an unknown flag or a bad --site. */
 export function parseArgs(argv: string[]): SetupArgs {
-  const args: SetupArgs = { dryRun: false, replace: false, live: false, site: DEFAULT_SITE };
+  const args: SetupArgs = { dryRun: false, replacePrices: false, live: false, site: DEFAULT_SITE };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--dry-run") args.dryRun = true;
-    else if (a === "--replace") args.replace = true;
+    else if (a === "--replace-prices" || a === "--replace") args.replacePrices = true;
     else if (a === "--live") args.live = true;
     else if (a === "--site" || a.startsWith("--site=")) {
       const value = a === "--site" ? argv[++i] : a.slice("--site=".length);
       if (!value) throw new Error("--site needs an origin, e.g. --site https://www.essentialregs.com");
       args.site = normalizeSite(value);
     } else {
-      throw new Error(`Unknown flag ${a}. Flags: --dry-run, --replace, --live, --site <origin>`);
+      throw new Error(`Unknown flag ${a}. Flags: --dry-run, --replace-prices, --live, --site <origin>`);
     }
   }
   return args;
@@ -114,14 +116,14 @@ export type PriceDecision =
  * What to do about the Price currently holding a lookup key:
  *   - none                       → create it
  *   - same amount/currency/interval/product → keep it
- *   - anything else, --replace   → new Price, key moved, old one archived
- *   - anything else, no --replace → report and fail (nothing changed)
+ *   - anything else, --replace-prices    → new Price, key moved, old one archived
+ *   - anything else, no --replace-prices → report and fail (nothing changed)
  */
 export function decidePrice(
   existing: ExistingPrice | null,
   wanted: WantedPrice,
   productId: string,
-  replace: boolean
+  replacePrices: boolean
 ): PriceDecision {
   if (!existing) return { action: "create" };
   const existingProduct = typeof existing.product === "string" ? existing.product : existing.product.id;
@@ -131,7 +133,7 @@ export function decidePrice(
     existing.recurring?.interval === wanted.interval &&
     existingProduct === productId;
   if (matches) return { action: "keep" };
-  return replace ? { action: "replace", oldId: existing.id } : { action: "mismatch", oldId: existing.id };
+  return replacePrices ? { action: "replace", oldId: existing.id } : { action: "mismatch", oldId: existing.id };
 }
 
 /** The three events src/app/api/stripe/webhook/route.ts handles. */
