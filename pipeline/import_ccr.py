@@ -4405,6 +4405,21 @@ def cfr_section_regkey(part: str, number: str, suffix: str | None) -> str | None
             return key
     return None
 
+def _subpart_list_tail(html_text: str, end: int) -> list[tuple[int, int, str]]:
+    """The corpus subpart codes that continue a list straight after a head
+    citation ending at `end`: ", OOOOa, or OOOOb", " and JJJJ", "/OOOOb"
+    (_SUBPART_LIST_TAIL_MATCH_RE). Returns [(code start, code end, code)],
+    empty when the head is not followed by a list."""
+    out: list[tuple[int, int, str]] = []
+    pos = end
+    while True:
+        m = _SUBPART_LIST_TAIL_MATCH_RE.match(html_text, pos)
+        if not m:
+            return out
+        out.append((m.start(1), m.end(1), m.group(1)))
+        pos = m.end()
+
+
 # (CFR title, CFR part) -> reg key, for corpora whose unit of import is a
 # whole CFR PART rather than a subpart. 49 CFR 191/192 are the first (and
 # so far only) entries: a Colorado regulation that cites "49 CFR Part 192"
@@ -5903,6 +5918,17 @@ CFR_RE_DOTTED = re.compile(
 # IIII documents now that Reg 26 no longer carries a copy of JJJJ (see the
 # note above parse_reg). Since Sprint 3 the dotted tokenizer runs for every
 # document (there is no CFR_DOTTED_REGS gate any more).
+# The continuation of a list of corpus subpart codes ("Subpart OOOO, OOOOa, or
+# OOOOb", "Subparts IIII and JJJJ", "OOOOa/OOOOb", "Subpart OOOOb or OOOOc",
+# "OOOOa and/or OOOOb"): a separator and the next corpus code, nothing else
+# (a lower-case word, "through" and a code outside the corpus end the list).
+# Every step that links a head subpart citation reads the codes that follow it
+# with this one pattern (_SUBPART_LIST_TAIL_MATCH_RE), 14 Oct 2026; each code
+# resolves on its own through _subpart_regkey with the part (or program word)
+# of the head, so a Part 63 head never reaches the Part 60 rules.
+_SUBPART_LIST_SEP = r"(?:\s*,\s*(?:or|and)\s+|\s*,\s*|\s+(?:and/or|or|and)\s+|\s*/\s*)"
+_SUBPART_LIST_CODE = r"OOOO[abc]?|JJJJ|IIII|ZZZZ"
+_SUBPART_LIST_TAIL_MATCH_RE = re.compile(_SUBPART_LIST_SEP + r"(" + _SUBPART_LIST_CODE + r")\b(?![.-]\d)")
 # "40 C.F.R. Part 60, JJJJ, IIII, or a permit requirement" (Reg 26 Part B
 # I.D.5.e.(i)(D) and I.D.6.d.(i)(D)): the subpart codes listed straight
 # after the part, with no "Subpart" word. Each listed code links on its own
@@ -5914,7 +5940,7 @@ CFR_RE_DOTTED = re.compile(
 # after a dry run listing every new link (pipeline/out/sprint3_link_changes.md).
 CFR_PART_SUBPART_LIST_RE = re.compile(
     r"\b40\s+C\.?\s?F\.?\s?R\.?,?\s+[Pp]art\s+(60|63),\s+"
-    r"((?:OOOO[abc]?|JJJJ|IIII|ZZZZ)(?:,\s+(?:OOOO[abc]?|JJJJ|IIII|ZZZZ))*)\b"
+    r"((?:OOOO[abc]?|JJJJ|IIII|ZZZZ)(?:" + _SUBPART_LIST_SEP + r"(?:OOOO[abc]?|JJJJ|IIII|ZZZZ))*)\b"
 )
 _CFR_SUBPART_CODE_RE = re.compile(r"OOOO[abc]?|JJJJ|IIII|ZZZZ")
 # The codes after the first in a plural "Subparts X, Y or Z" list (see
@@ -5934,16 +5960,21 @@ _CFR_SUBPART_LIST_TAIL_RE = re.compile(r"(?:\s*,\s*(?:or|and)\s+|\s*,\s*|\s+(?:o
 PROGRAM_BARE_SUBPART_RE = re.compile(r"\b(NSPS|NESHAP|MACT),?\s+(OOOO[abc]?|JJJJ|IIII|ZZZZ)\b")
 # "Subpart ZZZZ of Part 63" / "Subpart IIII of 40 CFR Part 60" (link_citations
 # step 1.26): the part follows the code.
+# The code may head a list ("Subparts OOOOa and OOOOb of Part 60"): every code
+# takes the part the phrase names (14 Oct 2026).
 SUBPART_OF_PART_RE = re.compile(
-    r"\bSubparts?\s+(OOOO[abc]?|JJJJ|IIII|ZZZZ)\s+of\s+(?:40\s+C\.?\s?F\.?\s?R\.?,?\s+)?[Pp]art\s+(60|63)\b")
+    r"\bSubparts?\s+(OOOO[abc]?|JJJJ|IIII|ZZZZ)(?:" + _SUBPART_LIST_SEP + r"(?:" + _SUBPART_LIST_CODE + r"))*"
+    r"\s+of\s+(?:40\s+C\.?\s?F\.?\s?R\.?,?\s+)?[Pp]art\s+(60|63)\b")
 # A bare "Subpart ZZZZ" / "(Subpart OOOOa)" / "Subpart OOOO, OOOOa, or OOOOb"
 # with no part and no program word (step 1.27, after every other rule has
 # claimed its span). Only the corpus codes and the original OOOO are
 # matched; each code in a list resolves on its own (_subpart_regkey).
 BARE_SUBPART_RE = re.compile(r"\bSubparts?\s+(OOOO[abc]?|JJJJ|IIII|ZZZZ)\b")
-_BARE_SUBPART_TAIL_RE = re.compile(r"(?:\s*,\s*(?:or|and)\s+|\s*,\s*|\s+(?:or|and)\s+)(OOOO[abc]?|JJJJ|IIII|ZZZZ)\b")
 # "Regulation Number 6, Part A, Subpart IIII" names Regulation 6's own
 # adoption-by-reference row (sec-6-A-SUBPART-IIII), not the federal document.
+# "Part 60, Subpart ..." / "Part 63 Subpart ..." with no "40 CFR" before it
+# (step 1.27): the printed part names the part of the head and its list.
+_PART_BEFORE_RE = re.compile(r"\bPart\s+(60|63),?\s*$")
 _REG6_PART_A_BEFORE_RE = re.compile(r"Regulation\s+(?:Number|No\.?)\s*6,?\s+Part\s+A,?\s*$")
 # A 40 CFR 60 / 63 section citation inside a corpus subpart's range (step
 # 1.28; CFR_SECTION_RANGES): "§60.4209(a)", "Section 60.4244", "40 CFR
@@ -7144,6 +7175,33 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
     def claim(s: int, e: int) -> None:
         claimed.append((s, e))
 
+    def is_target(regkey: str | None) -> bool:
+        # A corpus document other than this one: a document's own subpart
+        # code ("this subpart" and a federal subpart naming itself) stays plain.
+        return bool(regkey) and regkey in corpus_regs and regkey != reg
+
+    def emit_subpart_tail(end: int, part: str | None = None, program: str | None = None,
+                          context: str | None = None) -> int:
+        """Link every code of a list that continues a head subpart citation
+        ending at `end` ("Subpart OOOO, OOOOa, or OOOOb", "NSPS OOOOa/OOOOb"):
+        each through _subpart_regkey with the head's part or program word
+        (a bare head passes the paragraph as `context`, as it does for itself),
+        so a Part 63 head never reaches the Part 60 rules. Claims the codes it
+        reads; returns where the list ends."""
+        for cs, ce, code in _subpart_list_tail(html_text, end):
+            if is_claimed(cs, ce):
+                break
+            claim(cs, ce)
+            end = ce
+            ckey = _subpart_regkey(code, part=part, program=program, context=context)
+            if ckey == reg:
+                continue
+            if is_target(ckey):
+                pieces.append((cs, ce, f'<a class="xref-external-reg" href="/regulations/{ckey}">{code}</a>'))
+            else:
+                buckets[BUCKET_CFR][f"Subpart {code}"] += 1
+        return end
+
     default_order = _default_parts_order(own_part, reg, known_ids)
     # Cross-regulation deep links are on only when a non-empty corpus id index
     # is in force; every `use_ids` branch below is skipped otherwise, so the
@@ -7165,7 +7223,7 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         claim(m.start(), m.end())
         for cm in _CFR_SUBPART_CODE_RE.finditer(html_text, m.start(2), m.end(2)):
             regkey = _subpart_regkey(cm.group(0), part=m.group(1))
-            if regkey and regkey in corpus_regs:
+            if is_target(regkey):
                 pieces.append((cm.start(), cm.end(),
                                f'<a class="xref-external-reg" href="/regulations/{regkey}">{cm.group(0)}</a>'))
             else:
@@ -7179,7 +7237,22 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
             continue
         regkey = _subpart_regkey(m.group(1), part=m.group(2))
         claim(m.start(), m.end())
-        if regkey and regkey in corpus_regs:
+        listed = [t for t in _subpart_list_tail(html_text, m.end(1)) if t[1] <= m.end()]
+        if listed:
+            # "Subparts OOOOa and OOOOb of Part 60": the head links its own
+            # "Subparts OOOOa", each listed code its own code; " of Part 60"
+            # stays text.
+            if is_target(regkey):
+                pieces.append((m.start(), m.end(1), f'<a class="xref-external-reg" href="/regulations/{regkey}">{html_text[m.start():m.end(1)]}</a>'))
+            else:
+                buckets[BUCKET_CFR][html_text[m.start():m.end(1)]] += 1
+            for cs, ce, code in listed:
+                ckey = _subpart_regkey(code, part=m.group(2))
+                if is_target(ckey):
+                    pieces.append((cs, ce, f'<a class="xref-external-reg" href="/regulations/{ckey}">{code}</a>'))
+                else:
+                    buckets[BUCKET_CFR][f"Subpart {code}"] += 1
+        elif is_target(regkey):
             pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
         else:
             buckets[BUCKET_CFR][m.group(0)] += 1
@@ -7208,18 +7281,23 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         # links to it. Every other code is left exactly as before (unclaimed,
         # so Reg 6's flat-entry step still links its own "Da", "Db" rows).
         # "Subparts A through H" is not a list and stops here.
+        # A singular head carries a list of corpus codes the same way ("40 CFR
+        # Part 60, Subpart OOOOa, OOOOb, or OOOOc", 14 Oct 2026).
         extra: list[tuple[int, int, str]] = []
         end = m.end()
-        if subpart and re.search(r"[Ss]ubparts\b", m.group(0)):
-            for em in _CFR_SUBPART_LIST_TAIL_RE.finditer(html_text, end):
-                if em.start() != end:
+        if subpart:
+            plural = re.search(r"[Ss]ubparts\b", m.group(0)) is not None
+            while True:
+                em = _CFR_SUBPART_LIST_TAIL_RE.match(html_text, end) if plural else None
+                em = em or _SUBPART_LIST_TAIL_MATCH_RE.match(html_text, end)
+                if not em:
                     break
                 extra.append((em.start(1), em.end(1), em.group(1)))
                 end = em.end()
         claim(m.start(), m.end())
         regkey = _subpart_regkey(subpart, part=m.group(1))
         flat_target = _flat_target(subpart)
-        if regkey and regkey in corpus_regs:
+        if is_target(regkey):
             pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
         elif flat_target and flat_target in known_ids:
             pieces.append((m.start(), m.end(), f'<span class="xref" data-target="{flat_target}">{m.group(0)}</span>'))
@@ -7227,7 +7305,7 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
             buckets[BUCKET_CFR][m.group(0)] += 1
         for cs, ce, code in extra:
             ckey = _subpart_regkey(code, part=m.group(1))
-            if ckey and ckey in corpus_regs and not is_claimed(cs, ce):
+            if is_target(ckey) and not is_claimed(cs, ce):
                 claim(cs, ce)
                 pieces.append((cs, ce, f'<a class="xref-external-reg" href="/regulations/{ckey}">{code}</a>'))
 
@@ -7264,10 +7342,13 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
         plain = re.match(r"^(?:NSPS|NESHAP|MACT)\s+Subpart", m.group(0)) is not None
         ls = m.start() if plain else m.start("sp")
         claim(m.start(), m.end())
-        if regkey and regkey in corpus_regs:
+        if is_target(regkey):
             pieces.append((ls, m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{html_text[ls:m.end()]}</a>'))
         else:
             buckets[BUCKET_CFR][m.group(0) if plain else f"{m.group(1)} {m.group('sp')}"] += 1
+        # "(NSPS) Subpart OOOO, OOOOa, or OOOOb": the codes after the head take
+        # the program's part (NSPS = Part 60, NESHAP / MACT = Part 63).
+        emit_subpart_tail(m.end(), program=m.group(1))
 
     # 1.25) "NSPS JJJJ" / "NESHAP ZZZZ" with no "Subpart" word
     # (PROGRAM_BARE_SUBPART_RE), every document since Sprint 3. After 1.2 so
@@ -7278,13 +7359,15 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
             continue
         regkey = _subpart_regkey(m.group(2), program=m.group(1))
         claim(m.start(), m.end())
-        if regkey and regkey in corpus_regs:
+        if is_target(regkey):
             pieces.append((m.start(), m.end(), f'<a class="xref-external-reg" href="/regulations/{regkey}">{m.group(0)}</a>'))
         else:
             # "NESHAP JJJJ" (the Part 63 coating rule): counted, never
             # linked. ("NSPS OOOO" links since 8 Oct 2026: the original
             # subpart is in the corpus.)
             buckets[BUCKET_CFR][m.group(0)] += 1
+        # "NSPS OOOOa/OOOOb", "NSPS OOOOa, OOOOb and OOOOc"
+        emit_subpart_tail(m.end(), program=m.group(1))
 
     # 1.28) A 40 CFR 60 / 63 section number inside a corpus subpart's range
     # (CFR_SECTION_RE, CFR_SECTION_RANGES): "§60.4209(a)" -> the exact
@@ -7707,14 +7790,18 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
             continue
         codes = [(m.start(1), m.end(1), m.group(1))]
         end = m.end()
-        for tm in _BARE_SUBPART_TAIL_RE.finditer(html_text, end):
-            if tm.start() != end or is_claimed(tm.start(1), tm.end(1)):
+        for tm in _subpart_list_tail(html_text, end):
+            if is_claimed(tm[0], tm[1]):
                 break
-            codes.append((tm.start(1), tm.end(1), tm.group(1)))
-            end = tm.end()
+            codes.append(tm)
+            end = tm[1]
         claim(m.start(), end)
         before = html_text[max(0, m.start() - 60):m.start()]
         reg6_row = _REG6_PART_A_BEFORE_RE.search(before) is not None and reg != "6"
+        # "Part 63, Subpart OOOO, JJJJ" (no "40 CFR" in front): the part just
+        # before the head is the part of every code in the list.
+        pm = _PART_BEFORE_RE.search(before)
+        head_part = pm.group(1) if pm else None
         for i, (cs, ce, code) in enumerate(codes):
             ls = m.start() if i == 0 else cs
             text = html_text[ls:ce]
@@ -7723,8 +7810,8 @@ def link_citations(html_text: str, reg: str, known_ids: set[str], corpus_regs: s
                 if target in (ids_index.get("6") or frozenset()) and "6" in corpus_regs:
                     pieces.append((ls, ce, f'<a class="xref-external-reg" href="/regulations/6#{target}">{text}</a>'))
                     continue
-            regkey = _subpart_regkey(code, context=html_text)
-            if regkey and regkey in corpus_regs:
+            regkey = _subpart_regkey(code, part=head_part, context=html_text)
+            if is_target(regkey):
                 pieces.append((ls, ce, f'<a class="xref-external-reg" href="/regulations/{regkey}">{text}</a>'))
             else:
                 buckets[BUCKET_CFR][f"Subpart {code}"] += 1

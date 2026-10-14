@@ -535,6 +535,20 @@ links to the part root), and the first section of a list carries the
   Part 60 context (NSPS, Part 60, a § 60.53xx section or OOOOa/b/c beside
   it) and no Part 63 / NESHAP / MACT context (`OOOO_CONTEXT_RE`,
   `PART_63_CONTEXT_RE`); "40 C.F.R. Part 63, Subpart OOOO" stays plain text.
+  **Lists** (14 Oct 2026): every code that continues a head subpart citation
+  is linked, not only the first -- "(NSPS) Subpart OOOO, OOOOa, or OOOOb"
+  (GP05 IX.B was linking only OOOO), "NSPS Subparts IIII and JJJJ", "NSPS
+  OOOOa/OOOOb", "Subpart OOOOb or OOOOc", "40 CFR Part 60, Subpart OOOOa,
+  OOOOb, or OOOOc", "Subparts OOOOa and OOOOb of Part 60". The continuation is
+  a separator (", ", ", or ", " and ", " or ", " and/or ", "/") and a corpus
+  code (`_subpart_list_tail`); each code resolves through `_subpart_regkey`
+  with the head's part, or its program word (NSPS = 60, NESHAP / MACT = 63),
+  so a Part 63 head never reaches the Part 60 rules and "40 C.F.R. Part 63,
+  Subpart OOOO, IIII, or JJJJ" stays plain. A document's own code
+  (`regkey == reg`) is never linked. A list whose head is not a corpus code
+  ("Subparts KKK, OOOO, and OOOOa", "Subparts A and OOOO") is not covered.
+  The existing rows got the same links by one UPDATE
+  (`supabase/migrations/RUN_ME_20261014_subpart_list_links.sql`).
   `pipeline/link_change_report.py` has a "Federal subpart links" table (per
   regulation: document and section links old -> new, skipped, unresolved);
   the 7 Oct 2026 run is `pipeline/out/acceptance_federal_subpart_links.md`.

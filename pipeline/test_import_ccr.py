@@ -12596,6 +12596,84 @@ class FederalSubpartLinkTests(XregBase):
         html, _ = self.fed("requirements of Regulation Number 6, Part A, Subpart IIII, Standards of Performance", reg="gp06")
         self.assertIn('<a class="xref-external-reg" href="/regulations/6#sec-6-A-SUBPART-IIII">Subpart IIII</a>, Standards', html)
 
+    def test_every_code_in_a_subpart_list_links(self):
+        # 14 Oct 2026. GP05 IX.B prints "(NSPS)\n Subpart OOOO, OOOOa, or OOOOb": the program
+        # form claimed only "Subpart OOOO" and the codes after it stayed text.
+        def link(code, text=None):
+            return f'<a class="xref-external-reg" href="/regulations/{code.lower()}">{text or code}</a>'
+        text = ("requirements of New Source Performance Standard (NSPS)\n"
+                "Subpart OOOO, OOOOa, or OOOOb \u2013 Standards of Performance for Crude Oil")
+        html, buckets = self.fed(text, reg="gp05")
+        self.assertIn(f"(NSPS)\n{link('oooo', 'Subpart OOOO')}, {link('ooooa', 'OOOOa')}, or "
+                      f"{link('oooob', 'OOOOb')} \u2013 Standards", html)
+        self.assertText(html, text)
+        self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {})
+        # Every list form, with the head in each of the program, part and bare shapes.
+        cases = [
+            ("under NSPS Subparts IIII and JJJJ for engines", "gp06",
+             f"under {link('iiii', 'NSPS Subparts IIII')} and {link('jjjj', 'JJJJ')} for"),
+            ("NSPS OOOOa/OOOOb applies", "7",
+             f"{link('ooooa', 'NSPS OOOOa')}/{link('oooob', 'OOOOb')} applies"),
+            ("Subpart OOOOb or OOOOc applies under the NSPS", "7",
+             f"{link('oooob', 'Subpart OOOOb')} or {link('ooooc', 'OOOOc')} applies"),
+            ("40 CFR Part 60, Subpart OOOOa, OOOOb, or OOOOc", "7",
+             f"{link('ooooa', '40 CFR Part 60, Subpart OOOOa')}, {link('oooob', 'OOOOb')}, or {link('ooooc', 'OOOOc')}"),
+            ("NSPS Subparts OOOOa and/or OOOOb of Part 60", "7",
+             f"NSPS {link('ooooa', 'Subparts OOOOa')} and/or {link('oooob', 'OOOOb')} of Part 60"),
+            ("NSPS OOOOa, OOOOb, and OOOOc", "7",
+             f"{link('ooooa', 'NSPS OOOOa')}, {link('oooob', 'OOOOb')}, and {link('ooooc', 'OOOOc')}"),
+            ("40 C.F.R. Part 60, OOOOa and OOOOb", "30",
+             f"40 C.F.R. Part 60, {link('ooooa', 'OOOOa')} and {link('oooob', 'OOOOb')}"),
+            ("the Subpart OOOOa/OOOOb requirements", "3",
+             f"{link('ooooa', 'Subpart OOOOa')}/{link('oooob', 'OOOOb')} requirements"),
+        ]
+        for text, reg, expected in cases:
+            with self.subTest(text=text):
+                html, buckets = self.fed(text, reg=reg)
+                self.assertIn(expected, html)
+                self.assertText(html, text)
+                self.assertEqual(dict(buckets[ic.BUCKET_CFR]), {})
+        # A list ends at the first word that is not a corpus code: no link for "A through H"
+        # style ranges or a prose word, and a sentence-final code after a comma links alone.
+        html, _ = self.fed("NSPS Subpart OOOOb, the owner must keep records and OOOOa applies", reg="7")
+        self.assertEqual(html.count("<a "), 1)
+        # The two heads of "NSPS IIII, NSPS JJJJ" each link; the second is not a list tail.
+        html, _ = self.fed("NSPS IIII, NSPS JJJJ and NESHAP ZZZZ may apply", reg="26")
+        self.assertEqual(html.count("<a "), 3)
+
+    def test_subpart_list_keeps_the_part_of_its_head(self):
+        # A bare Part 63 "Subpart OOOO" (printing, coating and dyeing of fabrics, Regulation 8)
+        # never links to the Part 60 rule, and the codes listed with it do not either.
+        for text in ("40 CFR Part 63, Subpart OOOO, IIII, or JJJJ coating",
+                     "NESHAP Subpart OOOO, IIII, and JJJJ",
+                     "MACT Subparts IIII and JJJJ",
+                     "Subparts IIII and JJJJ of Part 63",
+                     "NSPS rules such as Subpart OOOO and the NESHAP Part 63 Subpart OOOO, JJJJ rule"):
+            with self.subTest(text=text):
+                html, buckets = self.fed(text, reg="8", part="E")
+                self.assertNotIn("<a", html)
+                self.assertText(html, text)
+        # The same codes with a Part 60 head link, each to its own document.
+        html, _ = self.fed("NSPS Subpart OOOO, IIII, and JJJJ", reg="8", part="E")
+        self.assertEqual(html.count("<a "), 3)
+        self.assertIn('href="/regulations/oooo">NSPS Subpart OOOO</a>', html)
+        # A bare list with no Part 60 context: the OOOO family and ZZZZ are one-part codes
+        # and link, bare IIII / JJJJ stay text (as for a single bare code).
+        html, _ = self.fed("Subparts IIII and JJJJ sets coating standards", reg="8", part="E")
+        self.assertNotIn("<a", html)
+
+    def test_a_documents_own_subpart_code_in_a_list_stays_plain(self):
+        # A federal subpart naming its own code, and "this subpart", are not links;
+        # the other codes of the list still are.
+        html, _ = self.fed("this subpart and NSPS Subpart OOOOb, OOOOa, or OOOOc", reg="oooob")
+        self.assertNotIn('href="/regulations/oooob"', html)
+        self.assertIn('href="/regulations/ooooa">OOOOa</a>', html)
+        self.assertIn('href="/regulations/ooooc">OOOOc</a>', html)
+        self.assertIn("NSPS Subpart OOOOb, ", html)
+        html, _ = self.fed("Subpart OOOOb applies to this subpart. NSPS OOOOb/OOOOa", reg="oooob")
+        self.assertEqual(html.count("<a "), 1)
+        self.assertIn('href="/regulations/ooooa">OOOOa</a>', html)
+
     def test_section_numbers_link_to_the_corpus_subpart(self):
         text = "prior to startup of the engine per Subpart IIII §60.4209(a). See 40 CFR 60.4201 and 60.4209(z)."
         html, buckets = self.fed(text)
