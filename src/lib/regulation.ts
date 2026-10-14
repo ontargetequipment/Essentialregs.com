@@ -115,8 +115,10 @@ const CACHE_CHUNK_CHARS = 800_000;
  *      federal documents, the dateLine in the meta entry.
  *   4: the badge's review date is read on the America/Denver calendar, not
  *      UTC (Sprint 5, 10 Oct 2026; src/lib/dates.ts).
+ *   5: the sidebar's part label is one anchor, citation and description
+ *      together (14 Oct 2026; renderNavHtml).
  */
-const READER_RENDER_VERSION = "4";
+const READER_RENDER_VERSION = "5";
 
 /**
  * The rendered reader body for a regulation, cached across requests and

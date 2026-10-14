@@ -781,8 +781,19 @@ test.describe("guided walkthrough", () => {
     await expectClear(page, "step 6, 375px");
     await shot(page, testInfo, "tour-375-step6");
     // The visitor scrolls down to I.C.1.a: its control is lit once it is clear of the dock.
-    await aControl.evaluate((el) => el.scrollIntoView({ block: "center" }));
-    await expect(aControl).toHaveAttribute("data-tour-target", "6");
+    // Polled, not asserted at one moment: the tour lights the control only once
+    // it is clear of the dock, which can come after the scroll has settled (a
+    // late layout shift from the strip or a restored panel moves it), so each
+    // pass scrolls it to the middle again and reads the highlight.
+    await expect
+      .poll(
+        async () => {
+          await aControl.evaluate((el) => el.scrollIntoView({ block: "center" }));
+          return aControl.getAttribute("data-tour-target");
+        },
+        { message: "step 6: I.C.1.a's control is highlighted once it is clear of the dock, 375px" }
+      )
+      .toBe("6");
     await expectClear(page, "step 6 scrolled to I.C.1.a, 375px");
 
     // 7 -- the second hop.

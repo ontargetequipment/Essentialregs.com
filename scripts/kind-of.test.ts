@@ -105,6 +105,17 @@ test("the reader's HTML for a P-shape part is the item markup it has always been
   // The sidebar: the part is a collapsible group of its sections, as before.
   const nav = renderNavHtml(all, tree);
   assert.match(nav, /<details class="nav-part" id="navgroup-sec-7-P-B" open="">/);
+  // The part label is one anchor: the citation and the description both inside it.
+  assert.match(
+    nav,
+    /<summary><a href="#sec-7-P-B" class="nav-link nav-part-link"><span class="nav-part-cite">PART B<\/span><span class="nav-part-sub">[^<]+<\/span><\/a><\/summary>/
+  );
+  // An appendix (no group) is the same anchor, in a plain div.
+  assert.match(
+    nav,
+    /<div class="nav-part"><a href="#sec-7-A-APPENDIX-A" class="nav-link nav-part-link"><span class="nav-part-cite">Appendix A<\/span>(<span class="nav-part-sub">[^<]*<\/span>)?<\/a><\/div>/
+  );
+  assert.ok(!nav.includes('</a><div class="nav-part-sub">'), "no description outside the anchor");
   // depthOf follows the reader's kind.
   assert.equal(depthOf("sec-7-B-I", tree.byId, new Map()), 2);
   // And the tree's root is still found.

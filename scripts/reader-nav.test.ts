@@ -359,6 +359,27 @@ test("RegulationReader: go to full section, return trail, Back", async (t) => {
     assert.equal(bar().hidden, true, "returning to the trail's top pops it");
   });
 
+  await t.test("the part label is one link: a click on its description navigates and opens the group, never collapses it", async () => {
+    const link = $('#sidebar a.nav-part-link[href="#sec-3-P-A"]');
+    const sub = link.querySelector(".nav-part-sub");
+    assert.ok(sub, "the description is inside the anchor");
+    assert.equal(link.querySelector(".nav-part-cite")?.textContent, "PART A");
+    const group = $("#navgroup-sec-3-P-A") as HTMLDetailsElement;
+    // Open group: the click goes to the part and the group stays open (the <summary> default is suppressed).
+    assert.equal(group.open, true);
+    await click(sub!);
+    assert.equal(window.location.hash, "#sec-3-P-A");
+    assert.equal(group.open, true, "a label click does not collapse the group");
+    // Closed group: the same click opens it.
+    group.open = false;
+    await click(link.querySelector(".nav-part-cite")!);
+    assert.equal(window.location.hash, "#sec-3-P-A");
+    assert.equal(group.open, true, "the numeral opens it too");
+    group.open = false;
+    await click(sub!);
+    assert.equal(group.open, true, "the description opens it");
+  });
+
   await t.test("sidebar link and jump box go through the same path; dismiss clears", async () => {
     await click($('#sidebar a.nav-link[href="#sec-3-A-II"]'));
     assert.equal(window.location.hash, "#sec-3-A-II");
