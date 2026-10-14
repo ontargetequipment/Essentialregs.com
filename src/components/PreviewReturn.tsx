@@ -13,7 +13,8 @@ import {
 import type { PreviewReturn as PreviewReturnLink } from "@/lib/preview-subtree";
 
 /**
- * The focused preview's "← Back to …" bar (walkthrough v3, 13 Oct 2026).
+ * The focused preview's "← Back to …" bar (walkthrough v3, 13 Oct 2026),
+ * on the right of the context strip since 14 Oct 2026 (PreviewContextStrip).
  * The server renders it from the URL's one `?from=` (`origin`:
  * previewReturnLink, preview-subtree.ts); this component keeps the trail of
  * hops behind it in sessionStorage (preview-trail.ts) and, once mounted,
@@ -85,7 +86,7 @@ export function PreviewReturn({ origin, reg }: { origin: PreviewReturnLink; reg:
       data-hops={bar.count}
       href={bar.href}
       onClick={onClick}
-      className="mb-5 inline-flex min-h-11 flex-wrap items-center gap-x-1 rounded-full border border-line bg-panel px-4 text-sm font-semibold text-accent shadow-sm hover:bg-accent-soft"
+      className="inline-flex min-h-11 shrink-0 flex-wrap items-center gap-x-1 rounded-full border border-line bg-panel px-3 text-xs font-semibold text-accent hover:bg-accent-soft sm:min-h-8 sm:text-sm"
     >
       <span>{bar.label}</span>
       {bar.then && (

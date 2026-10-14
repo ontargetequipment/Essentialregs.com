@@ -63,7 +63,9 @@ const REG7_SUBTREE = [
 const REG7_WITH_SUMMARY = REG7_SUBTREE.filter((id) => !["sec-7-B-I-C-1", "sec-7-B-I-C-1-e-(iii)", "sec-7-B-I-C-1-f"].includes(id));
 /** The second hop of the walkthrough (13 Oct 2026, migration 20261013014006): I.D's heading and its one substantive child. */
 const REG7_SECOND_HOP = ["sec-7-B-I-D", "sec-7-B-I-D-4"];
-const REG7_PUBLIC = new Set([...REG7_SUBTREE, ...REG7_SECOND_HOP, "sec-7-B-I-D-3-a-(i)"]);
+// The eight rows the /sample Ask example cites, public since migration 20261013051740 (walkthrough v3.1).
+const REG7_ASK_CITES = ["sec-7-B-I-B-30", "sec-7-B-I-B-34", "sec-7-B-II-A-43", "sec-7-B-I-D-3-a-(ii)", "sec-7-B-I-E", "sec-7-B-I-F", "sec-7-B-II-C", "sec-7-B-V-C-2-w"];
+const REG7_PUBLIC = new Set([...REG7_SUBTREE, ...REG7_SECOND_HOP, "sec-7-B-I-D-3-a-(i)", ...REG7_ASK_CITES]);
 
 /**
  * Locked Regulation 7 rows and words of their official text (or, for a
@@ -1409,6 +1411,51 @@ test.describe("anonymous", () => {
   // The preview of the public subtree
   // -------------------------------------------------------------------------
 
+  test("a cross-reference landing, outside the walkthrough: the context strip names the document, Part and provision, with the way back in it, at 1280px and 375px", async ({ page }) => {
+    const strip = page.getByTestId("preview-context");
+    const text = page.getByTestId("preview-context-text");
+    for (const width of [1280, 375]) {
+      await page.setViewportSize({ width, height: 740 });
+      await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C");
+      // No walkthrough: no ?tour=1, no card.
+      await expect(page.getByTestId("tour-callout")).toHaveCount(0);
+      await expect(text).toHaveText("Regulation 7 · Part B · I.C.1 General Requirements");
+      const back = strip.locator("#preview-return");
+      await expect(back).toHaveText("← Back to GP05 · VI.C");
+      await expect(back).toHaveAttribute("href", "/regulations/gp05#sec-gp05-VI-C");
+      // Right under the header, the whole width, the I.C.1 heading below it.
+      const sb = (await strip.boundingBox())!;
+      expect(sb.y).toBe(66);
+      expect(Math.round(sb.width)).toBe(width);
+      const hb = (await page.locator("#preview-heading").boundingBox())!;
+      expect(hb.y, `${width}px: the heading is under the strip`).toBeGreaterThanOrEqual(sb.y + sb.height);
+      expect(hb.y + hb.height).toBeLessThanOrEqual(740);
+      if (width === 1280) {
+        // One line: the return link on the right of the text.
+        const tb = (await text.boundingBox())!;
+        const lb = (await back.boundingBox())!;
+        expect(lb.x).toBeGreaterThanOrEqual(tb.x + tb.width);
+        expect(sb.height).toBeLessThan(56);
+      } else {
+        // Two lines on a phone: the text, then the link; nothing scrolls sideways.
+        const tb = (await text.boundingBox())!;
+        const lb = (await back.boundingBox())!;
+        expect(lb.y).toBeGreaterThanOrEqual(tb.y + tb.height);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+      }
+      // Sticky: still under the header, still saying where the visitor is, after a scroll down the text.
+      await page.evaluate(() => window.scrollTo(0, 1200));
+      await expect.poll(async () => (await strip.boundingBox())!.y).toBe(66);
+      await expect(text).toBeInViewport();
+    }
+    // No from=: the strip without a way back. The whole-document preview has no strip.
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-D");
+    await expect(text).toHaveText("Regulation 7 · Part B · I.D Storage Tank Emission Controls");
+    await expect(page.locator("#preview-return")).toHaveCount(0);
+    await page.goto("/regulations/7/preview");
+    await expect(strip).toHaveCount(0);
+  });
+
   test("the focused preview of Regulation 7 I.C.1 shows the 13 public rows, their text and summaries, and the rest locked", async ({ page, baseURL }) => {
     test.setTimeout(120_000);
     const res = await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1");
@@ -1605,7 +1652,7 @@ test.describe("anonymous", () => {
 
   test("the focused preview of Regulation 7 I.D (the walkthrough's second hop) shows its public rows and nothing of I.D.1-3 or I.D.4's children", async ({ page }) => {
     // 13 Oct 2026 (migration 20261013014006): I.D and I.D.4 are public; the older sample row I.D.3.a.(i) sits under I.D too,
-    // and since v3.1 (migration 20261013051740) so does I.D.3.a.(ii), a citation of the sample page's Ask example.
+    // and since migration 20261013051740 so does I.D.3.a.(ii), a citation of the sample page's Ask example.
     const res = await page.goto("/regulations/7/preview?p=sec-7-B-I-D");
     expect(res?.status()).toBe(200);
     const html = (await res?.text()) ?? "";

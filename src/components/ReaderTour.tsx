@@ -28,6 +28,8 @@ import {
   isTourCitationLink,
   floatingFit,
   jumpTargetFor,
+  rectsOverlap,
+  CALLOUT_CLEARANCE,
   linkTargetOf,
   parseTourState,
   pickSummaryRow,
@@ -377,6 +379,14 @@ function readerAtVIC(): boolean {
   return !!target && hashId() === target;
 }
 
+/** Step 6's summary control: I.C.1.a's (pickSummaryRow), on the preview or in the reader. */
+function step6Control(root: HTMLElement, placement: Placement): HTMLElement | null {
+  const cited = destinationTarget(placement, window.location.search, window.location.hash);
+  if (!cited) return null;
+  const rows = childRows(root).map((el) => ({ id: el.id, hasSummary: !!summaryPanelOf(el) }));
+  return summaryControlOf(rowOf(root, pickSummaryRow(cited, rows)));
+}
+
 /** The element a view's callout points at, or null. */
 function anchorFor(view: TourView, page: TourPage, placement: Placement): HTMLElement | null {
   if (page === "destination") {
@@ -385,10 +395,16 @@ function anchorFor(view: TourView, page: TourPage, placement: Placement): HTMLEl
     if (!root) return null;
     if (view === 7) return secondHopLinkOf(root);
     if (view !== 6) return null;
-    const cited = destinationTarget(placement, window.location.search, window.location.hash);
-    if (!cited) return null;
-    const rows = childRows(root).map((el) => ({ id: el.id, hasSummary: !!summaryPanelOf(el) }));
-    return summaryControlOf(rowOf(root, pickSummaryRow(cited, rows)));
+    // The visitor's preview: the cited provision's heading, under the context
+    // strip that names the document and Part (14 Oct 2026), so the page says
+    // where the visitor is before what to do; I.C.1.a's control is lit too
+    // once it is clear of the card (step6Control). A subscriber's reader has
+    // its sidebar for that and keeps the control as the anchor.
+    if (placement === "floating") {
+      const heading = document.getElementById("preview-heading");
+      if (heading) return heading;
+    }
+    return step6Control(root, placement);
   }
   if (view === TOUR_INTRO_STEP || view === 1) return document.getElementById("jumpbox");
   const doc = docEl();
@@ -411,11 +427,19 @@ function openJumpResults(): HTMLElement | null {
 
 /**
  * The elements the step's spotlight goes on (data-tour-target): the anchor;
- * at step 1 also VI.D's match while the jump results are open; on the
- * closing card the card's own first button (the anchor, VI.C, is only
- * scrolled to).
+ * at step 1 also VI.D's match while the jump results are open; at step 6 on
+ * the preview also I.C.1.a's control, while it is on screen and clear of
+ * the card (`box`: on a phone it is often under the dock until the visitor
+ * scrolls); on the closing card the card's own first button (the anchor,
+ * VI.C, is only scrolled to).
  */
-function spotlightsFor(view: TourView, page: TourPage, anchor: HTMLElement | null, closingButton: HTMLElement | null): HTMLElement[] {
+function spotlightsFor(
+  view: TourView,
+  page: TourPage,
+  anchor: HTMLElement | null,
+  closingButton: HTMLElement | null,
+  box: HTMLElement | null = null
+): HTMLElement[] {
   if (view === "closing") return closingButton ? [closingButton] : [];
   if (view === 4 && page === "reader") {
     // Step 4's action is typing VI.C: the spotlight goes on the jump box, not
@@ -426,6 +450,15 @@ function spotlightsFor(view: TourView, page: TourPage, anchor: HTMLElement | nul
     return box ? [box] : [];
   }
   const out = anchor ? [anchor] : [];
+  if (view === 6 && page === "destination" && anchor?.id === "preview-heading") {
+    const root = destinationRoot("floating");
+    const control = root ? step6Control(root, "floating") : null;
+    if (control && box && box.style.visibility !== "hidden") {
+      const r = rectOf(control);
+      const onScreen = r.top >= topChrome() && r.bottom <= window.innerHeight;
+      if (onScreen && !rectsOverlap(r, rectOf(box), CALLOUT_CLEARANCE)) out.push(control);
+    }
+  }
   if (view === 1 && page === "reader") {
     const results = openJumpResults();
     const doc = docEl();
@@ -478,8 +511,24 @@ function obstaclesFor(view: TourView, page: TourPage, anchor: HTMLElement | null
 const HEADER_PX = 66;
 /** Where the reader lands a row (scroll-margin-top in reader.css): under the header and the return bar. */
 const LANDING_PX = 130;
-/** The focused preview has no return bar: a little under the header. */
+/** The focused preview without its context strip: a little under the header. */
 const FLOATING_LANDING_PX = 96;
+/**
+ * The bottom of what is fixed at the top of the page: the site header, and on
+ * the focused preview the context strip under it (PreviewContextStrip, one
+ * line on a wide screen, two on a phone).
+ */
+function topChrome(): number {
+  const strip = document.getElementById("preview-context");
+  return Math.max(HEADER_PX, strip ? strip.getBoundingClientRect().bottom : 0);
+}
+
+/** Where an anchor's top is put: the reader's landing line, and on the preview a little under its context strip. */
+function landingFor(placement: Placement, docked: boolean): number {
+  if (placement !== "floating") return LANDING_PX;
+  return Math.max(docked ? LANDING_PX : FLOATING_LANDING_PX, topChrome() + 12);
+}
+
 /** After the reader's own deep-link landing (RegulationReader: 50ms) has had its say. */
 const SETTLE_MS = 150;
 
@@ -494,7 +543,7 @@ function bringIntoView(anchor: HTMLElement, reserve: number, landing: number): v
   if (anchor.closest("#sidebar, #return-trail")) return;
   const rect = anchor.getBoundingClientRect();
   const bottom = window.innerHeight - reserve - 16;
-  const fits = rect.top >= HEADER_PX + 8 && Math.min(rect.bottom, rect.top + 48) <= bottom;
+  const fits = rect.top >= topChrome() + 8 && Math.min(rect.bottom, rect.top + 48) <= bottom;
   if (fits) return;
   const room = Math.max(0, bottom - landing - Math.min(rect.height, bottom - landing));
   window.scrollBy({ top: rect.top - (landing + room / 3), behavior: "auto" });
@@ -819,11 +868,10 @@ export function ReaderTour({
     const bringAnchorIntoView = () => {
       if (floating) sizeFloating(); // its height, which the scroll below makes room for, depends on its width
       anchor = anchorFor(view, page, placement);
-      mark(spotlightsFor(view, page, anchor, exploreRef.current));
+      mark(spotlightsFor(view, page, anchor, exploreRef.current, box));
       if (!anchor) return;
       const height = box.getBoundingClientRect().height;
-      if (docked) bringIntoView(anchor, height, LANDING_PX);
-      else bringIntoView(anchor, 0, floating ? FLOATING_LANDING_PX : LANDING_PX);
+      bringIntoView(anchor, docked ? height : 0, landingFor(placement, docked));
     };
 
     const unposition = () => {
@@ -837,14 +885,16 @@ export function ReaderTour({
     const update = () => {
       raf = 0;
       const target = anchorNow();
-      mark(spotlightsFor(view, page, target, exploreRef.current));
       if (docked) {
         box.removeAttribute("data-unanchored");
         box.removeAttribute("data-dock");
         unposition();
         setDockRoom();
+        mark(spotlightsFor(view, page, target, exploreRef.current, box));
         return;
       }
+      // Against the card's last position; checked again once it is placed below.
+      mark(spotlightsFor(view, page, target, exploreRef.current, box));
       const sidebar = document.getElementById("sidebar");
       // Nothing to point at (the page is not what the tour expects): the
       // callout still shows, in the corner, so Skip and Restart stay reachable.
@@ -900,13 +950,15 @@ export function ReaderTour({
         paneLeft: floating || !sidebar ? 0 : sidebar.getBoundingClientRect().right,
         obstacles: obstaclesFor(view, page, target),
         beside,
+        minTop: topChrome() + 8,
       });
       if (choice.mode === "dock") {
         // Nothing fixed is clear of what the step needs: the bottom sheet, with the anchor scrolled above it.
         unposition();
         box.setAttribute("data-dock", "");
         setDockRoom();
-        bringIntoView(target, box.getBoundingClientRect().height, LANDING_PX);
+        bringIntoView(target, box.getBoundingClientRect().height, landingFor(placement, true));
+        mark(spotlightsFor(view, page, target, exploreRef.current, box));
         return;
       }
       root.removeAttribute("data-tour-docked");
@@ -923,6 +975,8 @@ export function ReaderTour({
         arrow.style.top = vertical ? `${Math.round(choice.arrowAt)}px` : "";
         arrow.style.left = vertical ? "" : `${Math.round(choice.arrowAt)}px`;
       }
+      // Placed: step 6's control can now be checked against the card's box.
+      mark(spotlightsFor(view, page, target, exploreRef.current, box));
     };
     const schedule = () => {
       if (!raf) raf = requestAnimationFrame(update);

@@ -23,8 +23,9 @@
  *                                                    visitor, the Reg 7 reader for a
  *                                                    subscriber); the step becomes 6 on
  *                                                    ARRIVAL there, not on the click
- *   6. the cited requirement: I.C.1.a's summary   -> advances when a summary of the
- *                                                    cited provision's subtree opens
+ *   6. the cited requirement: where you are (the  -> advances when a summary of the
+ *      I.C.1 heading, under the preview's context    cited provision's subtree opens
+ *      strip), then I.C.1.a's summary
  *   7. the second hop: I.C.1.c's "Sections I.D."  -> advances on arrival at I.D (the I.D
  *                                                    preview; a same-document jump in a
  *                                                    subscriber's reader)
@@ -129,7 +130,8 @@ export const TOUR_COPY = {
   step4HintDocked: "Tap Contents, type VI.C and press Enter.",
   step5: "Click the Regulation 7 citation.",
   step5Hint: `Regulation Number 7, Part B, Section ${TOUR_CITATION.section}, highlighted in the text.`,
-  step6: "This is the cited requirement. Open I.C.1.a's summary.",
+  /** On the visitor's preview the card anchors to the I.C.1 heading, under the context strip that names the document and Part (14 Oct 2026). */
+  step6: "You are now in Regulation 7, Part B. This is I.C.1, the requirement GP05 cited. Open I.C.1.a's plain-English summary below.",
   step7: "Follow this one too.",
   step7Hint: `I.C.1.c cites Sections ${TOUR_SECOND_HOP.section}., I.J., and I.K. Click ${TOUR_SECOND_HOP.section}., highlighted in the text.`,
   /** A subscriber's reader opens a same-document citation in its popup first. */
@@ -564,7 +566,9 @@ export type PlacementChoice =
  * `obstacles` -- the step's target, the jump results when open, the summary
  * control or open panel, the citation link, the return bar: whatever the
  * step is asking the visitor to use (ReaderTour gathers them) -- with
- * CALLOUT_CLEARANCE of air. In order:
+ * CALLOUT_CLEARANCE of air, and never above `minTop` (the bottom of what is
+ * fixed at the top of the page: the site header, and on the focused preview
+ * its context strip). In order:
  *
  *   top-right     the reading pane's top-right corner: under the site header,
  *                 EDGE from the viewport's right edge (the default)
@@ -586,12 +590,15 @@ export function chooseCalloutPlacement(input: {
   paneLeft: number;
   obstacles: readonly Rect[];
   beside: Parameters<typeof placeCallout>[0] | null;
+  /** The highest the card's top may be; CALLOUT_MIN_TOP when not given or lower. */
+  minTop?: number;
 }): PlacementChoice {
   const { box, viewport, obstacles } = input;
+  const minTop = Math.max(CALLOUT_MIN_TOP, input.minTop ?? 0);
   const width = Math.min(box.width, Math.max(0, viewport.width - input.paneLeft - 2 * EDGE));
   const clear = (top: number, left: number, w: number): boolean => {
     const rect = { top, bottom: top + box.height, left, right: left + w };
-    if (rect.top < CALLOUT_MIN_TOP || rect.bottom > viewport.height - GAP || rect.left < 0 || rect.right > viewport.width) return false;
+    if (rect.top < minTop || rect.bottom > viewport.height - GAP || rect.left < 0 || rect.right > viewport.width) return false;
     return !obstacles.some((o) => rectsOverlap(rect, o, CALLOUT_CLEARANCE));
   };
   const corner = (candidate: "top-right" | "bottom-right" | "top-left", top: number, left: number): PlacementChoice | null =>
@@ -600,9 +607,9 @@ export function chooseCalloutPlacement(input: {
   const right = viewport.width - EDGE - width;
   const bottom = viewport.height - GAP - box.height;
   const choice =
-    corner("top-right", CALLOUT_MIN_TOP, right) ??
+    corner("top-right", minTop, right) ??
     corner("bottom-right", bottom, right) ??
-    corner("top-left", CALLOUT_MIN_TOP, input.paneLeft + EDGE);
+    corner("top-left", minTop, input.paneLeft + EDGE);
   if (choice) return choice;
 
   if (input.beside) {

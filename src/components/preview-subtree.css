@@ -33,10 +33,16 @@
 }
 
 /* A link to a row of this page lands it below the site header (66px, sticky)
-   and flashes it, as the reader's own jumps do (.flash, set by a script the
-   preview does not run). */
+   and the context strip under it (PreviewContextStrip: one line, about 45px;
+   two on a phone, about 80px), and flashes it, as the reader's own jumps do
+   (.flash, set by a script the preview does not run). */
 .preview-reader #preview-doc > [id] {
-  scroll-margin-top: 90px;
+  scroll-margin-top: 130px;
+}
+@media (max-width: 639px) {
+  .preview-reader #preview-doc > [id] {
+    scroll-margin-top: 162px;
+  }
 }
 .preview-reader #preview-doc > .item:target {
   animation: reg-reader-flashbg 1.6s ease;

@@ -136,6 +136,27 @@ function report(testInfo: TestInfo, label: string, rects: { card: { x: number; y
 
 const count = (page: Page) => callout(page).getByTestId("tour-count");
 const back = (page: Page) => page.locator("#preview-return");
+const strip = (page: Page) => page.getByTestId("preview-context");
+const heading = (page: Page) => page.locator("#preview-heading");
+const STEP6 = "You are now in Regulation 7, Part B. This is I.C.1, the requirement GP05 cited. Open I.C.1.a's plain-English summary below.";
+
+/**
+ * Step 6's landing on the I.C.1 preview, before any scrolling: the page is at
+ * its top, the context strip (sticky under the header) reads
+ * "Regulation 7 · Part B · I.C.1 General Requirements" with "← Back to GP05 ·
+ * VI.C" in it, and the I.C.1 heading is in the viewport below the strip
+ * (and above the dock on a phone: `bottom`).
+ */
+async function expectLandedOnIC1(page: Page, bottom?: number): Promise<void> {
+  expect(await page.evaluate(() => window.scrollY), "no scroll on arrival").toBe(0);
+  await expect(page.getByTestId("preview-context-text")).toHaveText("Regulation 7 · Part B · I.C.1 General Requirements");
+  await expect(strip(page).locator("#preview-return")).toBeVisible();
+  expect(await inViewportNow(strip(page), bottom), "the strip is in the viewport").toBe(true);
+  const sb = await boxOf(strip(page));
+  expect(sb.y, "the strip sits right under the header").toBe(66);
+  expect(await inViewportNow(heading(page), bottom, sb.y + sb.height), "the I.C.1 heading is in the viewport, under the strip").toBe(true);
+  await expect(heading(page)).toHaveText("I.C.1.");
+}
 
 test.describe("guided walkthrough", () => {
   test("logged out, the whole walkthrough at 1280px: the copy, the spotlight, a card clear of every target, the counts and the two hops back", async ({ page }, testInfo) => {
@@ -260,7 +281,12 @@ test.describe("guided walkthrough", () => {
     expect(arrived.searchParams.get("tour")).toBe("1");
     await expect(c).toHaveAttribute("data-step", "6");
     await expect(count(page)).toHaveText(`Step 6 of ${STEP_COUNT}`);
-    await expect(c).toContainText("This is the cited requirement. Open I.C.1.a's summary.");
+    await expect(c).toContainText(STEP6);
+    // Where the visitor is, before any scrolling: the context strip under the
+    // header names the document, the Part and the provision, with the way
+    // back on its right, and the I.C.1 heading is just under it -- not the
+    // page scrolled down to I.C.1.a's control.
+    await expectLandedOnIC1(page);
     await expect(back(page)).toBeVisible();
     await expect(back(page)).toContainText("Back to GP05 · VI.C");
     await expect(back(page)).toHaveAttribute("href", WAY_BACK);
@@ -270,9 +296,11 @@ test.describe("guided walkthrough", () => {
     await expect(page.getByTestId("partial-excerpt")).toHaveCount(0);
     const aControl = summaryControl(previewRow(page, REG7_IC1_A));
     await expect(summaryPanel(previewRow(page, REG7_IC1_A))).not.toHaveAttribute("open", "");
-    await expectSpotlight(page, 6, aControl);
+    // The card anchors to the heading; I.C.1.a's control, on screen beside it at 1280px, is lit too.
+    await expectSpotlight(page, 6, heading(page), aControl);
     expect(await inViewportNow(aControl), "I.C.1.a's control is on screen with the card").toBe(true);
-    await expectFloatingInGutter(page, aControl);
+    await expectFloatingInGutter(page, heading(page));
+    await expect.poll(async () => (await boxOf(c)).y >= (await boxOf(strip(page))).y + (await boxOf(strip(page))).height, { message: "the card sits under the strip" }).toBe(true);
     await expectClear(page, "step 6");
     await shot(page, testInfo, "tour-1280-step6");
     await expect(c.getByTestId("tour-trial")).toHaveCount(0);
@@ -650,12 +678,12 @@ test.describe("guided walkthrough", () => {
     await expect.poll(() => inViewportNow(summaryControl(row(page, VI_D)))).toBe(true);
 
     const anchors: Record<number, (p: Page) => Locator> = {
-      6: (p) => summaryControl(previewRow(p, REG7_IC1_A)),
+      6: (p) => heading(p),
       7: (p) => secondHopLink(p),
       8: (p) => p.locator("#preview-return"),
       9: (p) => p.locator("#preview-return"),
     };
-    const copy: Record<number, string> = { 6: "Open I.C.1.a's summary.", 7: "Follow this one too.", 8: "Click Back to Regulation 7 I.C.1.", 9: "Click Back to GP05 VI.C." };
+    const copy: Record<number, string> = { 6: "Open I.C.1.a's plain-English summary below.", 7: "Follow this one too.", 8: "Click Back to Regulation 7 I.C.1.", 9: "Click Back to GP05 VI.C." };
     for (const step of [6, 7, 8, 9] as const) {
       await openAtStep(page, step);
       await page.reload();
@@ -745,11 +773,17 @@ test.describe("guided walkthrough", () => {
     await link.click();
     await page.waitForURL((url) => url.pathname === "/regulations/7/preview");
     const aControl = summaryControl(previewRow(page, REG7_IC1_A));
-    await expectDocked(page, 6, aControl, H);
+    await expectDocked(page, 6, heading(page), H);
+    await expect(callout(page)).toContainText(STEP6);
+    // The strip (two lines on a phone) and the I.C.1 heading under it, above the dock, before any scrolling.
     const dock6 = (await boxOf(callout(page))).y;
-    expect(await inViewportNow(aControl, dock6), "I.C.1.a's control is above the dock the moment step 6 shows").toBe(true);
+    await expectLandedOnIC1(page, dock6);
     await expectClear(page, "step 6, 375px");
     await shot(page, testInfo, "tour-375-step6");
+    // The visitor scrolls down to I.C.1.a: its control is lit once it is clear of the dock.
+    await aControl.evaluate((el) => el.scrollIntoView({ block: "center" }));
+    await expect(aControl).toHaveAttribute("data-tour-target", "6");
+    await expectClear(page, "step 6 scrolled to I.C.1.a, 375px");
 
     // 7 -- the second hop.
     await aControl.click();
@@ -794,14 +828,15 @@ test.describe("guided walkthrough", () => {
     await captureTourEvents(page);
     await openAtStep(page, 6);
     const aControl = summaryControl(previewRow(page, REG7_IC1_A));
-    // A 190px gutter: docked like on a phone, with the control above the dock.
-    await expectDocked(page, 6, aControl, H, 1100);
+    // A 190px gutter: docked like on a phone, with the I.C.1 heading (the anchor) above the dock.
+    await expectDocked(page, 6, heading(page), H, 1100);
     // Wider: the card moves into the gutter, clear of the text.
     await page.setViewportSize({ width: 1280, height: H });
-    await expectFloatingInGutter(page, aControl);
+    await expectFloatingInGutter(page, heading(page));
     // Narrower again: docked.
     await page.setViewportSize({ width: 1100, height: H });
-    await expectDocked(page, 6, aControl, H, 1100);
+    await expectDocked(page, 6, heading(page), H, 1100);
+    await aControl.evaluate((el) => el.scrollIntoView({ block: "center" }));
     await aControl.click();
     await expectDocked(page, 7, secondHopLink(page), H, 1100);
   });
