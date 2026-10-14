@@ -378,7 +378,7 @@ test("the callouts say what the brief says", () => {
   assert.equal(TOUR_COPY.step4, "Now jump to VI.C.");
   assert.equal(TOUR_COPY.step4Hint, "Type VI.C in the jump box and press Enter.");
   assert.equal(TOUR_COPY.step5, "Click the Regulation 7 citation.");
-  assert.equal(TOUR_COPY.step6, "This is the cited requirement. Open I.C.1.a's summary.");
+  assert.equal(TOUR_COPY.step6, "You are now in Regulation 7, Part B. This is I.C.1, the requirement GP05 cited. Open I.C.1.a's plain-English summary below.");
   assert.equal(TOUR_COPY.step7, "Follow this one too.");
   assert.equal(TOUR_COPY.step7Hint, "I.C.1.c cites Sections I.D., I.J., and I.K. Click I.D., highlighted in the text.");
   assert.equal(TOUR_COPY.step7HintReader, "I.C.1.c cites Sections I.D., I.J., and I.K. Click I.D., highlighted in the text, then Go to full section in the preview.");
@@ -656,6 +656,20 @@ test("the preview (no sidebar) at 1280px: the card takes the right gutter's corn
   // A card taller than the viewport leaves: the dock.
   const tall = { width, height: 700 };
   assert.equal(chooseCalloutPlacement({ box: tall, viewport: VIEW, paneLeft: 0, obstacles: [control], beside: null }).candidate, "dock");
+});
+
+test("the preview's context strip: no corner sits above minTop, so the card stays under the strip", () => {
+  const { width } = floatingFit(1280, 1000);
+  const box = { width, height: 180 };
+  // The strip runs the full width from 66 to 111; the card's top goes 8px under it.
+  const c = chooseCalloutPlacement({ box, viewport: VIEW, paneLeft: 0, obstacles: [], beside: null, minTop: 119 });
+  assert.equal(c.candidate, "top-right");
+  if (c.mode === "fixed") assert.equal(c.top, 119);
+  // A lower minTop than the header's never lifts the card over the header.
+  const low = chooseCalloutPlacement({ box, viewport: VIEW, paneLeft: 0, obstacles: [], beside: null, minTop: 10 });
+  if (low.mode === "fixed") assert.equal(low.top, CALLOUT_MIN_TOP);
+  // Too little room under a tall strip for the card: the dock.
+  assert.equal(chooseCalloutPlacement({ box: { width, height: 600 }, viewport: VIEW, paneLeft: 0, obstacles: [], beside: null, minTop: 119 }).candidate, "dock");
 });
 
 test("a corner candidate is narrowed to the pane when the pane is narrower than the card, and skipped when it would leave the viewport", () => {
