@@ -415,8 +415,8 @@ test.describe("signed in", () => {
       .evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""));
     expect(hrefs.length).toBe(10);
     for (const href of hrefs) expect(href, href).toMatch(/^\/regulations\/[^/]+#/);
-    // No trial to start (Sprint 5, 10 Oct 2026): the free reader stays, the search keeps its old wording.
-    await expect(page.getByTestId("sample-top-cta").getByRole("link", { name: "Open the free GP05 reader" })).toBeVisible();
+    // No trial to start (Sprint 5, 10 Oct 2026): the walkthrough card's secondary opens the reader (v3.1), the search keeps its old wording.
+    await expect(page.getByTestId("sample-walkthrough").getByRole("link", { name: "Explore GP05 on your own" })).toHaveAttribute("href", "/regulations/gp05");
     await expect(page.getByRole("link", { name: "Start your 7-day trial" })).toHaveCount(0);
     await expect(page.getByTestId("sample-cta").getByRole("link", { name: "Search the complete corpus" })).toHaveAttribute("href", "/search");
   });

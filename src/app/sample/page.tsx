@@ -11,7 +11,7 @@ import {
   RECOMMENDED_START,
   SNAPSHOT,
   answerSections,
-  isOpenForViewer,
+  isOpenCard,
   keywordHits,
   layoutSampleAsk,
   moreResultsLabel,
@@ -66,18 +66,32 @@ export const metadata = {
 // reader. Every other result is a locked card: where it lives in the corpus,
 // never its text or summary, linking to the focused preview. A subscriber who
 // visits sees nothing locked; every card opens in the reader.
+//
+// Walkthrough v3.1 (13 Oct 2026, the tenth review): the walkthrough card is
+// the page's one primary call to action, with "Explore GP05 on your own" as
+// its secondary; the duplicate reader buttons and the "Read GP05 in the full
+// reader" block are gone (its one useful sentence is in the intro, which now
+// says that for a visitor a cross-reference opens as a free preview page).
+// The trial button stays at the bottom, by the search link. The eight
+// Regulation 7 rows the Ask example cites are public (migration
+// 20261013051740), so their cards are open ones (isOpenCard) and their
+// previews show the text.
 
 // Every button here is the site's one green button (src/lib/ui.ts).
 const BUTTON = buttonClass();
 
+/** The secondary button beside a green one: the locked panels' "Log in" style (LockedDestination.tsx). */
+const SECONDARY =
+  "inline-flex min-h-11 items-center justify-center rounded-md border border-line bg-panel px-5 py-3 text-center text-sm font-semibold text-ink-soft hover:bg-accent-soft";
+
 /**
- * The page's buttons, shown under the intro and again at the bottom
- * (Sprint 5, 10 Oct 2026). A visitor gets the free reader and the trial;
- * `search` adds the search link, at the bottom only. A subscriber has no
- * trial to start, and their search is the whole corpus, so they keep the old
- * wording ("the component knows the viewer").
+ * The page's closing buttons (Sprint 5, 10 Oct 2026; v3.1 keeps them at the
+ * bottom only): a visitor gets the trial and the search of the free sample; a
+ * subscriber has no trial to start, and their search is the whole corpus, so
+ * they keep the old wording ("the component knows the viewer"). The reader
+ * button that used to sit here is the walkthrough card's secondary now.
  */
-function Buttons({ hasAccess, testId, search = false }: { hasAccess: boolean; testId: string; search?: boolean }) {
+function Buttons({ hasAccess, testId }: { hasAccess: boolean; testId: string }) {
   return (
     <div className="flex flex-wrap gap-3" data-testid={testId}>
       {!hasAccess && (
@@ -85,14 +99,9 @@ function Buttons({ hasAccess, testId, search = false }: { hasAccess: boolean; te
           Start your {TRIAL_DAYS}-day trial!
         </Link>
       )}
-      <Link href="/regulations/gp05" className={BUTTON}>
-        Open the free GP05 reader
+      <Link href="/search" className={BUTTON}>
+        {hasAccess ? "Search the complete corpus" : "Search the free GP05 sample"}
       </Link>
-      {search && (
-        <Link href="/search" className={BUTTON}>
-          {hasAccess ? "Search the complete corpus" : "Search the free GP05 sample"}
-        </Link>
-      )}
     </div>
   );
 }
@@ -131,7 +140,7 @@ export default async function SamplePage() {
 
   /** One card: a normal one for a row the viewer may open, a locked one for the rest. */
   const card = (hit: SampleHit, opts: { why?: string } = {}) => {
-    const open = isOpenForViewer(hit.reg_key, hasAccess);
+    const open = isOpenCard(rows.get(hit.id), hit.reg_key, hasAccess);
     return (
       <AskCard
         key={hit.id}
@@ -163,7 +172,8 @@ export default async function SamplePage() {
       <p className="mt-3 max-w-reading text-sm leading-relaxed text-ink-soft">
         An operator with a produced water tank battery wants to know what applies. Walk through the research yourself, or
         compare the Search and Ask results below. GP05, the general permit for produced water storage tank batteries, is
-        available below in the complete reader.
+        free to read in full: the official text with a plain-English summary beside each provision, and cross-references
+        that open in place for subscribers (in this walkthrough they open as free preview pages).
       </p>
 
       <section
@@ -172,23 +182,22 @@ export default async function SamplePage() {
         data-testid="sample-walkthrough"
       >
         <h2 id="sample-walkthrough-title" className="font-serif text-card font-semibold text-ink">
-          Take the 60-second walkthrough
+          Take the short guided walkthrough
         </h2>
         <p className="mt-2 max-w-reading text-sm leading-relaxed text-ink-soft">
           You operate a produced-water tank battery under GP05 and need the site-specific sampling requirements. In about
-          a minute you find the provision, read the official text, check the plain-English summary and follow a citation
-          into Regulation 7, in the real reader.
+          two minutes you find the provision, read the official text, check the plain-English summary and follow a
+          citation into Regulation 7, in the real reader.
         </p>
-        <div className="mt-5">
+        <div className="mt-5 flex flex-wrap gap-3">
           <Link href={TOUR_START_HREF} className={BUTTON}>
             Start the walkthrough
           </Link>
+          <Link href="/regulations/gp05" className={SECONDARY}>
+            Explore GP05 on your own
+          </Link>
         </div>
       </section>
-
-      <div className="mt-6">
-        <Buttons hasAccess={hasAccess} testId="sample-top-cta" />
-      </div>
 
       {error && <p className="mt-6 rounded-md bg-red-50 p-4 text-sm text-red-700">{error}</p>}
 
@@ -284,20 +293,8 @@ export default async function SamplePage() {
         </div>
       </details>
 
-      <section className="mt-12 rounded-lg border border-line bg-accent-soft p-6" data-testid="sample-reader">
-        <h2 className="font-serif text-card font-semibold text-ink">
-          <Link href="/regulations/gp05" className="underline underline-offset-2">
-            Read GP05 in the full reader
-          </Link>
-        </h2>
-        <p className="mt-2 text-sm text-ink-soft">
-          The official text with a plain-English summary beside each provision, and its cross-references to Regulation 3
-          and Regulation 7 that open in place.
-        </p>
-      </section>
-
       <div className="mt-12">
-        <Buttons hasAccess={hasAccess} testId="sample-cta" search />
+        <Buttons hasAccess={hasAccess} testId="sample-cta" />
       </div>
     </div>
   );

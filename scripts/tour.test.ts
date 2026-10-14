@@ -365,17 +365,25 @@ test("the event route accepts the five events with a step 0-9 and a session id, 
 test("the callouts say what the brief says", () => {
   assert.equal(
     TOUR_COPY.intro,
-    "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about a minute."
+    "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about two minutes."
   );
   assert.equal(TOUR_COPY.introCount, "Guided walkthrough");
   assert.equal(TOUR_COPY.start, "Start");
-  assert.equal(TOUR_COPY.scenario, "You run storage tanks under GP05 using site-specific emission factors. How often do you have to sample?");
+  assert.equal(
+    TOUR_COPY.scenario,
+    "You run a produced-water tank battery under GP05, registered on or after Issuance 5, in a Severe ozone non-attainment area, with permitted VOC emissions of 20 tons per year, using site-specific emission factors. How often do you have to sample?"
+  );
   assert.equal(TOUR_COPY.step1, "Type sampling in the box. One match comes up — the site-specific sampling provision. Click it.");
   assert.equal(TOUR_COPY.step1Docked, "Tap Contents, then type sampling in the box at the top. One match comes up — the site-specific sampling provision. Tap it.");
-  assert.equal(TOUR_COPY.step2, "This is the regulation as issued. Table 2 below sets the parameters and frequency.");
+  assert.equal(TOUR_COPY.step2, "This is the regulation as issued. Table 2 below sets the frequency.");
+  // The answer: Table 2's seventh body row (On or after Issuance 5 | Severe Ozone Non-Attainment | Greater than or equal to 15 TPY | Annually) and VI.D's 180-day floor.
+  assert.equal(
+    TOUR_COPY.step2Answer,
+    "Table 2, row 7 (registered on or after Issuance 5, Severe Ozone Non-Attainment, permitted VOC emissions of 15 TPY or more): your facility samples annually, and VI.D adds that sampling events must be at least 180 days apart."
+  );
   assert.equal(TOUR_COPY.step3, "Open the plain-English summary.");
   assert.equal(TOUR_COPY.officialControls, "The official text controls; the summary is a reading aid.");
-  assert.equal(TOUR_COPY.step4, "Now jump to VI.C.");
+  assert.equal(TOUR_COPY.step4, "Next, see how this permit pulls its control-equipment requirements from Regulation 7. Jump to VI.C.");
   assert.equal(TOUR_COPY.step4Hint, "Type VI.C in the jump box and press Enter.");
   assert.equal(TOUR_COPY.step5, "Click the Regulation 7 citation.");
   assert.equal(TOUR_COPY.step6, "You are now in Regulation 7, Part B. This is I.C.1, the requirement GP05 cited. Open I.C.1.a's plain-English summary below.");

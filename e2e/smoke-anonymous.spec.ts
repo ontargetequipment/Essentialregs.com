@@ -298,11 +298,18 @@ test.describe("anonymous", () => {
       "See how EssentialRegs answers a real Colorado oil and gas compliance question",
     );
 
-    // Under the intro (Sprint 5, 10 Oct 2026): the free reader and the trial, before any results.
-    await expect(page.locator("main")).toContainText("is available below in the complete reader");
-    const top = page.getByTestId("sample-top-cta");
-    await expect(top.getByRole("link", { name: "Open the free GP05 reader" })).toHaveAttribute("href", "/regulations/gp05");
-    await expect(top.getByRole("link", { name: "Start your 7-day trial!" })).toHaveAttribute("href", "/signup");
+    // The intro (v3.1, 13 Oct 2026) says what a visitor gets, with no "open in place" promise the logged-out path breaks.
+    await expect(page.locator("main")).toContainText("is free to read in full");
+    await expect(page.locator("main")).toContainText("cross-references that open in place for subscribers (in this walkthrough they open as free preview pages)");
+    // One primary and one secondary, in the walkthrough card (v3.1); the trial button is at the bottom, not here.
+    const top = page.getByTestId("sample-walkthrough");
+    await expect(top.getByRole("link", { name: "Start the walkthrough" })).toHaveClass(/bg-accent/);
+    await expect(top.getByRole("link", { name: "Explore GP05 on your own" })).toHaveAttribute("href", "/regulations/gp05");
+    await expect(top.getByRole("link", { name: "Explore GP05 on your own" })).not.toHaveClass(/(^|\s)bg-accent(\s|$)/);
+    await expect(page.getByTestId("sample-top-cta")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Open the free GP05 reader" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Read GP05 in the full reader" })).toHaveCount(0);
+    await expect(page.locator("main")).not.toContainText("60-second");
     // Sprint 6: the search and Ask example is a collapsed second section, under
     // the walkthrough (smoke-tour.spec.ts checks the walkthrough itself).
     const example = page.getByTestId("sample-example");
@@ -378,11 +385,11 @@ test.describe("anonymous", () => {
     // A line into the real reader.
     await expect(page.locator('a[href="/regulations/gp05"]').first()).toBeVisible();
 
-    // The closing buttons, after the Ask section: the same two as at the top, and the search link.
+    // The closing buttons, after the Ask section: the trial and the search link (v3.1: no second reader button).
     const cta = page.getByTestId("sample-cta");
     await expect(cta.getByRole("link", { name: "Start your 7-day trial!" })).toHaveAttribute("href", "/signup");
-    await expect(cta.getByRole("link", { name: "Open the free GP05 reader" })).toHaveAttribute("href", "/regulations/gp05");
     await expect(cta.getByRole("link", { name: "Search the free GP05 sample" })).toHaveAttribute("href", "/search");
+    await expect(cta.getByRole("link")).toHaveCount(2);
     const askBox = await ask.boundingBox();
     const ctaBox = await cta.boundingBox();
     expect(askBox && ctaBox && ctaBox.y > askBox.y + askBox.height - 1).toBe(true);
@@ -1660,11 +1667,31 @@ test.describe("anonymous", () => {
     expect(html).not.toContain("obtains a construction permit authorizing such use of the alternative emissions control equipment");
     expect(html).not.toContain("Storage Tank Control Strategy");
     await expect(page.getByTestId("locked-rest")).toBeVisible();
+    // v3.1 (13 Oct 2026): the excerpt says it is one. The eyebrow above the rows, and under each shown row that locked
+    // rows follow, how many: I.D.1, I.D.2, I.D.3 and I.D.3.a after I.D; nothing between (i) and (ii); (iii), (iv) and
+    // I.D.3.b's 13 after (ii); I.D.4's 8 after it.
+    await expect(page.getByTestId("partial-excerpt")).toHaveText("Selected provisions — not the complete section");
+    const markers = doc.locator(":scope > [id] > p.omitted-rows");
+    await expect(markers).toHaveCount(3);
+    expect(await markers.evaluateAll((els) => els.map((e) => [e.parentElement?.id, e.getAttribute("data-omitted"), e.textContent]))).toEqual([
+      ["sec-7-B-I-D", "4", "… 4 more provisions in the full corpus"],
+      ["sec-7-B-I-D-3-a-(ii)", "16", "… 16 more provisions in the full corpus"],
+      ["sec-7-B-I-D-4", "8", "… 8 more provisions in the full corpus"],
+    ]);
+    // Under the row's text, before its summary panel.
+    expect(await doc.locator(':scope > [id="sec-7-B-I-D-4"] > *').evaluateAll((els) => els.map((e) => e.className.split(" ")[0] || e.tagName.toLowerCase()))).toEqual(
+      expect.arrayContaining(["omitted-rows"]),
+    );
+    const order = await doc.locator(':scope > [id="sec-7-B-I-D-4"] > *').evaluateAll((els) => els.map((e) => e.tagName.toLowerCase() + "." + (e.className.split(" ")[0] ?? "")));
+    expect(order.indexOf("p.omitted-rows")).toBeLessThan(order.indexOf("details.summary-panel"));
     // I.D.4's own citation back to I.D is a link to the row on this page; a citation to a locked row carries the way back here.
     const self = doc.locator(':scope > [id="sec-7-B-I-D-4"] a.xref[href="#sec-7-B-I-D"]');
     await expect(self).toHaveCount(1);
     // The I.C.1 preview's citation into I.D (the hop the walkthrough follows) carries from=, so this page draws its way back.
     await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1");
+    // The I.C.1 subtree is shown whole: no eyebrow and no marker.
+    await expect(page.getByTestId("partial-excerpt")).toHaveCount(0);
+    await expect(page.locator("#preview-doc p.omitted-rows")).toHaveCount(0);
     const hop = page.locator('#preview-doc > [id="sec-7-B-I-C-1-c"] a.xref[href^="/regulations/7/preview?p=sec-7-B-I-D"]');
     await expect(hop).toHaveText("Sections I.D.");
     await expect(hop).toHaveAttribute("href", "/regulations/7/preview?p=sec-7-B-I-D&from=sec-7-B-I-C-1");

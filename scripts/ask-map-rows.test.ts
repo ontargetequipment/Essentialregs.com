@@ -115,6 +115,9 @@ test("/sample: 'Why it matters' is a curated sentence that exists already, each 
       used.push(r.why.text);
     } else if (r.why.source === "map") {
       assert.ok(mapWhys.includes(r.why.text), `${r.component}: a canonical row's why verbatim`);
+    } else if (r.why.source === "note") {
+      const notes = (ask.map!.notes ?? {}) as Record<string, string>;
+      assert.equal(r.why.text, notes[r.component], `${r.component}: the map's curated note verbatim`);
     }
   }
   assert.equal(new Set(used).size, used.length, "a sentence is used for one row only");
@@ -123,14 +126,21 @@ test("/sample: 'Why it matters' is a curated sentence that exists already, each 
   assert.match(byComponent(table, "Federal NSPS").why!.text, /^Each subpart sets its own storage vessel test/);
   assert.match(byComponent(table, "Colorado standards").why!.text, /^Regulation 7 Part B Section I\.D\.3\.a requires/);
   assert.equal(byComponent(table, "Colorado standards").why!.source, "intro");
-  // No sentence cites a Regulation 3 or a definitions row: those fall back to the first canonical row's own reason.
+  // No sentence cites a Regulation 3 or a definitions row: those take the map's curated note (v3.1, 13 Oct 2026), ahead of
+  // the first canonical row's own reason, which read as a label ("Reg 7 Part B I.B — 'Storage tank'").
   assert.deepEqual(byComponent(table, "Colorado permitting and APEN").why, {
-    text: "APENs are required for new, modified and existing sources unless exempt under II.D",
-    source: "map",
+    text: "Regulation 3 decides whether the tank battery must file an APEN and hold a construction permit, or is exempt from either, before any emission standard applies.",
+    source: "note",
   });
-  assert.equal(byComponent(table, "Definitions").why!.source, "map");
-  // Retrieval-only ECMC rows for a visitor: no canonical reason and no summary hydrated, so no text, never invented text.
-  assert.equal(byComponent(table, "ECMC rules").why, null);
+  assert.equal(byComponent(table, "Definitions").why!.source, "note");
+  assert.match(byComponent(table, "Definitions").why!.text, /^Whether a vessel is a storage tank/);
+  // Retrieval-only ECMC rows for a visitor: no canonical reason and no summary hydrated; the note says what the group is, never invented text.
+  assert.deepEqual(byComponent(table, "ECMC rules").why, {
+    text: "The Commission's own rules for the tanks, flowlines and venting at the site apply alongside the air regulations; an air permit does not satisfy them.",
+    source: "note",
+  });
+  // Every row of the example has a line: no dash on /sample (the tenth review's "No note for this component").
+  for (const r of table) assert.ok(r.why, r.component);
 });
 
 test("the summary fallback: the top provision's first overview sentence, only for an approved or edited summary", () => {
@@ -176,7 +186,7 @@ test("leak check: the table quotes a summary only from a row the page hydrated, 
   // A closed row's label is all the table shows of it: its citation and heading, the same as its locked card.
   const ecmc = table.find((r) => r.component === "ECMC rules")!;
   assert.ok(ecmc.provisions.length > 0);
-  assert.equal(ecmc.why, null);
+  assert.equal(ecmc.why?.source, "note");
   assert.ok(html.includes("Heading of sec-ecmc-608-a-(1)"));
 });
 
@@ -207,7 +217,17 @@ test("markup: the finds-provisions line, then the table with its three columns, 
   const whyCells = html.match(/<td[^>]*data-why-source[^>]*>.*?<\/td>/g) ?? [];
   assert.ok(whyCells.length > 0);
   for (const c of whyCells) assert.ok(!c.includes("<a "), c.slice(0, 80));
-  // A row with no text prints a dash and a screen-reader note.
+  // Every row of the example has its line (v3.1): the dash and its screen-reader note are not on /sample.
+  assert.doesNotMatch(html, /No note for this component/);
+  assert.ok(!html.includes("&mdash;</span>"), "no dash cell");
+});
+
+test("a row with no text at all still prints a dash and a screen-reader note (the live Ask, a map without notes)", () => {
+  const html = renderToStaticMarkup(
+    createElement(AskResearchMap, {
+      rows: [{ component: "Other matches", provisions: [{ id: "sec-gp02-I-A", label: "GP02 I.A", title: "", href: "/regulations/gp02/preview?p=sec-gp02-I-A" }], why: null }],
+    })
+  );
   assert.match(html, /No note for this component/);
 });
 

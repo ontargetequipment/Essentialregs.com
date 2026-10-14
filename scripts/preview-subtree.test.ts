@@ -20,7 +20,10 @@ import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { fillApplicabilityContexts, fillSummaryBadges, fillSummaryLinks, readReaderModel } from "../src/lib/reader-client";
 import {
+  PARTIAL_EXCERPT_EYEBROW,
   inSubtree,
+  omittedAfter,
+  omittedMarkerText,
   previewHref,
   previewReturnLink,
   publicSubtree,
@@ -207,7 +210,7 @@ test("a locked focused row shows nothing, even when its children are public", ()
   assert.ok(returned.some((r) => r.id === "sec-7-B-I-C-1"), "the database does return the public children");
   assert.deepEqual(publicSubtree(returned, "sec-7-B-I-C"), []);
   const out = renderSubtreeHtml(returned.map(asRow), { reg: "7", focusedId: "sec-7-B-I-C", rootSourceUrl: SOURCE, pendingSummaries: 0 });
-  assert.deepEqual(out, { ids: [], html: "" });
+  assert.deepEqual(out, { ids: [], html: "", omitted: 0 });
   // The same for the siblings and the other locked rows the task names.
   for (const id of ["sec-7-B-I-C-2", "sec-7-B-I-B-33", "sec-7-B-II-B-2", "sec-7-B-I-C-10", "sec-7-B-I"]) {
     assert.deepEqual(publicSubtree(visibleTo(all, id), id), [], id);
@@ -265,6 +268,12 @@ test("the data read uses the visitor's own client and never the service role", (
   const page = readFileSync(path.join(root, "src", "app", "regulations", "[reg]", "preview", "page.tsx"), "utf8");
   assert.match(page, /renderSubtreeHtml\(/, "the page renders through the fenced renderer");
   assert.doesNotMatch(page, /createAdminClient/);
+  // The omitted-row count (v3.1) reads the whole subtree with the service role, in its own file, as ids and order only.
+  const shape = readFileSync(path.join(root, "src", "lib", "preview-shape-data.ts"), "utf8");
+  assert.match(shape, /SHAPE_COLUMNS = "id, sort_order"/);
+  assert.match(shape, /\.select\(SHAPE_COLUMNS\)/, "one select, the column constant");
+  assert.doesNotMatch(shape, /full_text|ai_summary|SUBTREE_COLUMNS/);
+  assert.match(shape, /\.eq\("reg_key", reg\)/);
 });
 
 // ---------------------------------------------------------------------------
@@ -688,4 +697,117 @@ test("rows outside the focused subtree are not rendered even if the caller passe
     assert.ok(!html.includes(`id="${id}"`), id);
   }
   assert.ok(!html.includes("infrared camera surveys") && !html.includes("13.7 pounds"));
+});
+
+// ---------------------------------------------------------------------------
+// What is left out (v3.1, 13 Oct 2026): the omitted-row count and its markers
+// ---------------------------------------------------------------------------
+
+/** Regulation 7 I.D as production has it (13 Oct 2026): 31 rows below I.D, of which I.D.3.a.(i), I.D.3.a.(ii) (v3.1) and I.D.4 are public. */
+const ID_SHAPE = [
+  "sec-7-B-I-D-1",
+  "sec-7-B-I-D-2",
+  "sec-7-B-I-D-3",
+  "sec-7-B-I-D-3-a",
+  "sec-7-B-I-D-3-a-(i)",
+  "sec-7-B-I-D-3-a-(ii)",
+  "sec-7-B-I-D-3-a-(iii)",
+  "sec-7-B-I-D-3-a-(iv)",
+  "sec-7-B-I-D-3-b",
+  ...["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii"].map((n) => `sec-7-B-I-D-3-b-(${n})`),
+  "sec-7-B-I-D-4",
+  "sec-7-B-I-D-4-a",
+  ...["i", "ii", "iii", "iv", "v"].map((n) => `sec-7-B-I-D-4-a-(${n})`),
+  "sec-7-B-I-D-4-b",
+  "sec-7-B-I-D-4-c",
+].map((id, i) => ({ id, sort_order: 1010 + i * 10 }));
+
+test("omittedAfter counts the locked rows after each shown row, in document order, and lands them on the row they follow", () => {
+  const shown = ["sec-7-B-I-D", "sec-7-B-I-D-3-a-(i)", "sec-7-B-I-D-4"];
+  const out = omittedAfter(ID_SHAPE, shown, "sec-7-B-I-D");
+  // After I.D: I.D.1, I.D.2, I.D.3 and I.D.3.a; after (i): (ii)-(iv) and I.D.3.b with its 13; after I.D.4: its 8.
+  assert.deepEqual(
+    Array.from(out.after.entries()),
+    [
+      ["sec-7-B-I-D", 4],
+      ["sec-7-B-I-D-3-a-(i)", 17],
+      ["sec-7-B-I-D-4", 8],
+    ]
+  );
+  assert.equal(out.total, 29);
+  assert.equal(ID_SHAPE.length - (shown.length - 1), 29, "every row of the subtree is shown or counted");
+  // With (ii) public as well (migration 20261013051740): nothing between (i) and (ii), and (ii) carries the 16.
+  const four = omittedAfter(ID_SHAPE, [...shown, "sec-7-B-I-D-3-a-(ii)"], "sec-7-B-I-D");
+  assert.deepEqual(
+    Array.from(four.after.entries()),
+    [
+      ["sec-7-B-I-D", 4],
+      ["sec-7-B-I-D-3-a-(ii)", 16],
+      ["sec-7-B-I-D-4", 8],
+    ]
+  );
+  assert.equal(four.total, 28);
+
+  // Order comes from sort_order, not from the array: shuffled input, same answer.
+  const shuffled = [...ID_SHAPE].reverse();
+  assert.deepEqual(omittedAfter(shuffled, shown, "sec-7-B-I-D"), out);
+  // The focused row leads whatever its own order says (it is not in the shape at all here); a duplicate id counts once.
+  assert.deepEqual(omittedAfter([...ID_SHAPE, ID_SHAPE[0], { id: "sec-7-B-I-D", sort_order: 99999 }], shown, "sec-7-B-I-D"), out);
+  // Rows outside the subtree (a sibling, a lookalike prefix) never count.
+  assert.deepEqual(omittedAfter([...ID_SHAPE, { id: "sec-7-B-I-E", sort_order: 1 }, { id: "sec-7-B-I-D3-x", sort_order: 2 }], shown, "sec-7-B-I-D"), out);
+  // A shown row the shape does not list cannot close a run: the rows after it are counted on the shown row before it.
+  assert.deepEqual(omittedAfter(ID_SHAPE.filter((r) => r.id !== "sec-7-B-I-D-4"), shown, "sec-7-B-I-D").after.get("sec-7-B-I-D-3-a-(i)"), 25);
+});
+
+test("omittedAfter counts nothing for a whole subtree, an unshown focused row, or no shape", () => {
+  const whole = SUBTREE.map((id, i) => ({ id, sort_order: i }));
+  assert.deepEqual(omittedAfter(whole, SUBTREE, "sec-7-B-I-C-1"), { after: new Map(), total: 0 });
+  assert.deepEqual(omittedAfter(ID_SHAPE, ["sec-7-B-I-D-4"], "sec-7-B-I-D"), { after: new Map(), total: 0 }, "a page that shows nothing says nothing");
+  assert.deepEqual(omittedAfter([], ["sec-7-B-I-D"], "sec-7-B-I-D"), { after: new Map(), total: 0 });
+  // A lead-in row with nothing but locked children: all of them under it.
+  const lead = omittedAfter([{ id: "sec-7-B-I-E-1" }, { id: "sec-7-B-I-E-2" }, { id: "sec-7-B-I-E-2-a" }], ["sec-7-B-I-E"], "sec-7-B-I-E");
+  assert.deepEqual(Array.from(lead.after.entries()), [["sec-7-B-I-E", 3]]);
+  assert.equal(omittedMarkerText(3), "… 3 more provisions in the full corpus");
+  assert.equal(omittedMarkerText(1), "… 1 more provision in the full corpus");
+  assert.equal(PARTIAL_EXCERPT_EYEBROW, "Selected provisions — not the complete section");
+});
+
+test("renderSubtreeHtml prints a marker under each row locked rows follow, before its summary panel, and none without a shape", () => {
+  const rows = reg7().map(asRow);
+  // The I.C.1 subtree is whole: the same rows with two locked rows imagined after I.C.1.a and four at the end.
+  const shape = [
+    ...SUBTREE.map((id, i) => ({ id, sort_order: i * 10 })),
+    { id: "sec-7-B-I-C-1-a-(i)", sort_order: 11 },
+    { id: "sec-7-B-I-C-1-a-(ii)", sort_order: 12 },
+    ...["g", "g-(i)", "h", "i"].map((tail, i) => ({ id: `sec-7-B-I-C-1-${tail}`, sort_order: 1000 + i })),
+  ];
+  const out = renderSubtreeHtml(rows, { reg: "7", focusedId: "sec-7-B-I-C-1", rootSourceUrl: SOURCE, pendingSummaries: 0, shape });
+  assert.equal(out.omitted, 6);
+  const dom = new JSDOM(`<div id="preview-doc">${out.html}</div>`);
+  const doc = dom.window.document;
+  const markers = Array.from(doc.querySelectorAll("#preview-doc > [id] > p.omitted-rows"));
+  assert.deepEqual(
+    markers.map((m) => [m.parentElement?.id, m.getAttribute("data-omitted"), m.textContent]),
+    [
+      ["sec-7-B-I-C-1-a", "2", "… 2 more provisions in the full corpus"],
+      ["sec-7-B-I-C-1-f-(ii)", "4", "… 4 more provisions in the full corpus"],
+    ]
+  );
+  // Under the row's text and before its summary panel: the marker reads as the text's continuation.
+  const a = doc.getElementById("sec-7-B-I-C-1-a")!;
+  const kids = Array.from(a.children).map((el) => el.tagName.toLowerCase() + (el.className ? `.${el.className.split(" ")[0]}` : ""));
+  assert.ok(kids.indexOf("p.omitted-rows") > kids.indexOf("p"), kids.join(" "));
+  assert.ok(kids.indexOf("p.omitted-rows") < kids.indexOf("details.summary-panel"), kids.join(" "));
+  // The same rows render the same ids: a marker is never a row.
+  assert.deepEqual(out.ids, SUBTREE);
+  assert.deepEqual(Array.from(doc.querySelectorAll("#preview-doc > *")).map((el) => el.id), SUBTREE);
+  // No shape, or a shape of shown rows only: no marker, nothing omitted, and the markup is what it was.
+  const plain = renderSubtreeHtml(rows, { reg: "7", focusedId: "sec-7-B-I-C-1", rootSourceUrl: SOURCE, pendingSummaries: 0 });
+  assert.equal(plain.omitted, 0);
+  assert.ok(!plain.html.includes("omitted-rows"));
+  const whole = renderSubtreeHtml(rows, { reg: "7", focusedId: "sec-7-B-I-C-1", rootSourceUrl: SOURCE, pendingSummaries: 0, shape: shape.slice(0, SUBTREE.length) });
+  assert.equal(whole.omitted, 0);
+  assert.equal(whole.html, plain.html);
+  // A locked row contributes a number and nothing else: no id or word of it is in the page.
+  assert.ok(!out.html.includes("sec-7-B-I-C-1-g"));
 });

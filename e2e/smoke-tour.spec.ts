@@ -168,7 +168,7 @@ test.describe("guided walkthrough", () => {
     // 0 -- where you are.
     await expect(count(page)).toHaveText(INTRO_COUNT);
     await expect(c).toContainText(
-      "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about a minute."
+      "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about two minutes."
     );
     await expect(c.getByTestId("tour-start")).toHaveText("Start");
     await expect(c.getByTestId("tour-start")).toHaveClass(/bg-accent/);
@@ -183,7 +183,9 @@ test.describe("guided walkthrough", () => {
     // 1 -- the scenario and the jump box, away from the card.
     await startTour(page);
     await expect(count(page)).toHaveText(`Step 1 of ${STEP_COUNT}`);
-    await expect(c).toContainText("You run storage tanks under GP05 using site-specific emission factors. How often do you have to sample?");
+    await expect(c).toContainText(
+      "You run a produced-water tank battery under GP05, registered on or after Issuance 5, in a Severe ozone non-attainment area, with permitted VOC emissions of 20 tons per year, using site-specific emission factors. How often do you have to sample?"
+    );
     await expect(c).toContainText("Type sampling in the box. One match comes up — the site-specific sampling provision. Click it.");
     await expect(page.locator("#jumpbox")).toBeFocused();
     await expectSpotlight(page, 1, page.locator("#jumpbox"));
@@ -207,7 +209,16 @@ test.describe("guided walkthrough", () => {
 
     // 2 -- VI.D as issued: the row is the target, so the card leaves the whole column.
     await expect(count(page)).toHaveText(`Step 2 of ${STEP_COUNT}`);
-    await expect(c).toContainText("This is the regulation as issued. Table 2 below sets the parameters and frequency.");
+    await expect(c).toContainText("This is the regulation as issued. Table 2 below sets the frequency.");
+    // The question is answered out loud, from the facility's row of Table 2 (v3.1).
+    await expect(c.getByTestId("tour-answer")).toHaveText(
+      "Table 2, row 7 (registered on or after Issuance 5, Severe Ozone Non-Attainment, permitted VOC emissions of 15 TPY or more): your facility samples annually, and VI.D adds that sampling events must be at least 180 days apart."
+    );
+    // The row is in the table the visitor is looking at.
+    const table2 = row(page, VI_D).locator("table.doc-table");
+    await expect(table2.locator("tbody tr")).toHaveCount(7);
+    await expect(table2.locator("tbody tr").nth(6).locator("td")).toHaveText(["On or after Issuance 5", "Severe Ozone Non- Attainment", "Greater than or equal to 15 TPY", "Annually"]);
+    await expect(row(page, VI_D)).toContainText("minimum of one hundred and eighty (180) days apart");
     await expect(c.getByTestId("tour-next")).toHaveClass(/bg-accent/);
     await expectSpotlight(page, 2, row(page, VI_D));
     await expectFixedOnPage(page);
@@ -236,7 +247,7 @@ test.describe("guided walkthrough", () => {
     await expect(count(page)).toHaveText(`Step 4 of ${STEP_COUNT}`);
     await expect(c.getByTestId("tour-official-controls")).toHaveText(OFFICIAL_CONTROLS);
     await expect(c.getByTestId("tour-official-controls")).toBeVisible();
-    await expect(c).toContainText("Now jump to VI.C.");
+    await expect(c).toContainText("Next, see how this permit pulls its control-equipment requirements from Regulation 7. Jump to VI.C.");
     await expect(c).toContainText("Type VI.C in the jump box and press Enter.");
     await expectSpotlight(page, 4, page.locator("#jumpbox"));
     await expectFixedOnPage(page);
@@ -282,7 +293,9 @@ test.describe("guided walkthrough", () => {
     await expect(back(page)).toHaveAttribute("data-hops", "1");
     await expect(page.getByTestId("preview-return-then")).toHaveCount(0);
     await expect(previewRow(page, REG7_IC1)).toBeVisible();
+    await expect(page.getByTestId("partial-excerpt")).toHaveCount(0);
     const aControl = summaryControl(previewRow(page, REG7_IC1_A));
+    await expect(summaryPanel(previewRow(page, REG7_IC1_A))).not.toHaveAttribute("open", "");
     // The card anchors to the heading; I.C.1.a's control, on screen beside it at 1280px, is lit too.
     await expectSpotlight(page, 6, heading(page), aControl);
     expect(await inViewportNow(aControl), "I.C.1.a's control is on screen with the card").toBe(true);
@@ -309,7 +322,7 @@ test.describe("guided walkthrough", () => {
     await shot(page, testInfo, "tour-1280-step7");
     await sawEvent(events, "tour_step:7");
 
-    // 8 -- the I.D preview: I.D, I.D.4 (and the older public sample row under I.D.3), nothing locked; the bar remembers both hops.
+    // 8 -- the I.D preview: I.D, I.D.4 (and the public I.D.3.a.(i) and (ii) under I.D.3), nothing locked; the bar remembers both hops.
     await hop.click();
     await page.waitForURL((url) => url.pathname === "/regulations/7/preview" && url.searchParams.get("p") === REG7_ID);
     expect(new URL(page.url()).searchParams.get("from")).toBe(REG7_IC1);
@@ -324,6 +337,13 @@ test.describe("guided walkthrough", () => {
     for (const locked of ["sec-7-B-I-D-1", "sec-7-B-I-D-2", "sec-7-B-I-D-3", "sec-7-B-I-D-4-a"]) await expect(previewRow(page, locked)).toHaveCount(0);
     await expect(page.getByTestId("locked-destination")).toHaveCount(0);
     await expect(page.getByTestId("locked-rest")).toBeVisible();
+    // v3.1: the excerpt says what it leaves out (the eyebrow, and a count under each row locked rows follow).
+    await expect(page.getByTestId("partial-excerpt")).toHaveText("Selected provisions — not the complete section");
+    await expect(page.locator("#preview-doc > [id] > p.omitted-rows")).toHaveText([
+      "… 4 more provisions in the full corpus",
+      "… 16 more provisions in the full corpus",
+      "… 8 more provisions in the full corpus",
+    ]);
     await expect(back(page)).toContainText("Back to Regulation 7 · I.C.1");
     await expect(page.getByTestId("preview-return-then")).toHaveText("· then GP05 · VI.C");
     await expect(back(page)).toHaveAttribute("data-hops", "2");
@@ -343,6 +363,9 @@ test.describe("guided walkthrough", () => {
     await expect(c).toHaveAttribute("data-step", "9");
     await expect(count(page)).toHaveText(`Step 9 of ${STEP_COUNT}`);
     await expect(c).toContainText("Click Back to GP05 VI.C.");
+    // v3.1: the summary opened at step 6 is open again on the way back (remembered in sessionStorage, no server change).
+    await expect(summaryPanel(previewRow(page, REG7_IC1_A))).toHaveAttribute("open", "");
+    expect(JSON.parse((await page.evaluate(() => sessionStorage.getItem("er:open-summaries"))) ?? "[]")).toEqual([REG7_IC1_A]);
     await expect(back(page)).toContainText("Back to GP05 · VI.C");
     await expect(back(page)).toHaveAttribute("href", WAY_BACK);
     await expect(back(page)).toHaveAttribute("data-hops", "1");
@@ -697,7 +720,7 @@ test.describe("guided walkthrough", () => {
     // 1 -- Tap Contents, type sampling, tap the one match.
     await expectDocked(page, 1, null, H);
     await expect(count(page)).toHaveText(`Step 1 of ${STEP_COUNT}`);
-    await expect(callout(page)).toContainText("You run storage tanks under GP05 using site-specific emission factors.");
+    await expect(callout(page)).toContainText("You run a produced-water tank battery under GP05, registered on or after Issuance 5");
     await expect(callout(page)).toContainText("Tap Contents, then type sampling in the box at the top. One match comes up — the site-specific sampling provision. Tap it.");
     // "Contents" stays above the dock and opens the sidebar with the jump box.
     const toggle = page.locator("#mobile-toggle");
@@ -862,15 +885,19 @@ test.describe("guided walkthrough", () => {
     await expect(page.locator("main")).toContainText("Walk through the research yourself, or compare the Search and Ask results below.");
     await expect(page.locator("main")).not.toContainText("Do the research once yourself");
     const walkthrough = page.getByTestId("sample-walkthrough");
-    await expect(walkthrough.getByRole("heading", { level: 2 })).toHaveText("Take the 60-second walkthrough");
-    await expect(walkthrough.getByRole("link")).toHaveCount(1);
+    await expect(walkthrough.getByRole("heading", { level: 2 })).toHaveText("Take the short guided walkthrough");
+    await expect(walkthrough).toContainText("In about two minutes you find the provision");
+    // One green primary, one secondary (v3.1, 13 Oct 2026).
+    await expect(walkthrough.getByRole("link")).toHaveCount(2);
     await expect(walkthrough.getByRole("link", { name: "Start the walkthrough" })).toHaveAttribute("href", TOUR);
+    await expect(walkthrough.getByRole("link", { name: "Start the walkthrough" })).toHaveClass(/bg-accent/);
+    await expect(walkthrough.getByRole("link", { name: "Explore GP05 on your own" })).toHaveAttribute("href", "/regulations/gp05");
     // First on the page: above the buttons and the example.
     const example = page.getByTestId("sample-example");
     const wb = await boxOf(walkthrough);
     const eb = await boxOf(example);
     expect(wb.y).toBeLessThan(eb.y);
-    expect(await page.locator("main h2").first().textContent()).toBe("Take the 60-second walkthrough");
+    expect(await page.locator("main h2").first().textContent()).toBe("Take the short guided walkthrough");
     // Collapsed: its results are in the page but not shown.
     await expect(example).not.toHaveAttribute("open", "");
     await expect(page.getByTestId("sample-keyword")).toBeHidden();

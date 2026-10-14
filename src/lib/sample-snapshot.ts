@@ -21,9 +21,10 @@ import {
  * service-role client, and the column lists below are the whole safety:
  *
  *   - LABEL_COLUMNS for every row: id, citation, title, reg_key,
- *     jurisdiction_level, context_path. A breadcrumb and a heading, the same
- *     things the focused preview (fetchProvisionTeaser) and the search
- *     results show a visitor. NEVER full_text.
+ *     jurisdiction_level, context_path, and is_public (v3.1: a public row of a
+ *     closed regulation is an open card, isOpenCard). A breadcrumb and a
+ *     heading, the same things the focused preview (fetchProvisionTeaser) and
+ *     the search results show a visitor. NEVER full_text.
  *   - SUMMARY_COLUMNS only for the rows of a regulation open to visitors
  *     (PUBLIC_READER_REGS, i.e. GP05; summaryIds), and only after the public
  *     summary gate (gatePublicSummaries + fetchPendingSummaryCounts, the one
@@ -39,7 +40,7 @@ import {
  * minutes, since a snapshot of ids changes only with a deploy and the labels
  * and review state change rarely.
  */
-const LABEL_COLUMNS = "id, citation, title, reg_key, jurisdiction_level, context_path";
+const LABEL_COLUMNS = "id, citation, title, reg_key, jurisdiction_level, context_path, is_public";
 const SUMMARY_COLUMNS = "id, ai_summary, summary_status, reviewed_at, reviewed_by";
 
 async function hydrate(ids: string[]): Promise<SampleRow[]> {

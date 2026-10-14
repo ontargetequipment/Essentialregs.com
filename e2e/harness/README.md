@@ -130,7 +130,7 @@ defaults of the first build:
 | --- | --- | --- |
 | `--gp05` | `.../scratchpad/shared/reggp05_parsed_new.json` | GP05 as the importer now parses it |
 | `--reg7` | `.../scratchpad/shared/reg7_parsed.json` | Regulation 7 |
-| `--overlay` | `.../scratchpad/shared/harness_overlay.json` | production `summary_status`, `ai_summary`, `reviewed_by`, `reviewed_at`, `source_url` for the rows the tour touches (`rows`), the 13-id Regulation 7 subtree (`reg7_public_subtree`), the two second-hop rows I.D and I.D.4 (`reg7_public_second_hop`, 13 Oct 2026), the sample ids (`public_ids_outside_gp05_before_sprint7`); each list falls back to the builder's own copy when the key is absent |
+| `--overlay` | `.../scratchpad/shared/harness_overlay.json` | production `summary_status`, `ai_summary`, `reviewed_by`, `reviewed_at`, `source_url` for the rows the tour touches (`rows`), the 13-id Regulation 7 subtree (`reg7_public_subtree`), the two second-hop rows I.D and I.D.4 (`reg7_public_second_hop`, 13 Oct 2026), the eight rows the /sample Ask example cites (`reg7_public_ask_cites`, walkthrough v3.1, 13 Oct 2026), the sample ids (`public_ids_outside_gp05_before_sprint7`); each list falls back to the builder's own copy when the key is absent |
 | `--docs-dir` | `.../scratchpad/pr1/out_new` | every other document, `reg*_parsed.json` (GP05 and Reg 7 in it are replaced by the two above) |
 | `--only 7,gp05,3` | all | keep only these documents in full (every root is kept so the indexes still list all) |
 

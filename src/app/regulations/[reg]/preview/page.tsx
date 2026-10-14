@@ -30,8 +30,10 @@ import {
   readerRedirectHref,
   renderSubtreeHtml,
   type SubtreeRow,
+  type SubtreeShape,
 } from "@/lib/preview-subtree";
 import { fetchSubtreeRows } from "@/lib/preview-subtree-data";
+import { fetchSubtreeShape } from "@/lib/preview-shape-data";
 
 // `reg` goes straight into an `eq("reg_key", reg)` filter
 // (fetchRegulationTeaser) -- restricting it to alphanumerics before it ever
@@ -63,16 +65,25 @@ function focusedId(p: string | string[] | undefined, reg: string): string | null
  * not, instead of turning every focused preview a search result links to into
  * an error page.
  */
-const loadFocused = cache(async (reg: string, id: string): Promise<{ focused: ProvisionTeaser | null; rows: SubtreeRow[] }> => {
-  const [focused, rows] = await Promise.all([
-    fetchProvisionTeaser(reg, id),
-    fetchSubtreeRows(reg, id).catch((e: unknown) => {
-      console.error("preview subtree:", e instanceof Error ? e.message : e);
-      return [] as SubtreeRow[];
-    }),
-  ]);
-  return { focused, rows: focused ? rows : [] };
-});
+const loadFocused = cache(
+  async (reg: string, id: string): Promise<{ focused: ProvisionTeaser | null; rows: SubtreeRow[]; shape: SubtreeShape[] }> => {
+    const [focused, rows, shape] = await Promise.all([
+      fetchProvisionTeaser(reg, id),
+      fetchSubtreeRows(reg, id).catch((e: unknown) => {
+        console.error("preview subtree:", e instanceof Error ? e.message : e);
+        return [] as SubtreeRow[];
+      }),
+      // The whole subtree's ids and order (v3.1), for the "… N more provisions"
+      // markers. A failed read answers "no shape": the rows still render, with
+      // no markers and no eyebrow, rather than an error page.
+      fetchSubtreeShape(reg, id).catch((e: unknown) => {
+        console.error("preview subtree shape:", e instanceof Error ? e.message : e);
+        return [] as SubtreeShape[];
+      }),
+    ]);
+    return { focused, rows: focused ? rows : [], shape: focused ? shape : [] };
+  }
+);
 
 export async function generateMetadata(
   props: PageProps<"/regulations/[reg]/preview">
@@ -86,7 +97,7 @@ export async function generateMetadata(
     notFound();
   }
   const id = focusedId((await props.searchParams).p, reg);
-  const { focused, rows } = id ? await loadFocused(reg, id) : { focused: null, rows: [] };
+  const { focused, rows } = id ? await loadFocused(reg, id) : { focused: null, rows: [] as SubtreeRow[] };
   if (focused && id) {
     // A public provision (the Regulation 7 I.C.1 subtree, Sprint 7) is read
     // on this page; the description must not call it locked.
@@ -123,6 +134,7 @@ export default async function RegulationPreviewPage(
   const id = focusedId(searchParams.p, reg);
   let focused = null;
   let subtreeRows: SubtreeRow[] = [];
+  let subtreeShape: SubtreeShape[] = [];
   if (id) {
     // GP05's reader is open to everyone (PUBLIC_READER_REGS), so a link here
     // for one of its provisions goes straight to it, visitor or not. The
@@ -130,7 +142,7 @@ export default async function RegulationPreviewPage(
     // link from GP05 still gets the reader's return bar and the walkthrough.
     const { hasAccess } = await getAccessStatus();
     if (hasAccess || isPublicReaderReg(reg)) redirect(readerRedirectHref(reg, id, searchParams));
-    ({ focused, rows: subtreeRows } = await loadFocused(reg, id));
+    ({ focused, rows: subtreeRows, shape: subtreeShape } = await loadFocused(reg, id));
   }
 
   const { root, headings, summaries, pendingSummaries } = await fetchRegulationTeaser(reg);
@@ -152,8 +164,16 @@ export default async function RegulationPreviewPage(
   // walkthrough when it is on.
   const chain = returnLink ? [returnLink.id, ...returnLink.chain] : undefined;
   const subtree = id
-    ? renderSubtreeHtml(subtreeRows, { reg, focusedId: id, rootSourceUrl: root.source_url, pendingSummaries, tour: tourOn, chain })
-    : { ids: [], html: "" };
+    ? renderSubtreeHtml(subtreeRows, {
+        reg,
+        focusedId: id,
+        rootSourceUrl: root.source_url,
+        pendingSummaries,
+        tour: tourOn,
+        chain,
+        shape: subtreeShape,
+      })
+    : { ids: [], html: "", omitted: 0 };
 
   // Where the visitor is, in a strip under the site header (14 Oct 2026): a
   // page reached by a cross-reference names its document, Part and provision
@@ -184,7 +204,12 @@ export default async function RegulationPreviewPage(
               <p className="mt-2 text-xs leading-snug text-muted">{focused.context_path}</p>
             )}
             {subtree.html ? (
-              <PreviewSubtree html={subtree.html} regName={regName} readerHref={`/regulations/${reg}#${focused.id}`} />
+              <PreviewSubtree
+                html={subtree.html}
+                regName={regName}
+                readerHref={`/regulations/${reg}#${focused.id}`}
+                partial={subtree.omitted > 0}
+              />
             ) : (
               <LockedDestination
                 regName={regName}

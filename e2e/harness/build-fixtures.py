@@ -30,7 +30,9 @@ What it derives (the real database's columns, not invented ones):
                       (production does); the overlay wins where it speaks
   is_public           every GP05 row, the 13 Regulation 7 subtree ids, the two
                       second-hop rows (overlay: reg7_public_second_hop; migration
-                      20261013014006, walkthrough v3) and the four older sample
+                      20261013014006, walkthrough v3), the eight rows the /sample
+                      Ask example cites (overlay: reg7_public_ask_cites; migration
+                      20261013051740, walkthrough v3.1) and the four older sample
                       rows (overlay: public_ids_outside_gp05_before_sprint7)
   summary_status      'pending' with no summary, unless the overlay says
                       otherwise (the invented exceptions are listed below)
@@ -108,6 +110,15 @@ FALLBACK_REG7_SUBTREE = [
 # 13 Oct 2026): the walkthrough's second citation hop, from I.C.1.c's "Sections I.D." to the
 # Storage Tank Emission Controls heading. I.D.1-3 and I.D.4's children stay locked, as in production.
 FALLBACK_REG7_SECOND_HOP = ["sec-7-B-I-D", "sec-7-B-I-D-4"]
+
+# The eight Regulation 7 rows the /sample Ask example cites (migration
+# 20261013051740_reg7_ask_example_citations_public.sql, walkthrough v3.1, 13 Oct 2026): three
+# definitions, I.D.3.a.(ii), the heading rows I.E, I.F and II.C, and V.C.2.w. Their children stay
+# locked, as in production, so their previews carry the "… N more provisions" markers.
+FALLBACK_REG7_ASK_CITES = [
+    "sec-7-B-I-B-30", "sec-7-B-I-B-34", "sec-7-B-II-A-43", "sec-7-B-I-D-3-a-(ii)",
+    "sec-7-B-I-E", "sec-7-B-I-F", "sec-7-B-II-C", "sec-7-B-V-C-2-w",
+]
 
 # Production has GP12 VI.A.1 as the rank-3 neighbour of Regulation 7 I.D.3.a.(i)
 # (smoke-anonymous.spec.ts, "a related link on a public card page ...").
@@ -278,8 +289,9 @@ def main():
     sample_ids = overlay.get("public_ids_outside_gp05_before_sprint7") or FALLBACK_SAMPLE_IDS
     subtree_ids = overlay.get("reg7_public_subtree") or FALLBACK_REG7_SUBTREE
     second_hop_ids = overlay.get("reg7_public_second_hop") or FALLBACK_REG7_SECOND_HOP
+    ask_cite_ids = overlay.get("reg7_public_ask_cites") or FALLBACK_REG7_ASK_CITES
     ov_rows = overlay.get("rows", {})
-    public_ids = set(sample_ids) | set(subtree_ids) | set(second_hop_ids)
+    public_ids = set(sample_ids) | set(subtree_ids) | set(second_hop_ids) | set(ask_cite_ids)
 
     provisions = []
     seen = set()

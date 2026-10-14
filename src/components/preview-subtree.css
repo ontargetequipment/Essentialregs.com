@@ -47,3 +47,22 @@
 .preview-reader #preview-doc > .item:target {
   animation: reg-reader-flashbg 1.6s ease;
 }
+
+/* Under the eyebrow "Selected provisions — not the complete section" the rows
+   start close to it, not a paragraph's space below (v3.1, 13 Oct 2026). */
+.reg-reader.preview-reader.after-eyebrow {
+  margin-top: 0.5rem;
+}
+
+/* "… N more provisions in the full corpus": where a row's locked rows are left
+   out, in flow under its text and before its summary panel (v3.1). Muted and
+   small, in the UI face, so it reads as the page's note and not as the
+   regulation's words. */
+.preview-reader .omitted-rows {
+  margin: 0.4rem 0 0;
+  font-family: var(--sans);
+  font-size: 0.8125rem;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
