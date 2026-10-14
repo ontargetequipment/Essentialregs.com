@@ -365,7 +365,7 @@ test("the event route accepts the five events with a step 0-9 and a session id, 
 test("the callouts say what the brief says", () => {
   assert.equal(
     TOUR_COPY.intro,
-    "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about a minute."
+    "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about two minutes."
   );
   assert.equal(TOUR_COPY.introCount, "Guided walkthrough");
   assert.equal(TOUR_COPY.start, "Start");

@@ -168,7 +168,7 @@ test.describe("guided walkthrough", () => {
     // 0 -- where you are.
     await expect(count(page)).toHaveText(INTRO_COUNT);
     await expect(c).toContainText(
-      "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about a minute."
+      "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about two minutes."
     );
     await expect(c.getByTestId("tour-start")).toHaveText("Start");
     await expect(c.getByTestId("tour-start")).toHaveClass(/bg-accent/);

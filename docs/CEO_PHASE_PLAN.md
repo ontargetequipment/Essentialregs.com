@@ -475,7 +475,7 @@ Brief (owner, 12 Oct): on desktop the step bubble sat on the match list it was a
 
 | View | Card | Target (spotlit) | Moves on when |
 |---|---|---|---|
-| 0 | "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about a minute." Start | the jump box | Start |
+| 0 | "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about two minutes." Start | the jump box | Start |
 | 1 | scenario line; "Type sampling in the box. One match comes up — the site-specific sampling provision. Click it." | the jump box; VI.D's match while the results are open | the reader lands on VI.D through the jump box |
 | 2 | "This is the regulation as issued. Table 2 below sets the parameters and frequency." Next | the VI.D row | Next |
 | 3 | "Open the plain-English summary." | VI.D's summary control | the summary is open |

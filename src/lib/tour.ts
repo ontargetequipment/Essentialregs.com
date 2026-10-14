@@ -102,7 +102,7 @@ export const TOUR_START_HREF = `/regulations/${TOUR_REG}?${TOUR_PARAM}=1`;
 export const TOUR_COPY = {
   /** Step 0, before the scenario. The count line reads introCount in place of "Step n of 9". */
   intro:
-    "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about a minute.",
+    "You're inside GP05, the General Permit for produced-water tank batteries. The box on the left (Contents on a phone) searches this permit only; the Search box in the header searches the whole library. Let's answer one real question in about two minutes.",
   introCount: "Guided walkthrough",
   start: "Start",
   /**
