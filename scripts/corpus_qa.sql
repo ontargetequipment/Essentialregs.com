@@ -452,14 +452,17 @@ checks as (
 
   union all
   select 7, 'GUARD', 'public_sample_rows',
-         (count(*) filter (where is_public and reg_key is distinct from 'gp05' and not reg7_ic1 and not reg7_hop2))
+         (count(*) filter (where is_public and reg_key is distinct from 'gp05' and not reg7_ic1 and not reg7_hop2 and not reg7_cites))
            + (count(*) filter (where not is_public and reg_key = 'gp05'))
            + (count(*) filter (where not is_public and reg7_ic1))
-           + (count(*) filter (where not is_public and reg7_hop2)), 4,
-         'Rows visible to logged-out visitors outside the three public sets, plus any row of those sets that is NOT public. Must be exactly 4: the four /regs/<id> sample cards (Reg 7 I.D.3.a.(i), GP02 II.A.2, ECMC 604.a.(1), CP I.G.90) and nothing else. The public sets: every GP05 row since Sprint 4 (10 Oct 2026, 20261010120000_gp05_public_sample.sql; the free sample read in the real reader, PUBLIC_READER_REGS in src/lib/destination.ts); since Sprint 7 (11 Oct 2026, 20261011042512_reg7_ic1_public_subtree.sql) the 13 rows of Regulation 7 Part B I.C.1 (sec-7-B-I-C-1 and every id starting sec-7-B-I-C-1-), the requirement the walkthrough follows from GP05 VI.C, read on the visitor preview; and since walkthrough v3 (13 Oct 2026, 20261013014006_reg7_id_and_id4_public_second_hop.sql) exactly two rows of Regulation 7 Part B I.D, the heading sec-7-B-I-D and its child sec-7-B-I-D-4, where the walkthrough''s second hop (I.C.1.c''s "Sections I.D.") lands; I.D.1, I.D.2, I.D.3 and its subtree, and I.D.4''s children stay locked and count here if they ever open. More than 4 means paid content is leaking past the paywall, or a row of a public set (a re-import) lost its flag and the public reader or the walkthrough has a hole.'
+           + (count(*) filter (where not is_public and reg7_hop2))
+           + (count(*) filter (where not is_public and reg7_cites)), 4,
+         'Rows visible to logged-out visitors outside the three public sets, plus any row of those sets that is NOT public. Must be exactly 4: the four /regs/<id> sample cards (Reg 7 I.D.3.a.(i), GP02 II.A.2, ECMC 604.a.(1), CP I.G.90) and nothing else. The public sets: every GP05 row since Sprint 4 (10 Oct 2026, 20261010120000_gp05_public_sample.sql; the free sample read in the real reader, PUBLIC_READER_REGS in src/lib/destination.ts); since Sprint 7 (11 Oct 2026, 20261011042512_reg7_ic1_public_subtree.sql) the 13 rows of Regulation 7 Part B I.C.1 (sec-7-B-I-C-1 and every id starting sec-7-B-I-C-1-), the requirement the walkthrough follows from GP05 VI.C, read on the visitor preview; and since walkthrough v3 (13 Oct 2026, 20261013014006_reg7_id_and_id4_public_second_hop.sql) exactly two rows of Regulation 7 Part B I.D, the heading sec-7-B-I-D and its child sec-7-B-I-D-4, where the walkthrough''s second hop (I.C.1.c''s "Sections I.D.") lands; I.D.1, I.D.2, I.D.3 and its subtree, and I.D.4''s children stay locked and count here if they ever open; and since walkthrough v3.1 (13 Oct 2026, 20261013051740_reg7_ask_example_citations_public.sql) the eight Regulation 7 rows the /sample Ask example cites (I.B.30, I.B.34, II.A.43, I.D.3.a.(ii), the heading rows I.E, I.F and II.C, and V.C.2.w), each on its own: a heading row''s children stay locked and count here if they ever open. More than 4 means paid content is leaking past the paywall, or a row of a public set (a re-import) lost its flag and the public reader or the walkthrough has a hole.'
   from (select p.*, (p.reg_key = '7' and (p.id = 'sec-7-B-I-C-1'
                      or left(p.id, length('sec-7-B-I-C-1-')) = 'sec-7-B-I-C-1-')) as reg7_ic1,
-                    (p.id in ('sec-7-B-I-D', 'sec-7-B-I-D-4')) as reg7_hop2
+                    (p.id in ('sec-7-B-I-D', 'sec-7-B-I-D-4')) as reg7_hop2,
+                    (p.id in ('sec-7-B-I-B-30', 'sec-7-B-I-B-34', 'sec-7-B-II-A-43', 'sec-7-B-I-D-3-a-(ii)',
+                              'sec-7-B-I-E', 'sec-7-B-I-F', 'sec-7-B-II-C', 'sec-7-B-V-C-2-w')) as reg7_cites
         from provisions p) pv
 
   -- ---- REVIEW: expected to be non-zero; watch the trend -----------------
