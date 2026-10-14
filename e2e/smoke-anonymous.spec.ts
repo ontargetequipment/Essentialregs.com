@@ -683,6 +683,42 @@ test.describe("anonymous", () => {
     await expect(page.locator("#preview-return")).toHaveAttribute("href", "/regulations/gp05#sec-gp05-VI-A");
   });
 
+  test("GP05 IX.B links every code of \"Subpart OOOO, OOOOa, or OOOOb\", and a click on OOOOb opens the OOOOb preview", async ({ page }) => {
+    // 14 Oct 2026: only the first code of the list was a link. Each code is
+    // its own cross-regulation link to its subpart's document (the visitor's
+    // body carries the preview form), and the click opens that document's
+    // preview in place, like any other whole-document citation.
+    await page.goto("/regulations/gp05");
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    const row = page.locator('#doc > [id="sec-gp05-IX-B"]');
+    await expect(row).toHaveCount(1);
+    for (const [code, key] of [
+      ["OOOO", "oooo"],
+      ["OOOOa", "ooooa"],
+      ["OOOOb", "oooob"],
+    ] as const) {
+      const link = row.locator("a.xref-external-reg", { hasText: new RegExp(`^(Subpart )?${code}$`) });
+      await expect(link, `${code} is a link`).toHaveCount(1);
+      await expect(link).toHaveAttribute("href", `/regulations/${key}/preview`);
+    }
+    // Nothing of the sentence's text changed: the codes still read as printed.
+    await expect(row).toContainText("Subpart OOOO, OOOOa, or OOOOb");
+    const oooob = row.locator("a.xref-external-reg", { hasText: /^OOOOb$/ });
+    await oooob.scrollIntoViewIfNeeded();
+    await oooob.click();
+    await expect(page.locator("#backdrop")).toHaveClass(/show/);
+    await expect(page.locator("#popup-eyebrow")).toHaveText("40 CFR Part 60 Subpart OOOOb");
+    const panel = page.locator("#popup-body [data-testid=locked-destination]");
+    await expect(panel).toContainText("40 CFR Part 60 Subpart OOOOb is in the full corpus.");
+    const inside = panel.getByRole("link", { name: "See what's in it" });
+    await expect(inside).toHaveAttribute("href", "/regulations/oooob/preview");
+    // The click did not navigate; the preview page itself opens.
+    expect(new URL(page.url()).pathname).toBe("/regulations/gp05");
+    const res = await page.goto("/regulations/oooob/preview");
+    expect(res?.status()).toBe(200);
+    await expect(page.locator("h1").first()).toBeVisible();
+  });
+
   test("/api/provision answers a visitor with a locked label, no text, never cached, for a locked row", async ({ request }) => {
     const res = await request.get("/api/provision/sec-7-B-I-B-33", { headers: protectionBypassHeaders() });
     expect(res.status()).toBe(200);
