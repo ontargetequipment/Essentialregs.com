@@ -485,6 +485,38 @@ test.describe("anonymous", () => {
     await expect(page.locator("#backdrop")).not.toHaveClass(/show/);
   });
 
+  // The sidebar's part label is one link (14 Oct 2026): the numeral and the
+  // description under it. A click on the description alone goes to the part
+  // and opens (never collapses) its group; Enter on the focused link does the same.
+  test("GP05's sidebar: clicking a part's description goes to the part and opens its group", async ({ page }) => {
+    await page.goto("/regulations/gp05");
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    const link = page.locator('#sidebar a.nav-part-link[href="#sec-gp05-II"]');
+    const group = page.locator("#navgroup-sec-gp05-II");
+    await expect(link.locator(".nav-part-cite")).toHaveText("II.");
+    await expect(link.locator(".nav-part-sub")).toHaveText("Operating Terms and Conditions");
+    // Nothing of the label is outside the anchor.
+    await expect(group.locator("summary > .nav-part-sub")).toHaveCount(0);
+
+    // Closed group: the description text opens it and lands on the part.
+    await group.evaluate((d) => ((d as HTMLDetailsElement).open = false));
+    await page.locator("#sidebar").getByText("Operating Terms and Conditions", { exact: true }).click();
+    await expect.poll(() => new URL(page.url()).hash).toBe("#sec-gp05-II");
+    await expect(group).toHaveAttribute("open", "");
+    await expect(page.locator('#doc > [id="sec-gp05-II"]')).toBeVisible();
+
+    // Open group: the same click navigates and leaves it open (it used to toggle).
+    await page.locator("#sidebar").getByText("Operating Terms and Conditions", { exact: true }).click();
+    await expect(group).toHaveAttribute("open", "");
+
+    // Keyboard: Enter on the focused link behaves like the click.
+    await group.evaluate((d) => ((d as HTMLDetailsElement).open = false));
+    await link.focus();
+    await page.keyboard.press("Enter");
+    await expect(group).toHaveAttribute("open", "");
+    await expect.poll(() => new URL(page.url()).hash).toBe("#sec-gp05-II");
+  });
+
   // The jump box searches the whole provision text through /api/reader-search
   // (11 Oct 2026): "sampling" is in GP05 VI.D past the first 90 characters.
   test("GP05's jump box: 'sampling' lists VI.D with a highlighted excerpt, 'VI.D' still jumps at once, 'zzzz' says No matches", async ({ page }) => {

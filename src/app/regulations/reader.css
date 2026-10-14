@@ -178,8 +178,17 @@
 .reg-reader .nav-part-link:hover {
   color: var(--accent);
 }
+/* The part label is one anchor (.nav-part-link, the block): the numeral on
+   its line and the description under it, both inside it so a click, hover or
+   focus anywhere on the label is the link (14 Oct 2026). The span keeps the
+   description's own size, colour and weight rather than the link's. */
+.reg-reader .nav-part-cite {
+  display: block;
+}
 .reg-reader .nav-part-sub {
+  display: block;
   font-size: 11.5px;
+  font-weight: 400;
   color: var(--ink-soft);
   margin: 1px 0 4px;
 }

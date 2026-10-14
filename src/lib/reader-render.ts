@@ -80,9 +80,15 @@ export function renderNavHtml(all: Provision[], tree?: Pick<Tree, "childrenOf" |
   const firstDetailsIndex = topLevel.findIndex(
     (n) => readerKindOf(n.id) !== "appendix" && (childrenOf.get(n.id)?.length ?? 0) > 0
   );
+  // The whole label -- citation and description -- is one anchor, so the
+  // click target, hover and focus ring cover both lines (Sprint 8, 14 Oct
+  // 2026). The description rides inside as a span; the anchor is the block.
+  const partLink = (node: Provision, sub: string) =>
+    `<a href="#${escapeHtml(node.id)}" class="nav-link nav-part-link"><span class="nav-part-cite">${escapeHtml(node.citation)}</span>${
+      sub ? `<span class="nav-part-sub">${escapeHtml(sub)}</span>` : ""
+    }</a>`;
   const parts = topLevel.map((node, i) => {
     const kind = readerKindOf(node.id);
-    const link = `<a href="#${escapeHtml(node.id)}" class="nav-link nav-part-link">${escapeHtml(node.citation)}</a>`;
     if (kind === "appendix") {
       // node.title is frequently just the bare citation itself, in which
       // case snippetAfterCitation returns "" -- fall through to full_text
@@ -90,12 +96,10 @@ export function renderNavHtml(all: Provision[], tree?: Pick<Tree, "childrenOf" |
       // rather than printing the citation twice.
       const titleSnippet = node.title ? snippetAfterCitation(node.title, node.citation, 60) : "";
       const appendixSub = titleSnippet || snippetAfterCitation(node.full_text, node.citation, 60);
-      const sub = appendixSub ? `<div class="nav-part-sub">${escapeHtml(appendixSub)}</div>` : "";
-      return `<div class="nav-part">${link}${sub}</div>`;
+      return `<div class="nav-part">${partLink(node, appendixSub)}</div>`;
     }
     const sections = childrenOf.get(node.id) ?? [];
-    const partSub = snippetAfterCitation(node.full_text, node.citation, 60);
-    const summary = link + (partSub ? `<div class="nav-part-sub">${escapeHtml(partSub)}</div>` : "");
+    const summary = partLink(node, snippetAfterCitation(node.full_text, node.citation, 60));
     if (sections.length === 0) {
       return `<div class="nav-part">${summary}</div>`;
     }

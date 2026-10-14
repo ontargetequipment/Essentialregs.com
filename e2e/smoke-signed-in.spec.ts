@@ -184,6 +184,25 @@ test.describe("signed in", () => {
     await expect(page.locator("#return-trail")).toBeHidden();
   });
 
+  test("Regulation 7's sidebar: clicking a Part's description goes to the Part and opens its group (14 Oct 2026)", async ({ page }) => {
+    await page.goto("/regulations/7");
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    const link = page.locator('#sidebar a.nav-part-link[href="#sec-7-P-B"]');
+    const group = page.locator("#navgroup-sec-7-P-B");
+    await expect(link.locator(".nav-part-cite")).toHaveText(/PART B/i);
+    const sub = link.locator(".nav-part-sub");
+    await expect(sub).not.toHaveText("");
+    const description = ((await sub.textContent()) ?? "").trim();
+    await group.evaluate((d) => ((d as HTMLDetailsElement).open = false));
+    await page.locator("#sidebar").getByText(description, { exact: true }).click();
+    await expect.poll(() => new URL(page.url()).hash).toBe("#sec-7-P-B");
+    await expect(group).toHaveAttribute("open", "");
+    await expect(row(page, "sec-7-P-B")).toBeVisible();
+    // Open already: the click leaves it open.
+    await page.locator("#sidebar").getByText(description, { exact: true }).click();
+    await expect(group).toHaveAttribute("open", "");
+  });
+
   test("the Regulation 7 jump box searches the whole text: 'enclosed combustion device' lists Part B rows with a highlighted excerpt", async ({ page }) => {
     await page.goto("/regulations/7");
     const box = page.locator("#jumpbox");

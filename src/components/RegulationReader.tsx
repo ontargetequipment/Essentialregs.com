@@ -759,8 +759,10 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       // action for the part link (see [reg]/page.tsx: clicking "PART B" to
       // jump there used to also collapse/expand it as a side effect; the
       // group is opened by goToProvision anyway, so nothing is lost).
-      // Clicking anywhere else in the summary -- the sub-label text, the
-      // marker -- has no <a> under it, so it keeps toggling normally.
+      // The part link wraps the whole label (citation span and description
+      // span), so closest("a.nav-link") finds it from either, and Enter on
+      // the focused link is the same click. Only the disclosure marker has
+      // no <a> under it, so it alone keeps toggling the group.
       // A Recent entry of this regulation jumps the same way; one of another
       // regulation is a plain link to that reader (the hash lands it there).
       const recent = target.closest("a.recent-link");
