@@ -63,7 +63,9 @@ const REG7_SUBTREE = [
 const REG7_WITH_SUMMARY = REG7_SUBTREE.filter((id) => !["sec-7-B-I-C-1", "sec-7-B-I-C-1-e-(iii)", "sec-7-B-I-C-1-f"].includes(id));
 /** The second hop of the walkthrough (13 Oct 2026, migration 20261013014006): I.D's heading and its one substantive child. */
 const REG7_SECOND_HOP = ["sec-7-B-I-D", "sec-7-B-I-D-4"];
-const REG7_PUBLIC = new Set([...REG7_SUBTREE, ...REG7_SECOND_HOP, "sec-7-B-I-D-3-a-(i)"]);
+// The eight rows the /sample Ask example cites, public since migration 20261013051740 (walkthrough v3.1).
+const REG7_ASK_CITES = ["sec-7-B-I-B-30", "sec-7-B-I-B-34", "sec-7-B-II-A-43", "sec-7-B-I-D-3-a-(ii)", "sec-7-B-I-E", "sec-7-B-I-F", "sec-7-B-II-C", "sec-7-B-V-C-2-w"];
+const REG7_PUBLIC = new Set([...REG7_SUBTREE, ...REG7_SECOND_HOP, "sec-7-B-I-D-3-a-(i)", ...REG7_ASK_CITES]);
 
 /**
  * Locked Regulation 7 rows and words of their official text (or, for a
@@ -1059,20 +1061,23 @@ test.describe("anonymous", () => {
 
   test("a logged-out search that GP05 cannot answer says how many provisions the full library has; a nonsense search says neither", async ({ page }) => {
     // Sprint 8, 11 Oct 2026 (src/lib/library-count.ts, migration
-    // 20261011210829_count_provisions_matching). "dehydrator" is in no GP05
-    // row (pipeline/sources/GP05.txt has none) and in no other public row, and
-    // it is in Regulation 7, ECMC and the NSPS subparts, so the free search
-    // finds nothing and the count is above 0. It passes against production once
-    // the migration is applied; before that the RPC does not exist, the line is
-    // hidden by design, and this step fails on the missing line.
-    const term = "dehydrator";
+    // 20261011210829_count_provisions_matching). "glycol dehydrator" is in no
+    // GP05 row (pipeline/sources/GP05.txt has neither word) and in no other
+    // public row, and it is in Regulation 7, ECMC and the NSPS subparts, so the
+    // free search finds nothing and the count is above 0 (38 on 13 Oct 2026). It
+    // was "dehydrator" until walkthrough v3.1 made Regulation 7 I.B.34 public,
+    // whose "well production facility" definition names dehydration. It passes
+    // against production once the migration is applied; before that the RPC
+    // does not exist, the line is hidden by design, and this step fails on the
+    // missing line.
+    const term = "glycol dehydrator";
     const res = await page.goto(`/search?q=${encodeURIComponent(term)}`);
     expect(res?.status()).toBe(200);
     const main = page.getByRole("main");
     await expect(main.getByText(`No results for “${term}”`)).toBeVisible();
     const line = main.getByTestId("library-count");
     await expect(line).toBeVisible();
-    const m = /^No matches in GP05\. The full library has ([\d,]+) provisions? matching “dehydrator”\./.exec((await line.innerText()).replace(/\s+/g, " "));
+    const m = /^No matches in GP05\. The full library has ([\d,]+) provisions? matching “glycol dehydrator”\./.exec((await line.innerText()).replace(/\s+/g, " "));
     expect(m, await line.innerText()).not.toBeNull();
     expect(Number(m![1].replace(/,/g, ""))).toBeGreaterThan(0);
     await expect(line.getByRole("link", { name: "Start your 7-day trial" })).toHaveAttribute("href", "/signup");
@@ -1639,14 +1644,15 @@ test.describe("anonymous", () => {
   });
 
   test("the focused preview of Regulation 7 I.D (the walkthrough's second hop) shows its public rows and nothing of I.D.1-3 or I.D.4's children", async ({ page }) => {
-    // 13 Oct 2026 (migration 20261013014006): I.D and I.D.4 are public; the older sample row I.D.3.a.(i) sits under I.D too.
+    // 13 Oct 2026 (migration 20261013014006): I.D and I.D.4 are public; the older sample row I.D.3.a.(i) sits under I.D too,
+    // and since migration 20261013051740 so does I.D.3.a.(ii), a citation of the sample page's Ask example.
     const res = await page.goto("/regulations/7/preview?p=sec-7-B-I-D");
     expect(res?.status()).toBe(200);
     const html = (await res?.text()) ?? "";
     await expect(page.getByRole("heading", { level: 1 })).toContainText("I.D.");
     await expect(page.getByTestId("locked-destination")).toHaveCount(0);
     const doc = page.locator("#preview-doc");
-    expect(await doc.locator(":scope > *").evaluateAll((els) => els.map((e) => e.id))).toEqual(["sec-7-B-I-D", "sec-7-B-I-D-3-a-(i)", "sec-7-B-I-D-4"]);
+    expect(await doc.locator(":scope > *").evaluateAll((els) => els.map((e) => e.id))).toEqual(["sec-7-B-I-D", "sec-7-B-I-D-3-a-(i)", "sec-7-B-I-D-3-a-(ii)", "sec-7-B-I-D-4"]);
     await expect(doc.locator(':scope > [id="sec-7-B-I-D"]')).toContainText("Storage Tank Emission Controls");
     await expect(doc.locator(':scope > [id="sec-7-B-I-D-4"]')).toContainText("Alternative emissions control equipment and pollution prevention devices");
     // The repealed stubs I.D.1 and I.D.2, the I.D.3 heading and I.D.4's children stay locked: none of their words.
