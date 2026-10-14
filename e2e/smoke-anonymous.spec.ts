@@ -1399,6 +1399,51 @@ test.describe("anonymous", () => {
   // The preview of the public subtree
   // -------------------------------------------------------------------------
 
+  test("a cross-reference landing, outside the walkthrough: the context strip names the document, Part and provision, with the way back in it, at 1280px and 375px", async ({ page }) => {
+    const strip = page.getByTestId("preview-context");
+    const text = page.getByTestId("preview-context-text");
+    for (const width of [1280, 375]) {
+      await page.setViewportSize({ width, height: 740 });
+      await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1&from=sec-gp05-VI-C");
+      // No walkthrough: no ?tour=1, no card.
+      await expect(page.getByTestId("tour-callout")).toHaveCount(0);
+      await expect(text).toHaveText("Regulation 7 · Part B · I.C.1 General Requirements");
+      const back = strip.locator("#preview-return");
+      await expect(back).toHaveText("← Back to GP05 · VI.C");
+      await expect(back).toHaveAttribute("href", "/regulations/gp05#sec-gp05-VI-C");
+      // Right under the header, the whole width, the I.C.1 heading below it.
+      const sb = (await strip.boundingBox())!;
+      expect(sb.y).toBe(66);
+      expect(Math.round(sb.width)).toBe(width);
+      const hb = (await page.locator("#preview-heading").boundingBox())!;
+      expect(hb.y, `${width}px: the heading is under the strip`).toBeGreaterThanOrEqual(sb.y + sb.height);
+      expect(hb.y + hb.height).toBeLessThanOrEqual(740);
+      if (width === 1280) {
+        // One line: the return link on the right of the text.
+        const tb = (await text.boundingBox())!;
+        const lb = (await back.boundingBox())!;
+        expect(lb.x).toBeGreaterThanOrEqual(tb.x + tb.width);
+        expect(sb.height).toBeLessThan(56);
+      } else {
+        // Two lines on a phone: the text, then the link; nothing scrolls sideways.
+        const tb = (await text.boundingBox())!;
+        const lb = (await back.boundingBox())!;
+        expect(lb.y).toBeGreaterThanOrEqual(tb.y + tb.height);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+      }
+      // Sticky: still under the header, still saying where the visitor is, after a scroll down the text.
+      await page.evaluate(() => window.scrollTo(0, 1200));
+      await expect.poll(async () => (await strip.boundingBox())!.y).toBe(66);
+      await expect(text).toBeInViewport();
+    }
+    // No from=: the strip without a way back. The whole-document preview has no strip.
+    await page.goto("/regulations/7/preview?p=sec-7-B-I-D");
+    await expect(text).toHaveText("Regulation 7 · Part B · I.D Storage Tank Emission Controls");
+    await expect(page.locator("#preview-return")).toHaveCount(0);
+    await page.goto("/regulations/7/preview");
+    await expect(strip).toHaveCount(0);
+  });
+
   test("the focused preview of Regulation 7 I.C.1 shows the 13 public rows, their text and summaries, and the rest locked", async ({ page, baseURL }) => {
     test.setTimeout(120_000);
     const res = await page.goto("/regulations/7/preview?p=sec-7-B-I-C-1");

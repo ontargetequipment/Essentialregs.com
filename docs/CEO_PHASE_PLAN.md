@@ -462,6 +462,8 @@ The ninth outside review (11 Oct, logged out) scored the public product 8.1 and 
    A one-line curated description per map group would fill them. That is writing work, not a paid run.
 5. **Still open from Sprint 6.** The GP06 II.A.3 tooltip, the "Source checked" date, Skew Protection.
 
+**Follow-up, 14 Oct 2026: where you are after a cross-reference.** The focused preview has a context strip under the site header, tour or not ("Regulation 7 · Part B · I.C.1 General Requirements", from `regulationDisplayName`, the Part root and the provision; `src/lib/preview-context.ts`, `PreviewContextStrip.tsx`) with the "← Back to GP05 · VI.C" link on its right when `from=` is set; two lines on a phone. Walkthrough step 6 now lands at the top of the page, its card anchored to the I.C.1 heading under the strip ("You are now in Regulation 7, Part B. This is I.C.1, the requirement GP05 cited. Open I.C.1.a's plain-English summary below."), I.C.1.a's control lit once it is clear of the card; still nine steps, same advancement. The reader is unchanged.
+
 ## Walkthrough v3: an introduction, two citation hops, a spotlight, a card that never covers its target, Oct 13 2026 (branch `walkthrough-v3`)
 
 Brief (owner, 12 Oct): on desktop the step bubble sat on the match list it was asking the visitor to click; every step should spotlight its exact target; open with where you are; follow a second citation and come back through both; end on a green "Explore GP05 yourself". Built in one Claude Code session (Fable 5.1). Pricing, the paywall and RLS beyond the two rows below, `fetchRenderedReader`, Stripe, ranking and the Sample page copy are untouched.

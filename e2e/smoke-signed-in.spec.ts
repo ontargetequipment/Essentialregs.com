@@ -479,7 +479,7 @@ test.describe("signed in", () => {
     await expect(c).toHaveAttribute("data-step", "6");
     await expect(c).toHaveAttribute("data-mode", "anchored");
     await expect(c.getByTestId("tour-count")).toHaveText(`Step 6 of ${STEP_COUNT}`);
-    await expect(c).toContainText("This is the cited requirement. Open I.C.1.a's summary.");
+    await expect(c).toContainText("You are now in Regulation 7, Part B. This is I.C.1, the requirement GP05 cited. Open I.C.1.a's plain-English summary below.");
     const bar = page.locator("#return-trail-ext");
     await expect(bar).toBeVisible();
     await expect(bar).toHaveText("← Back to GP05 · VI.C");
