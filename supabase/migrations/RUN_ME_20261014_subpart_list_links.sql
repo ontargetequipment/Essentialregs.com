@@ -36,6 +36,17 @@
 -- search_vector replaces tags with a space, so its tokens are unchanged.
 -- Summaries and review state are not touched. Re-running it changes nothing.
 --
+-- Applied by Claude Code through the Supabase connector (execute_sql) on
+-- 14 Oct 2026 at about 04:14 UTC, then select public.refresh_changelog_snapshot()
+-- (555 rows). Result: 11 rows, 27 links added (reg 7: 3 rows, 10 links; gp01: 3
+-- rows, 6; gp05: 3 rows, 6; gp12: 1 row, 4; gp08: 1 row, 1). Read back: 11
+-- 'links_updated' rows logged and no other change type; 0 bare list codes after
+-- a linked head in the Colorado documents; embedding hashes of the 11 rows
+-- unchanged (48 chunks, md5 78a4f7e0808c8287b0d0c12977f375eb before and after);
+-- sec-gp05-IX-B reads "...(NSPS) <a>Subpart OOOO</a>, <a>OOOOa</a>, or
+-- <a>OOOOb</a> – Standards of Performance ...". Merged with its PR in the
+-- same hour (CEO_PHASE_PLAN.md operating rule on baselines).
+--
 -- The function is a session-local helper in pg_temp (no DDL on the schema, no
 -- DROP): run the function, the UPDATE and nothing else in ONE call.
 
