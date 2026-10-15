@@ -237,3 +237,62 @@ What changes for whom:
 
 Do the same with the test key (drop `--live`) if you want test mode to match.
 Test-mode and live-mode Prices are separate.
+
+The [canary](#the-stripe-canary) compares the live Prices with
+`src/lib/pricing.ts`, so between the production deploy of a price change and
+step 3 above, `/api/health/stripe` answers `price_mismatch` (and the
+deploy's smoke test fails). That is expected; it clears once the script has
+run and the 5-minute canary cache has expired.
+
+## Rotating the live key
+
+On 14 Oct 2026 production checkout was found failing with *Expired API Key
+provided*: the live key had been rolled with an expiry date and the Vercel
+value never replaced. To rotate without a gap:
+
+1. Stripe dashboard (Test mode **off**) → **Developers** → **API keys** →
+   **Secret key** → ⋯ → **Roll key**. Set the old key's expiration to give
+   yourself time (an hour is plenty), but leave the **new** key with **no
+   expiry**. Copy the new `sk_live_...`.
+2. Vercel → the essentialregs project → **Settings** → **Environment
+   Variables** → `STRIPE_SECRET_KEY` (Production) → *Edit*, paste the new
+   key, save.
+3. **Redeploy** production (Deployments → ⋯ on the latest → Redeploy).
+   Environment variables only take effect on a new deployment.
+4. Open <https://www.essentialregs.com/api/health/stripe> and confirm it
+   says `"ok":true`. The deploy's smoke test checks the same thing.
+5. Only then delete (or let expire) the old key in Stripe. Update `.env.local`
+   on your PC too if it held the old live key.
+
+## The Stripe canary
+
+`GET /api/health/stripe` (`src/app/api/health/stripe/route.ts`) checks the
+deployment's own `STRIPE_SECRET_KEY`: both Prices exist under their lookup
+keys at the amounts in `src/lib/pricing.ts`, and the key can read Customers.
+It creates nothing. It answers `200 {"ok":true,"checkedAt":...}` or
+`503 {"ok":false,"reason":...}`, where `reason` is one of:
+
+| reason | meaning | fix |
+| --- | --- | --- |
+| `auth` | key expired, revoked or wrong | [Rotating the live key](#rotating-the-live-key) |
+| `permission` | a restricted key without Price or Customer read | use the full secret key, or grant the access |
+| `price_missing` | no active Price carries a lookup key | `npm run stripe:setup -- --live` (step 2) |
+| `price_mismatch` | a Price's amount or interval differs from `pricing.ts` | [Changing the price](#changing-the-price) |
+| `stripe_unreachable` | network error or Stripe outage | usually transient; check status.stripe.com |
+| `misconfigured` | `STRIPE_SECRET_KEY` is not set in this environment | step 3 |
+
+A result is reused for 5 minutes per server instance, so a fix shows up
+after a redeploy or within 5 minutes. Each failure is also logged as
+`[stripe-canary] check failed: reason=...` in Vercel's runtime logs.
+
+It runs in two places:
+
+- **Every deploy**: the anonymous smoke test (`e2e/smoke-anonymous.spec.ts`)
+  requires `ok: true` on production. On a preview whose environment has no
+  Stripe key it skips.
+- **Daily at 07:00 Mountain**: `.github/workflows/stripe-canary.yml` calls the
+  production URL and fails if the check does. GitHub emails the repository
+  owner when a scheduled workflow fails; keep that on in GitHub → **Settings**
+  → **Notifications** → **Actions** (*Notify me: email*, *only failed
+  workflows*). It can also be run by hand from the Actions tab (*Run
+  workflow*).

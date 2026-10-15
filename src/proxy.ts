@@ -12,6 +12,7 @@ export const config = {
     // else so the auth cookie is refreshed on every real page/action.
     // Also skip the Stripe webhook: it's called by Stripe, never carries a
     // user session, and shouldn't spend a Supabase round-trip per event.
-    "/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Likewise the Stripe canary (api/health/stripe), so it tests Stripe alone.
+    "/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|api/health/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
