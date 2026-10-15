@@ -288,6 +288,26 @@ test.describe("anonymous", () => {
     expect(status).toBe(401);
   });
 
+  test("the Stripe canary passes: the deployment's key works and both Prices match pricing.ts", async ({ request, baseURL }) => {
+    // GET /api/health/stripe (14 Oct 2026: an expired live key broke checkout
+    // and nothing noticed). Production deployments run with SMOKE_SCOPE=anonymous
+    // (ci.yml), the same signal smoke-signed-in.spec.ts skips on; a manual run
+    // against the production host counts too. A preview whose environment has
+    // no STRIPE_SECRET_KEY answers 503 "misconfigured", which skips here
+    // rather than failing an unrelated pull request. Any other failure fails.
+    const isProduction =
+      process.env.SMOKE_SCOPE === "anonymous" || /(^|\.)essentialregs\.com$/.test(new URL(baseURL ?? "http://x").hostname);
+    const res = await request.get("/api/health/stripe", { headers: protectionBypassHeaders() });
+    expect(res.headers()["cache-control"]).toContain("no-store");
+    const body = await res.json();
+    test.skip(
+      !isProduction && res.status() === 503 && body.reason === "misconfigured",
+      "Preview without STRIPE_SECRET_KEY: the Stripe canary answers misconfigured."
+    );
+    expect(body, JSON.stringify(body)).toMatchObject({ ok: true });
+    expect(res.status()).toBe(200);
+  });
+
   test("/sample answers one canned search and one canned Ask around GP05", async ({ page }) => {
     // Sprint 4, 10 Oct 2026: the page replays a frozen snapshot (src/data/
     // sample-snapshot.json). GP05 results are open cards; every other result

@@ -1,0 +1,49 @@
+name: Stripe canary
+
+# Daily check that production checkout can reach Stripe: GET
+# /api/health/stripe on www.essentialregs.com, which lists the two Prices and
+# one Customer with the deployment's own STRIPE_SECRET_KEY and creates
+# nothing (src/lib/stripe-canary.ts). Added after 14 Oct 2026, when an expired
+# live key had been failing checkout for an unknown period. The same check
+# runs in the anonymous smoke on every deployment (ci.yml).
+#
+# No secrets: the endpoint is public and its body is { ok, reason, checkedAt },
+# a reason code only. GitHub emails the repository owner when a scheduled
+# run fails (Settings → Notifications → Actions, "failed workflows only").
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # 07:00 Mountain (MDT); 06:00 in winter (MST)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    name: canary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: GET /api/health/stripe
+        run: |
+          url="https://www.essentialregs.com/api/health/stripe"
+          # No -f: a 503 still has a body worth printing. Retries cover a
+          # transient network blip on the runner, not a failing check.
+          status=$(curl -sS --retry 2 --retry-all-errors --max-time 30 -o body.json -w '%{http_code}' "$url") || {
+            echo "::error title=Stripe canary::Could not reach $url"
+            exit 1
+          }
+          echo "HTTP $status"
+          cat body.json; echo
+          {
+            echo "### Stripe canary"
+            echo "HTTP $status"
+            echo '```'
+            cat body.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" != "200" ] || ! grep -q '"ok":true' body.json; then
+            echo "::error title=Stripe canary::Production checkout is likely broken (HTTP $status). See docs/stripe-setup.md, 'Rotating the live key'."
+            exit 1
+          fi
