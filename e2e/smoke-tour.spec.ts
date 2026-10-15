@@ -889,6 +889,37 @@ test.describe("guided walkthrough", () => {
     expect(new URL(page.url()).hash).toBe(`#${VI_C}`);
   });
 
+  test("a citation clicked in the moment before the deep-link landing still gets its popup (the landing does not cancel the preview)", async ({ page }) => {
+    // The reader lands a deep link 50 ms after it mounts (RegulationReader:
+    // the end of the effect), and the page is clickable from hydration. The
+    // test above sometimes clicked in that window (production smokes of
+    // 13-15 Oct 2026): the landing's goToProvision closed the popup, which
+    // aborted the preview fetch, and the abort was dropped as a stale
+    // answer, so the popup stayed empty and the click went nowhere. Pinned
+    // deterministically: the landing timer is stretched to 400 ms and the
+    // data endpoint answers after 1 s, so the click is always inside the
+    // window and the answer always arrives after the landing.
+    await page.addInitScript(() => {
+      const original = window.setTimeout;
+      window.setTimeout = ((handler: TimerHandler, timeout?: number, ...rest: unknown[]) =>
+        original(handler, timeout === 50 ? 400 : timeout, ...rest)) as typeof window.setTimeout;
+    });
+    // fallback(), not continue(): the fixtures' context route (the
+    // protection-bypass header) still has to see the request.
+    await page.route(/\/api\/provision\//, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await route.fallback();
+    });
+    await page.goto(`/regulations/gp05#${VI_C}`);
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    await row(page, VI_C).locator(`a.xref-external-reg[href$="p=${REG7_IC1}"]`).click();
+    const popup = page.locator("#popup-body");
+    await expect(popup).toContainText("manufacturer specifications and documentation of compliance");
+    await expect(page.locator("#backdrop")).toHaveClass(/(^|\s)show(\s|$)/);
+    expect(new URL(page.url()).pathname).toBe("/regulations/gp05");
+    await expect(page.locator("#popup-goto")).toHaveAttribute("href", `/regulations/7/preview?p=${REG7_IC1}&from=${VI_C}`);
+  });
+
   test("/sample leads with the walkthrough; the search and Ask example is collapsed and still opens", async ({ page }) => {
     const res = await page.goto("/sample");
     expect(res?.status()).toBe(200);
