@@ -67,7 +67,20 @@ import type { SearchRow } from "@/lib/snippet";
  *         null: record nothing -- the return bar's own Back button, a deep
  *         link, popstate.
  */
-export type GoToOptions = { push: boolean; from?: string | null };
+export type GoToOptions = {
+  push: boolean;
+  from?: string | null;
+  /**
+   * Leave the popup, and a cross-regulation preview still in flight, alone.
+   * Set by the deep-link landing on load (the end of the effect), which is
+   * not something the visitor did: a citation they clicked in the ~50 ms
+   * between hydration and the landing must still get its popup, or its
+   * navigation. Without this the landing's closePopup() aborted that
+   * fetch, and the abort was dropped as a stale answer: no popup, no
+   * navigation, the click swallowed (production smoke, 13-15 Oct 2026).
+   */
+  keepPreview?: boolean;
+};
 
 /**
  * What the reader writes into history.state; Next keeps its own keys beside
@@ -545,8 +558,8 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
     }
 
     /**
-     * Moves the reader to a provision of this regulation. Closes the popup,
-     * opens the target's sidebar group, scrolls the row to the top of the
+     * Moves the reader to a provision of this regulation. Closes the popup
+     * (unless `keepPreview`), opens the target's sidebar group, scrolls the row to the top of the
      * reading pane, flashes it and gives it focus; with `push`, records the
      * origin on the return trail and pushes a history entry (see
      * GoToOptions). Returns false, doing nothing, for an unknown id.
@@ -554,7 +567,7 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
     function goToProvision(id: string, opts: GoToOptions): boolean {
       const el = rowEl(id);
       if (!el) return false;
-      closePopup();
+      if (!opts.keepPreview) closePopup();
       openGroupFor(id);
       if (opts.push) {
         const from = opts.from === undefined ? currentProvisionId() : opts.from;
@@ -1044,11 +1057,15 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       renderTrail();
     }
 
+    // The deep-link landing. The visitor may already be acting on the page
+    // (it is interactive from hydration, the links work without script):
+    // keepPreview, so a citation clicked before the landing fires is not
+    // cancelled by it.
     let deepLink: ReturnType<typeof setTimeout> | null = null;
     if (window.location.hash) {
       const slug = decodeHash(window.location.hash.slice(1));
       openGroupFor(slug);
-      deepLink = setTimeout(() => goToProvision(slug, { push: false, from: null }), 50);
+      deepLink = setTimeout(() => goToProvision(slug, { push: false, from: null, keepPreview: true }), 50);
     }
 
     return () => {
