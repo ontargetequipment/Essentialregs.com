@@ -812,6 +812,14 @@
   font-size: 13.5px;
   color: var(--ink-soft);
 }
+/* The line shown while a cross-regulation preview is being fetched
+   (RegulationReader.tsx showPendingPreview). */
+.reg-reader #popup-body .preview-pending {
+  margin: 0 0 6px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
 .reg-reader #popup-footer {
   padding: 10px 20px 18px;
   font-family: var(--sans);

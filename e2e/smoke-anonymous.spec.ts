@@ -703,6 +703,53 @@ test.describe("anonymous", () => {
     await expect(page.locator("#preview-return")).toHaveAttribute("href", "/regulations/gp05#sec-gp05-VI-A");
   });
 
+  test("a cross-regulation click opens the popup at once, loading, while a slow /api/provision answers; the answer then fills it", async ({ page }) => {
+    // 15 Oct 2026: on a freshly deployed production, the first /api/provision
+    // answer took longer than the popup assertion's 15 s, and until the
+    // answer came the click showed nothing at all. Now the popup opens on
+    // the click with the citation and a "Loading" line, and the answer
+    // replaces it. The endpoint is held back 3 s here to see both states.
+    // fallback(), not continue(): the fixtures' context route (the
+    // protection-bypass header) still has to see the request.
+    await page.route(/\/api\/provision\//, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await route.fallback();
+    });
+    await page.goto("/regulations/gp05");
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    const link = page.locator('#doc > [id="sec-gp05-VI-A"] a.xref-external-reg[href="/regulations/7/preview?p=sec-7-P-B"]');
+    await link.scrollIntoViewIfNeeded();
+    await link.click();
+    // Pending, within a second of the click: the backdrop, the regulation,
+    // the citation as the link printed it, the loading line, no footer.
+    await expect(page.locator("#backdrop")).toHaveClass(/show/, { timeout: 1500 });
+    await expect(page.locator("#popup-eyebrow")).toHaveText("Regulation 7");
+    await expect(page.locator("#popup-title")).toHaveText("Part B");
+    await expect(page.getByTestId("popup-pending")).toHaveText("Loading…");
+    await expect(page.locator("#popup-body")).toHaveAttribute("aria-busy", "true");
+    await expect(page.locator("#popup-goto")).toBeHidden();
+    // Answered: the locked panel replaces the loading line.
+    const panel = page.locator("#popup-body [data-testid=locked-destination]");
+    await expect(panel).toContainText("Regulation 7 PART B is in the full corpus.");
+    await expect(page.getByTestId("popup-pending")).toHaveCount(0);
+    await expect(page.locator("#popup-body")).not.toHaveAttribute("aria-busy", "true");
+    expect(new URL(page.url()).pathname, "the click did not navigate").toBe("/regulations/gp05");
+  });
+
+  test("a cross-regulation click whose /api/provision fails closes the pending popup and follows the link instead", async ({ page }) => {
+    // The failure path is unchanged by the pending state: a route that does
+    // not answer cleanly never leaves a "Loading" popup behind. The click is
+    // replayed as plain navigation to the link's own href.
+    await page.route(/\/api\/provision\//, (route) => route.fulfill({ status: 500, body: "" }));
+    await page.goto("/regulations/gp05");
+    await expect(page.locator("#jumpbox")).toHaveAttribute("role", "combobox");
+    const link = page.locator('#doc > [id="sec-gp05-VI-A"] a.xref-external-reg[href="/regulations/7/preview?p=sec-7-P-B"]');
+    await link.scrollIntoViewIfNeeded();
+    await link.click();
+    await page.waitForURL((url) => url.pathname === "/regulations/7/preview" && url.searchParams.get("p") === "sec-7-P-B");
+    await expect(page.locator("h1")).toHaveText("PART B");
+  });
+
   test("GP05 IX.B links every code of \"Subpart OOOO, OOOOa, or OOOOb\", and a click on OOOOb opens the OOOOb preview", async ({ page }) => {
     // 14 Oct 2026: only the first code of the list was a link. Each code is
     // its own cross-regulation link to its subpart's document (the visitor's
