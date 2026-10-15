@@ -302,6 +302,7 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       const clone = el.cloneNode(true) as HTMLElement;
       popupBody.innerHTML = "";
       popupBody.appendChild(clone);
+      popupBody.removeAttribute("aria-busy");
       // The clone carries the row's "Plain-English summary" panel when it
       // has one; only then does the text above it need its own label, so a
       // reader can tell which is which (backlog #16). Text alone: no label.
@@ -317,6 +318,7 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       previewSeq++; // a preview still in flight must not open a popup nobody asked for now
       previewAbort?.abort();
       backdrop?.classList.remove("show");
+      popupBody?.removeAttribute("aria-busy");
       setPopupNote(null);
     }
 
@@ -338,17 +340,50 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
         window.location.assign(link.href);
       }
     }
+    /**
+     * The popup the moment a cross-regulation link is clicked, before the
+     * route has answered: the regulation's name, the citation as the link
+     * printed it, and one "Loading" line where the text will go. A cold
+     * function can take seconds to answer (the production smoke of 15 Oct
+     * 2026 measured 8-13 s on a fresh deployment); with nothing on screen
+     * until then, the click looked ignored. The footer is hidden until the
+     * answer says where it leads; a failed fetch closes this (fallBack).
+     */
+    function showPendingPreview(targetId: string, label: string | null, asDocument: boolean) {
+      if (!backdrop || !popupBody || !popupTitle) return;
+      const key = regKeyOf(targetId);
+      const name = key ? (asDocument ? documentShortName(key) : regulationDisplayName(key)) : targetId;
+      popupSlug = null;
+      popupOrigin = null;
+      popupRemote = true;
+      if (popupEyebrowEl) popupEyebrowEl.textContent = name;
+      popupTitle.textContent = label?.trim() || name;
+      setPopupNote(null);
+      const pending = document.createElement("p");
+      pending.className = "preview-pending";
+      pending.setAttribute("data-testid", "popup-pending");
+      pending.setAttribute("role", "status");
+      pending.textContent = "Loading\u2026";
+      popupBody.innerHTML = "";
+      popupBody.appendChild(pending);
+      popupBody.setAttribute("aria-busy", "true");
+      if (popupTextLabel) popupTextLabel.hidden = true;
+      if (popupGoto) popupGoto.style.display = "none";
+      backdrop.classList.add("show");
+    }
     async function previewOtherRegulation(
       fallBack: () => void,
       targetId: string,
       origin: string | null,
       cited: string | null = null,
       printedEffective: string | null = null,
-      asDocument = false
+      asDocument = false,
+      label: string | null = null
     ) {
       const seq = ++previewSeq;
       previewAbort?.abort();
       const abort = (previewAbort = new AbortController());
+      showPendingPreview(targetId, label, asDocument);
       let data: ProvisionPreviewPayload;
       try {
         const res = await fetch(`/api/provision/${encodeURIComponent(targetId)}`, {
@@ -414,6 +449,7 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       }
       popupBody.innerHTML = "";
       popupBody.appendChild(wrap);
+      popupBody.removeAttribute("aria-busy");
       if (popupTextLabel) {
         // The label that tells the official text from the summary under it,
         // only when there is a summary to tell it from (as showPopup does).
@@ -457,6 +493,7 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       wrap.innerHTML = view.panelHtml;
       popupBody.innerHTML = "";
       popupBody.appendChild(wrap);
+      popupBody.removeAttribute("aria-busy");
       if (popupTextLabel) popupTextLabel.hidden = true;
       if (popupGoto) popupGoto.style.display = "none";
       backdrop.classList.add("show");
@@ -647,7 +684,8 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
           originOf(external),
           sectionId ? citedParamOf(href) : null,
           sectionId ? printedEffectiveDate(textAfterLink(external)) : null,
-          !sectionId
+          !sectionId,
+          external.textContent
         );
         return;
       }
@@ -660,7 +698,15 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
         // this page: preview it the same way, or go there.
         const remote = slug && !model.byId.has(slug) ? validProvisionId(slug) : null;
         if (remote && regKeyOf(remote)?.toLowerCase() !== pageKey?.toLowerCase()) {
-          void previewOtherRegulation(() => window.location.assign(regulationHref(remote)), remote, originOf(xref));
+          void previewOtherRegulation(
+            () => window.location.assign(regulationHref(remote)),
+            remote,
+            originOf(xref),
+            null,
+            null,
+            false,
+            xref.textContent
+          );
           return;
         }
         // The row the reference sits in, when it is on the page itself (a
