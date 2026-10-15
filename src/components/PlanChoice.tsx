@@ -12,7 +12,7 @@ import { SubscribeControl } from "@/components/SubscribeControl";
 /** Monthly first, annual (the better value) second, everywhere the two appear. */
 export const PLAN_ORDER: readonly BillingInterval[] = ["month", "year"];
 
-/** "$25 / month" as a big serif amount and a small period. */
+/** "$10 / month" as a big serif amount and a small period. */
 function Price({ display }: { display: string }) {
   const [amount, period] = display.split(" / ");
   return (

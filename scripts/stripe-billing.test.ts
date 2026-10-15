@@ -40,8 +40,8 @@ test("planDisplayName maps lookup keys to plan names and passes anything else th
 });
 
 test("parsePriceDisplay reads the two display strings", () => {
-  assert.deepEqual(parsePriceDisplay(MONTHLY_PRICE_DISPLAY), { cents: 2500, interval: "month" });
-  assert.deepEqual(parsePriceDisplay(ANNUAL_PRICE_DISPLAY), { cents: 25000, interval: "year" });
+  assert.deepEqual(parsePriceDisplay(MONTHLY_PRICE_DISPLAY), { cents: 1000, interval: "month" });
+  assert.deepEqual(parsePriceDisplay(ANNUAL_PRICE_DISPLAY), { cents: 10000, interval: "year" });
   assert.deepEqual(parsePriceDisplay("$19.50 / month"), { cents: 1950, interval: "month" });
   assert.throws(() => parsePriceDisplay("$25 a month"));
   assert.throws(() => parsePriceDisplay("25 / month"));
@@ -122,7 +122,7 @@ test("decidePrice: a matching Price is kept, whether product is an id or an expa
   assert.deepEqual(decidePrice(stripePrice({ product: { id: "prod_1" } }), annual, "prod_1", true), { action: "keep" });
 });
 
-test("decidePrice: an existing Price with a different amount is a mismatch, or a replace with --replace", () => {
+test("decidePrice: an existing Price with a different amount is a mismatch, or a replace with --replace-prices", () => {
   const repriced = stripePrice({ unit_amount: annual.cents + 500 });
   assert.deepEqual(decidePrice(repriced, annual, "prod_1", false), { action: "mismatch", oldId: "price_existing" });
   assert.deepEqual(decidePrice(repriced, annual, "prod_1", true), { action: "replace", oldId: "price_existing" });
@@ -139,13 +139,15 @@ test("decidePrice: interval, currency and product differences count as mismatche
 });
 
 test("parseArgs: flags, --site normalisation and rejection of anything else", () => {
-  assert.deepEqual(parseArgs([]), { dryRun: false, replace: false, live: false, site: DEFAULT_SITE });
-  assert.deepEqual(parseArgs(["--dry-run", "--replace", "--live"]), {
+  assert.deepEqual(parseArgs([]), { dryRun: false, replacePrices: false, live: false, site: DEFAULT_SITE });
+  assert.deepEqual(parseArgs(["--dry-run", "--replace-prices", "--live"]), {
     dryRun: true,
-    replace: true,
+    replacePrices: true,
     live: true,
     site: DEFAULT_SITE,
   });
+  // The older spelling still works, so a pasted command from an old note does what it says.
+  assert.equal(parseArgs(["--replace"]).replacePrices, true);
   assert.equal(parseArgs(["--site", "https://preview.example.com/"]).site, "https://preview.example.com");
   assert.equal(parseArgs(["--site=https://preview.example.com"]).site, "https://preview.example.com");
   assert.throws(() => parseArgs(["--bogus"]), /Unknown flag --bogus/);

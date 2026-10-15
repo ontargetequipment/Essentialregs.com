@@ -25,10 +25,10 @@ test("the list names the corpus, summaries, search, Ask, cross-references and te
   }
 });
 
-test("no amount in the list, and the prices are the owner's $25 / $250", () => {
+test("no amount in the list, and the prices are the owner's $10 / $100", () => {
   for (const i of PLAN_INCLUDES) assert.ok(!/\$|\d+\s*\/\s*(month|year)/i.test(`${i.lead} ${i.detail}`), i.lead);
-  assert.equal(MONTHLY_PRICE_DISPLAY, "$25 / month");
-  assert.equal(ANNUAL_PRICE_DISPLAY, "$250 / year");
+  assert.equal(MONTHLY_PRICE_DISPLAY, "$10 / month");
+  assert.equal(ANNUAL_PRICE_DISPLAY, "$100 / year");
 });
 
 test("Ask is described as finding provisions, not deciding applicability", () => {
@@ -57,7 +57,8 @@ test("PlanChoice trialButtons: a visitor's two plan buttons read 'Start your 7-d
   assert.ok(!html.includes("Create an account to subscribe"));
   assert.ok(html.includes('href="/signup?plan=month"') && html.includes('href="/signup?plan=year"'));
   // The amounts are the owner's, once each.
-  assert.ok(html.includes("$25") && html.includes("$250"));
+  assert.ok(html.includes("$10") && html.includes("$100"));
+  assert.ok(!html.includes("$25") && !html.includes("$250"));
 });
 
 test("PlanChoice without trialButtons keeps the old wording (homepage card, /signup flow)", () => {

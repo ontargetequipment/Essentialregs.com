@@ -1,7 +1,8 @@
 # Stripe setup checklist
 
-One-time steps to turn on paid subscriptions: $25 / month or $250 / year
-(`src/lib/pricing.ts`, set by the owner on 26 Sep 2026), with a **7-day free
+One-time steps to turn on paid subscriptions: $10 / month or $100 / year
+(`src/lib/pricing.ts`, set by the owner on 14 Oct 2026; $25 / $250 before
+that), with a **7-day free
 trial** for every first-time subscriber. Stripe Checkout collects the card up
 front and charges it itself when the trial ends; the site only decides who is
 offered the trial (an account that has never had a subscription).
@@ -54,7 +55,7 @@ It reads `STRIPE_SECRET_KEY` from `.env.local`, refuses a live key unless you
 pass `--live`, and then, idempotently:
 
 - finds or creates the **EssentialRegs** product and its two recurring Prices,
-  **Monthly** `$25.00` and **Yearly** `$250.00`, each carrying the lookup key
+  **Monthly** `$10.00` and **Yearly** `$100.00`, each carrying the lookup key
   the checkout looks for (`individual_monthly`, `individual_annual`). No Price
   id ever goes into an environment variable: the checkout resolves the keys at
   request time, so test and live mode each carry their own Prices under the
@@ -82,16 +83,8 @@ only the ids, never the secret.
 
 Flags: `-- --dry-run` prints what would change and writes nothing;
 `-- --site https://<preview-host>` points the webhook and portal return URL at
-a preview deployment; `-- --replace` is for repricing (below); `-- --live` for
-step 7.
-
-**Changing the price later:** edit the two display strings in
-`src/lib/pricing.ts` first (that file is what the site shows), then run
-`npm run stripe:setup -- --replace`. It creates a Price at the new amount,
-moves the lookup key onto it, archives the old one and updates the portal
-configuration; existing subscribers stay on what they signed up for and new
-checkouts get the new amount. Without `--replace`, a mismatch stops the script
-and changes nothing.
+a preview deployment; `-- --replace-prices` is for repricing (see
+[Changing the price](#changing-the-price)); `-- --live` for step 7.
 
 ## 3. Add the environment variables in Vercel
 
@@ -131,7 +124,7 @@ on their `profiles` row) keeps full access regardless of Stripe.
 1. Open the site, create a fresh account, confirm the email, then go to the
    homepage **Pricing** section (`/pricing` also lands there) and click
    **Start 7-day free trial** in the Annual box.
-2. Stripe's checkout page shows **7 days free**, then **$250.00 / year**, and
+2. Stripe's checkout page shows **7 days free**, then **$100.00 / year**, and
    asks for a card even though nothing is charged today. Use
    `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP.
 3. You land on `/account?checkout=success`. Within a few seconds the Plan line
@@ -177,3 +170,70 @@ advance the clock past the trial end.
    `NEXT_PUBLIC_SITE_URL` and the Supabase key don't change.
 4. Repeat steps 1.4 (customer emails) and 1.5 (Terms of Service URL) with
    Test mode off; both are per mode.
+
+## Changing the price
+
+The amounts live in one place in the code, the two display strings in
+`src/lib/pricing.ts` (`MONTHLY_PRICE_DISPLAY`, `ANNUAL_PRICE_DISPLAY`). The
+site shows those strings and the setup script reads its Stripe amounts from
+them ("$10 / month" → 1000 cents), so **the site copy and the script amounts
+always move together**: change the strings in a pull request, and once it is
+merged run the script below against the live account. Never change a Price in
+the Stripe dashboard by hand. The site would keep showing the old amount, and
+the next run of the script would stop on the mismatch.
+
+Last change: 14 Oct 2026, $25 / $250 → $10 / $100.
+
+1. As soon as the production deploy of the merged change is live (until you
+   run step 3, the site shows the new amount while Stripe's checkout page
+   still charges the old one): on your PC, in your checkout of the repo, pull
+   `main` and run `npm ci`. `.env.local` must hold the **live** key
+   (`STRIPE_SECRET_KEY=sk_live_...`, step 7.1).
+2. From the repo root, preview first (writes nothing):
+
+   ```sh
+   npx tsx scripts/stripe-setup.ts --live --replace-prices --dry-run --site https://www.essentialregs.com
+   ```
+
+   It should list one `would create` and one `archive` line per plan at the
+   new amounts, and `portal: would update`.
+3. Then for real:
+
+   ```sh
+   npx tsx scripts/stripe-setup.ts --live --replace-prices --site https://www.essentialregs.com
+   ```
+
+   For each lookup key (`individual_monthly`, `individual_annual`) whose
+   active Price has a different amount, it creates a new Price at the new
+   amount with `transfer_lookup_key`, so the key moves onto it, and then
+   archives the old Price (`active: false`). The new Price is created first,
+   so the key always has an active Price behind it. It then sets the Customer
+   Portal configuration's plan list to the two new Price ids only. The
+   archived ones are dropped, so nobody can switch back onto an old amount.
+   The ids are written to `stripe-setup.local.txt` as usual.
+4. Run step 3 again if you like. It now reports `ok` for both Prices and
+   creates or archives nothing.
+
+What changes for whom:
+
+- **New checkouts** get the new amount. The checkout looks the Price up by
+  lookup key at request time and caches the id for 5 minutes
+  (`src/lib/stripe-prices.ts`), so no redeploy or environment variable change
+  is needed. In the first 5 minutes, a server that cached the old id may
+  try the archived Price, and Stripe refuses that checkout. A redeploy
+  clears the cache at once (Vercel → Deployments → ⋯ → Redeploy); otherwise
+  just wait 5 minutes before testing.
+- **Existing subscribers keep their old price** (still $25 / $250 after the
+  14 Oct change). They renew at it until they change plan in the portal
+  (*Manage billing* → *Update plan*), which moves them onto one of the new
+  Prices. A move to a lower amount or a shorter interval takes effect at the
+  end of the paid period; a move to annual happens at once and is
+  prorated. Their plan label on `/account` stays *Monthly* / *Annual*: the
+  old Prices lose their lookup key, and the webhook then falls back to the
+  Price's nickname, which is the same word.
+- **Without `--replace-prices`**, a mismatch is reported and the script exits
+  having changed nothing (the safe default, and what a plain
+  `npm run stripe:setup` does).
+
+Do the same with the test key (drop `--live`) if you want test mode to match.
+Test-mode and live-mode Prices are separate.
