@@ -3,6 +3,9 @@ name: Bootstrap BLM sources (one-off)
 # One-off, deleted in the next commit: workflow_dispatch only reaches a
 # workflow that is already on the default branch, so on this branch the
 # fetch workflow is called from here, on push, for 43 CFR 3160 and 3170.
+# (Second push: the first run's 3170 job checked out the event commit and
+# could not rebase onto the 3160 commit; the fetch workflow now checks out
+# the branch tip.)
 on:
   push:
     branches: [claude/blm-importer-1a]
