@@ -72,7 +72,7 @@ export const CITATION_EYEBROW_CLASS = "font-mono text-eyebrow normal-case text-t
  * already shared; /sample, /pricing, /search, the card pages, the auth pages
  * and the admin pages had each picked a narrower centred column. The
  * regulation reader (src/app/regulations, reader.css) is the one route with
- * no outer frame -- a 320px sidebar against the viewport's edge and a 960px
+ * no outer frame -- a 320px sidebar against the viewport's edge and a
  * reading column centred in what is left -- so it and its /preview keep
  * their own layout.
  *
