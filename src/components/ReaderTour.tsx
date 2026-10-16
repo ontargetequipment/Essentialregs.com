@@ -92,7 +92,10 @@ import "./reader-tour.css";
  * to use (chooseCalloutPlacement, tour.ts: the reading pane's top-right,
  * its bottom-right, its top-left, beside the anchor in the sidebar column,
  * else the dock), checked again on every scroll, resize and change of the
- * jump results. The preview has no sidebar and is one centred text column:
+ * jump results. On a reader page the reading text itself (#doc) is one of
+ * those obstacles (16 Oct 2026): since the column fills the pane, every pane
+ * corner sat on the paragraph being read, so the card takes the sidebar
+ * slot (as step 2 always did) and docks only when that is not clear either. The preview has no sidebar and is one centred text column:
  * there ("floating") the card is as wide as the gutter beside the column
  * allows (floatingFit), so the corners it takes are in the gutter and none
  * of the column's text is ever under it; when the gutter is too narrow the
@@ -944,11 +947,22 @@ export function ReaderTour({
           belowFrom,
         };
       }
+      const obstacles = obstaclesFor(view, page, target);
+      // On a reader page the card may not sit on the reading text at all
+      // (16 Oct 2026): #doc fills the pane beside the sidebar, so a pane
+      // corner would cover the paragraph the visitor is reading. With #doc
+      // an obstacle the corners are skipped and the card takes the sidebar
+      // slot (the "beside" candidate), else the dock. The preview has its
+      // own gutter rule (floating) and is left as it was.
+      if (!floating) {
+        const doc = docEl();
+        if (doc) obstacles.push(rectOf(doc));
+      }
       const choice = chooseCalloutPlacement({
         box: { width, height },
         viewport,
         paneLeft: floating || !sidebar ? 0 : sidebar.getBoundingClientRect().right,
-        obstacles: obstaclesFor(view, page, target),
+        obstacles,
         beside,
         minTop: topChrome() + 8,
       });

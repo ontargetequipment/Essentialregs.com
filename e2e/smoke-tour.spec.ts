@@ -121,6 +121,29 @@ async function expectFloatingInGutter(page: Page, anchor: Locator): Promise<void
     .toBe(true);
 }
 
+/**
+ * The card is clear of the reading text (16 Oct 2026): on a reader page it
+ * never overlaps #doc, which since #134 fills the pane beside the sidebar;
+ * on the focused preview it never overlaps #preview-doc (the gutter rule).
+ * Polled, so a card still being placed does not fail it.
+ */
+async function expectOffTheText(page: Page, label: string): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const doc = page.locator("#doc");
+        const text = (await doc.count()) ? doc : page.locator("#preview-doc");
+        const card = await boxOf(callout(page));
+        const t = await boxOf(text);
+        return overlap(card, t)
+          ? `${label}: the card (${Math.round(card.x)}-${Math.round(card.x + card.width)}, ${Math.round(card.y)}-${Math.round(card.y + card.height)}) covers the text (${Math.round(t.x)}-${Math.round(t.x + t.width)})`
+          : "clear";
+      },
+      { message: label }
+    )
+    .toBe("clear");
+}
+
 const SHOTS_DIR = path.join(process.cwd(), "e2e-screenshots", "walkthrough-v3");
 async function shot(page: Page, testInfo: TestInfo, name: string): Promise<void> {
   mkdirSync(SHOTS_DIR, { recursive: true });
@@ -178,7 +201,8 @@ test.describe("guided walkthrough", () => {
     await expect(c.getByTestId("tour-restart")).toBeVisible();
     await expectSpotlight(page, 0, page.locator("#jumpbox"));
     await expectFixedOnPage(page);
-    await expect(c).toHaveAttribute("data-placement", "top-right");
+    // In the sidebar under the jump box, not over the reading text (16 Oct 2026).
+    await expect(c).toHaveAttribute("data-placement", "beside");
     await expectClear(page, "step 0");
     await shot(page, testInfo, "tour-1280-step0");
 
@@ -419,6 +443,70 @@ test.describe("guided walkthrough", () => {
     expect(await storedTour(page)).toBeNull();
     expect(tagsOf(events)).toEqual(FULL_RUN);
   });
+
+  for (const width of [1280, 1360]) {
+    test(`at ${width}px the card never sits on the reading text, at any step: the sidebar slot on GP05, the gutter on the previews`, async ({ page }, testInfo) => {
+      test.setTimeout(120_000);
+      await page.setViewportSize({ width, height: 800 });
+      const events = await captureTourEvents(page);
+      const c = callout(page);
+      // Every step as it first shows: never on #doc (#preview-doc on the previews).
+      const at = async (step: string, label = `step ${step}`) => {
+        await expect(c).toHaveAttribute("data-step", step);
+        await expectOffTheText(page, `${width}px, ${label}`);
+        await expectClear(page, `${width}px, ${label}`);
+      };
+      // While the jump results are open (steps 1 and 4) they fill the sidebar
+      // under the box; the card takes the sidebar slot when it is clear and
+      // otherwise the bottom sheet -- never a corner of the reading pane.
+      const withResultsOpen = async (step: string, label: string) => {
+        await expect(c).toHaveAttribute("data-step", step);
+        await expectClear(page, `${width}px, ${label}`);
+        await expect
+          .poll(async () => ((await c.getAttribute("data-dock")) !== null ? "dock" : await c.getAttribute("data-placement")), { message: label })
+          .toMatch(/^(beside|dock)$/);
+        const where = (await c.getAttribute("data-dock")) !== null ? "dock" : "beside";
+        if (where === "beside") await expectOffTheText(page, `${width}px, ${label}`);
+        testInfo.annotations.push({ type: "placement", description: `${width}px, ${label}: ${where}` });
+      };
+
+      await openTour(page);
+      await at("0");
+      await expect(c).toHaveAttribute("data-placement", "beside");
+      await startTour(page);
+      await at("1");
+      await typeSampling(page);
+      await withResultsOpen("1", "step 1 with the match list open");
+      await page.locator(`#jump-results .jr-item[data-slug="${VI_D}"]`).click();
+      await at("2");
+      await c.getByTestId("tour-next").click();
+      await at("3");
+      await summaryControl(row(page, VI_D)).click();
+      await at("4");
+      await page.locator("#jumpbox").click();
+      await page.locator("#jumpbox").fill("VI.C");
+      await expect(page.locator("#jump-results")).toHaveClass(/show/);
+      await withResultsOpen("4", "step 4 with the jump results open");
+      await page.locator("#jumpbox").press("Enter");
+      await at("5");
+      await sawEvent(events, "tour_step:5");
+
+      await row(page, VI_C).locator(`a.xref-external-reg[href$="p=${REG7_IC1}"]`).click();
+      await page.waitForURL((url) => url.pathname === "/regulations/7/preview" && url.searchParams.get("p") === REG7_IC1);
+      await at("6");
+      await summaryControl(previewRow(page, REG7_IC1_A)).click();
+      await at("7");
+      await secondHopLink(page).click();
+      await page.waitForURL((url) => url.pathname === "/regulations/7/preview" && url.searchParams.get("p") === REG7_ID);
+      await at("8");
+      await back(page).click();
+      await page.waitForURL((url) => url.pathname === "/regulations/7/preview" && url.searchParams.get("p") === REG7_IC1);
+      await at("9");
+      await back(page).click();
+      await page.waitForURL((url) => url.pathname === "/regulations/gp05");
+      await at("closing", "the closing card");
+    });
+  }
 
   test("step 1 moves on only when the reader lands on VI.D through the jump box", async ({ page }) => {
     const events = await captureTourEvents(page);
