@@ -1906,10 +1906,11 @@ test.describe("anonymous", () => {
    * same container as the header's inner wrapper (src/lib/ui.ts
    * pageContainerClass), so the content's left edge lines up with the ER
    * logo and its right edge with the header's, at a desktop and a phone
-   * width, with no sideways scroll. Five representative pages here;
-   * scripts/page-alignment.ts walks every top-level page.
+   * width, with no sideways scroll. Six representative pages here (the
+   * whole-document preview joined on 16 Oct 2026); scripts/page-alignment.ts
+   * walks every top-level page.
    */
-  for (const path of ["/", "/sample", "/pricing", "/states/colorado", "/request"]) {
+  for (const path of ["/", "/sample", "/pricing", "/states/colorado", "/request", "/regulations/7/preview"]) {
     test(`${path} shares the header's page width at 1360 and 390px`, async ({ page }) => {
       for (const width of WIDTHS) {
         await page.setViewportSize({ width, height: 900 });
