@@ -6,6 +6,7 @@
  * rows (is_public) or the regulation roots change, update them here.
  */
 import { expect, protectionBypassHeaders, test, withProtectionBypass } from "./fixtures";
+import { WIDTHS, measurePageWidth, pageWidthProblems } from "./page-width";
 import { ANNUAL_PRICE_DISPLAY, MONTHLY_PRICE_DISPLAY } from "../src/lib/pricing";
 import { DISCLAIMER_VERSION } from "../src/lib/disclaimer";
 
@@ -1899,4 +1900,23 @@ test.describe("anonymous", () => {
     await expect(table.locator("tbody tr")).toHaveCount(7);
     await expect(table.locator("tbody tr").first()).toContainText("Prior to Issuance 5");
   });
+
+  /**
+   * One page width (16 Oct 2026): every page's first block of <main> is the
+   * same container as the header's inner wrapper (src/lib/ui.ts
+   * pageContainerClass), so the content's left edge lines up with the ER
+   * logo and its right edge with the header's, at a desktop and a phone
+   * width, with no sideways scroll. Five representative pages here;
+   * scripts/page-alignment.ts walks every top-level page.
+   */
+  for (const path of ["/", "/sample", "/pricing", "/states/colorado", "/request"]) {
+    test(`${path} shares the header's page width at 1360 and 390px`, async ({ page }) => {
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(path);
+        const measure = await measurePageWidth(page);
+        expect(pageWidthProblems(measure), `${path} at ${width}px`).toEqual([]);
+      }
+    });
+  }
 });

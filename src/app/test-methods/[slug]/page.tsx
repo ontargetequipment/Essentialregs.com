@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { TestMethodBody } from "@/components/TestMethodBody";
 import { TEST_METHODS, TEST_METHOD_BY_SLUG, titleWithoutMethodName, type TestMethod } from "@/data/test-methods";
 import { fetchCitedBy, type CitedByGroup } from "@/lib/test-method-citations";
-import { buttonClass } from "@/lib/ui";
+import { buttonClass, pageContainerClass } from "@/lib/ui";
 
 /**
  * One Test Methods reference page. Free and public: no getAccessStatus(),
@@ -125,27 +125,28 @@ export default async function TestMethodPage(props: PageProps<"/test-methods/[sl
     .filter((m): m is TestMethod => m !== undefined);
 
   return (
-    <div className="mx-auto max-w-shell px-6 py-12">
-      <div className="max-w-reading">
-        <p className="font-mono text-eyebrow uppercase text-tag">
-          <Link href="/test-methods" className="hover:text-accent hover:underline">
-            Test Methods
-          </Link>
-        </p>
-        <h1 className="mt-2 font-serif text-section font-bold tracking-tight text-ink">{method.shortName}</h1>
-        <p className="mt-2 text-base leading-relaxed text-ink-soft">{titleWithoutMethodName(method.shortName, method.officialTitle)}</p>
-        <p className="mt-1 text-sm text-muted">{method.source}</p>
-        <p className="mt-4">
-          <a
-            href={method.ecfrUrl}
-            target="_blank"
-            rel="noopener"
-            className={buttonClass()}
-          >
-            Read the method on the eCFR →
-          </a>
-        </p>
+    <div className={pageContainerClass("py-12")}>
+      <p className="font-mono text-eyebrow uppercase text-tag">
+        <Link href="/test-methods" className="hover:text-accent hover:underline">
+          Test Methods
+        </Link>
+      </p>
+      <h1 className="mt-2 font-serif text-section font-bold tracking-tight text-ink">{method.shortName}</h1>
+      <p className="mt-2 max-w-prose text-base leading-relaxed text-ink-soft">{titleWithoutMethodName(method.shortName, method.officialTitle)}</p>
+      <p className="mt-1 text-sm text-muted">{method.source}</p>
+      <p className="mt-4">
+        <a
+          href={method.ecfrUrl}
+          target="_blank"
+          rel="noopener"
+          className={buttonClass()}
+        >
+          Read the method on the eCFR →
+        </a>
+      </p>
 
+      {/* The method's sections, one reading column (720px) at the page's left edge. */}
+      <div className="max-w-reading">
         <TestMethodBody method={method}>
           {related.length > 0 && (
             <section id="related" aria-labelledby="related-heading">

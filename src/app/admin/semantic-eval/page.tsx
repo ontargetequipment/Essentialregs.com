@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pageContainerClass } from "@/lib/ui";
 import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { embedQueries, hrefForHit, regLabel, type SemanticHit } from "@/lib/semantic";
@@ -99,7 +100,7 @@ export default async function SemanticEvalPage() {
   const passed = rows.filter((r) => r.pass).length;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
+    <div className={pageContainerClass("py-12")}>
       <h1 className="text-2xl font-bold text-zinc-900">Ask acceptance test</h1>
       <p className="mt-2 text-sm text-zinc-600">
         {EVAL_QUESTIONS.length} real compliance questions; a question passes when an expected provision appears in the

@@ -56,3 +56,35 @@ export const FREE_PILL =
  * keep the plain eyebrow (`uppercase`) for labels that are words.
  */
 export const CITATION_EYEBROW_CLASS = "font-mono text-eyebrow normal-case text-tag";
+
+/**
+ * The one page width (16 Oct 2026): the header's and the footer's inner
+ * wrapper and the first block of every top-level page are this container, so
+ * the content's left edge lines up with the ER emblem and its right edge with
+ * the header's on every page.
+ *
+ *   max-width  1120px  (--container-shell, globals.css)
+ *   padding    24px    each side at every width (px-6): the one phone gutter
+ *   centred    mx-auto
+ *
+ * These are the header's own values, which the homepage and the index pages
+ * already shared; /sample, /pricing, /search, the card pages, the auth pages
+ * and the admin pages had each picked a narrower centred column. The
+ * regulation reader (src/app/regulations, reader.css) is the one route with
+ * no outer frame -- a 320px sidebar against the viewport's edge and a 760px
+ * reading column centred in what is left -- so it and its /preview keep
+ * their own layout.
+ *
+ * Inside the container, content left-aligns to its edge; nothing is centred
+ * as a narrower island. Headlines, card grids and tables span it. A block of
+ * paragraphs is capped at `max-w-prose` (Tailwind's 65ch, about 70-75
+ * characters); a column of cards, a form or a list at `max-w-reading` (720px,
+ * --container-reading). Checked by e2e/page-width.ts (the smoke spec's five
+ * pages; scripts/page-alignment.ts for every page).
+ *
+ * `className` carries the page's own vertical padding ("py-12") or, for the
+ * header, its row layout.
+ */
+export function pageContainerClass(className = ""): string {
+  return ["mx-auto max-w-shell px-6", className].filter(Boolean).join(" ");
+}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pageContainerClass } from "@/lib/ui";
 import {
   LINKS_EXPLANATION,
   SUMMARY_QUALITY_EXPLANATION,
@@ -20,16 +21,17 @@ import { regulationCardHref } from "@/lib/regulation-pure";
  */
 export function ChangelogBody({ view }: { view: ChangelogView }) {
   return (
-    <div className="mx-auto max-w-shell px-6 py-12">
-      <div className="max-w-reading">
-        <h1 className="font-serif text-section font-bold text-ink">Changelog</h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          What&apos;s changed in the regulation corpus, in three parts: rule changes that came from the agency (a new
-          version of the official text, provisions it added or removed); links between provisions, source links and
-          corrections to our own copy of the text; and the plain-English summaries, checked against the source
-          text, corrected, or rewritten. Each regulation&apos;s page shows its current version and effective date.
-        </p>
+    <div className={pageContainerClass("py-12")}>
+      <h1 className="font-serif text-section font-bold text-ink">Changelog</h1>
+      <p className="mt-2 max-w-prose text-sm text-ink-soft">
+        What&apos;s changed in the regulation corpus, in three parts: rule changes that came from the agency (a new
+        version of the official text, provisions it added or removed); links between provisions, source links and
+        corrections to our own copy of the text; and the plain-English summaries, checked against the source
+        text, corrected, or rewritten. Each regulation&apos;s page shows its current version and effective date.
+      </p>
 
+      {/* The sections, one reading column (720px) at the page's left edge. */}
+      <div className="max-w-reading">
         {view.notice && (
           <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="status">
             {view.notice}

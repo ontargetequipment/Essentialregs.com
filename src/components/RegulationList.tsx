@@ -18,8 +18,10 @@ export type RegulationListRow = Pick<Provision, "id" | "citation" | "title" | "i
 /**
  * The card list shared by the /states/colorado (Colorado), /federal and
  * /general-permits index pages: the subscribe prompt for visitors without
- * access, one card per regulation root, and the "nothing loaded" note for
- * subscribers when the list is empty. A card links to the gated reader at
+ * access (a 720px column at the page's left edge), one card per regulation
+ * root in a grid that spans the page width (one column on a phone, two from
+ * `sm`, three from `lg`; 16 Oct 2026, with the shared page container), and
+ * the "nothing loaded" note for subscribers when the list is empty. A card links to the gated reader at
  * /regulations/<reg> for an entitled reader and to the public
  * /regulations/<reg>/preview teaser for everyone else (see regulationCardHref).
  *
@@ -58,7 +60,7 @@ export function RegulationList({
   return (
     <>
       {!access.hasAccess && (
-        <div className="mt-8 rounded-lg border border-line bg-accent-soft p-6">
+        <div className="mt-8 max-w-reading rounded-lg border border-line bg-accent-soft p-6">
           <h2 className="font-serif text-card font-semibold text-ink">
             Subscribe to open the full regulations
           </h2>
@@ -97,7 +99,7 @@ export function RegulationList({
               )}
             </h2>
           )}
-          <div className="flex flex-col gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {group.regs.map((r) => {
               const reg = regulationNumber(r.id) ?? r.id;
               const info = regulationCardInfo(r);

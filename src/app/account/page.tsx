@@ -3,7 +3,7 @@ import { getAccessStatus, type AccessStatus } from "@/lib/access";
 import { ANNUAL_PLAN_NAME, planDisplayName } from "@/lib/pricing";
 import { logout } from "@/app/auth/actions";
 import { PlanChoice } from "@/components/PlanChoice";
-import { buttonClass } from "@/lib/ui";
+import { buttonClass, pageContainerClass } from "@/lib/ui";
 
 export const metadata = { title: "Your account" };
 
@@ -64,82 +64,84 @@ export default async function AccountPage(props: PageProps<"/account">) {
   const justCheckedOut = searchParams.checkout === "success";
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="font-serif text-section font-bold tracking-tight text-ink">Your account</h1>
+    <div className={pageContainerClass("py-16")}>
+      <div className="max-w-2xl">
+        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Your account</h1>
 
-      {justCheckedOut && (
-        <div className="mt-6 rounded-md border border-line bg-accent-soft px-4 py-3 text-sm text-ink">
-          <p className="font-medium">Thanks — your subscription is being set up.</p>
-          {!access.hasAccess && (
-            <p className="mt-1 text-ink-soft">
-              Stripe is confirming the payment. This usually takes a few
-              seconds; refresh this page if the status below hasn&apos;t updated yet.
-            </p>
-          )}
-        </div>
-      )}
-
-      <dl className="mt-6 space-y-3 text-sm">
-        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
-          <dt className="text-muted">Email</dt>
-          <dd className="break-all font-medium text-ink">{access.user.email}</dd>
-        </div>
-        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
-          <dt className="text-muted">Plan</dt>
-          <dd className="font-medium text-ink">
-            {planSummary(access)}
-            {access.status === "trialing" && (
-              <span className="mt-1 block text-xs font-normal text-muted">
-                Cancel before then from Manage billing and you won&apos;t be charged.
-              </span>
+        {justCheckedOut && (
+          <div className="mt-6 rounded-md border border-line bg-accent-soft px-4 py-3 text-sm text-ink">
+            <p className="font-medium">Thanks — your subscription is being set up.</p>
+            {!access.hasAccess && (
+              <p className="mt-1 text-ink-soft">
+                Stripe is confirming the payment. This usually takes a few
+                seconds; refresh this page if the status below hasn&apos;t updated yet.
+              </p>
             )}
-          </dd>
-        </div>
-        <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
-          <dt className="text-muted">Access</dt>
-          <dd className="font-medium text-ink">
-            {access.hasAccess ? "Full access — all regulations" : "Sample content only"}
-          </dd>
-        </div>
-      </dl>
-
-      {/* Both plans, so a new user picks monthly or annual here rather than
-          being sent to Checkout for one of them (owner, 27 Sep 2026). */}
-      {!access.hasAccess && <PlanChoice access={access} className="mt-8" />}
-
-      <div className="mt-8 flex flex-wrap items-center gap-3">
-        {access.stripeCustomerId && (
-          <form method="post" action="/api/stripe/portal">
-            <button type="submit" className={buttonClass()}>
-              Manage billing
-            </button>
-          </form>
+          </div>
         )}
 
-        <form action={logout}>
-          <button
-            type="submit"
-            className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink-soft hover:bg-accent-soft"
-          >
-            Log out
-          </button>
-        </form>
-      </div>
+        <dl className="mt-6 space-y-3 text-sm">
+          <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
+            <dt className="text-muted">Email</dt>
+            <dd className="break-all font-medium text-ink">{access.user.email}</dd>
+          </div>
+          <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
+            <dt className="text-muted">Plan</dt>
+            <dd className="font-medium text-ink">
+              {planSummary(access)}
+              {access.status === "trialing" && (
+                <span className="mt-1 block text-xs font-normal text-muted">
+                  Cancel before then from Manage billing and you won&apos;t be charged.
+                </span>
+              )}
+            </dd>
+          </div>
+          <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-b border-line pb-3">
+            <dt className="text-muted">Access</dt>
+            <dd className="font-medium text-ink">
+              {access.hasAccess ? "Full access — all regulations" : "Sample content only"}
+            </dd>
+          </div>
+        </dl>
 
-      {access.stripeCustomerId && (
-        <>
-          <p className="mt-3 text-xs text-muted">
-            Manage billing opens Stripe&apos;s customer portal to update your
-            card, download invoices, or cancel.
-          </p>
-          {/* Owner decision, 27 Sep 2026: the portal schedules a downgrade
-              for the period end (scripts/stripe-setup-lib.ts portalParams). */}
-          <p className="mt-1 text-xs text-muted">
-            Switching from annual to monthly takes effect at the end of your
-            paid year — no refunds or partial credits.
-          </p>
-        </>
-      )}
+        {/* Both plans, so a new user picks monthly or annual here rather than
+            being sent to Checkout for one of them (owner, 27 Sep 2026). */}
+        {!access.hasAccess && <PlanChoice access={access} className="mt-8" />}
+
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          {access.stripeCustomerId && (
+            <form method="post" action="/api/stripe/portal">
+              <button type="submit" className={buttonClass()}>
+                Manage billing
+              </button>
+            </form>
+          )}
+
+          <form action={logout}>
+            <button
+              type="submit"
+              className="rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink-soft hover:bg-accent-soft"
+            >
+              Log out
+            </button>
+          </form>
+        </div>
+
+        {access.stripeCustomerId && (
+          <>
+            <p className="mt-3 text-xs text-muted">
+              Manage billing opens Stripe&apos;s customer portal to update your
+              card, download invoices, or cancel.
+            </p>
+            {/* Owner decision, 27 Sep 2026: the portal schedules a downgrade
+                for the period end (scripts/stripe-setup-lib.ts portalParams). */}
+            <p className="mt-1 text-xs text-muted">
+              Switching from annual to monthly takes effect at the end of your
+              paid year — no refunds or partial credits.
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }

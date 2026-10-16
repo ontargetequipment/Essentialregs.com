@@ -5,7 +5,7 @@ import { AskCard } from "@/components/AskCard";
 import { AskReading, AskResearchMap } from "@/components/AskResearchMap";
 import { loadSampleRows } from "@/lib/sample-snapshot";
 import { TRIAL_DAYS } from "@/lib/pricing";
-import { buttonClass } from "@/lib/ui";
+import { buttonClass, pageContainerClass } from "@/lib/ui";
 import { TOUR_START_HREF } from "@/lib/tour";
 import {
   RECOMMENDED_START,
@@ -165,11 +165,11 @@ export default async function SamplePage() {
   );
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
+    <div className={pageContainerClass("py-12")}>
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">
         See how EssentialRegs answers a real Colorado oil and gas compliance question
       </h1>
-      <p className="mt-3 max-w-reading text-sm leading-relaxed text-ink-soft">
+      <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">
         An operator with a produced water tank battery wants to know what applies. Walk through the research yourself, or
         compare the Search and Ask results below. GP05, the general permit for produced water storage tank batteries, is
         free to read in full: the official text with a plain-English summary beside each provision, and cross-references
@@ -177,14 +177,14 @@ export default async function SamplePage() {
       </p>
 
       <section
-        className="mt-8 rounded-lg border border-line bg-accent-soft p-6"
+        className="mt-8 max-w-reading rounded-lg border border-line bg-accent-soft p-6"
         aria-labelledby="sample-walkthrough-title"
         data-testid="sample-walkthrough"
       >
         <h2 id="sample-walkthrough-title" className="font-serif text-card font-semibold text-ink">
           Take the short guided walkthrough
         </h2>
-        <p className="mt-2 max-w-reading text-sm leading-relaxed text-ink-soft">
+        <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink-soft">
           You operate a produced-water tank battery under GP05 and need the site-specific sampling requirements. In about
           two minutes you find the provision, read the official text, check the plain-English summary and follow a
           citation into Regulation 7, in the real reader.
@@ -203,7 +203,7 @@ export default async function SamplePage() {
 
       {/* The search and Ask example (Sprints 4 and 5), collapsed under the
           walkthrough (Sprint 6). Server-rendered: every card is in the HTML. */}
-      <details className="group/example mt-10 rounded-lg border border-line bg-panel" data-testid="sample-example">
+      <details className="group/example mt-10 max-w-reading rounded-lg border border-line bg-panel" data-testid="sample-example">
         <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3 px-5 py-4 font-serif text-lg font-bold tracking-tight text-ink">
           <span>Search and Ask: the same question answered two ways</span>
           <span className="shrink-0 font-sans text-sm font-medium text-ink-soft underline underline-offset-2 group-open/example:hidden">
@@ -293,7 +293,7 @@ export default async function SamplePage() {
         </div>
       </details>
 
-      <div className="mt-12">
+      <div className="mt-12 max-w-reading">
         <Buttons hasAccess={hasAccess} testId="sample-cta" />
       </div>
     </div>

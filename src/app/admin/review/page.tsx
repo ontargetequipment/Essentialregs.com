@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pageContainerClass } from "@/lib/ui";
 import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeHtml, stripHtml, titleWithoutCitation } from "@/lib/regulation";
@@ -168,7 +169,7 @@ export default async function AdminReviewPage(props: PageProps<"/admin/review">)
   const rows = fetched.slice(0, PAGE_SIZE);
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
+    <div className={pageContainerClass("py-12")}>
       <h1 className="text-2xl font-bold text-zinc-900">Summary review queue</h1>
       <p className="mt-2 text-sm text-zinc-600">
         Every summary is written as pending and reads &ldquo;AI-generated &middot; automated check against source text&rdquo; only
