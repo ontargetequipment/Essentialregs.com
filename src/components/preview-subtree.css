@@ -9,7 +9,7 @@
  * columns. Only `.reg-reader` is used here, as the wrapper that carries the
  * reader's colour tokens and type (--ink, --accent, the serif at 16px/1.55);
  * the page-level parts of it are undone below, and the id the rows sit in is
- * #preview-doc, so none of the `#doc` rules (760px column, 48px padding, 200px
+ * #preview-doc, so none of the `#doc` rules (960px column, 40px padding, 200px
  * of bottom room) reach it. Every rule in reader.css starts with
  * `.reg-reader`, so nothing in it applies anywhere else on the page.
  */

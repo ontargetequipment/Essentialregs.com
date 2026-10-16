@@ -56,7 +56,7 @@ export default async function GeneralPermitsIndexPage() {
         ← Colorado regulations
       </Link>
       <h1 className="mt-4 font-serif text-section font-bold tracking-tight text-ink">APCD General Permits</h1>
-      <p className="mt-2 max-w-prose text-sm text-ink-soft">
+      <p className="mt-2 max-w-reading text-sm text-ink-soft">
         The Colorado Air Pollution Control Division issues general
         construction permits covering common oil-and-gas source types --
         registering under one is faster than a source-specific
@@ -64,11 +64,11 @@ export default async function GeneralPermitsIndexPage() {
         condition the permit sets. A registrant has to meet all of them,
         not just most.
       </p>
-      <p className="mt-2 max-w-prose text-sm text-ink-soft">
+      <p className="mt-2 max-w-reading text-sm text-ink-soft">
         The permit text here is the current issuance, with cross-references
         resolved to the AQCC regulations and federal rules it cites.
       </p>
-      <p className="mt-2 max-w-prose text-sm text-ink-soft">
+      <p className="mt-2 max-w-reading text-sm text-ink-soft">
         Looking for the numbered AQCC regulations or ECMC rules? See{" "}
         <Link href="/states/colorado" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
           Colorado regulations
@@ -81,7 +81,7 @@ export default async function GeneralPermitsIndexPage() {
           rather than repeating that group heading as a self-link. */}
       <RegulationList regs={regs} access={access} mode="flat" appliesTo={APPLIES_TO} />
 
-      <p className="mt-8 max-w-prose text-xs text-muted">
+      <p className="mt-8 max-w-reading text-xs text-muted">
         Application forms and filing fees aren&apos;t reproduced here (we
         don&apos;t track fees) -- see CDPHE&apos;s{" "}
         <a

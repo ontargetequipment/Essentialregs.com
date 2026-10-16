@@ -46,7 +46,7 @@ export default async function Home() {
             (src/lib/site.ts). Two paragraphs make the hero taller on a
             phone, so below `sm` the gaps around the second one are tighter
             (mt-3, and mt-6 above the buttons); the type scale is unchanged. */}
-        <p className="mt-6 max-w-prose text-lg leading-relaxed text-ink-soft">
+        <p className="mt-6 max-w-reading text-lg leading-relaxed text-ink-soft">
           EssentialRegs brings Colorado oil and gas regulations, General
           Permits, federal EPA standards, and PHMSA pipeline requirements into
           one searchable reader. Whether you manage compliance, advise clients,
@@ -54,7 +54,7 @@ export default async function Home() {
           or land, you can find relevant provisions, follow related
           requirements, and read the rules in context.
         </p>
-        <p className="mt-3 max-w-prose text-lg leading-relaxed text-ink-soft sm:mt-4">
+        <p className="mt-3 max-w-reading text-lg leading-relaxed text-ink-soft sm:mt-4">
           Clearly labeled plain-English summaries help you get oriented
           quickly, while links to official sources let you check the
           underlying regulatory text.
@@ -78,14 +78,14 @@ export default async function Home() {
           </Link>
         </div>
 
-        <p className="mt-6 max-w-prose text-sm text-ink-soft">
+        <p className="mt-6 max-w-reading text-sm text-ink-soft">
           Spend less time finding rules, handle routine research yourself, and
           make more of the time you spend with a consultant.
         </p>
 
         {/* Coverage line. Names only what is in the corpus today; the
             "Coming soon" clause is the one forward-looking line on the site. */}
-        <p className="mt-6 max-w-prose text-sm text-ink-soft">
+        <p className="mt-6 max-w-reading text-sm text-ink-soft">
           Now featuring Colorado — AQCC air-quality regulations, ECMC rules and
           APCD General Permits, alongside the federal EPA and PHMSA rules they
           reference. Coming soon: more states, plus OSHA, DOT (FMCSA) and FAA
@@ -99,7 +99,7 @@ export default async function Home() {
         </p>
         {/* The free Test Methods reference, one sentence beside the
             regulation indexes above. */}
-        <p className="mt-3 max-w-prose text-sm text-ink-soft">
+        <p className="mt-3 max-w-reading text-sm text-ink-soft">
           The EPA test methods those rules cite — Method 21, Method 22,
           Method 25A and more — each have a reference page under{" "}
           <Link
@@ -129,12 +129,12 @@ export default async function Home() {
       {/* scroll-mt: the 66px sticky site header plus the 32px this had before. */}
       <section id="pricing" className="scroll-mt-[98px] border-t border-line py-14">
         <h2 className="font-serif text-section font-bold tracking-tight text-ink">Pricing</h2>
-        <p className="mt-2 max-w-prose text-sm text-ink-soft">
+        <p className="mt-2 max-w-reading text-sm text-ink-soft">
           One plan, billed monthly or yearly: the full corpus, linked
           cross-references, and updates as the rules change.
         </p>
 
-        <div className="mt-6 max-w-md rounded-lg border border-line bg-panel p-6 shadow-sm">
+        <div className="mt-6 max-w-reading rounded-lg border border-line bg-panel p-6 shadow-sm">
           <p className="font-mono text-eyebrow uppercase text-tag">Subscription</p>
           <p className="mt-1 font-serif text-card font-semibold text-ink">{PLAN_TAGLINE}</p>
 

@@ -20,7 +20,7 @@ export default async function StatesIndexPage() {
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">
         State Regulations
       </h1>
-      <p className="mt-2 max-w-prose text-sm text-ink-soft">
+      <p className="mt-2 max-w-reading text-sm text-ink-soft">
         Choose a state to browse its air-quality and oil &amp; gas
         regulations. Looking for the federal EPA subparts and PHMSA parts?
         See{" "}
@@ -49,7 +49,7 @@ export default async function StatesIndexPage() {
         ))}
       </ul>
 
-      <p className="mt-6 max-w-prose text-sm text-muted">
+      <p className="mt-6 max-w-reading text-sm text-muted">
         More states are on the way. Don&rsquo;t see your state?{" "}
         <Link
           href="/request"

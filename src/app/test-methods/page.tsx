@@ -30,7 +30,7 @@ export default function TestMethodsIndexPage() {
   return (
     <div className={pageContainerClass("py-12")}>
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">Test Methods</h1>
-      <p className="mt-4 max-w-prose text-base leading-relaxed text-ink-soft">
+      <p className="mt-4 max-w-reading text-base leading-relaxed text-ink-soft">
         Reference pages for the EPA test methods the regulations on this
         site cite. Each page opens with the method’s own Scope and Summary
         sections, reproduced from the CFR, followed by EssentialRegs notes

@@ -169,7 +169,7 @@ export default async function SamplePage() {
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">
         See how EssentialRegs answers a real Colorado oil and gas compliance question
       </h1>
-      <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">
+      <p className="mt-3 max-w-reading text-sm leading-relaxed text-ink-soft">
         An operator with a produced water tank battery wants to know what applies. Walk through the research yourself, or
         compare the Search and Ask results below. GP05, the general permit for produced water storage tank batteries, is
         free to read in full: the official text with a plain-English summary beside each provision, and cross-references
@@ -184,7 +184,7 @@ export default async function SamplePage() {
         <h2 id="sample-walkthrough-title" className="font-serif text-card font-semibold text-ink">
           Take the short guided walkthrough
         </h2>
-        <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink-soft">
+        <p className="mt-2 max-w-reading text-sm leading-relaxed text-ink-soft">
           You operate a produced-water tank battery under GP05 and need the site-specific sampling requirements. In about
           two minutes you find the provision, read the official text, check the plain-English summary and follow a
           citation into Regulation 7, in the real reader.

@@ -132,7 +132,7 @@ export default async function TestMethodPage(props: PageProps<"/test-methods/[sl
         </Link>
       </p>
       <h1 className="mt-2 font-serif text-section font-bold tracking-tight text-ink">{method.shortName}</h1>
-      <p className="mt-2 max-w-prose text-base leading-relaxed text-ink-soft">{titleWithoutMethodName(method.shortName, method.officialTitle)}</p>
+      <p className="mt-2 max-w-reading text-base leading-relaxed text-ink-soft">{titleWithoutMethodName(method.shortName, method.officialTitle)}</p>
       <p className="mt-1 text-sm text-muted">{method.source}</p>
       <p className="mt-4">
         <a

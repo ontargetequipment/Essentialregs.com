@@ -36,7 +36,7 @@ function Included({ showFreeReader = true }: { showFreeReader?: boolean }) {
       <h2 id="included-heading" className="font-mono text-eyebrow uppercase text-tag">
         What the subscription includes
       </h2>
-      <ul className="mt-3 flex max-w-prose flex-col gap-3 text-sm leading-relaxed text-ink-soft">
+      <ul className="mt-3 flex max-w-reading flex-col gap-3 text-sm leading-relaxed text-ink-soft">
         {PLAN_INCLUDES.map((item) => (
           <li key={item.lead}>
             <span className="font-medium text-ink">{item.lead}.</span> {item.detail}
@@ -44,7 +44,7 @@ function Included({ showFreeReader = true }: { showFreeReader?: boolean }) {
         ))}
       </ul>
       {showFreeReader && (
-        <p className="mt-5 max-w-prose text-sm text-ink-soft">
+        <p className="mt-5 max-w-reading text-sm text-ink-soft">
           Want to see it first?{" "}
           <Link
             href="/regulations/gp05"
@@ -77,7 +77,7 @@ export default async function PricingPage(props: PageProps<"/pricing">) {
       <div className={pageContainerClass("py-10 sm:py-14")}>
         <div className="max-w-reading">
           <h1 className="font-serif text-section font-bold tracking-tight text-ink">Plans and pricing</h1>
-          <p className="mt-2 max-w-prose text-sm text-ink-soft">
+          <p className="mt-2 max-w-reading text-sm text-ink-soft">
             {access.manualOverride && !current
               ? "Your account has complimentary access; no plan is needed."
               : current
@@ -118,7 +118,7 @@ export default async function PricingPage(props: PageProps<"/pricing">) {
           </p>
         )}
         <h1 className="font-serif text-section font-bold tracking-tight text-ink">Choose your plan</h1>
-        <p className="mt-2 max-w-prose text-sm text-ink-soft">
+        <p className="mt-2 max-w-reading text-sm text-ink-soft">
           {TRIAL_DAYS}-day free trial on either plan. A card is required to start;
           cancel before the trial ends and you won&apos;t be charged.
         </p>

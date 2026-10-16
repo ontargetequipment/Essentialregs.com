@@ -41,7 +41,7 @@ export default async function RequestPage() {
   return (
     <div className={pageContainerClass("py-12")}>
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">Request a regulation</h1>
-      <div className="mt-4 max-w-prose text-base leading-relaxed text-ink-soft">
+      <div className="mt-4 max-w-reading text-base leading-relaxed text-ink-soft">
         <p>
           Tell us which regulation you need and we&rsquo;ll put it in the queue. What people
           ask for decides what we build next.
@@ -52,7 +52,7 @@ export default async function RequestPage() {
         <RequestForm renderedAt={renderedAt} userEmail={userEmail} />
       </div>
 
-      <p className="mt-8 max-w-prose text-sm text-ink-soft">
+      <p className="mt-8 max-w-reading text-sm text-ink-soft">
         Something else? Account, billing and correction questions go through{" "}
         <Link
           href="/contact"

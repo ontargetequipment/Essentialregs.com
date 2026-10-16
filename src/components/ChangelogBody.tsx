@@ -23,7 +23,7 @@ export function ChangelogBody({ view }: { view: ChangelogView }) {
   return (
     <div className={pageContainerClass("py-12")}>
       <h1 className="font-serif text-section font-bold text-ink">Changelog</h1>
-      <p className="mt-2 max-w-prose text-sm text-ink-soft">
+      <p className="mt-2 max-w-reading text-sm text-ink-soft">
         What&apos;s changed in the regulation corpus, in three parts: rule changes that came from the agency (a new
         version of the official text, provisions it added or removed); links between provisions, source links and
         corrections to our own copy of the text; and the plain-English summaries, checked against the source
