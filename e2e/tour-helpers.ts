@@ -8,8 +8,8 @@
  * one I.C.1.c cites (the second hop, v3); the tour itself never hard-codes
  * them.
  */
-import { expect } from "./fixtures";
-import type { Locator, Page } from "@playwright/test";
+import { expect, withProtectionBypass } from "./fixtures";
+import type { Browser, BrowserContext, Locator, Page } from "@playwright/test";
 
 export const TOUR = "/regulations/gp05?tour=1";
 export const VI_D = "sec-gp05-VI-D";
@@ -388,4 +388,105 @@ export async function walkToClosing(page: Page, events: { event: string; step: n
   await page.locator("#preview-return").click();
   await page.waitForURL((url) => url.pathname === "/regulations/gp05");
   await expect(callout(page)).toHaveAttribute("data-step", "closing");
+}
+
+// ---------------------------------------------------------------------------
+// Arrivals on a cited row (16 Oct 2026): the heading at the top of the pane
+// ---------------------------------------------------------------------------
+
+/**
+ * A browser context signed in as the smoke account (SMOKE_EMAIL /
+ * SMOKE_PASSWORD: an existing, subscribed account; nothing is created or
+ * paid), at the given viewport. Its own untraced context, so the password
+ * typed here is never recorded; the caller closes it.
+ */
+export async function signedInContext(
+  browser: Browser,
+  baseURL: string | undefined,
+  viewport: { width: number; height: number }
+): Promise<BrowserContext> {
+  const context = await browser.newContext({ baseURL, viewport });
+  await withProtectionBypass(context, baseURL);
+  const page = await context.newPage();
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(process.env.SMOKE_EMAIL ?? "");
+  await page.getByLabel("Password").fill(process.env.SMOKE_PASSWORD ?? "");
+  await page.getByRole("button", { name: "Log in" }).click();
+  // A login lands on the homepage (src/app/auth/actions.ts `login`).
+  await page.waitForURL((url) => url.pathname === "/", { timeout: 30_000 });
+  await page.close();
+  return context;
+}
+
+/** One measurement of where a landed row sits against the page's fixed chrome, in viewport pixels. */
+export type Landing = {
+  scrollY: number;
+  innerHeight: number;
+  /** The landed row (#doc's or #preview-doc's child). */
+  row: { top: number; bottom: number };
+  /** The row's first line of text: the first line box of its first text node. */
+  firstLine: { top: number; bottom: number; left: number; right: number };
+  /** The way-back pill: the reader's "← Back to GP05 · VI.C" (#return-trail-ext), or the preview's #preview-return. */
+  pill: { top: number; bottom: number; left: number; right: number };
+  /** The bottom of the sticky site header, or of the preview's context strip when it has one. */
+  chromeBottom: number;
+};
+
+/**
+ * Where the row with `rowId` has landed right now (one measurement, no
+ * retrying): the row, its first text line, the way-back pill and the fixed
+ * chrome above the pane. Throws when any of them is missing, which is a
+ * failure of the page, not of the landing.
+ */
+export async function landingNow(page: Page, rowId: string): Promise<Landing> {
+  return page.evaluate((id) => {
+    const box = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+    };
+    const root = document.getElementById("doc") ?? document.getElementById("preview-doc");
+    const row = root?.querySelector(`:scope > [id="${id}"]`);
+    if (!row) throw new Error(`landingNow: no row ${id}`);
+    const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (n.textContent && n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+    });
+    const text = walker.nextNode();
+    if (!text) throw new Error(`landingNow: row ${id} has no text`);
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    const line = range.getClientRects()[0];
+    if (!line) throw new Error(`landingNow: row ${id}'s first text has no line box`);
+    const ext = document.getElementById("return-trail-ext");
+    const bar = document.getElementById("return-trail");
+    const pill = ext && !ext.hidden && bar && !bar.hidden ? ext : document.getElementById("preview-return");
+    if (!pill) throw new Error("landingNow: no way-back pill on the page");
+    const strip = document.getElementById("preview-context");
+    const header = document.querySelector("header");
+    return {
+      scrollY: window.scrollY,
+      innerHeight: window.innerHeight,
+      row: { top: row.getBoundingClientRect().top, bottom: row.getBoundingClientRect().bottom },
+      firstLine: { top: line.top, bottom: line.bottom, left: line.left, right: line.right },
+      pill: box(pill),
+      chromeBottom: Math.max(header ? header.getBoundingClientRect().bottom : 0, strip ? strip.getBoundingClientRect().bottom : 0),
+    };
+  }, rowId);
+}
+
+/**
+ * The landing rule's observable outcome (ReaderTour landArrival): the row's
+ * top is inside the pane -- below the way-back pill's bottom and the fixed
+ * chrome, above the bottom edge -- and the pill sits on none of the row's
+ * first line of text. The problems, one line each; empty when it holds.
+ */
+export function landingProblems(l: Landing): string[] {
+  const out: string[] = [];
+  if (l.row.top < l.pill.bottom) out.push(`the row's top (${Math.round(l.row.top)}) is above the pill's bottom (${Math.round(l.pill.bottom)})`);
+  if (l.row.top < l.chromeBottom) out.push(`the row's top (${Math.round(l.row.top)}) is under the fixed chrome (bottom ${Math.round(l.chromeBottom)})`);
+  if (l.row.top >= l.innerHeight) out.push(`the row's top (${Math.round(l.row.top)}) is below the viewport (${l.innerHeight})`);
+  const line = l.firstLine;
+  const p = l.pill;
+  const intersects = line.left < p.right && p.left < line.right && line.top < p.bottom && p.top < line.bottom;
+  if (intersects) out.push(`the pill (y ${Math.round(p.top)}-${Math.round(p.bottom)}) sits on the row's first line (y ${Math.round(line.top)}-${Math.round(line.bottom)})`);
+  return out;
 }

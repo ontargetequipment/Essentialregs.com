@@ -138,6 +138,16 @@ All 58 documents (37,208 rows, a 34 MB `db.json`) are loaded by default, because
 need them: the indexes, the sitemap, `/sample`'s snapshot ids, the previews' headings,
 Test Methods' "Cited by".
 
+**From database rows instead** (16 Oct 2026): when the importer's output is not at hand,
+`rows-to-inputs.py` makes the same inputs from rows of `public.provisions` pulled as
+positional JSON arrays (the SQL and the column order are in its docstring). The build that
+reproduced the walkthrough's step-6 landing bug used GP05 in full, Regulation 7's public rows
+with their ancestors and Sections I.A-I.D around them (203 rows), every other document's root
+row, the four older sample rows and GP12 VI.A.1: 288 rows, the production database's 138
+public ones among them. Short of the whole corpus, so the indexes count fewer provisions and a
+subscriber's Regulation 7 reader is Part B Section I rather than the whole regulation; the
+rows the tour touches are production's.
+
 Derived from the data, not made up: `reg_key` (the `<reg>` of `sec-<reg>-...`),
 `jurisdiction_level` / `issuing_body` / root `source_url` (from `pipeline/import_ccr.py`
 `REG_META`), `provision_method_citations` (from the importer's `xref-method` anchors in
@@ -228,3 +238,4 @@ directly (`/regs/<id>`, `/api/provision/<id>`, a search) to be sensitive to the 
 | `selftest.mjs` | checks the mock (and three requests through the app) |
 | `pw-browsers.sh` | Chromium build shim |
 | `font-mocks.mjs` | offline Google Fonts stylesheets |
+| `rows-to-inputs.py` | the builder's inputs from database rows, when the importer's output is not at hand |
