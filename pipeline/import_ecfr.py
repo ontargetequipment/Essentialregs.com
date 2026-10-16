@@ -3283,6 +3283,69 @@ def _part_table_caption(table_el) -> str:
     return _xml_text(cap)
 
 
+# A reserved RANGE of sections, "192.117-192.119": a full section number on
+# each side of the dash. Title 43 prints hyphens inside ONE section number
+# ("3162.2-15", "3160.0-1"), which is cited "§ 3162.2-15", never "§§".
+_SECTION_RANGE_RE = re.compile(r"^\d+\.\d+(?:-\d+)?-\d+\.\d+(?:-\d+)?$")
+
+
+def _is_section_range(n: str) -> bool:
+    return bool(_SECTION_RANGE_RE.match(n))
+
+
+def _section_number_key(n: str) -> tuple[int, ...]:
+    """3162.2-10 -> (3162, 2, 10): the numeric order of a section number
+    (a text sort puts 3162.2-10 before 3162.2-2). Used only to CHECK that
+    document order is numeric order; sort_order itself is document order."""
+    return tuple(int(x) for x in re.findall(r"\d+", n.split("-")[0] if _is_section_range(n) else n))
+
+
+def _prefix_collisions(section_numbers: list[str]) -> list[dict]:
+    """Sections whose number extends a bare section that also exists:
+    § 3162.2 alongside § 3162.2-1 ... -15. Their ids share a prefix
+    (sec-blm3160-3162.2 / sec-blm3160-3162.2-1), so an ancestry pattern
+    `id LIKE 'sec-blm3160-3162.2-%'` would also catch the sibling sections.
+    Reported, not fixed: the ids are the printed numbers."""
+    have = set(section_numbers)
+    out = []
+    for n in section_numbers:
+        if _is_section_range(n) or "-" not in n:
+            continue
+        bare = n.rsplit("-", 1)[0]
+        if bare in have:
+            out.append({"section": n, "extends": bare})
+    return out
+
+
+def _section_order_check(section_numbers: list[str]) -> list[dict]:
+    """Every place where document order is not numeric order (within one
+    part, sections are printed in numeric order, so this is expected to be
+    empty; a non-empty list says sort_order would read out of order)."""
+    keyed = [(n, _section_number_key(n)) for n in section_numbers]
+    return [
+        {"after": a, "before": b}
+        for (a, ka), (b, kb) in zip(keyed, keyed[1:])
+        if kb < ka
+    ]
+
+
+def _dropped_element(el, where: str) -> dict:
+    """What the report says about an element the whole-part walk skipped:
+    where it sat, its tag/TYPE/N, its heading, and how much it held."""
+    head = el.find("HEAD")
+    words = len(" ".join(el.itertext()).split())
+    return {
+        "in": where,
+        "tag": el.tag,
+        "type": el.get("TYPE"),
+        "n": el.get("N"),
+        "head": _xml_text(head) if head is not None else None,
+        "words": words,
+        "images": sum(1 for _ in el.iter("img")),
+        "tables": sum(1 for _ in el.iter("TABLE")),
+    }
+
+
 def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
     """Parses a whole 49 CFR part's eCFR versioner XML into the same
     provisions row shape the subpart path produces."""
@@ -3327,12 +3390,15 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
     tables: list[dict] = []
     footnotes: list[dict] = []
     reserved: list[str] = []
+    heading_sections: list[str] = []
     definitions: list[dict] = []
     appendix_modes: dict[str, str] = {}
     section_index: dict[str, list[str]] = {}
     # <DIV7 TYPE="SUBJGRP"> centre-headings met inside a subpart (Part 195
     # Subpart F only, so far). Reported, not turned into rows -- see the walk.
     subject_groups: list[dict] = []
+    # XML elements the walk does not turn into rows (see `_dropped_element`).
+    dropped: list[dict] = []
 
     def add_row(row: dict):
         if row["id"] in by_id:
@@ -3350,15 +3416,39 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
         n = div8.get("N") or ""
         head_el = div8.find("HEAD")
         head_text = _xml_text(head_el) if head_el is not None else f"§ {n}"
+        # The id keeps the printed number as is, hyphen included
+        # (sec-blm3160-3162.2-15): "_" would be a SQL LIKE wildcard in the
+        # ancestry patterns.
         sec_id = f"sec-{reg}-{n}"
-        is_range = "-" in n
-        citation = ("§§ " if is_range else "§ ") + n
+        citation = ("§§ " if _is_section_range(n) else "§ ") + n
         sec_url = f"{base_url.rsplit('/part-', 1)[0]}/section-{n}"
         kids = [k for k in div8 if k.tag != "HEAD"]
         body_kids = [k for k in kids if k.tag not in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH")]
         for k in kids:
             if k.tag in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH"):
                 stripped_counts[k.tag] += 1
+        if not body_kids and not head_text.endswith("[Reserved]"):
+            # A heading with nothing under it that is NOT reserved: title 43's
+            # umbrella sections (§ 3162.2 "Drilling, producing, and drainage
+            # obligations." is followed by its own sections § 3162.2-1 ...
+            # -15). A heading row, like any section whose body lives in its
+            # children; "[Reserved]" would be text the CFR does not print.
+            # (No 49 CFR part prints one.)
+            heading_sections.append(citation)
+            add_row(
+                {
+                    "id": sec_id,
+                    "citation": citation,
+                    "title": head_text,
+                    "parent_id": parent_id,
+                    "sort_order": next_sort(),
+                    "full_text": head_text,
+                    "kind": "section",
+                    "_heading_only": True,
+                }
+            )
+            section_index.setdefault(subpart_letter or "", []).append(n)
+            return
         if not body_kids or head_text.endswith("[Reserved]"):
             reserved.append(citation)
             add_row(
@@ -3852,6 +3942,11 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
                     )
                 elif sub.tag in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH"):
                     stripped_counts[sub.tag] += 1
+                elif sub.tag != "HEAD":
+                    # Not read: an appendix nested in its subpart (43 CFR
+                    # 3170 prints five), or anything else. Reported, so
+                    # nothing goes missing silently (BLM PR 1b reads them).
+                    dropped.append(_dropped_element(sub, f"Subpart {letter}"))
         elif child.tag == "DIV8":
             parse_section(child, root_id, None)
         elif child.tag == "DIV9" and (child.get("TYPE") or "").upper() == "APPENDIX":
@@ -3859,6 +3954,11 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
         elif child.tag in ("CITA", "EDNOTE", "XREF", "SOURCE", "AUTH", "HEAD"):
             if child.tag != "HEAD":
                 stripped_counts[child.tag] += 1
+        else:
+            # A part-level element outside any subpart, section or appendix
+            # (43 CFR 3170 prints the body of Appendix A to Subpart 3171 this
+            # way, after the subpart). Not read; reported.
+            dropped.append(_dropped_element(child, "part"))
 
     # ---- cross-reference linking ----------------------------------------
     known_ids = {r["id"] for r in rows}
@@ -3911,6 +4011,13 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
         "dead_targets": dead_targets,
         "unresolved": {b: unresolved[b] for b in sorted(unresolved)},
     }
+    # Title 43 (hyphenated section numbers): the checks that the ids and the
+    # order hold up. Every section number in document order:
+    all_sections = [n for v in section_index.values() for n in v]
+    report["heading_only_sections"] = heading_sections
+    report["dropped"] = dropped
+    report["prefix_collisions"] = _prefix_collisions(all_sections)
+    report["section_order_breaks"] = _section_order_check(all_sections)
     return rows, report
 
 
@@ -3978,6 +4085,8 @@ def cmd_parse_part(args):
         print(f"  subject group (Subpart {grp['subpart']}): {grp['heading']!r} -> "
               f"{len(grp['sections'])} section(s) flattened into the subpart: {grp['sections']}")
     print(f"  reserved: {len(report['reserved'])} -> {report['reserved']}")
+    if report["heading_only_sections"]:
+        print(f"  heading-only sections (no body, not reserved): {report['heading_only_sections']}")
     for letter, mode in sorted(report["appendix_modes"].items()):
         print(f"  appendix {letter}: {mode}")
     print(f"  stripped editorial elements: {report['stripped']}")
@@ -3988,6 +4097,15 @@ def cmd_parse_part(args):
         for a in report["label_anomalies"][:20]:
             print(f"    § {a['section']} ({a['label']}) after {a['open_stack']}: {a['text']}")
     print(f"  links: {report['link_counts']}; dead targets: {len(report['dead_targets'])}")
+    for d in report["dropped"]:
+        print(f"  NOT READ ({d['in']}): <{d['tag']}{' TYPE=' + d['type'] if d['type'] else ''}"
+              f"{' N=' + repr(d['n']) if d['n'] else ''}> {d['head'] or ''} -- {d['words']} words, "
+              f"{d['images']} image(s), {d['tables']} table(s)")
+    if report["prefix_collisions"]:
+        print(f"  prefix collisions (a section number extending another section's): "
+              f"{len(report['prefix_collisions'])}")
+    if report["section_order_breaks"]:
+        print(f"  WARNING: document order is not numeric order at: {report['section_order_breaks']}")
     for bucket in PART_BUCKETS:
         ctr = report["unresolved"].get(bucket)
         if not ctr:
