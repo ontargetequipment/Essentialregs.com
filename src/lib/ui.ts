@@ -58,6 +58,15 @@ export const FREE_PILL =
 export const CITATION_EYEBROW_CLASS = "font-mono text-eyebrow normal-case text-tag";
 
 /**
+ * A regulation's name at the top of its preview ("Regulation 7", "APCD
+ * General Permit GP05"), the same as the reader's (.reg-eyebrow in
+ * reader.css, 16 Oct 2026): the display serif in bold, 28px, 24px on a phone
+ * (480px and narrower, the reader's phone breakpoint), in ink. Stored case.
+ */
+export const REGULATION_NAME_CLASS =
+  "font-serif text-[28px] max-[480px]:text-[24px] font-bold leading-[1.2] tracking-[-0.01em] normal-case text-ink";
+
+/**
  * The one page width (16 Oct 2026): the header's and the footer's inner
  * wrapper and the first block of every top-level page are this container, so
  * the content's left edge lines up with the ER emblem and its right edge with

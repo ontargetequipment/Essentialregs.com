@@ -300,6 +300,14 @@ export function RegulationReader({ publicMode = false }: { publicMode?: boolean 
       // ancestors' short labels (reader-nav.ts); never the internal id.
       if (popupEyebrowEl) popupEyebrowEl.textContent = popupEyebrow(model, slug);
       const clone = el.cloneNode(true) as HTMLElement;
+      // A previewed document root carries the page's <h1> (its .reg-eyebrow);
+      // the popup's copy is a plain line, so the page keeps one <h1>.
+      for (const h1 of clone.querySelectorAll("h1")) {
+        const line = document.createElement("div");
+        line.className = h1.className;
+        line.append(...h1.childNodes);
+        h1.replaceWith(line);
+      }
       popupBody.innerHTML = "";
       popupBody.appendChild(clone);
       popupBody.removeAttribute("aria-busy");
