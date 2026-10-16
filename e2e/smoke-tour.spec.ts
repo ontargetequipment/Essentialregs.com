@@ -61,6 +61,8 @@ import {
   jump,
   jumpToVID,
   jumpToVIDByKeyboard,
+  landingNow,
+  landingProblems,
   openAtStep,
   openTour,
   overlap,
@@ -68,6 +70,7 @@ import {
   row,
   sawEvent,
   secondHopLink,
+  signedInContext,
   seedTour,
   startTour,
   storedTour,
@@ -78,6 +81,7 @@ import {
   typeSampling,
   walkToClosing,
   walkToStep5,
+  type Landing,
 } from "./tour-helpers";
 
 /** On a wide reader page the card is in the reading pane or the sidebar column, never over the sidebar's edge or off screen. */
@@ -1066,5 +1070,104 @@ test.describe("guided walkthrough", () => {
     await expect(page.locator("#doc")).toHaveCount(0);
     await page.waitForURL((url) => url.pathname === "/regulations/7/preview");
     await expect(callout(page)).toHaveCount(0);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Arrivals on a cited row (16 Oct 2026): the heading at the top of the pane
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Two laptop viewports: the 1360x690 window of the report, and 600px high,
+   * where I.C.1.a's toggle ends a few pixels under the fold once I.C.1 is on
+   * its line -- which is what made the old rule re-scroll the toggle to a third
+   * of the way down the pane and push the I.C.1 heading above it, under the
+   * pill (production, 16 Oct 2026).
+   */
+  const LANDING_VIEWPORTS = [
+    { width: 1360, height: 690 },
+    { width: 1360, height: 600 },
+  ];
+
+  /**
+   * The landing rule holds (landingProblems: the row's top inside the pane,
+   * below the way-back pill and the fixed chrome; the pill on none of the
+   * row's first line of text), and keeps holding after the tour's settle
+   * pass and the reader's own deep-link landing have both had their say.
+   */
+  async function expectLanded(page: Page, rowId: string, label: string): Promise<Landing> {
+    let last!: Landing;
+    await expect
+      .poll(
+        async () => {
+          last = await landingNow(page, rowId);
+          return landingProblems(last);
+        },
+        { message: label }
+      )
+      .toEqual([]);
+    await page.waitForTimeout(600);
+    last = await landingNow(page, rowId);
+    expect(landingProblems(last), `${label}, settled`).toEqual([]);
+    return last;
+  }
+
+  for (const vp of LANDING_VIEWPORTS) {
+    test(`logged out at ${vp.width}x${vp.height}: step 6 lands the I.C.1 preview with the row under the strip and its pill, the first line clear, the toggle in at the bottom or the page at its top`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.setViewportSize(vp);
+      const events = await captureTourEvents(page);
+      await walkToStep5(page);
+      await sawEvent(events, "tour_step:5");
+      await row(page, VI_C).locator(`a.xref-external-reg[href$="p=${REG7_IC1}"]`).click();
+      await page.waitForURL((url) => url.pathname === "/regulations/7/preview" && url.searchParams.get("p") === REG7_IC1);
+      await expect(callout(page)).toHaveAttribute("data-step", "6");
+      const l = await expectLanded(page, REG7_IC1, `${vp.width}x${vp.height}, the I.C.1 preview`);
+      // The page's own "I.C.1." heading is under the strip as well: never scrolled away.
+      const hb = await boxOf(heading(page));
+      expect(hb.y, "the preview heading is under the strip").toBeGreaterThanOrEqual(l.chromeBottom);
+      // The toggle was brought in at the bottom when the heading had the room to stay, else nothing moved at all.
+      const cb = await boxOf(summaryControl(previewRow(page, REG7_IC1_A)));
+      expect(cb.y + cb.height <= l.innerHeight || l.scrollY === 0, "the toggle is in view, or the page is at its top").toBe(true);
+      await expectClear(page, `${vp.width}x${vp.height}, step 6 on the preview`);
+    });
+  }
+
+  test.describe("signed in", () => {
+    // The subscriber's path: step 5's citation opens the Regulation 7 READER
+    // (not the preview), with the hash on I.C.1 and the reader's own
+    // "← Back to GP05 · VI.C" pill. Runs only with the signed-in group's
+    // secrets, like smoke-signed-in.spec.ts; production runs skip it.
+    const email = process.env.SMOKE_EMAIL ?? "";
+    const password = process.env.SMOKE_PASSWORD ?? "";
+    test.skip(process.env.SMOKE_SCOPE === "anonymous", "SMOKE_SCOPE=anonymous (production deployment): the signed-in group runs on previews only.");
+    test.skip(
+      !email || !password,
+      "SMOKE_EMAIL / SMOKE_PASSWORD secrets are not set: the subscriber's landing is not checked. Add an existing subscribed account's credentials as repository secrets to run it."
+    );
+
+    for (const vp of LANDING_VIEWPORTS) {
+      test(`a subscriber at ${vp.width}x${vp.height}: step 6 lands the Reg 7 reader with I.C.1's heading on its line, under the "Back to GP05 · VI.C" pill, the first line clear`, async ({ browser, baseURL }) => {
+        test.setTimeout(120_000);
+        const context = await signedInContext(browser, baseURL, vp);
+        try {
+          const page = await context.newPage();
+          const events = await captureTourEvents(page);
+          await walkToStep5(page);
+          await sawEvent(events, "tour_step:5");
+          await row(page, VI_C).locator(`a.xref-external-reg[href$="#${REG7_IC1}"]`).click();
+          await page.waitForURL((url) => url.pathname === "/regulations/7" && url.hash === `#${REG7_IC1}`);
+          await expect(callout(page)).toHaveAttribute("data-step", "6");
+          await expect(page.locator("#return-trail-ext")).toHaveText("← Back to GP05 · VI.C");
+          const l = await expectLanded(page, REG7_IC1, `${vp.width}x${vp.height}, the Reg 7 reader`);
+          // On the reader's own landing line (the row's scroll-margin-top, reader.css), not a third of the way down.
+          const margin = await row(page, REG7_IC1).evaluate((el) => parseFloat(getComputedStyle(el).scrollMarginTop));
+          expect(Math.abs(l.row.top - margin), `the row's top (${Math.round(l.row.top)}) is on its landing line (${margin})`).toBeLessThanOrEqual(8);
+          await expect(summaryControl(row(page, REG7_IC1_A))).toHaveAttribute("data-tour-target", "6");
+          await expectClear(page, `${vp.width}x${vp.height}, subscriber step 6`);
+        } finally {
+          await context.close();
+        }
+      });
+    }
   });
 });

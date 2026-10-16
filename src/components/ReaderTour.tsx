@@ -6,6 +6,7 @@ import { READER_TRAIL_RESET_EVENT } from "@/lib/reader-nav";
 import { PREVIEW_TRAIL_KEY } from "@/lib/preview-trail";
 import { OPEN_SUMMARIES_KEY } from "@/lib/open-summaries";
 import { buttonClass } from "@/lib/ui";
+import { arrivalScroll } from "@/lib/tour-landing";
 import {
   CALLOUT_WIDTH,
   TOUR_CITATION,
@@ -108,6 +109,21 @@ import "./reader-tour.css";
  * anchor into view (instantly, never a smooth scroll that would leave the
  * control off screen while the card is already up) and only then shows the
  * card, all before the browser paints.
+ *
+ * A step that ARRIVES on a cited row (16 Oct 2026) -- 6 on I.C.1, 8 on I.D,
+ * 9 back on I.C.1, in the reader or on the preview, and the closing card
+ * back on VI.C -- lands differently (landArrival, src/lib/tour-landing.ts):
+ * the row's heading goes to the top of the reading pane, on the line the
+ * reader's own goToProvision and the browser's hash jump use (its
+ * scroll-margin-top, under the header and the way-back pills; on the
+ * preview, under the context strip), and the step's target (I.C.1.a's
+ * summary toggle) is then brought in at the BOTTOM only when it is below the
+ * fold and the heading can go onto its line to make the room; when both
+ * cannot be shown the heading stays and the card's words send the visitor
+ * down. Before this the target was scrolled to a third of the way down the
+ * pane whenever it was not already inside the viewport, which on a short
+ * window put the toggle mid-pane and the I.C.1 heading above the pane,
+ * under the pill.
  */
 
 type TourPage = "reader" | "destination";
@@ -552,6 +568,98 @@ function bringIntoView(anchor: HTMLElement, reserve: number, landing: number): v
   window.scrollBy({ top: rect.top - (landing + room / 3), behavior: "auto" });
 }
 
+// ---------------------------------------------------------------------------
+// Arrivals on a cited row (16 Oct 2026): the heading at the top of the pane
+// ---------------------------------------------------------------------------
+
+/**
+ * The views that begin with the page landing on a cited row: on the
+ * destination pages steps 6 (I.C.1), 8 (I.D) and 9 (I.C.1 again, by the
+ * first way back); on GP05 the closing card (VI.C, by the last way back).
+ */
+function isArrivalView(view: TourView, page: TourPage): boolean {
+  return page === "destination" ? view === 6 || view === 8 || view === 9 : view === "closing";
+}
+
+/**
+ * The heading of the row an arrival view landed on, or null when the view
+ * is not an arrival or the page is not what the tour expects: the focused
+ * preview's #preview-heading (the "I.C.1." the page opens with, above its
+ * rows), else the landed row itself -- the reader's row named by the hash,
+ * or VI.C on GP05.
+ */
+function arrivalHeadingFor(view: TourView, page: TourPage, placement: Placement): HTMLElement | null {
+  if (!isArrivalView(view, page)) return null;
+  if (page === "destination") {
+    if (placement === "floating") {
+      const heading = document.getElementById("preview-heading");
+      if (heading) return heading;
+    }
+    const root = destinationRoot(placement);
+    return root ? rowOf(root, destinationTarget(placement, window.location.search, window.location.hash)) : null;
+  }
+  const doc = docEl();
+  return doc ? rowOf(doc, jumpTargetFor(TOUR_JUMPS.second, readerRows(doc))) : null;
+}
+
+/**
+ * What an arrival view then brings in at the bottom, when it is below the
+ * fold: step 6's summary toggle (I.C.1.a's, on either path -- on the preview
+ * the anchor is the heading, the toggle its second spotlight); otherwise the
+ * anchor. Anything fixed to the page (a way-back pill, the strip, a button in
+ * the card) scrolls with nothing and is no target.
+ */
+function arrivalTargetFor(view: TourView, page: TourPage, placement: Placement, anchor: HTMLElement | null): HTMLElement | null {
+  let target = anchor;
+  if (view === 6 && page === "destination") {
+    const root = destinationRoot(placement);
+    target = root ? step6Control(root, placement) : null;
+  }
+  if (!target || target.closest("#sidebar, #return-trail, #preview-context, #preview-return, .tour-callout")) return null;
+  return target;
+}
+
+/** The bottom of everything fixed over the top of the reading pane: the header, the preview's strip, the reader's way-back pills when showing. */
+function chromeBottom(): number {
+  let bottom = topChrome();
+  const bar = document.getElementById("return-trail");
+  if (bar && !bar.hidden) {
+    for (const id of ["return-trail-ext", "return-trail-back", "return-trail-dismiss"]) {
+      const el = document.getElementById(id);
+      if (el && !el.hidden) bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+    }
+  }
+  return bottom;
+}
+
+/**
+ * The line an arrival puts the heading's top on: a row's own scroll-margin-top
+ * (reader.css, preview-subtree.css: where the reader's goToProvision and the
+ * browser's hash jump land it), else the tour's landing line for the page.
+ */
+function arrivalLanding(heading: HTMLElement, placement: Placement, docked: boolean): number {
+  const margin = parseFloat(window.getComputedStyle(heading).scrollMarginTop);
+  return Number.isFinite(margin) && margin > 0 ? margin : landingFor(placement, docked);
+}
+
+/**
+ * Lands an arrival view (arrivalScroll, tour-landing.ts): the heading at the
+ * top of the pane, then the target in at the bottom only when the heading
+ * can stay. Instant, like every scroll the tour makes. `reserve` is the
+ * height the card takes at the bottom of the viewport (the dock).
+ */
+function landArrival(heading: HTMLElement, target: HTMLElement | null, reserve: number, placement: Placement, docked: boolean): void {
+  const delta = arrivalScroll({
+    heading: rectOf(heading),
+    target: target ? rectOf(target) : null,
+    landing: arrivalLanding(heading, placement, docked),
+    chromeBottom: chromeBottom(),
+    fold: window.innerHeight - reserve - 16,
+    scrollY: window.scrollY,
+  });
+  if (delta) window.scrollBy({ top: delta, behavior: "auto" });
+}
+
 /** How long after Enter or a click on a match a landing on VI.D still counts as coming through the jump box. */
 const JUMP_ARM_MS = 2000;
 
@@ -872,10 +980,17 @@ export function ReaderTour({
       if (floating) sizeFloating(); // its height, which the scroll below makes room for, depends on its width
       anchor = anchorFor(view, page, placement);
       mark(spotlightsFor(view, page, anchor, exploreRef.current, box));
-      if (!anchor) return;
-      const height = box.getBoundingClientRect().height;
-      bringIntoView(anchor, docked ? height : 0, landingFor(placement, docked));
+      const reserve = docked ? box.getBoundingClientRect().height : 0;
+      // An arrival on a cited row lands the row's heading at the top of the
+      // pane (landArrival); every other step scrolls its anchor into the room
+      // the card leaves.
+      const landed = arrivalHeadingFor(view, page, placement);
+      if (landed) landArrival(landed, arrivalTargetFor(view, page, placement, anchor), reserve, placement, docked);
+      else if (anchor) bringIntoView(anchor, reserve, landingFor(placement, docked));
     };
+    // The dock's landing of an arrival happens once per step (the sheet's
+    // height is only known once it is chosen), never again on a scroll.
+    let dockLanded = false;
 
     const unposition = () => {
       box.style.top = box.style.left = box.style.width = box.style.visibility = "";
@@ -971,7 +1086,15 @@ export function ReaderTour({
         unposition();
         box.setAttribute("data-dock", "");
         setDockRoom();
-        bringIntoView(target, box.getBoundingClientRect().height, landingFor(placement, true));
+        const landed = arrivalHeadingFor(view, page, placement);
+        if (landed) {
+          if (!dockLanded) {
+            dockLanded = true;
+            landArrival(landed, arrivalTargetFor(view, page, placement, target), box.getBoundingClientRect().height, placement, true);
+          }
+        } else {
+          bringIntoView(target, box.getBoundingClientRect().height, landingFor(placement, true));
+        }
         mark(spotlightsFor(view, page, target, exploreRef.current, box));
         return;
       }
