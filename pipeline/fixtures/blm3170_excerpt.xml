@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<!-- Cut verbatim from pipeline/sources/P3170.xml (43 CFR Part 3170, eCFR 2026-10-15): §§ 3170.9, 3172.1, 3172.10, 3175.30, 3175.90, 3179.101 (the last flattened out of its subject group). Test fixture for pipeline/test_import_ecfr.py BlmPart*Tests. -->
+<DIV5 N="3170" TYPE="PART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-43/part-3170&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;43 CFR Part 3170&amp;quot;}">
+<HEAD>PART 3170&#x2014;ONSHORE OIL AND GAS PRODUCTION
+</HEAD>
+<DIV6 N="3170" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-43/part-3170/subpart-3170&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;43 CFR Part 3170 Subpart 3170&amp;quot;}">
+<HEAD>Subpart 3170&#x2014;Onshore Oil and Gas Production: General</HEAD>
+<DIV8 N="3170.9" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3170.9&quot;,&quot;citation&quot;:&quot;43 CFR 3170.9&quot;}">
+<HEAD>&#xA7; 3170.9 Enforcement.</HEAD>
+<P>Noncompliance with any of the requirements of this part or any order issued under this part may result in enforcement actions under 43 CFR subpart 3163 or any other remedy available under applicable law or regulation.</P>
+</DIV8>
+</DIV6>
+<DIV6 N="3172" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-43/part-3170/subpart-3172&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;43 CFR Part 3170 Subpart 3172&amp;quot;}">
+<HEAD>Subpart 3172&#x2014;Drilling Operations on Federal and Indian Oil and Gas Leases</HEAD>
+<DIV8 N="3172.1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3170.3172.1&quot;,&quot;citation&quot;:&quot;43 CFR 3172.1&quot;}">
+<HEAD>&#xA7; 3172.1 Authority.</HEAD>
+<P>(a) This subpart is established pursuant to the authority granted to the Secretary of the Interior pursuant to various Federal and Indian mineral leasing statutes and the Federal Oil and Gas Royalty Management Act of 1982. This authority has been delegated to the Bureau of Land Management and is implemented by the onshore oil and gas operating regulations contained in 43 CFR part 3160.</P>
+<P>(b) Specific authority for the provisions contained in this subpart is found at: 43 CFR 3162.3-1, 3162.3-4, 3162.4-1, 3162.4-3, 3162.5-1, 3162.5-2 (see paragraph (a)), and 3162.5-3; and 43 CFR part 3160, subpart 3163.</P>
+</DIV8>
+<DIV8 N="3172.10" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3170.3172.10&quot;,&quot;citation&quot;:&quot;43 CFR 3172.10&quot;}">
+<HEAD>&#xA7; 3172.10 Special drilling operations.</HEAD>
+<P>(a) In addition to the equipment already specified elsewhere in this subpart, the following equipment shall be in place and operational during air/gas drilling:</P>
+<P>(1) Properly lubricated and maintained rotating head (major);</P>
+<P>(2) Spark arresters on engines or water-cooled exhaust (major);</P>
+<P>(3) Blooie line discharge 100 feet from well bore and securely anchored;</P>
+<P>(4) Straight run on blooie line unless otherwise approved;</P>
+<P>(5) Deduster equipment (major);</P>
+<P>(6) All cuttings and circulating medium shall be directed into a reserve or blooie pit (major);</P>
+<P>(7) Float valve above bit (major);</P>
+<P>(8) Automatic igniter or continuous pilot light on the blooie line (major);</P>
+<P>(9) Compressors located in the opposite direction from the blooie line a minimum of 100 feet from the well bore; and</P>
+<P>(10) Mud circulating equipment, water, and mud materials (does not have to be premixed) sufficient to maintain the capacity of the hole and circulating tanks or pits.</P>
+<DIV width="100%"><DIV class="gpotbl_div">
+<TABLE border="1" cellpadding="1" cellspacing="1" class="gpo_table" frame="void" width="100%">
+<CAPTION><P class="title">Table 1 to &#xA7; 3172.10(<E T="01">a</E>)</P></CAPTION>
+<THEAD>
+<TR>
+<TH class="center border-top-single border-bottom-single border-right-single">Violation</TH>
+<TH class="center border-top-single border-bottom-single border-right-single">Corrective action</TH>
+<TH class="center border-top-single border-bottom-single">Normal abatement period</TH>
+</TR>
+</THEAD>
+<TBODY>
+<TR>
+<TD class="left border-right-single">Minor</TD>
+<TD class="left border-right-single">Install the equipment as specified</TD>
+<TD class="left">24 hours.</TD>
+</TR>
+<TR>
+<TD class="left border-bottom-single border-right-single">Major (as indicated)</TD>
+<TD class="left border-bottom-single border-right-single">Install the equipment as specified</TD>
+<TD class="left border-bottom-single">Prompt correction required.</TD>
+</TR>
+</TBODY>
+</TABLE>
+</DIV></DIV>
+<P>(b) Hydrogen sulfide operation is specifically addressed under subpart 3176 of this part.</P>
+</DIV8>
+</DIV6>
+<DIV6 N="3175" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-43/part-3170/subpart-3175&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;43 CFR Part 3170 Subpart 3175&amp;quot;}">
+<HEAD>Subpart 3175&#x2014;Measurement of Gas</HEAD>
+<DIV8 N="3175.30" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3170.3175.30&quot;,&quot;citation&quot;:&quot;43 CFR 3175.30&quot;}">
+<HEAD>&#xA7; 3175.30 Incorporation by reference.</HEAD>
+<P>(a) Certain material identified in this section is incorporated by reference into this part with the approval of the Director of the Federal Register under 5 U.S.C. 552(a) and 1 CFR part 51. Operators must comply with all incorporated standards and material as they are listed in this section. To enforce any edition other than that specified in this section, the BLM must publish a rule in the <E T="04">Federal Register</E> and the material must be reasonably available to the public. All approved material is available for inspection at the Bureau of Land Management, Division of Fluid Minerals, 20 M Street SE., Washington, DC 20003, 202-912-7162; and at all BLM offices with jurisdiction over oil and gas activities; and is available from the sources listed below. It is also available for inspection at the National Archives and Records Administration (NARA). For information on the availability of this material at NARA, call 202-741-6030 or go to <I>http://www.archives.gov/federal_register/code_of_federal_regulations/ibr_locations.html.</I></P>
+<P>(b) American Gas Association (AGA), 400 North Capitol Street NW., Suite 450, Washington, DC 20001; telephone 202-824-7000.</P>
+<P>(1) AGA Report No. 3, Orifice Metering of Natural Gas and Other Related Hydrocarbon Fluids, Second Edition, September, 1985 (&#x201C;AGA Report No. 3 (1985)&#x201D;), IBR approved for &#xA7;&#xA7; 3175.61(a) and (b), 3175.80(k), and 3175.94(a).</P>
+<P>(2) AGA Transmission Measurement Committee Report No. 8, Compressibility Factors of Natural Gas and Other Related Hydrocarbon Gases; Second Edition, November 1992 (&#x201C;AGA Report No. 8&#x201D;), IBR approved for &#xA7;&#xA7; 3175.103(a) and 3175.120(d).</P>
+<P>(c) American Petroleum Institute (API), 1220 L Street NW., Washington, DC 20005; telephone 202-682-8000. API also offers free, read-only access to some of the material at <I>http://publications.api.org.</I></P>
+<P>(1) API Manual of Petroleum Measurement Standards (MPMS) Chapter 14&#x2014;Natural Gas Fluids Measurement, Section 1, Collecting and Handling of Natural Gas Samples for Custody Transfer; Seventh Edition, May 2016 (&#x201C;API 14.1&#x201D;), IBR approved for &#xA7;&#xA7; 3175.112(b) and (c), 3175.113(c), and 3175.114(b).</P>
+<P>(2) API MPMS, Chapter 14, Section 3, Orifice Metering of Natural Gas and Other Related Hydrocarbon Fluids&#x2014;Concentric, Square-edged Orifice Meters, Part 1, General Equations and Uncertainty Guidelines; Fourth Edition, September 2012; Errata, July 2013 (&#x201C;API 14.3.1&#x201D;), IBR approved for &#xA7; 3175.31(a) and Table 1 to &#xA7; 3175.80.</P>
+<P>(3) API MPMS Chapter 14, Section 3, Orifice Metering of Natural Gas and Other Related Hydrocarbon Fluids&#x2014;Concentric, Square-edged Orifice Meters, Part 2, Specification and Installation Requirements; Fifth Edition, March 2016 (&#x201C;API 14.3.2&#x201D;), IBR approved for &#xA7;&#xA7; 3175.46(b) and (c), 3175.61(a), 3175.80(c) through (g) and (i) through (l), and Table 1 to &#xA7; 3175.80.</P>
+<P>(4) API MPMS Chapter 14, Section 3, Orifice Metering of Natural Gas and Other Related Hydrocarbon Fluids&#x2014;Concentric, Square-edged Orifice Meters, Part 3, Natural Gas Applications; Fourth Edition, November 2013 (&#x201C;API 14.3.3&#x201D;), IBR approved for &#xA7;&#xA7; 3175.94(a) and 3175.103(a).</P>
+<P>(5) API MPMS Chapter 14, Natural Gas Fluids Measurement, Section 3, Concentric, Square-Edged Orifice Meters, Part 3, Natural Gas Applications, Third Edition, August, 1992 (&#x201C;API 14.3.3 (1992)&#x201D;), IBR approved for &#xA7; 3175.61(b).</P>
+<P>(6) API MPMS, Chapter 14, Section 5, Calculation of Gross Heating Value, Relative Density, Compressibility and Theoretical Hydrocarbon Liquid Content for Natural Gas Mixtures for Custody Transfer; Third Edition, January 2009; Reaffirmed February 2014 (&#x201C;API 14.5&#x201D;), IBR approved for &#xA7;&#xA7; 3175.120(c) and 3175.125(a).</P>
+<P>(7) API MPMS Chapter 21, Section 1, Flow Measurement Using Electronic Metering Systems&#x2014;Electronic Gas Measurement; Second Edition, February 2013 (&#x201C;API 21.1&#x201D;), IBR approved for Table 1 to &#xA7; 3175.100, &#xA7;&#xA7; 3175.101(e), 3175.102(a) and (c) through (e), 3175.103(b) and (c), and 3175.104(a) through (d).</P>
+<P>(8) API MPMS Chapter 22&#x2014;Testing Protocol, Section 2, Differential Pressure Flow Measurement Devices; First Edition, August 2005; Reaffirmed August 2012 (&#x201C;API 22.2&#x201D;), IBR approved for &#xA7; 3175.47(b) through (d).</P>
+<P>(d) Gas Processors Association (GPA), 6526 E. 60th Street, Tulsa, OK 74145; telephone 918-493-3872.</P>
+<P>(1) GPA Standard 2166-05, Obtaining Natural Gas Samples for Analysis by Gas Chromatography Revised 2005 (&#x201C;GPA 2166-05&#x201D;), IBR approved for &#xA7;&#xA7; 3175.113(c) and (d), 3175.114(a), and 3175.117(a).</P>
+<P>(2) GPA Standard 2261-13, Analysis for Natural Gas and Similar Gaseous Mixtures by Gas Chromatography; Revised 2013 (&#x201C;GPA 2261-13&#x201D;), IBR approved for &#xA7; 3175.118(a) and (c).</P>
+<P>(3) GPA Standard 2198-03, Selection, Preparation, Validation, Care and Storage of Natural Gas and Natural Gas Liquids Reference Standard Blends; Revised 2003 (&#x201C;GPA 2198-03&#x201D;), IBR approved for &#xA7; 3175.118(c).</P>
+<P>(4) GPA Standard 2286-14, Method for the Extended Analysis of Natural Gas and Similar Gaseous Mixtures by Temperature Program Gas Chromatography; Revised 2014 (&#x201C;GPA 2286-14&#x201D;), IBR approved for &#xA7; 3175.118(e).</P>
+<P>(e) Pipeline Research Council International (PRCI), 3141 Fairview Park Dr., Suite 525, Falls Church, VA 22042; telephone 703-205-1600.</P>
+<P>(1) PRCI Contract-NX-19, Manual for the Determination of Supercompressibility Factors for Natural Gas; December 1962 (&#x201C;PRCI NX 19&#x201D;), IBR approved for &#xA7; 3175.61(b).</P>
+<P>(2) [Reserved]</P>
+<NOTE>
+<HED>Note to paragraphs (<E T="01">b</E>) through (<E T="01">e</E>):</HED>
+<P>You may also be able to purchase these standards from the following resellers: Techstreet, 3916 Ranchero Drive, Ann Arbor, MI 48108; telephone 734-780-8000; <I>www.techstreet.com/api/apigate.html</I>; IHS Inc., 321 Inverness Drive South, Englewood, CO 80112; 303-790-0600; <I>www.ihs.com</I>; SAI Global, 610 Winters Ave., Paramus, NJ 07652; telephone 201-986-1131; <I>http://infostore.saiglobal.com/store/</I>.</P></NOTE>
+</DIV8>
+<DIV8 N="3175.90" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3170.3175.90&quot;,&quot;citation&quot;:&quot;43 CFR 3175.90&quot;}">
+<HEAD>&#xA7; 3175.90 Mechanical recorder (secondary device).</HEAD>
+<P>(a) The operator may use a mechanical recorder as a secondary device only on very-low-volume and low-volume FMPs.</P>
+<P>(b) Table 1 to this section lists the standards that the operator must follow to install, operate, and maintain mechanical recorders. A requirement applies when a column is marked with an &#x201C;x&#x201D; or a number.</P>
+<img src="/graphics/er17no16.059.gif"/>
+</DIV8>
+</DIV6>
+<DIV6 N="3179" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-43/part-3170/subpart-3179&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;43 CFR Part 3170 Subpart 3179&amp;quot;}">
+<HEAD>Subpart 3179&#x2014;Waste Prevention and Resource Conservation</HEAD>
+<DIV8 N="3179.101" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3170.3179.101&quot;,&quot;citation&quot;:&quot;43 CFR 3179.101&quot;}">
+<HEAD>&#xA7; 3179.101 Repairing leaks.</HEAD>
+<P>(a) The operator must repair any leak as soon as practicable, and in no event later than 30 calendar days after discovery, unless good cause exists to delay the repair for a longer period. Good cause for delay of repair exists if the repair (including replacement) is technically infeasible (including unavailability of parts that have been ordered), would require a pipeline blowdown, a compressor station shutdown, or a well shut-in, or would be unsafe to conduct during operation of the unit.</P>
+<P>(b) If there is good cause for delaying the repair beyond 30 calendar days, the operator must notify the BLM of the cause by Sundry Notice and must complete the repair at the earliest opportunity, such as during the next compressor station shutdown, well shut-in, or pipeline blowdown. In no case will the BLM approve a delay of more than 2 years.</P>
+<P>(c) Not later than 30 calendar days after completion of a repair, the operator must verify the effectiveness of the repair by conducting a follow-up inspection using an appropriate instrument or a soap bubble test under Section 8.3.3 of EPA Method 21&#x2014;Determination of Volatile Organic Compound Leaks (40 CFR Appendix A-7 to part 60).</P>
+<P>(d) If the repair is not effective, the operator must complete additional repairs within 15 calendar days and conduct follow-up inspections and repairs until the leak is repaired.</P>
+</DIV8>
+</DIV6>
+</DIV5>
