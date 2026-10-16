@@ -7,9 +7,9 @@ import { pageContainerClass } from "@/lib/ui";
  * "Last updated" line consistent so the five pages read as one set.
  *
  * The shared page container (src/lib/ui.ts pageContainerClass): the heading
- * spans it, and the prose below is capped at max-w-prose (65ch, about 70-75
- * characters), left-aligned to the container's edge — not its own
- * independently centered column.
+ * spans it, and the prose below is capped at max-w-reading (720px),
+ * left-aligned to the container's edge — not its own independently centered
+ * column.
  */
 export const LAST_UPDATED = "September 12, 2026";
 
@@ -33,7 +33,7 @@ export function LegalPage({
       <p className="mt-2 font-mono text-eyebrow uppercase text-tag">
         Last updated: {lastUpdated}
       </p>
-      <div className="max-w-prose">
+      <div className="max-w-reading">
         {intro && (
           <div className="mt-4 text-base leading-relaxed text-ink-soft">
             {intro}

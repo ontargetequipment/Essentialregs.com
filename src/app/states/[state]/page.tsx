@@ -42,8 +42,8 @@ export default async function StateIndexPage(props: PageProps<"/states/[state]">
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">
         {state.name} regulations
       </h1>
-      <p className="mt-2 max-w-prose text-sm text-ink-soft">{state.intro}</p>
-      <p className="mt-2 max-w-prose text-sm text-ink-soft">
+      <p className="mt-2 max-w-reading text-sm text-ink-soft">{state.intro}</p>
+      <p className="mt-2 max-w-reading text-sm text-ink-soft">
         Looking for the federal EPA subparts and PHMSA parts? See{" "}
         <Link href="/federal" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
           Federal regulations

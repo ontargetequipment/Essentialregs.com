@@ -63,7 +63,8 @@ export const CITATION_EYEBROW_CLASS = "font-mono text-eyebrow normal-case text-t
  * the content's left edge lines up with the ER emblem and its right edge with
  * the header's on every page.
  *
- *   max-width  1120px  (--container-shell, globals.css)
+ *   max-width  960px   (--container-shell, globals.css; 1120px until the
+ *                      owner asked for a page that sits mid-screen, 16 Oct 2026)
  *   padding    24px    each side at every width (px-6): the one phone gutter
  *   centred    mx-auto
  *
@@ -71,16 +72,15 @@ export const CITATION_EYEBROW_CLASS = "font-mono text-eyebrow normal-case text-t
  * already shared; /sample, /pricing, /search, the card pages, the auth pages
  * and the admin pages had each picked a narrower centred column. The
  * regulation reader (src/app/regulations, reader.css) is the one route with
- * no outer frame -- a 320px sidebar against the viewport's edge and a 760px
+ * no outer frame -- a 320px sidebar against the viewport's edge and a
  * reading column centred in what is left -- so it and its /preview keep
  * their own layout.
  *
  * Inside the container, content left-aligns to its edge; nothing is centred
  * as a narrower island. Headlines, card grids and tables span it. A block of
- * paragraphs is capped at `max-w-prose` (Tailwind's 65ch, about 70-75
- * characters); a column of cards, a form or a list at `max-w-reading` (720px,
- * --container-reading). Checked by e2e/page-width.ts (the smoke spec's five
- * pages; scripts/page-alignment.ts for every page).
+ * paragraphs, a column of cards, a form or a list is capped at
+ * `max-w-reading` (720px, --container-reading). Checked by e2e/page-width.ts
+ * (the smoke spec's pages; scripts/page-alignment.ts for every page).
  *
  * `className` carries the page's own vertical padding ("py-12") or, for the
  * header, its row layout.

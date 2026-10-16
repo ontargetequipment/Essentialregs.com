@@ -222,11 +222,18 @@
    long URLs pushed the document 129px past the viewport). Any run with no
    break opportunity may break anywhere; tables are the one exception below
    (they scroll inside .doc-table-wrap instead). */
+/* The reading column (owner, 16 Oct 2026, "take it out close to the
+   margins"): no width cap, so the text fills the pane beside the sidebar with
+   a 32px gutter each side -- it used to be a 760px column centred in the pane
+   with 48px of padding, about 190px of empty space on each side at 1360px --
+   and the body text is 18px, up from the 16px the shell sets. The return
+   trail and the visitor banner below take the same gutters. */
 .reg-reader #doc {
-  max-width: 760px;
+  max-width: none;
   min-width: 0;
-  margin: 0 auto;
-  padding: 40px 48px 200px;
+  margin: 0;
+  padding: 40px 32px 200px;
+  font-size: 18px;
   overflow-wrap: anywhere;
 }
 
@@ -872,9 +879,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 10px 48px 0;
+  max-width: none;
+  margin: 0;
+  padding: 10px 32px 0;
   pointer-events: none;
   font-family: var(--sans);
 }
@@ -1204,8 +1211,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px 16px;
-  max-width: 760px;
-  margin: 12px auto 0;
+  max-width: none;
+  margin: 12px 0 0;
   padding: 10px 16px;
   background: var(--accent-soft);
   border: 1px solid var(--line);

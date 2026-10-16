@@ -39,7 +39,7 @@ export default async function FederalIndexPage() {
   return (
     <div className={pageContainerClass("py-12")}>
       <h1 className="font-serif text-section font-bold tracking-tight text-ink">Federal Regulations</h1>
-      <p className="mt-2 max-w-prose text-sm text-ink-soft">
+      <p className="mt-2 max-w-reading text-sm text-ink-soft">
         40 CFR Part 60 (New Source Performance Standards) and Part 63
         (NESHAP) subparts as printed in the eCFR, incorporated by
         reference in{" "}
@@ -59,7 +59,7 @@ export default async function FederalIndexPage() {
 
       <RegulationList regs={regs} access={access} mode="federal" appliesTo={APPLIES_TO} />
 
-      <p className="mt-6 max-w-prose text-sm text-muted">
+      <p className="mt-6 max-w-reading text-sm text-muted">
         Need a part we don&rsquo;t have yet?{" "}
         <Link
           href="/request"

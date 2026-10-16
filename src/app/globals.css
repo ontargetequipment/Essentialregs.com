@@ -58,12 +58,12 @@
   --text-eyebrow--line-height: 1.4;
   --text-eyebrow--letter-spacing: 0.11em;
 
-  /* 1120px for the shell: the one page width (src/lib/ui.ts
-     pageContainerClass) the header, the footer and every page share. 720px
-     for a column of cards, a form or a list inside it, left-aligned to its
-     edge; a block of paragraphs uses Tailwind's max-w-prose (65ch) the same
-     way. */
-  --container-shell: 1120px;
+  /* 960px for the shell: the one page width (src/lib/ui.ts
+     pageContainerClass) the header, the footer and every page share, centred
+     so the page block sits mid-screen with equal margins (owner, 16 Oct 2026:
+     "more centre page than left side"; it was 1120px). 720px for the column
+     of prose, cards, a form or a list inside it, left-aligned to its edge. */
+  --container-shell: 960px;
   --container-reading: 720px;
 }
 
