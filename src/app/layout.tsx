@@ -7,6 +7,7 @@ import { AuthStatus } from "@/components/AuthStatus";
 import { Emblem } from "@/components/Emblem";
 import { MobileNav } from "@/components/MobileNav";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import { pageContainerClass } from "@/lib/ui";
 import "./globals.css";
 
 // Display headings and regulation text; citations and eyebrow labels. Body/UI
@@ -110,7 +111,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             and scrim (z-60 / z-50 in MobileNav) live inside this stacking
             context, so on the page they paint at the header's level. */}
         <header className="sticky top-0 z-[45] h-[66px] border-b border-line bg-panel">
-          <div className="mx-auto flex h-full max-w-shell items-center justify-between px-6">
+          {/* The site's one page width (pageContainerClass): every page's
+              first block is the same container, so content lines up with
+              the emblem. data-testid: e2e/page-width.ts measures it. */}
+          <div data-testid="site-header-inner" className={pageContainerClass("flex h-full items-center justify-between")}>
             {/* The ER emblem (src/components/Emblem.tsx) at 28px beside the
                 wordmark, one home link; the text names it, the mark is
                 aria-hidden. */}
@@ -134,7 +138,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main className="flex-1">{children}</main>
 
         <footer className="border-t border-line bg-panel">
-          <div className="mx-auto max-w-shell px-6 py-12">
+          <div className={pageContainerClass("py-12")}>
             <nav
               aria-label="Footer"
               className="mb-10 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4"

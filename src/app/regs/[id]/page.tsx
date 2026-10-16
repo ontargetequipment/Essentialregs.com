@@ -9,6 +9,7 @@ import { regKeyOf, regulationDisplayName, withReviewerKind } from "@/lib/regulat
 import { provisionBackLink } from "@/lib/provision-back";
 import { displayCitation } from "@/lib/federal-citation";
 import { PROVISION_ID, type Provision } from "@/lib/types";
+import { pageContainerClass } from "@/lib/ui";
 
 // One read per request, shared by generateMetadata and the page. Row Level
 // Security means a provision that isn't public (and that the current
@@ -64,11 +65,11 @@ export default async function ProvisionPage(
   const back = provisionBackLink(provision, { hasAccess });
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12">
+    <div className={pageContainerClass("py-12")}>
       <Link href={back.href} className="text-sm text-blue-700 hover:underline">
         {back.label}
       </Link>
-      <div className="mt-4 flex flex-col gap-3">
+      <div className="mt-4 flex max-w-reading flex-col gap-3">
         <ProvisionCard provision={provision} />
         {/* A subscriber's related provisions are read through RLS (every
             neighbour). Anyone else gets the teaser (Sprint 4, 10 Oct 2026):

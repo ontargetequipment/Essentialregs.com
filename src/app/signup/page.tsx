@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PLAN_NAMES, PRICE_DISPLAY, TRIAL_DAYS, parseBillingInterval } from "@/lib/pricing";
 import { PlanCards, TrialNote } from "@/components/PlanChoice";
 import { DisclaimerIntro, DisclaimerSections } from "@/components/DisclaimerText";
-import { buttonClass } from "@/lib/ui";
+import { buttonClass, pageContainerClass } from "@/lib/ui";
 import { SignupSteps } from "./SignupSteps";
 
 export const metadata = { title: "Sign up" };
@@ -25,66 +25,70 @@ export default async function SignupPage(props: PageProps<"/signup">) {
 
   if (!interval) {
     return (
-      <div className="mx-auto max-w-md px-6 py-10 sm:py-14">
-        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Choose your plan</h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          Already have an account?{" "}
-          <Link href="/login" className={INLINE_LINK}>
-            Log in
-          </Link>
-        </p>
-        <p className="mt-4 text-sm text-ink-soft">
-          {TRIAL_DAYS}-day free trial on either plan. Pick one, then create your
-          account; the card comes after you&apos;ve confirmed your email.
-        </p>
-
-        <PlanCards
-          className="mt-5"
-          cta={(i) => (
-            <Link href={`/signup?plan=${i}`} className={CHOOSE}>
-              Choose {PLAN_NAMES[i]}
+      <div className={pageContainerClass("py-10 sm:py-14")}>
+        <div className="max-w-md">
+          <h1 className="font-serif text-section font-bold tracking-tight text-ink">Choose your plan</h1>
+          <p className="mt-2 text-sm text-ink-soft">
+            Already have an account?{" "}
+            <Link href="/login" className={INLINE_LINK}>
+              Log in
             </Link>
-          )}
-        />
-        <TrialNote className="mt-3" />
+          </p>
+          <p className="mt-4 text-sm text-ink-soft">
+            {TRIAL_DAYS}-day free trial on either plan. Pick one, then create your
+            account; the card comes after you&apos;ve confirmed your email.
+          </p>
+
+          <PlanCards
+            className="mt-5"
+            cta={(i) => (
+              <Link href={`/signup?plan=${i}`} className={CHOOSE}>
+                Choose {PLAN_NAMES[i]}
+              </Link>
+            )}
+          />
+          <TrialNote className="mt-3" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-md px-6 py-10 sm:py-14">
-      <h1 className="font-serif text-section font-bold tracking-tight text-ink">Create an account</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        Already have one?{" "}
-        <Link href="/login" className={INLINE_LINK}>
-          Log in
-        </Link>
-      </p>
-
-      <div className="mt-4 rounded-md border border-line bg-accent-soft px-4 py-3 text-sm text-ink">
-        <p className="font-medium">
-          Your plan: {PLAN_NAMES[interval]} — {PRICE_DISPLAY[interval]} after a {TRIAL_DAYS}-day
-          free trial
-        </p>
-        <p className="mt-1 text-xs">
-          <Link href="/signup" className="text-ink-soft underline underline-offset-2 hover:text-ink">
-            Change plan
+    <div className={pageContainerClass("py-10 sm:py-14")}>
+      <div className="max-w-md">
+        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Create an account</h1>
+        <p className="mt-2 text-sm text-ink-soft">
+          Already have one?{" "}
+          <Link href="/login" className={INLINE_LINK}>
+            Log in
           </Link>
         </p>
-      </div>
 
-      {/* The disclaimer is rendered here, on the server, from the same
-          components /disclaimer uses, and handed to the client gate as
-          children -- one source for the text. */}
-      <SignupSteps
-        plan={interval}
-        disclaimer={
-          <div className="flex flex-col gap-6">
-            <DisclaimerIntro />
-            <DisclaimerSections />
-          </div>
-        }
-      />
+        <div className="mt-4 rounded-md border border-line bg-accent-soft px-4 py-3 text-sm text-ink">
+          <p className="font-medium">
+            Your plan: {PLAN_NAMES[interval]} — {PRICE_DISPLAY[interval]} after a {TRIAL_DAYS}-day
+            free trial
+          </p>
+          <p className="mt-1 text-xs">
+            <Link href="/signup" className="text-ink-soft underline underline-offset-2 hover:text-ink">
+              Change plan
+            </Link>
+          </p>
+        </div>
+
+        {/* The disclaimer is rendered here, on the server, from the same
+            components /disclaimer uses, and handed to the client gate as
+            children -- one source for the text. */}
+        <SignupSteps
+          plan={interval}
+          disclaimer={
+            <div className="flex flex-col gap-6">
+              <DisclaimerIntro />
+              <DisclaimerSections />
+            </div>
+          }
+        />
+      </div>
     </div>
   );
 }

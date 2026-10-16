@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LoginForm } from "./LoginForm";
+import { pageContainerClass } from "@/lib/ui";
 
 export const metadata = { title: "Log in" };
 
@@ -16,39 +17,41 @@ export default async function LoginPage(props: PageProps<"/login">) {
   const confirmationFailed = error === "confirmation-failed";
 
   return (
-    <div className="mx-auto max-w-sm px-6 py-16">
-      <h1 className="font-serif text-section font-bold tracking-tight text-ink">Log in</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        Don&apos;t have an account?{" "}
-        <Link href="/signup" className={INLINE_LINK}>
-          Sign up
-        </Link>
-      </p>
+    <div className={pageContainerClass("py-16")}>
+      <div className="max-w-sm">
+        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Log in</h1>
+        <p className="mt-2 text-sm text-ink-soft">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className={INLINE_LINK}>
+            Sign up
+          </Link>
+        </p>
 
-      {confirmationFailed && (
-        <div
-          role="alert"
-          className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-        >
-          <p className="font-medium">That confirmation link didn&apos;t work.</p>
-          <p className="mt-1">
-            It may have expired or already been used. If your email is confirmed, log in below;
-            otherwise{" "}
-            <Link href="/check-email" className="font-medium underline underline-offset-2">
-              request a new link
-            </Link>
-            .
-          </p>
-        </div>
-      )}
+        {confirmationFailed && (
+          <div
+            role="alert"
+            className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+          >
+            <p className="font-medium">That confirmation link didn&apos;t work.</p>
+            <p className="mt-1">
+              It may have expired or already been used. If your email is confirmed, log in below;
+              otherwise{" "}
+              <Link href="/check-email" className="font-medium underline underline-offset-2">
+                request a new link
+              </Link>
+              .
+            </p>
+          </div>
+        )}
 
-      <LoginForm next={nextPath} />
+        <LoginForm next={nextPath} />
 
-      <p className="mt-4 text-sm text-ink-soft">
-        <Link href="/forgot-password" className={INLINE_LINK}>
-          Forgot your password?
-        </Link>
-      </p>
+        <p className="mt-4 text-sm text-ink-soft">
+          <Link href="/forgot-password" className={INLINE_LINK}>
+            Forgot your password?
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

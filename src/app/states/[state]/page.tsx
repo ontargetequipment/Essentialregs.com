@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageContainerClass } from "@/lib/ui";
 import { notFound } from "next/navigation";
 import { fetchRegulationRoots } from "@/lib/regulation";
 import { getAccessStatus } from "@/lib/access";
@@ -37,25 +38,23 @@ export default async function StateIndexPage(props: PageProps<"/states/[state]">
   const regs = stateRoots(state, allRegs);
 
   return (
-    <div className="mx-auto max-w-shell px-6 py-12">
-      <div className="max-w-reading">
-        <h1 className="font-serif text-section font-bold tracking-tight text-ink">
-          {state.name} regulations
-        </h1>
-        <p className="mt-2 text-sm text-ink-soft">{state.intro}</p>
-        <p className="mt-2 text-sm text-ink-soft">
-          Looking for the federal EPA subparts and PHMSA parts? See{" "}
-          <Link href="/federal" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
-            Federal regulations
-          </Link>
-          .
-        </p>
+    <div className={pageContainerClass("py-12")}>
+      <h1 className="font-serif text-section font-bold tracking-tight text-ink">
+        {state.name} regulations
+      </h1>
+      <p className="mt-2 max-w-prose text-sm text-ink-soft">{state.intro}</p>
+      <p className="mt-2 max-w-prose text-sm text-ink-soft">
+        Looking for the federal EPA subparts and PHMSA parts? See{" "}
+        <Link href="/federal" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2 sm:inline sm:min-h-0">
+          Federal regulations
+        </Link>
+        .
+      </p>
 
-        {/* mode="state" is the Colorado grouping (AQCC / APCD General
-            Permits / ECMC, see groupColoradoRegulations); a second state
-            with different issuing bodies would need its own grouping. */}
-        <RegulationList regs={regs} access={access} mode="state" />
-      </div>
+      {/* mode="state" is the Colorado grouping (AQCC / APCD General
+          Permits / ECMC, see groupColoradoRegulations); a second state
+          with different issuing bodies would need its own grouping. */}
+      <RegulationList regs={regs} access={access} mode="state" />
     </div>
   );
 }

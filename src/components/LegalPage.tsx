@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
+import { pageContainerClass } from "@/lib/ui";
 
 /**
  * Shared shell for the static informational pages (/terms, /privacy,
  * /disclaimer, /about, /contact). Keeps the container, heading, and
  * "Last updated" line consistent so the five pages read as one set.
  *
- * The prose column is 720px (--container-reading), sitting inside and
- * left-aligned to the 1120px shell width the header/footer use — not its
- * own independently centered column.
+ * The shared page container (src/lib/ui.ts pageContainerClass): the heading
+ * spans it, and the prose below is capped at max-w-prose (65ch, about 70-75
+ * characters), left-aligned to the container's edge — not its own
+ * independently centered column.
  */
 export const LAST_UPDATED = "September 12, 2026";
 
@@ -24,14 +26,14 @@ export function LegalPage({
   children: ReactNode;
 }) {
   return (
-    <div className="mx-auto max-w-shell px-6 py-12">
-      <div className="max-w-reading">
-        <h1 className="font-serif text-section font-bold tracking-tight text-ink">
-          {title}
-        </h1>
-        <p className="mt-2 font-mono text-eyebrow uppercase text-tag">
-          Last updated: {lastUpdated}
-        </p>
+    <div className={pageContainerClass("py-12")}>
+      <h1 className="font-serif text-section font-bold tracking-tight text-ink">
+        {title}
+      </h1>
+      <p className="mt-2 font-mono text-eyebrow uppercase text-tag">
+        Last updated: {lastUpdated}
+      </p>
+      <div className="max-w-prose">
         {intro && (
           <div className="mt-4 text-base leading-relaxed text-ink-soft">
             {intro}

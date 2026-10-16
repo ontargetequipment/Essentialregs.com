@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { pageContainerClass } from "@/lib/ui";
 import { requireAdmin } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { REQUEST_STATUSES, jurisdictionLabel, type RequestStatus } from "@/lib/regulation-request";
@@ -94,7 +95,7 @@ export default async function AdminRequestsPage(props: PageProps<"/admin/request
   const rows = (data ?? []) as Row[];
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
+    <div className={pageContainerClass("py-12")}>
       <h1 className="text-2xl font-bold text-zinc-900">Regulation requests</h1>
       <p className="mt-2 text-sm text-zinc-600">
         Every request sent through{" "}

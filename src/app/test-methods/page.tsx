@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { pageContainerClass } from "@/lib/ui";
 import {
   TEST_METHOD_CATEGORY_LABELS,
   TEST_METHOD_CATEGORY_ORDER,
@@ -27,17 +28,18 @@ export default function TestMethodsIndexPage() {
   })).filter((g) => g.methods.length > 0);
 
   return (
-    <div className="mx-auto max-w-shell px-6 py-12">
-      <div className="max-w-reading">
-        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Test Methods</h1>
-        <p className="mt-4 text-base leading-relaxed text-ink-soft">
-          Reference pages for the EPA test methods the regulations on this
-          site cite. Each page opens with the method’s own Scope and Summary
-          sections, reproduced from the CFR, followed by EssentialRegs notes
-          and the provisions that cite it. The full text of each method is on
-          the eCFR.
-        </p>
+    <div className={pageContainerClass("py-12")}>
+      <h1 className="font-serif text-section font-bold tracking-tight text-ink">Test Methods</h1>
+      <p className="mt-4 max-w-prose text-base leading-relaxed text-ink-soft">
+        Reference pages for the EPA test methods the regulations on this
+        site cite. Each page opens with the method’s own Scope and Summary
+        sections, reproduced from the CFR, followed by EssentialRegs notes
+        and the provisions that cite it. The full text of each method is on
+        the eCFR.
+      </p>
 
+      {/* The list, one reading column (720px) at the page's left edge. */}
+      <div className="max-w-reading">
         {groups.map((g) => (
           <section key={g.category} className="mt-10" aria-labelledby={`cat-${g.category}`}>
             <h2 id={`cat-${g.category}`} className="font-mono text-eyebrow uppercase text-tag">

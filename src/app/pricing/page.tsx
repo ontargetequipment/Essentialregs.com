@@ -12,6 +12,7 @@ import {
 } from "@/lib/pricing";
 import { PLAN_ORDER, PlanCards, PlanChoice } from "@/components/PlanChoice";
 import { PLAN_INCLUDES } from "@/lib/plan-includes";
+import { pageContainerClass } from "@/lib/ui";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -35,7 +36,7 @@ function Included({ showFreeReader = true }: { showFreeReader?: boolean }) {
       <h2 id="included-heading" className="font-mono text-eyebrow uppercase text-tag">
         What the subscription includes
       </h2>
-      <ul className="mt-3 flex flex-col gap-3 text-sm leading-relaxed text-ink-soft">
+      <ul className="mt-3 flex max-w-prose flex-col gap-3 text-sm leading-relaxed text-ink-soft">
         {PLAN_INCLUDES.map((item) => (
           <li key={item.lead}>
             <span className="font-medium text-ink">{item.lead}.</span> {item.detail}
@@ -43,7 +44,7 @@ function Included({ showFreeReader = true }: { showFreeReader?: boolean }) {
         ))}
       </ul>
       {showFreeReader && (
-        <p className="mt-5 text-sm text-ink-soft">
+        <p className="mt-5 max-w-prose text-sm text-ink-soft">
           Want to see it first?{" "}
           <Link
             href="/regulations/gp05"
@@ -73,55 +74,59 @@ export default async function PricingPage(props: PageProps<"/pricing">) {
   if (access.hasAccess) {
     const current = (PLAN_ORDER as readonly BillingInterval[]).find((i) => PRICE_LOOKUP[i] === access.plan) ?? null;
     return (
-      <div className="mx-auto max-w-md px-6 py-10 sm:py-14">
-        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Plans and pricing</h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          {access.manualOverride && !current
-            ? "Your account has complimentary access; no plan is needed."
-            : current
-              ? `You are on the ${PLAN_NAMES[current]} plan.`
-              : "You have an active subscription."}{" "}
-          Change plans, update your card, or cancel from your{" "}
-          <Link href="/account" className="font-medium underline underline-offset-2 hover:text-accent">
-            account page
-          </Link>
-          .
-        </p>
-        <PlanCards
-          chosen={current}
-          className="mt-5"
-          cta={(interval) => (
-            <p className="text-xs text-muted">
-              {interval === current ? "Your current plan." : `${PRICE_DISPLAY[interval]}, billed ${interval === "year" ? "yearly" : "monthly"}.`}
-            </p>
-          )}
-        />
-        <Included showFreeReader={false} />
+      <div className={pageContainerClass("py-10 sm:py-14")}>
+        <div className="max-w-reading">
+          <h1 className="font-serif text-section font-bold tracking-tight text-ink">Plans and pricing</h1>
+          <p className="mt-2 max-w-prose text-sm text-ink-soft">
+            {access.manualOverride && !current
+              ? "Your account has complimentary access; no plan is needed."
+              : current
+                ? `You are on the ${PLAN_NAMES[current]} plan.`
+                : "You have an active subscription."}{" "}
+            Change plans, update your card, or cancel from your{" "}
+            <Link href="/account" className="font-medium underline underline-offset-2 hover:text-accent">
+              account page
+            </Link>
+            .
+          </p>
+          <PlanCards
+            chosen={current}
+            className="mt-5"
+            cta={(interval) => (
+              <p className="text-xs text-muted">
+                {interval === current ? "Your current plan." : `${PRICE_DISPLAY[interval]}, billed ${interval === "year" ? "yearly" : "monthly"}.`}
+              </p>
+            )}
+          />
+          <Included showFreeReader={false} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-md px-6 py-10 sm:py-14">
-      {confirmed && (
-        <p
-          role="status"
-          className="mb-4 rounded-md border border-line bg-accent-soft px-4 py-3 text-sm font-medium text-ink"
-        >
-          {chosen
-            ? `Your email is confirmed — start your free trial on the ${PLAN_NAMES[chosen]} plan below.`
-            : "Your email is confirmed — pick a plan to start your free trial."}
+    <div className={pageContainerClass("py-10 sm:py-14")}>
+      <div className="max-w-reading">
+        {confirmed && (
+          <p
+            role="status"
+            className="mb-4 rounded-md border border-line bg-accent-soft px-4 py-3 text-sm font-medium text-ink"
+          >
+            {chosen
+              ? `Your email is confirmed — start your free trial on the ${PLAN_NAMES[chosen]} plan below.`
+              : "Your email is confirmed — pick a plan to start your free trial."}
+          </p>
+        )}
+        <h1 className="font-serif text-section font-bold tracking-tight text-ink">Choose your plan</h1>
+        <p className="mt-2 max-w-prose text-sm text-ink-soft">
+          {TRIAL_DAYS}-day free trial on either plan. A card is required to start;
+          cancel before the trial ends and you won&apos;t be charged.
         </p>
-      )}
-      <h1 className="font-serif text-section font-bold tracking-tight text-ink">Choose your plan</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        {TRIAL_DAYS}-day free trial on either plan. A card is required to start;
-        cancel before the trial ends and you won&apos;t be charged.
-      </p>
 
-      <PlanChoice access={access} chosen={chosen} className="mt-5" trialButtons />
+        <PlanChoice access={access} chosen={chosen} className="mt-5" trialButtons />
 
-      <Included />
+        <Included />
+      </div>
     </div>
   );
 }
