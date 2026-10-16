@@ -40,7 +40,7 @@ import type { Provision } from "@/lib/types";
  * `all` must already be sanitised (fetchRegulationProvisions does that).
  */
 export type RenderedReader = {
-  /** root.citation -- the <h1> and the <title>. */
+  /** root.citation -- the sidebar's name line and the <title> (the page's <h1> is the .reg-eyebrow in docHtml). */
   title: string;
   /** Root's text after its own citation, 160 chars; "" renders no <p>. */
   blurb: string;
@@ -58,8 +58,8 @@ export function renderReaderBody(all: Provision[]): RenderedReader | null {
   const root = tree.root;
   return {
     title: root.citation,
-    // "" when the root's text is nothing but its own citation -- the <h1>
-    // above the blurb already prints that, so render no <p> at all.
+    // "" when the root's text is nothing but its own citation -- the name
+    // line above the blurb already prints that, so render no <p> at all.
     blurb: snippetAfterCitation(root.full_text, root.citation, 160),
     dateLine: sourceStatusLine(regKeyOf(root.id), root.last_verified_date),
     navHtml: renderNavHtml(all, tree),
@@ -167,10 +167,13 @@ export function renderDocHtml(all: Provision[], tree?: Tree): string {
             isFederalKey(regKeyOf(p.id)) ? "Verify on eCFR" : "View official source"
           } ↗</a>`
         : "";
+      // The regulation's name is the page's one <h1> (16 Oct 2026): the
+      // reading pane's first line, big and bold, at every width -- the
+      // sidebar holding the other copy is off-canvas on a phone.
       out.push(
-        `<section id="${escapeHtml(p.id)}" class="reg-block"${attrs}><div class="reg-eyebrow">${escapeHtml(
+        `<section id="${escapeHtml(p.id)}" class="reg-block"${attrs}><h1 class="reg-eyebrow">${escapeHtml(
           p.citation
-        )}</div>${sourceLinkHtml}${p.full_text}${summary}</section>`
+        )}</h1>${sourceLinkHtml}${p.full_text}${summary}</section>`
       );
       continue;
     }

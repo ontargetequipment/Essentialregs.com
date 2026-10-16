@@ -20,7 +20,7 @@ import { previewContext } from "@/lib/preview-context";
 import { isPublicReaderReg } from "@/lib/destination";
 import { PRICE_SUMMARY } from "@/lib/pricing";
 import { displayCitation } from "@/lib/federal-citation";
-import { CITATION_EYEBROW_CLASS, pageContainerClass } from "@/lib/ui";
+import { CITATION_EYEBROW_CLASS, REGULATION_NAME_CLASS, pageContainerClass } from "@/lib/ui";
 import { PROVISION_ID } from "@/lib/types";
 import { ReaderTour } from "@/components/ReaderTour";
 import { TOUR_PARAM, tourRequested } from "@/lib/tour";
@@ -200,7 +200,9 @@ export default async function RegulationPreviewPage(
         <div className="max-w-reading">
           {focused && (
             <div className="mb-10 border-b border-line pb-10">
-                <p className="text-sm text-ink-soft">{regName}</p>
+              {/* The regulation's name, big and bold as in the reader; the
+                  provision's citation under it keeps the page's <h1>. */}
+              <p className={REGULATION_NAME_CLASS}>{regName}</p>
               {/* #preview-heading: where the walkthrough's Regulation 7 step lands and anchors (ReaderTour). */}
               <h1 id="preview-heading" className="mt-1 font-serif text-section font-bold tracking-tight text-ink">
                 {displayCitation(reg, focused.citation)}
@@ -235,18 +237,23 @@ export default async function RegulationPreviewPage(
               {tourOn && <ReaderTour page="destination" hasAccess={false} placement="floating" />}
             </div>
           )}
-          <p className={CITATION_EYEBROW_CLASS}>
-            {root.citation}
-          </p>
-          {/* The citation is printed on its own line just above, so the <h1>
-              carries only what the title adds. When the title is nothing but the
-              citation, repeat the citation rather than ship an empty <h1> -- this
-              page is the public SEO surface. */}
-          {/* One <h1> per page: the provision's citation owns it when focused. */}
+          {/* One <h1> per page: the provision's citation owns it when focused.
+              Unfocused, the regulation's name is the <h1>, big and bold as in
+              the reader (16 Oct 2026), and the title is the secondary line
+              under it. When the title is nothing but the citation, the line
+              repeats the citation, as it always has. */}
           {focused ? (
-            <h2 className="mt-1 font-serif text-section font-bold tracking-tight text-ink">{rootHeading}</h2>
+            <>
+              <p className={CITATION_EYEBROW_CLASS}>
+                {root.citation}
+              </p>
+              <h2 className="mt-1 font-serif text-section font-bold tracking-tight text-ink">{rootHeading}</h2>
+            </>
           ) : (
-            <h1 className="mt-1 font-serif text-section font-bold tracking-tight text-ink">{rootHeading}</h1>
+            <>
+              <h1 className={REGULATION_NAME_CLASS}>{root.citation}</h1>
+              <p className="mt-1 font-serif text-lg text-ink-soft">{rootHeading}</p>
+            </>
           )}
           {root.source_url && (
             <a

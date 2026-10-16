@@ -129,7 +129,9 @@ export default async function RegulationPage(props: PageProps<"/regulations/[reg
       <nav id="sidebar">
         <div id="sidebar-header">
           <div className="brand-eyebrow">Cross-Referenced Reader</div>
-          <h1>{reader.title}</h1>
+          {/* The page's <h1> is the same name at the top of the reading pane
+              (.reg-eyebrow in reader-render.ts); this copy matches its weight. */}
+          <div className="sidebar-reg-name">{reader.title}</div>
           {reader.blurb && <p>{reader.blurb}</p>}
           {/* Current through <version date> · source checked <date> (sourceStatusLine). */}
           {reader.dateLine && <p className="source-status-line">{reader.dateLine}</p>}
