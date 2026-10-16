@@ -1592,16 +1592,38 @@ PART_BUCKETS = [BUCKET_CFR, BUCKET_OTHER_SUBPART, BUCKET_UNPARSEABLE, BUCKET_STA
 
 # "§ 192.605(b)(1)", "§§ 191.15", "49 CFR 191.5", and the bare trailing
 # member of a range ("§§ 192.243 through 192.245"). The bare alternative is
-# anchored to 19[12] so it can only ever fire on this corpus's own two parts.
-PART_NUMREF_RE = re.compile(
-    r"(?P<sym1>§§?\s*)(?:49\s*CFR\s+)?(?P<part1>\d{1,3})\.(?P<num1>\d{1,4})(?P<par1>(?:\([a-zA-Z0-9]{1,7}\))*)"
-    r"|(?:49\s*CFR\s+)(?P<part2>\d{1,3})\.(?P<num2>\d{1,4})(?P<par2>(?:\([a-zA-Z0-9]{1,7}\))*)"
-    # The bare (no "§", no "49 CFR") alternative is anchored to this
-    # corpus's own two part numbers AND refuses to fire after "-" or "/", so
-    # the section number inside the importer's own figure-placeholder URL
-    # (".../title-49/section-192.121") is not turned into a link.
-    r"|(?<![-/\w])(?P<part3>19[0-9])\.(?P<num3>\d{1,4})(?P<par3>(?:\([a-zA-Z0-9]{1,7}\))*)"
-)
+# anchored to 19[0-9] so it can only ever fire on this corpus's own parts.
+#
+# BLM (43 CFR) widened the shared pieces: a four-digit prefix ("§ 3175.30"),
+# any number of digits after the dot, and title 43's hyphenated section
+# numbers ("§ 3162.3-1", group `hyN`). The hyphen suffix never takes the
+# first half of a dash range: in "§§ 192.117-192.119" the "-192" is followed
+# by ".119", so it is not a suffix and the match ends at 192.117 as before.
+_PART_HYPHEN = r"(?:-\d+(?!\d|\.\d))"
+_PART_PARENS = r"(?:\([a-zA-Z0-9]{1,7}\))*"
+
+
+def _part_numref_pattern(cfr_title: str, bare_prefix: str) -> str:
+    """The section-cite alternatives for one title: `cfr_title` is the
+    regex for the "<title> CFR" prefix ("49" for title 49; any title for
+    title 43, whose parts cite titles 25, 30 and 36 as well as their own),
+    `bare_prefix` the prefixes the bare form may fire on."""
+    return (
+        rf"(?P<sym1>§§?\s*)(?:(?P<cfrt1>{cfr_title})\s*CFR\s+)?(?P<part1>\d{{1,4}})\.(?P<num1>\d+)(?P<hy1>{_PART_HYPHEN})?(?P<par1>{_PART_PARENS})"
+        rf"|(?:(?P<cfrt2>{cfr_title})\s*CFR\s+)(?P<part2>\d{{1,4}})\.(?P<num2>\d+)(?P<hy2>{_PART_HYPHEN})?(?P<par2>{_PART_PARENS})"
+        # The bare (no "§", no "49 CFR") alternative is anchored to this
+        # corpus's own part numbers AND refuses to fire after "-" or "/", so
+        # the section number inside the importer's own figure-placeholder URL
+        # (".../title-49/section-192.121") is not turned into a link.
+        rf"|(?<![-/\w])(?P<part3>{bare_prefix})\.(?P<num3>\d+)(?P<hy3>{_PART_HYPHEN})?(?P<par3>{_PART_PARENS})"
+    )
+
+
+PART_NUMREF_RE = re.compile(_part_numref_pattern("49", "19[0-9]"))
+# Title 43: "43 CFR 3162.3-1(d)", "30 CFR 1206.152", and the bare members of
+# "§§ 3162.3, 3162.3-1, 3162.3-2 ... and 3165.1" (prefixes 3160-3179: the
+# subparts of Parts 3160 and 3170).
+PART_NUMREF_43_RE = re.compile(_part_numref_pattern(r"\d{1,2}", "31[67][0-9]"))
 # Which parts' BARE section numbers ("§§ 190.207 through 190.213" -- the
 # trailing "190.213" carries no "§") are linked. Batch A anchored the bare
 # alternative above to 19[12]; Batch B did not widen it, so the Batch B
@@ -1611,7 +1633,11 @@ PART_NUMREF_RE = re.compile(
 # identical to what Batch B shipped. Adding "194", "195", "199" to this set
 # (one line) completes those three; do it when their parses are next
 # regenerated -- see REPORT_batchC.md "things not resolved".
-PART_BARE_LINK_PARTS: frozenset = frozenset({"190", "191", "192", "193", "196"})
+PART_BARE_LINK_PARTS: frozenset = frozenset({"190", "191", "192", "193", "196"}) | frozenset(
+    # BLM: the printed prefix of a title-43 section is its subpart (3162 of
+    # § 3162.3-1), so the bare form is gated on the subparts of 3160 / 3170.
+    str(n) for n in range(3160, 3180)
+)
 _PART_PAREN = r"\([a-zA-Z0-9]{1,7}\)"
 _PART_CHAIN = rf"(?:{_PART_PAREN})+"
 PART_CHAIN_TOKEN_RE = re.compile(_PART_CHAIN)
@@ -1636,13 +1662,36 @@ PART_APPENDIX_REF_RE = re.compile(r"\b(?P<apxword>[Aa]ppendix)\s+(?P<apx>[A-Z])\
 # before (the whole match wrapped), so the Batch A/B parses -- none of which
 # print a list form -- are unchanged.
 PART_OTHERPART_REF_RE = re.compile(
-    r"\bparts?\s+(?P<plist>(?P<pnum>\d{1,3})\b"
+    r"\bparts?\s+(?P<plist>(?P<pnum>\d{1,4})\b"
     # comma members count only when the list closes with an "and/or/through"
     # member ("parts 192, 193, or 195"), so "part 195, 30 days" stays a
     # single-member match; a dash range ("parts 190-199") stands on its own
-    r"(?:(?:\s*,\s*\d{1,3}\b)*\s*,?\s*(?:and|or|through)\s+\d{1,3}\b|\s*[-–]\s*\d{1,3}\b)?"
+    # A member followed by "CFR" is the next citation's title, not a part:
+    # "part 221 and 1 CFR part 51" is two citations.
+    r"(?:(?:\s*,\s*\d{1,4}\b(?!\s*CFR))*\s*,?\s*(?:and|or|through)\s+\d{1,4}\b(?!\s*CFR)|\s*[-–]\s*\d{1,4}\b(?!\s*CFR))?"
     r")(?:\s+of\s+this\s+chapter)?"
 )
+# The "<title> CFR " printed just before a "part N" ("30 CFR part 221",
+# "43 CFR part 3160"): the title that part number belongs to. Without it the
+# part is read in the citing document's own title.
+PART_CFR_TITLE_BEFORE_RE = re.compile(r"\b(?P<t>\d{1,2})\s*CFR\s+$")
+# Title 43's numeric subparts: "subpart 3173 of this part", "Subpart 3171",
+# "subparts 3173, 3174, and 3175", "43 CFR subpart 3105". A four-digit
+# subpart number names its part by its tens (3163 -> Part 3160), so each
+# member resolves on its own, in this document or another. Title-43
+# documents only (49 CFR subparts are letters).
+PART_NUMSUBPART_REF_RE = re.compile(
+    r"\b(?P<nspword>[Ss]ubparts?)\s+(?P<nsplist>\d{4}\b"
+    r"(?:(?:\s*,\s*\d{4}\b)*\s*,?\s*(?:and|or|through)\s+\d{4}\b)?)"
+    r"(?:\s+of\s+this\s+(?:part|chapter|title))?"
+)
+# A section sign none of the patterns above could read ("§ 441" of a
+# statute, "§ 3162.7-5" of a section that does not exist is caught earlier):
+# printed as text, counted in BUCKET_UNRECOGNISED. Title-43 documents only,
+# so the 49 CFR reports keep their baselines.
+PART_STRAY_SECTION_SIGN_RE = re.compile(r"(?P<stray>§§?\s*[^\s<]*)")
+BUCKET_UNRECOGNISED = "unrecognised_section_sign"
+PART_BUCKETS_43 = PART_BUCKETS + [BUCKET_UNRECOGNISED]
 # bare "this part" -> the document root
 PART_THIS_PART_RE = re.compile(r"\bthis\s+part\b")
 # "49 U.S.C. 60101", "43 U.S.C. 1331"
@@ -1687,6 +1736,44 @@ def resolve_chain_list(
     return out
 
 
+_PART_LINK_PATTERNS: dict[int, re.Pattern] = {}
+
+
+def _part_link_pattern(title: int) -> re.Pattern:
+    """The whole-part rule set's one combined pattern, per CFR title. Title
+    49's is the PHMSA set exactly as Batch C left it (plus the widened shared
+    pieces); title 43 swaps in PART_NUMREF_43_RE and adds the numeric
+    subpart and stray section-sign alternatives. Order matters: at one
+    position the first alternative that matches wins."""
+    if title not in _PART_LINK_PATTERNS:
+        if title == 43:
+            parts = (
+                PART_NUMREF_43_RE,
+                PART_STRAY_SECTION_SIGN_RE,
+                PART_RELREF_RE,
+                PART_SUBPART_REF_RE,
+                PART_NUMSUBPART_REF_RE,
+                PART_APPENDIX_REF_RE,
+                PART_OTHERPART_REF_RE,
+                PART_THIS_PART_RE,
+                PART_USC_RE,
+                PART_STANDARD_RE,
+            )
+        else:
+            parts = (
+                PART_NUMREF_RE,
+                PART_RELREF_RE,
+                PART_SUBPART_REF_RE,
+                PART_APPENDIX_REF_RE,
+                PART_OTHERPART_REF_RE,
+                PART_THIS_PART_RE,
+                PART_USC_RE,
+                PART_STANDARD_RE,
+            )
+        _PART_LINK_PATTERNS[title] = re.compile("|".join(p.pattern for p in parts))
+    return _PART_LINK_PATTERNS[title]
+
+
 def _link_citations_part(
     text: str,
     own_reg: str,
@@ -1718,22 +1805,18 @@ def _link_citations_part(
             return inner
         return f'<span class="xref" data-target="{tid}">{inner}</span>'
 
-    pattern = "|".join(
-        p.pattern
-        for p in (
-            PART_NUMREF_RE,
-            PART_RELREF_RE,
-            PART_SUBPART_REF_RE,
-            PART_APPENDIX_REF_RE,
-            PART_OTHERPART_REF_RE,
-            PART_THIS_PART_RE,
-            PART_USC_RE,
-            PART_STANDARD_RE,
-        )
-    )
+    own_title = int(SUBPART_META[own_reg].get("title") or 49)
+    pattern = _part_link_pattern(own_title)
+
+    def title_before(pos: int) -> int:
+        """The "<title> CFR " printed right before `pos`, else this document's
+        own title ("30 CFR part 221" is title 30; "part 3170" is ours)."""
+        tm = PART_CFR_TITLE_BEFORE_RE.search(text, max(0, pos - 12), pos)
+        return int(tm.group("t")) if tm else own_title
+
     out: list[str] = []
     last = 0
-    for m in re.finditer(pattern, text):
+    for m in pattern.finditer(text):
         out.append(text[last : m.start()])
         last = m.end()
         gd = m.groupdict()
@@ -1743,6 +1826,9 @@ def _link_citations_part(
         if gd.get("num1") or gd.get("num2") or gd.get("num3"):
             part = gd.get("part1") or gd.get("part2") or gd.get("part3")
             num = gd.get("num1") or gd.get("num2") or gd.get("num3")
+            # title 43's "-1" of § 3162.3-1: part of the section number, so
+            # part of the target id (sec-blm3160-3162.3-1)
+            hyphen = gd.get("hy1") or gd.get("hy2") or gd.get("hy3") or ""
             parens = gd.get("par1") or gd.get("par2") or gd.get("par3") or ""
             if gd.get("num3") and part not in PART_BARE_LINK_PARTS:
                 # A bare section number of a part whose bare form is not
@@ -1750,9 +1836,10 @@ def _link_citations_part(
                 # did not reach it (see PART_BARE_LINK_PARTS).
                 out.append(matched_text)
                 continue
-            target_reg = _resolve_target_reg_49(part, num)
+            cite_title = int(gd.get("cfrt1") or gd.get("cfrt2") or own_title)
+            target_reg = _resolve_target_reg_titled(cite_title, part, num)
             if target_reg == own_reg:
-                base_id = f"sec-{own_reg}-{part}.{num}"
+                base_id = f"sec-{own_reg}-{part}.{num}{hyphen}"
                 chain = re.findall(r"\([a-zA-Z0-9]{1,4}\)", parens)
                 tid = None
                 cand = list(chain)
@@ -1771,7 +1858,7 @@ def _link_citations_part(
                     unresolved[BUCKET_UNPARSEABLE][matched_text.strip()] += 1
             elif target_reg in corpus_regs:
                 out.append(_other_reg_link(
-                    target_reg, matched_text, _other_reg_target(target_reg, f"{part}.{num}", parens)
+                    target_reg, matched_text, _other_reg_target(target_reg, f"{part}.{num}{hyphen}", parens)
                 ))
             else:
                 out.append(matched_text)
@@ -1831,11 +1918,11 @@ def _link_citations_part(
 
         # -- "part 191 of this chapter" / "part 195" ------------------------
         if gd.get("pnum"):
-            members = re.findall(r"\d{1,3}", gd["plist"])
+            members = re.findall(r"\d{1,4}", gd["plist"])
             if len(members) == 1:
                 # Single member: the whole printed phrase is the link text,
                 # exactly as before Batch C.
-                target_reg = CFR_PART_TO_REGKEY.get(f"49-{gd['pnum']}")
+                target_reg = CFR_PART_TO_REGKEY.get(f"{title_before(m.start())}-{gd['pnum']}")
                 if target_reg == own_reg:
                     out.append(span(root_id, matched_text))
                 elif target_reg in corpus_regs:
@@ -1857,7 +1944,8 @@ def _link_citations_part(
             # existing anchor changing shape.
             rendered = []
             pos = 0
-            for i, pm in enumerate(re.finditer(r"\d{1,3}", matched_text)):
+            plist_title = title_before(m.start())
+            for i, pm in enumerate(re.finditer(r"\d{1,4}", matched_text)):
                 pnum = pm.group(0)
                 if i == 0:
                     link_text = matched_text[: pm.end()]
@@ -1866,7 +1954,7 @@ def _link_citations_part(
                     rendered.append(matched_text[pos : pm.start()])
                     link_text = pnum
                     key = f"part {pnum}"
-                target_reg = CFR_PART_TO_REGKEY.get(f"49-{pnum}")
+                target_reg = CFR_PART_TO_REGKEY.get(f"{plist_title}-{pnum}")
                 if target_reg == own_reg:
                     rendered.append(span(root_id, link_text))
                 elif target_reg in corpus_regs:
@@ -1879,6 +1967,38 @@ def _link_citations_part(
                 pos = pm.end()
             rendered.append(matched_text[pos:])
             out.append("".join(rendered))
+            continue
+
+        # -- title 43: "subpart 3173 of this part" / "subparts 3173, 3174" --
+        if gd.get("nsplist"):
+            nsp_title = title_before(m.start())
+            rendered = []
+            pos = 0
+            for nm in re.finditer(r"\d{4}", matched_text):
+                sub = nm.group(0)
+                rendered.append(matched_text[pos : nm.start()])
+                pos = nm.end()
+                target_reg = CFR_PART_TO_REGKEY.get(f"{nsp_title}-{_cfr_part_of_prefix(nsp_title, sub)}")
+                tid = f"sec-{target_reg}-PART-{sub}" if target_reg else None
+                if target_reg == own_reg and tid in known_ids:
+                    rendered.append(span(tid, sub))
+                elif target_reg == own_reg:
+                    rendered.append(sub)
+                    unresolved[BUCKET_OTHER_SUBPART][f"subpart {sub}"] += 1
+                elif target_reg in corpus_regs:
+                    ids = _active_corpus_ids().get(target_reg) or ()
+                    rendered.append(_other_reg_link(target_reg, sub, tid if tid in ids else None))
+                else:
+                    rendered.append(sub)
+                    unresolved[BUCKET_CFR][f"subpart {sub}"] += 1
+            rendered.append(matched_text[pos:])
+            out.append("".join(rendered))
+            continue
+
+        # -- title 43: a section sign nothing above could read --------------
+        if gd.get("stray") is not None:
+            out.append(matched_text)
+            unresolved[BUCKET_UNRECOGNISED][matched_text.strip()] += 1
             continue
 
         # -- bare "this part" ----------------------------------------------
@@ -3963,7 +4083,7 @@ def parse_ecfr_part(reg: str, xml_path: str) -> tuple[list[dict], dict]:
     # ---- cross-reference linking ----------------------------------------
     known_ids = {r["id"] for r in rows}
     unresolved: dict = defaultdict(Counter)
-    for b in PART_BUCKETS:
+    for b in (PART_BUCKETS_43 if title == 43 else PART_BUCKETS):
         unresolved[b]
     link_counts = Counter()
     for row in rows:
@@ -4106,7 +4226,7 @@ def cmd_parse_part(args):
               f"{len(report['prefix_collisions'])}")
     if report["section_order_breaks"]:
         print(f"  WARNING: document order is not numeric order at: {report['section_order_breaks']}")
-    for bucket in PART_BUCKETS:
+    for bucket in (PART_BUCKETS_43 if meta.get("title") == 43 else PART_BUCKETS):
         ctr = report["unresolved"].get(bucket)
         if not ctr:
             continue

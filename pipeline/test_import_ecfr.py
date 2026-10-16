@@ -2318,7 +2318,9 @@ class PartListCitationTests(unittest.TestCase):
     def test_bare_section_of_a_batch_b_part_is_still_emitted_verbatim(self):
         """PART_BARE_LINK_PARTS keeps 194/195/199 exactly as Batch B shipped
         them (their bare trailing members were never linked)."""
-        self.assertEqual(ie.PART_BARE_LINK_PARTS, frozenset({"190", "191", "192", "193", "196"}))
+        # (The four-digit members are BLM's 43 CFR subpart prefixes, 3160-3179.)
+        self.assertEqual({p for p in ie.PART_BARE_LINK_PARTS if len(p) == 3}, {"190", "191", "192", "193", "196"})
+        self.assertEqual({p for p in ie.PART_BARE_LINK_PARTS if len(p) == 4}, {str(n) for n in range(3160, 3180)})
         out, unres = self._link("specified in 49 CFR 192.614 and 195.442 and 49 U.S.C. 60114",
                                 reg="p196", sec="sec-p196-196.111")
         self.assertIn('href="/regulations/p192">49 CFR 192.614</a> and 195.442 and', out)
