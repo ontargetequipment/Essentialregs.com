@@ -1,0 +1,25 @@
+name: Bootstrap BLM sources (one-off)
+
+# One-off, deleted in the next commit: workflow_dispatch only reaches a
+# workflow that is already on the default branch, so on this branch the
+# fetch workflow is called from here, on push, for 43 CFR 3160 and 3170.
+on:
+  push:
+    branches: [claude/blm-importer-1a]
+    paths: [.github/workflows/bootstrap-fetch-blm.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  p3160:
+    uses: ./.github/workflows/fetch-ecfr-part.yml
+    with:
+      title: "43"
+      part: "3160"
+  p3170:
+    needs: p3160
+    uses: ./.github/workflows/fetch-ecfr-part.yml
+    with:
+      title: "43"
+      part: "3170"

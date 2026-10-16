@@ -9,6 +9,7 @@ name: Fetch eCFR part
 # branch it was dispatched on. The file is re-fetched even when it is already
 # in the repo. www.ecfr.gov is not reachable from every environment this repo
 # is worked on in, so this is how a whole-part source gets into the repo.
+# Dispatch it from the Actions tab, or call it from another workflow.
 
 on:
   workflow_dispatch:
@@ -21,6 +22,19 @@ on:
         required: true
       date:
         description: "eCFR date (YYYY-MM-DD). Empty = today in America/Denver."
+        required: false
+        default: ""
+  # The same three inputs, so another workflow can call this one.
+  workflow_call:
+    inputs:
+      title:
+        type: string
+        required: true
+      part:
+        type: string
+        required: true
+      date:
+        type: string
         required: false
         default: ""
 
