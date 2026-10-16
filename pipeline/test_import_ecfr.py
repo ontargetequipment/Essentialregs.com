@@ -1159,6 +1159,8 @@ class CfrPartResolverTests(unittest.TestCase):
                 "49-195": "p195",
                 "49-196": "p196",
                 "49-199": "p199",
+                "43-3160": "blm3160",
+                "43-3170": "blm3170",
             },
         )
 

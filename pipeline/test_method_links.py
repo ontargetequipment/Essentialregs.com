@@ -335,10 +335,15 @@ DEFAULT_REGRESSION_KEYS = ("1", "oooob", "jjjj")
 
 def _source_pairs() -> list[tuple[str, str]]:
     """(reg key, source basename) for every document in pipeline/sources/."""
+    import import_ecfr as ie
+
+    # A whole part's XML is P<part>.xml; its key is not always "p<part>"
+    # (P3160.xml is blm3160).
+    part_keys = {f"P{m['part']}": k for k, m in ie.PART_META.items()}
     names = sorted({p.stem for p in SOURCES.iterdir() if p.suffix in (".txt", ".pdf", ".xml")})
     pairs = []
     for name in names:
-        key = name[4:].lower() if name.startswith("REG_") else name.lower()
+        key = part_keys.get(name) or (name[4:].lower() if name.startswith("REG_") else name.lower())
         pairs.append((key, name))
     return pairs
 

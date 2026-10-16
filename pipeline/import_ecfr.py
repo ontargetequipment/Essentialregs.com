@@ -212,6 +212,34 @@ PART_META: dict[str, dict] = {
         root_citation="49 CFR Part 196",
         root_title="49 CFR Part 196 — Protection of Underground Pipelines From Excavation Activity",
     ),
+    # BLM (October 2026): 43 CFR Parts 3160 and 3170, the onshore oil and gas
+    # operating and production rules -- the first whole parts outside title
+    # 49. Same XML path; what differs is title 43's numbering: four-digit
+    # parts, NUMERIC subparts ("Subpart 3162", id `sec-blm3160-PART-3162`)
+    # and hyphenated section numbers ("§ 3162.2-15", id
+    # `sec-blm3160-3162.2-15`; see `_is_section_range`). `sections` is never
+    # read for a whole part (`_resolve_target_reg` skips them); it is the
+    # range of numbers after the dot, as for the PHMSA parts. `issuing_body`
+    # and `jurisdiction_level` are the apply-time columns (import_ccr's
+    # REG_META holds the copy the writer reads).
+    "blm3160": dict(
+        title=43, part=3160, code="", suffix="", sections=(0, 99),
+        url="https://www.ecfr.gov/current/title-43/part-3160",
+        enable_table_ref_links=False, table_algorithm="xml",
+        document="part", source="xml", has_subparts=True,
+        issuing_body="BLM", jurisdiction_level="federal",
+        root_citation="43 CFR Part 3160",
+        root_title="43 CFR Part 3160 — Onshore Oil and Gas Operations",
+    ),
+    "blm3170": dict(
+        title=43, part=3170, code="", suffix="", sections=(1, 299),
+        url="https://www.ecfr.gov/current/title-43/part-3170",
+        enable_table_ref_links=False, table_algorithm="xml",
+        document="part", source="xml", has_subparts=True,
+        issuing_body="BLM", jurisdiction_level="federal",
+        root_citation="43 CFR Part 3170",
+        root_title="43 CFR Part 3170 — Onshore Oil and Gas Production",
+    ),
 }
 SUBPART_META.update(PART_META)
 
@@ -228,6 +256,8 @@ CFR_PART_TO_REGKEY: dict[str, str] = {
     "49-195": "p195",
     "49-196": "p196",
     "49-199": "p199",
+    "43-3160": "blm3160",
+    "43-3170": "blm3170",
 }
 
 # Derived, backward-compatible views used throughout the module (kept as
@@ -285,9 +315,29 @@ def _resolve_target_reg_49(part: str, num: str) -> str | None:
     whole-part document resolves purely by its part prefix (191.5 -> p191,
     192.605 -> p192), because each part IS one document. Returns None for
     every other 49 CFR part (190, 193, 195, 196, 199, 1.97, ...)."""
+    return _resolve_target_reg_titled(49, part, num)
+
+
+def _cfr_part_of_prefix(title: int, prefix: str) -> str:
+    """The CFR part a section number's printed prefix belongs to. In title 49
+    the prefix IS the part (192.605 is in Part 192). In title 43's Group 3000
+    numbering the prefix is the SUBPART: § 3162.3-1 is in Subpart 3162 of
+    Part 3160, and every four-digit subpart sits in the part numbered by its
+    tens (3173 -> 3170). Title 43's one- to three-digit parts (43 CFR 4.21)
+    are their own prefix."""
+    if title == 43 and len(prefix) == 4 and prefix.isdigit():
+        return str(int(prefix) - int(prefix) % 10)
+    return prefix
+
+
+def _resolve_target_reg_titled(title: int, prefix: str, num: str) -> str | None:
+    """The corpus document a "<prefix>.<num>" section cite of CFR `title`
+    falls in (title 49: 192.605 -> p192; title 43: 3162.3 -> blm3160), or
+    None. `num` is the digits after the dot; a hyphen suffix ("-1" of
+    3162.3-1) is carried separately by the caller."""
     if not num.isdigit():
         return None
-    return CFR_PART_TO_REGKEY.get(f"49-{part}")
+    return CFR_PART_TO_REGKEY.get(f"{title}-{_cfr_part_of_prefix(title, prefix)}")
 
 
 def _active_corpus_ids() -> dict:
