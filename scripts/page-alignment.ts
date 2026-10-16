@@ -25,7 +25,7 @@ import { chromium, type Page } from "@playwright/test";
 import { withProtectionBypass } from "../e2e/fixtures";
 import { WIDTHS, measurePageWidth, pageWidthProblems } from "../e2e/page-width";
 
-/** Every top-level page outside the regulation reader (the reader and its preview keep their own layout). */
+/** Every top-level page outside the regulation reader (the reader itself keeps its own full-bleed layout). */
 const PAGES = [
   "/",
   "/sample",
@@ -53,6 +53,7 @@ const PAGES = [
   "/check-email",
   "/account",
   "/regs/sec-7-B-I-D-3-a-(i)",
+  "/regulations/7/preview", // the whole-document preview; a focused one (?p=) opens with its context strip
   "/admin/requests",
   "/admin/review",
   "/admin/semantic-eval",

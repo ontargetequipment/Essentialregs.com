@@ -93,9 +93,11 @@ async function expectFixedOnPage(page: Page): Promise<void> {
 }
 
 /**
- * The visitor preview has no sidebar and is one centred text column. At 1280px
- * its gutter (280px) is wide enough for the card: fixed in a corner of the
- * gutter, as wide as the gutter allows less 12px each side (at most 296px),
+ * The visitor preview has no sidebar and is one text column at the left edge
+ * of the shared page container (16 Oct 2026; it used to be centred). At
+ * 1280px the gutter to its right (456px) is wide enough for the card: fixed
+ * in a corner of the gutter, as wide as the gutter allows less 12px each
+ * side (at most 296px),
  * below the site header -- and entirely to the right (or left) of
  * #preview-doc, so none of the column's text is under it, and clear of the
  * anchor.
@@ -833,23 +835,28 @@ test.describe("guided walkthrough", () => {
     expect(tagsOf(events)).toEqual(FULL_RUN);
   });
 
-  test("at 1100px the preview's gutter is too narrow for the card: it docks, and follows a resize both ways", async ({ page }) => {
+  test("at 960px the preview's gutter is too narrow for the card: it docks, and follows a resize both ways", async ({ page }) => {
+    // The column sits at the container's left edge (24px padding below 1168px)
+    // and is 720px wide, so the gutter is the window less 744px: 216px at
+    // 960px, under the 244px the card needs (floatingFit), so it docks; it
+    // floats from 988px up. Before 16 Oct 2026 the column was centred and
+    // this test ran at 1100px, where the gutter was 190px.
     const H = 720;
-    await page.setViewportSize({ width: 1100, height: H });
+    await page.setViewportSize({ width: 960, height: H });
     await captureTourEvents(page);
     await openAtStep(page, 6);
     const aControl = summaryControl(previewRow(page, REG7_IC1_A));
-    // A 190px gutter: docked like on a phone, with the I.C.1 heading (the anchor) above the dock.
-    await expectDocked(page, 6, heading(page), H, 1100);
+    // A 216px gutter: docked like on a phone, with the I.C.1 heading (the anchor) above the dock.
+    await expectDocked(page, 6, heading(page), H, 960);
     // Wider: the card moves into the gutter, clear of the text.
     await page.setViewportSize({ width: 1280, height: H });
     await expectFloatingInGutter(page, heading(page));
     // Narrower again: docked.
-    await page.setViewportSize({ width: 1100, height: H });
-    await expectDocked(page, 6, heading(page), H, 1100);
+    await page.setViewportSize({ width: 960, height: H });
+    await expectDocked(page, 6, heading(page), H, 960);
     await aControl.evaluate((el) => el.scrollIntoView({ block: "center" }));
     await aControl.click();
-    await expectDocked(page, 7, secondHopLink(page), H, 1100);
+    await expectDocked(page, 7, secondHopLink(page), H, 960);
   });
 
   test("outside the tour, a visitor's click on VI.C's Regulation 7 citation shows the public row in the popup, and its preview link carries VI.C", async ({ page }) => {
