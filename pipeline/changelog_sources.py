@@ -23,7 +23,7 @@ finalize_import_changelog(), which:
      `transcription_corrected` and its added / removed rows the same way,
      so the public page never calls our own fix an agency change;
   4. refreshes the changelog snapshot (refresh_changelog_snapshot(), see
-     supabase/migrations/20261007121000_changelog_snapshot.sql).
+     supabase/migrations/20261008000836_changelog_snapshot.sql).
 
 A regulation with no manifest entry or no recorded version is treated as
 "no version change" (the first record is written, nothing is logged): an

@@ -1,0 +1,3 @@
+-- Duplicate record of 20260102000100. No SQL here, on purpose: the connector
+-- applied the change under its own timestamp and the planned version was
+-- recorded too.

@@ -1,0 +1,6 @@
+[
+  {"version": "20260101000000", "name": "create_things", "statements": ["create table public.things (\n  id    integer primary key,\n  label text not null default '-- not a comment'\n);\ncomment on table public.things is 'Fixture table; text with ''quotes''.';"]},
+  {"version": "20260102000000", "name": "label_index", "statements": null},
+  {"version": "20260102000100", "name": "label_index", "statements": ["create index things_label_idx on public.things (label)"]},
+  {"version": "20260103000000", "name": "by_hand", "statements": []}
+]

@@ -68,7 +68,7 @@ type SnapshotRow = { rows: ChangelogCountRow[] | null; computed_at: string | nul
  * The customer-facing changelog: counts by Denver day, regulation and change
  * type. Read from the stored snapshot (changelog_snapshot_public(); one row,
  * refreshed by the pipeline after every write, see
- * supabase/migrations/20261007121000_changelog_snapshot.sql), never from
+ * supabase/migrations/20261008000836_changelog_snapshot.sql), never from
  * the live changelog_public() aggregate unless the snapshot has never been
  * written. When both fail the result carries the error and the last good
  * rows this instance saw, or none: the page renders either way. Both

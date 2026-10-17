@@ -1,0 +1,42 @@
+{
+  "statement_less": [
+    {
+      "version": "20261006090000",
+      "reason": "Applied by hand through execute_sql on 6 Oct 2026 and recorded as a version with no statements on 7 Oct (docs/CEO_PHASE_PLAN.md, 'Migration records'). The file is the SQL that ran; catalog evidence (function body, trigger, comments) in the 17 Oct 2026 ledger reconciliation PR."
+    },
+    {
+      "version": "20261007040000",
+      "reason": "Applied through execute_sql on 7 Oct 2026 and recorded with the file's version, no statements (docs/CEO_PHASE_PLAN.md, 'Migration records'). Catalog evidence (trigger body, rehash function, ACL, the 53 relabelled rows) in the 17 Oct 2026 ledger reconciliation PR."
+    },
+    {
+      "version": "20261009005000",
+      "reason": "Applied through the connector on 9 Oct 2026 and recorded under the file's version with no statements (the file's own header). Catalog evidence (table, constraints, index, RLS, grants, policy) in the 17 Oct 2026 ledger reconciliation PR."
+    }
+  ],
+  "duplicates": [
+    {
+      "version": "20261007010000",
+      "twin_of": "20261007011846",
+      "reason": "apply_migration recorded changelog_rewritten_and_reviewed as 20261007011846 (with statements); a second, statement-less row was inserted for the file's planned version on 7 Oct 2026. One change, two rows; the file is a comment-only duplicate note."
+    },
+    {
+      "version": "20261007020000",
+      "twin_of": "20261007011936",
+      "reason": "apply_migration recorded keyword_search_closed_permits_and_applicability as 20261007011936 (with statements); a second, statement-less row was inserted for the file's planned version on 7 Oct 2026. One change, two rows; the file is a comment-only duplicate note."
+    }
+  ],
+  "known_differences": [
+    {
+      "version": "20260926045912",
+      "reason": "Reported 17 Oct 2026, CEO chat to decide: the file's search_provisions body (materialized matches CTE, citation and basis multipliers before the lim*3 pool) is not the recorded one (multipliers after the pool). Superseded the same day by 20260926230949, which matches."
+    },
+    {
+      "version": "20261004200000",
+      "reason": "Reported 17 Oct 2026, CEO chat to decide: the row stores steps 1-2 only (archive and schema); the file also has steps 3-4 (log the removals, delete the 20 rows, verify), which its own note says the Import workflow did instead."
+    },
+    {
+      "version": "20261011175808",
+      "reason": "Reported 17 Oct 2026, CEO chat to decide: the comment on search_provisions_in_document is one string literal in the row and five adjacent literals in the file. Same resulting comment; different text."
+    }
+  ]
+}
