@@ -220,6 +220,8 @@ export function main(argv: string[], log: (line: string) => void = console.log):
   const text = lines.join("\n");
   log(text);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, text + "\n");
+  // One annotation per mismatch, so the pull request shows them without opening the log.
+  if (process.env.GITHUB_ACTIONS) for (const p of problems) log(`::error title=Migration ledger::${p}`);
   return problems.length === 0 ? 0 : 1;
 }
 
