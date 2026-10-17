@@ -1,3 +1,46 @@
+-- regulation_releases: no table privileges for the API roles (17 Oct 2026).
+--
+-- 20261008031550 created the table without the revoke the release-state file
+-- (now supabase/migrations_archive/20261008040000_regulation_release_state.sql)
+-- carried, so anon and authenticated kept Supabase's default grants
+-- (arwdDxtm). RLS was on with no policy for them, so PostgREST returned and
+-- changed no rows, but the grants said otherwise. Found by the ledger
+-- reconciliation of 17 Oct 2026 (PR #139).
+--
+-- Nothing reads or writes the table as anon or authenticated: the app reads it
+-- through the service-role client (src/lib/release.ts, createAdminClient), the
+-- importer and the Release workflow through SUPABASE_SERVICE_ROLE_KEY
+-- (pipeline/import_ccr.py fetch_staged_reg_keys, ensure_release_row,
+-- cmd_release), and the RLS policies and Ask functions through
+-- reg_is_released(), which is SECURITY DEFINER and owned by postgres, the
+-- table's owner, so this revoke does not reach it.
+
+revoke all on table public.regulation_releases from public, anon, authenticated;
+grant all on table public.regulation_releases to service_role;
+
+insert into supabase_migrations.schema_migrations (version, name, statements)
+values ('20261017151000', 'regulation_releases_revoke_api_roles', array[$ledger$-- regulation_releases: no table privileges for the API roles (17 Oct 2026).
+--
+-- 20261008031550 created the table without the revoke the release-state file
+-- (now supabase/migrations_archive/20261008040000_regulation_release_state.sql)
+-- carried, so anon and authenticated kept Supabase's default grants
+-- (arwdDxtm). RLS was on with no policy for them, so PostgREST returned and
+-- changed no rows, but the grants said otherwise. Found by the ledger
+-- reconciliation of 17 Oct 2026 (PR #139).
+--
+-- Nothing reads or writes the table as anon or authenticated: the app reads it
+-- through the service-role client (src/lib/release.ts, createAdminClient), the
+-- importer and the Release workflow through SUPABASE_SERVICE_ROLE_KEY
+-- (pipeline/import_ccr.py fetch_staged_reg_keys, ensure_release_row,
+-- cmd_release), and the RLS policies and Ask functions through
+-- reg_is_released(), which is SECURITY DEFINER and owned by postgres, the
+-- table's owner, so this revoke does not reach it.
+
+revoke all on table public.regulation_releases from public, anon, authenticated;
+grant all on table public.regulation_releases to service_role;
+$ledger$])
+on conflict (version) do nothing;
+
 insert into supabase_migrations.schema_migrations (version, name, statements)
 values ('20261008031609', 'regulation_release_state_seed', array[$ledger$-- Reconciled 2026-10-17: hand-applied on 8 Oct 2026, recorded late.
 --
@@ -88,7 +131,17 @@ where reg_key = 'gp05'
 $ledger$])
 on conflict (version) do nothing;
 
-select v.version,
-       exists (select 1 from supabase_migrations.schema_migrations m where m.version = v.version) as present
-from (values ('20261008031609'), ('20261010120000')) as v(version)
-order by v.version;
+select 'ledger row ' || v.version as check,
+       (exists (select 1 from supabase_migrations.schema_migrations m where m.version = v.version))::text as result
+from (values ('20261017151000'), ('20261008031609'), ('20261010120000')) as v(version)
+union all
+select 'regulation_releases grants to public/anon/authenticated (expect none)',
+       coalesce((select string_agg(coalesce(r.rolname, 'public') || ':' || a.privilege_type, ', ' order by r.rolname, a.privilege_type)
+                 from pg_class c
+                 cross join lateral aclexplode(c.relacl) a
+                 left join pg_roles r on r.oid = a.grantee
+                 where c.oid = 'public.regulation_releases'::regclass
+                   and (a.grantee = 0 or r.rolname in ('anon', 'authenticated'))), 'none')
+union all
+select 'reg_is_released(''7'') (expect true)', public.reg_is_released('7')::text
+order by 1;

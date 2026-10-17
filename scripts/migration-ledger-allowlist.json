@@ -27,16 +27,12 @@
   ],
   "known_differences": [
     {
-      "version": "20260926045912",
-      "reason": "Reported 17 Oct 2026, CEO chat to decide: the file's search_provisions body (materialized matches CTE, citation and basis multipliers before the lim*3 pool) is not the recorded one (multipliers after the pool). Superseded the same day by 20260926230949, which matches."
-    },
-    {
       "version": "20261004200000",
-      "reason": "Reported 17 Oct 2026, CEO chat to decide: the row stores steps 1-2 only (archive and schema); the file also has steps 3-4 (log the removals, delete the 20 rows, verify), which its own note says the Import workflow did instead."
+      "reason": "The row stores steps 1-2 only (archive and schema); the file also has steps 3-4 (log the removals, delete, verify). Kept as is (CEO decision, 17 Oct 2026): production confirms steps 3-4 ran, with 0 live sec-26-C-FEDJJJJ rows and 20 archived in archive.provisions_backup_reg26_fedjjjj_20261004."
     },
     {
       "version": "20261011175808",
-      "reason": "Reported 17 Oct 2026, CEO chat to decide: the comment on search_provisions_in_document is one string literal in the row and five adjacent literals in the file. Same resulting comment; different text."
+      "reason": "Comment split into five strings, same resulting comment (CEO decision, 17 Oct 2026: kept as is)."
     }
   ]
 }

@@ -68,6 +68,11 @@ reproduce production instead of reproducing the outage.
   `20261008031609_regulation_release_state_seed.sql` begins "Reconciled
   2026-10-17": the release-state seed, run by hand between two recorded pieces,
   dated by the seeded rows' own `released_at`. Do not renumber any of them.
+  `20260926045912_keyword_search_operative_first.sql` begins "body replaced
+  2026-10-17": its committed body had never been applied, so it now holds the
+  recorded statements verbatim (the old body is in `../migrations_archive/`).
+  `20261017151000_regulation_releases_revoke_api_roles.sql` revokes the default
+  API-role grants the release-state change left on `regulation_releases`.
 - `../schema.sql` is the original hand-run bootstrap (the "001" the numbered series
   never had). Its content is what `20260902021254_initial_schema`,
   `20260909235329_add_profiles_and_access_granted` and
@@ -90,8 +95,15 @@ npx tsx scripts/check-migration-ledger.ts --rows rows.json        # an export, n
 `psql`) and checks that every row has exactly one file here with the same version
 and name, every timestamped file has a row, and, where the row stores its
 statements, the file's SQL equals them once comments, whitespace and trailing
-semicolons are set aside (the connector stores whatever text it was given, often
-with shorter notes than the file). It prints every mismatch and exits 1 on any.
+semicolons are set aside. It prints every mismatch and exits 1 on any.
+
+Setting comments aside is deliberate (CEO decision, 17 Oct 2026). The connector
+stores whatever text it was given, and a session often applied the SQL with a short
+note and committed the file with the full rationale; 13 recorded versions differ from
+their files only that way. Comments do not change what a replay does, so they are not
+compared. Quoted strings are compared as written (`'-- x'` is not a comment), and so
+is everything else: a different string literal split, a missing statement or a
+changed function body is a mismatch.
 The `qa` job in `.github/workflows/ci.yml` runs it after corpus QA, on every pull
 request and by hand, and skips (passes) without `SUPABASE_DB_URL`, like corpus QA.
 `scripts/check-migration-ledger.test.ts` runs it against fixtures in `npm test`.
