@@ -2612,9 +2612,16 @@ class BatchBPhmsaTouchpointTests(unittest.TestCase):
             ic.CFR_TITLE_PART_TO_REGKEY,
             {("49", "191"): "p191", ("49", "192"): "p192",
              ("49", "194"): "p194", ("49", "195"): "p195", ("49", "199"): "p199",
-             ("49", "190"): "p190", ("49", "193"): "p193", ("49", "196"): "p196"},
+             ("49", "190"): "p190", ("49", "193"): "p193", ("49", "196"): "p196",
+             # BLM (43 CFR), inert: CFR_TITLE_PART_RE reads title 49 only
+             ("43", "3160"): "blm3160", ("43", "3170"): "blm3170"},
         )
-        self.assertFalse([k for k in ic.CFR_TITLE_PART_TO_REGKEY if k[0] != "49"])
+        self.assertFalse([k for k in ic.CFR_TITLE_PART_TO_REGKEY if k[0] not in ("43", "49")])
+
+    def test_43_cfr_citations_in_ccr_documents_stay_plain_text(self):
+        """Adding BLM to the map links nothing in a Colorado document yet:
+        the citation pattern reads "49 CFR" only."""
+        self.assertIsNone(ic.CFR_TITLE_PART_RE.search("43 C.F.R. § 3162.3-1 and 43 CFR Part 3170"))
 
     def test_40_cfr_subpart_map_is_untouched(self):
         self.assertEqual(

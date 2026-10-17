@@ -1,0 +1,105 @@
+name: Fetch eCFR part
+
+# Downloads one whole CFR part from the eCFR versioner
+#   https://www.ecfr.gov/api/versioner/v1/full/<date>/title-<title>.xml?part=<part>
+# to pipeline/sources/P<part>.xml with scripts/fetch_ecfr_part.py (gzip-aware;
+# falls back to the title's latest published date when the versioner refuses
+# the one asked for), records title / part / date / bytes / sha256 in
+# pipeline/sources/manifest.json ("ecfr_fetches"), and commits both to the
+# branch it was dispatched on. The file is re-fetched even when it is already
+# in the repo. www.ecfr.gov is not reachable from every environment this repo
+# is worked on in, so this is how a whole-part source gets into the repo.
+# Dispatch it from the Actions tab, or call it from another workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: "CFR title (e.g. 43)"
+        required: true
+      part:
+        description: "CFR part (e.g. 3160)"
+        required: true
+      date:
+        description: "eCFR date (YYYY-MM-DD). Empty = today in America/Denver."
+        required: false
+        default: ""
+  # The same three inputs, so another workflow can call this one.
+  workflow_call:
+    inputs:
+      title:
+        type: string
+        required: true
+      part:
+        type: string
+        required: true
+      date:
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+# One run per branch at a time, so two dispatches (3160 and 3170) commit one
+# after the other instead of racing on manifest.json.
+concurrency:
+  group: fetch-ecfr-part-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # The branch tip, not the triggering commit: a second run (or a second
+      # call from one workflow) must build on the first one's manifest commit.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch the part
+        env:
+          INPUT_TITLE: ${{ inputs.title }}
+          INPUT_PART: ${{ inputs.part }}
+          INPUT_DATE: ${{ inputs.date }}
+        run: |
+          case "$INPUT_TITLE" in ''|*[!0-9]*) echo "::error::title must be a number, got '$INPUT_TITLE'"; exit 1 ;; esac
+          case "$INPUT_PART" in ''|*[!0-9]*) echo "::error::part must be a number, got '$INPUT_PART'"; exit 1 ;; esac
+          DATE="${INPUT_DATE:-$(python pipeline/denver_date.py)}"
+          echo "requested eCFR date: $DATE"
+          python scripts/fetch_ecfr_part.py --title "$INPUT_TITLE" --part "$INPUT_PART" --date "$DATE"
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          e = json.load(open("pipeline/sources/manifest.json"))["ecfr_fetches"][f"{os.environ['INPUT_TITLE']}-{os.environ['INPUT_PART']}"]
+          print("| title | part | date | requested | bytes | sha256 |\n|---|---|---|---|---:|---|")
+          print(f"| {e['title']} | {e['part']} | {e['date']} | {e['requested_date']} | {e['bytes']:,} | `{e['sha256']}` |")
+          PY
+
+      - name: Upload the XML
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecfr-title-${{ inputs.title }}-part-${{ inputs.part }}
+          path: pipeline/sources/P${{ inputs.part }}.xml
+
+      - name: Commit to this branch
+        env:
+          INPUT_TITLE: ${{ inputs.title }}
+          INPUT_PART: ${{ inputs.part }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "pipeline/sources/P${INPUT_PART}.xml" pipeline/sources/manifest.json
+          if git diff --cached --quiet; then echo "XML and manifest unchanged -- nothing to commit."; exit 0; fi
+          read -r DATE URL < <(python -c "import json; e=json.load(open('pipeline/sources/manifest.json'))['ecfr_fetches']['${INPUT_TITLE}-${INPUT_PART}']; print(e['date'], e['url'])")
+          git commit -m "Sources: eCFR versioner XML of ${INPUT_TITLE} CFR Part ${INPUT_PART} as of ${DATE} (P${INPUT_PART}.xml)" \
+                     -m "Fetched by the Fetch eCFR part workflow (run ${{ github.run_id }}) from ${URL}."
+          for i in 1 2 3 4; do
+            git pull --rebase -q origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}" && exit 0
+            sleep $((2 ** i))
+          done
+          echo "::error::push to ${{ github.ref_name }} failed"; exit 1

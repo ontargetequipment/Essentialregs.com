@@ -473,5 +473,27 @@
     }
    }
   }
+ },
+ "ecfr_fetches": {
+  "43-3160": {
+   "title": "43",
+   "part": "3160",
+   "date": "2026-10-15",
+   "requested_date": "2026-10-16",
+   "url": "https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-43.xml?part=3160",
+   "file": "pipeline/sources/P3160.xml",
+   "bytes": 120001,
+   "sha256": "6c264a78a91166fbdbf6c60db00060c9dbbb01d74a6d0788f388057607d6ca54"
+  },
+  "43-3170": {
+   "title": "43",
+   "part": "3170",
+   "date": "2026-10-15",
+   "requested_date": "2026-10-16",
+   "url": "https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-43.xml?part=3170",
+   "file": "pipeline/sources/P3170.xml",
+   "bytes": 691264,
+   "sha256": "ac87aa7a18f22cb9d37fe23472b1c3fde54594153903c309da3aeefccabe0abc"
+  }
  }
 }

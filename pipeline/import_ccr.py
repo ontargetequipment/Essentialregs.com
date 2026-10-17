@@ -4246,6 +4246,11 @@ CORPUS_REGS = {
     "p191": "p191", "p192": "p192",
     "p194": "p194", "p195": "p195", "p199": "p199",
     "p190": "p190", "p193": "p193", "p196": "p196",
+    # BLM (October 2026): 43 CFR Parts 3160 and 3170 (onshore oil and gas
+    # operations / production), whole parts on the same eCFR XML path. No
+    # Colorado document links to them yet: CFR_TITLE_PART_RE reads only
+    # "49 CFR" citations (see CFR_TITLE_PART_TO_REGKEY).
+    "blm3160": "blm3160", "blm3170": "blm3170",
     "ecmc": "ecmc", "cp": "cp",
     # Batch 6: Air Quality Standards, Designations and Emission Budgets
     # (5 CCR 1001-14) — see REG_META["aqs"].
@@ -4279,7 +4284,8 @@ CORPUS_REGS = {
 # dispatches on SUBPART_META[reg]["document"] == "part" and expects --xml.
 ECFR_REGS = {"oooo", "ooooa", "oooob", "ooooc", "jjjj", "iiii", "zzzz",
              "p191", "p192", "p194", "p195", "p199",
-             "p190", "p193", "p196"}
+             "p190", "p193", "p196",
+             "blm3160", "blm3170"}
 
 # 40 CFR Part 60 Subpart OOOO (the un-suffixed, 2012 version) was NOT in
 # CORPUS_REGS until 8 Oct 2026: citations to it stayed plain text
@@ -4442,6 +4448,11 @@ CFR_TITLE_PART_TO_REGKEY: dict[tuple[str, str], str] = {
     ("49", "190"): "p190",
     ("49", "193"): "p193",
     ("49", "196"): "p196",
+    # BLM. Inert for now: CFR_TITLE_PART_RE below matches title 49 only, so
+    # ECMC's "43 C.F.R. ..." citations stay plain text until that pattern is
+    # widened (and the ECMC parse re-baselined) in a later change.
+    ("43", "3160"): "blm3160",
+    ("43", "3170"): "blm3170",
 }
 # "49 CFR Part 192", "49 CFR part 191", "49 CFR 192.605", "49 CFR 191.5(b)"
 # -- plus the forms ECMC actually writes 49 CFR citations in (the only
@@ -4532,6 +4543,23 @@ REG_META: dict[str, dict] = {
         "source_url": "https://www.ecfr.gov/current/title-49/part-196",
         "root_citation": "49 CFR Part 196",
         "root_title": "49 CFR Part 196 \u2014 Protection of Underground Pipelines From Excavation Activity",
+    },
+    # -- BLM: 43 CFR Parts 3160 / 3170 (onshore oil and gas) ----------------
+    # Federal, BLM-issued, eCFR-sourced whole parts. Root titles are the
+    # <DIV5><HEAD> text ("PART 3160—ONSHORE OIL AND GAS OPERATIONS") in the
+    # same title case as the PHMSA roots; import_ecfr.PART_META holds the
+    # same values for the parser.
+    "blm3160": {
+        "jurisdiction_level": "federal", "issuing_body": "BLM",
+        "source_url": "https://www.ecfr.gov/current/title-43/part-3160",
+        "root_citation": "43 CFR Part 3160",
+        "root_title": "43 CFR Part 3160 \u2014 Onshore Oil and Gas Operations",
+    },
+    "blm3170": {
+        "jurisdiction_level": "federal", "issuing_body": "BLM",
+        "source_url": "https://www.ecfr.gov/current/title-43/part-3170",
+        "root_citation": "43 CFR Part 3170",
+        "root_title": "43 CFR Part 3170 \u2014 Onshore Oil and Gas Production",
     },
     # -- APCD General Permits GP01-GP12 (5 CCR-adjacent Division-issued
     # general construction permits, not AQCC-numbered regulations) --------
@@ -12807,7 +12835,7 @@ def cmd_parse(args):
 
         return import_ecfr.cmd_parse(args)
     if not args.pdf:
-        raise SystemExit("--pdf is required for CCR regulations (only the whole-PART 49 CFR regs p190-p196/p199 use --xml)")
+        raise SystemExit("--pdf is required for CCR regulations (only the whole-PART eCFR regs p190-p196/p199 and blm3160/blm3170 use --xml)")
     (result, unresolved, table_hits, n_tables_found, duplicate_ids,
      label_fixes_applied, anomalies, marker_audit) = parse_reg(args.reg, args.txt, args.pdf)
     out_path = Path(args.out)
@@ -14648,9 +14676,9 @@ def main():
 
     p_parse = sub.add_parser("parse", help="Parse a regulation's pdftotext output into provisions JSON.")
     p_parse.add_argument("--reg", required=True)
-    p_parse.add_argument("--pdf", default=None, help="Path to the source .pdf (for pdfplumber table extraction). Not used by the whole-PART eCFR regs (p190/p191/p192/p193/p194/p195/p196/p199), which read --xml.")
+    p_parse.add_argument("--pdf", default=None, help="Path to the source .pdf (for pdfplumber table extraction). Not used by the whole-PART eCFR regs (p190/p191/p192/p193/p194/p195/p196/p199, blm3160/blm3170), which read --xml.")
     p_parse.add_argument("--txt", default=None, help="Path to pdftotext -layout output (defaults to sources/REG_<reg>.txt).")
-    p_parse.add_argument("--xml", default=None, help="Path to the eCFR versioner XML; required for the whole-PART eCFR regs (p190/p191/p192/p193/p194/p195/p196/p199).")
+    p_parse.add_argument("--xml", default=None, help="Path to the eCFR versioner XML; required for the whole-PART eCFR regs (p190/p191/p192/p193/p194/p195/p196/p199, blm3160/blm3170).")
     p_parse.add_argument("--out", required=True)
     p_parse.add_argument("--corpus-ids", default=None,
                          help="Corpus id index (JSON {reg key: [provision ids]}, written by `dump-ids`) used to deep-link "

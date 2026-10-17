@@ -1,0 +1,212 @@
+<?xml version="1.0"?>
+<!-- Cut verbatim from pipeline/sources/P3160.xml (43 CFR Part 3160, eCFR 2026-10-15): Subpart 3160 § 3160.0-1, Subpart 3162 §§ 3162.1-3162.3-1, Subpart 3165 § 3165.1. Test fixture for pipeline/test_import_ecfr.py BlmPart*Tests. -->
+<DIV5 N="3160" TYPE="PART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-43/part-3160&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;43 CFR Part 3160&amp;quot;}">
+<HEAD>PART 3160&#x2014;ONSHORE OIL AND GAS OPERATIONS
+</HEAD>
+<DIV6 N="3160" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-43/part-3160/subpart-3160&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;43 CFR Part 3160 Subpart 3160&amp;quot;}">
+<HEAD>Subpart 3160&#x2014;Onshore Oil and Gas Operations: General</HEAD>
+<DIV8 N="3160.0-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.0-1&quot;,&quot;citation&quot;:&quot;43 CFR 3160.0-1&quot;}">
+<HEAD>&#xA7; 3160.0-1 Purpose.</HEAD>
+<P>The regulations in this part govern operations associated with the exploration, development and production of oil and gas deposits from&#x2014;</P>
+<P>(a) Leases issued or approved by the United States;</P>
+<P>(b) Restricted Indian land leases; and</P>
+<P>(c) Those leases under the jurisdiction of the Secretary of the Interior by law or administrative arrangement including the National Petroleum Reserve-Alaska (NPR-A). However, provisions relating to suspension and royalty reductions contained in subpart 3165 of this part do not apply to the NPR-A.</P>
+<CITA TYPE="N">[67 FR 17894, Apr. 11, 2002]
+</CITA>
+</DIV8>
+</DIV6>
+<DIV6 N="3162" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-43/part-3160/subpart-3162&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;43 CFR Part 3160 Subpart 3162&amp;quot;}">
+<HEAD>Subpart 3162&#x2014;Requirements for Operating Rights Owners and Operators</HEAD>
+<DIV8 N="3162.1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.1&quot;,&quot;citation&quot;:&quot;43 CFR 3162.1&quot;}">
+<HEAD>&#xA7; 3162.1 General requirements.</HEAD>
+<P>(a) The operating rights owner or operator, as appropriate, shall comply with applicable laws and regulations; with the lease terms, Onshore Oil and Gas Orders, NTL's; and with other orders and instructions of the authorized officer. These include, but are not limited to, conducting all operations in a manner which ensures the proper handling, measurement, disposition, and site security of leasehold production; which protects other natural resources and environmental quality; which protects life and property; and which results in maximum ultimate economic recovery of oil and gas with minimum waste and with minimum adverse effect on ultimate recovery of other mineral resources.</P>
+<P>(b) The operator shall permit properly identified authorized representatives to enter upon, travel across and inspect lease sites and records normally kept on the lease pertinent thereto without advance notice. Inspections normally will be conducted during those hours when responsible persons are expected to be present at the operation being inspected. Such permission shall include access to secured facilities on such lease sites for the purpose of making any inspection or investigation for determining whether there is compliance with the mineral leasing laws, the regulations in this part, and any applicable orders, notices or directives.</P>
+<P>(c) For the purpose of making any inspection or investigation, the Secretary or his authorized representative shall have the same right to enter upon or travel across any lease site as the operator has acquired by purchase, condemnation or otherwise.</P>
+<CITA TYPE="N">[47 FR 47765, Oct. 27, 1982. Redesignated and amended at 48 FR 36583, Aug. 12, 1983; 49 FR 37364, Sept. 21, 1984; 53 FR 17363, May 16, 1988]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2&quot;}">
+<HEAD>&#xA7; 3162.2 Drilling, producing, and drainage obligations.</HEAD>
+</DIV8>
+<DIV8 N="3162.2-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-1&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-1&quot;}">
+<HEAD>&#xA7; 3162.2-1 Drilling and producing obligations.</HEAD>
+<P>(a) The operator, at its election, may drill and produce other wells in conformity with any system of well spacing or production allotments affecting the field or area in which the leased lands are situated, and which is authorized and sanctioned by applicable law or by the authorized officer.</P>
+<P>(b) After notice in writing, the lessee(s) and operating rights owner(s) shall promptly drill and produce such other wells as the authorized officer may reasonably require in order that the lease may be properly and timely developed and produced in accordance with good economic operating practices.</P>
+<CITA TYPE="N">[66 FR 1892, Jan. 10, 2001. Redesignated at 66 FR 1892, Jan. 10, 2001; 66 FR 24073, May 11, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-2" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-2&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-2&quot;}">
+<HEAD>&#xA7; 3162.2-2 What steps may BLM take to avoid uncompensated drainage of Federal or Indian mineral resources?</HEAD>
+<P>If we determine that a well is draining Federal or Indian mineral resources, we may take any of the following actions:</P>
+<P>(a) If the mineral resources being drained are in Federal or Indian leases, we may require the lessee to drill and produce all wells that are necessary to protect the lease from drainage, unless the conditions of this part are met. BLM will consider applicable Federal, State, or Tribal rules, regulations, and spacing orders when determining which action to take. Alternatively, we may accept other equivalent protective measures;</P>
+<P>(b) If the mineral resources being drained are either unleased (including those which may not be subject to leasing) or in Federal or Indian leases, we may execute agreements with the owners of interests in the producing well under which the United States or the Indian lessor may be compensated for the drainage (with the consent of the Federal or (in consultation with the Indian mineral owner and BIA) Indian lessees, if any);</P>
+<P>(c) We may offer for lease any qualifying unleased mineral resources under part 3120 of this chapter or enter into a communitization agreement; or</P>
+<P>(d) We may approve a unit or communitization agreement that provides for payment of a royalty on production attributable to unleased mineral resources as provided in &#xA7; 3181.5.</P>
+<CITA TYPE="N">[66 FR 1893, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-3" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-3&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-3&quot;}">
+<HEAD>&#xA7; 3162.2-3 When am I responsible for protecting my Federal or Indian lease from drainage?</HEAD>
+<P>You must protect your Federal or Indian lease from drainage if your lease is being drained of mineral resources by a well:</P>
+<P>(a) Producing for the benefit of another mineral owner;</P>
+<P>(b) Producing for the benefit of the same mineral owner but with a lower royalty rate; or</P>
+<P>(c) Located in a unit or communitization agreement, which due to its Federal or Indian mineral owner's allocation or participation factor, generates less revenue for the United States or the Indian mineral owner for the mineral resources produced from your lease.</P>
+<CITA TYPE="N">[66 FR 1893, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-4" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-4&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-4&quot;}">
+<HEAD>&#xA7; 3162.2-4 What protective action may BLM require the lessee to take to protect the leases from drainage?</HEAD>
+<P>We may require you to:</P>
+<P>(a) Drill or modify and produce all wells that are necessary to protect the leased mineral resources from drainage;</P>
+<P>(b) Enter into a unitization or communitization agreement with the lease containing the draining well; or</P>
+<P>(c) Pay compensatory royalties for drainage that has occurred or is occurring.</P>
+<CITA TYPE="N">[66 FR 1893, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-5" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-5&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-5&quot;}">
+<HEAD>&#xA7; 3162.2-5 Must I take protective action when a protective well would be uneconomic?</HEAD>
+<P>You are not required to take any of the actions listed in &#xA7; 3162.2-4 if you can prove to BLM that when you first knew or had constructive notice of drainage you could not produce a sufficient quantity of oil or gas from a protective well on your lease for a reasonable profit above the cost of drilling, completing, and operating the protective well.</P>
+<CITA TYPE="N">[66 FR 1893, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-6" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-6&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-6&quot;}">
+<HEAD>&#xA7; 3162.2-6 When will I have constructive notice that drainage may be occurring?</HEAD>
+<P>(a) You have constructive notice that drainage may be occurring when well completion or first production reports for the draining well are filed with either BLM, State oil and gas commissions, or regulatory agencies and are publicly available.</P>
+<P>(b) If you operate or own any interest in the draining well or lease, you have constructive notice that drainage may be occurring when you complete drill stem, production, pressure analysis, or flow tests of the well.</P>
+<CITA TYPE="N">[66 FR 1893, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-7" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-7&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-7&quot;}">
+<HEAD>&#xA7; 3162.2-7 Who is liable for drainage if more than one person holds undivided interests in the record title or operating rights for the same lease?</HEAD>
+<P>(a) If more than one person holds record title interests in a portion of a lease that is subject to drainage, each person is jointly and severally liable for taking any action we may require under this part to protect the lease from drainage, including paying compensatory royalty accruing during the period and for the area in which it holds its record title interest.</P>
+<P>(b) Operating rights owners are jointly and severally liable with each other and with all record title holders for drainage affecting the area and horizons in which they hold operating rights during the period they hold operating rights.</P>
+<CITA TYPE="N">[66 FR 1893, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-8" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-8&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-8&quot;}">
+<HEAD>&#xA7; 3162.2-8 Does my responsibility for drainage protection end when I assign or transfer my lease interest?</HEAD>
+<P>If you assign your record title interest in a lease or transfer your operating rights, you are not liable for drainage that occurs after the date we approve the assignment or transfer. However, you remain responsible for the payment of compensatory royalties for any drainage that occurred when you held the lease interest.</P>
+<CITA TYPE="N">[66 FR 1893, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-9" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-9&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-9&quot;}">
+<HEAD>&#xA7; 3162.2-9 What is my duty to inquire about the potential for drainage and inform BLM of my findings?</HEAD>
+<P>(a) When you first acquire a lease interest, and at all times while you hold the lease interest, you must monitor the drilling of wells in the same or adjacent spacing units and gather sufficient information to determine whether drainage is occurring. This information can be in various forms, including but not limited to, well completion reports, sundry notices, or available production information. As a prudent lessee, it is your responsibility to analyze and evaluate this information and make the necessary calculations to determine:</P>
+<P>(1) The amount of drainage from production of the draining well;</P>
+<P>(2) The amount of mineral resources which will be drained from your Federal or Indian lease during the life of the draining well; and</P>
+<P>(3) Whether a protective well would be economic to drill.</P>
+<P>(b) You must notify BLM within 60 days from the date of actual or constructive notice of:</P>
+<P>(1) Which of the actions in &#xA7; 3162.2-4 you will take; or</P>
+<P>(2) The reasons a protective well would be uneconomic.</P>
+<P>(c) If you do not have sufficient information to comply with &#xA7; 3162.2-9(b)(1), indicate when you will provide the information.</P>
+<P>(d) You must provide BLM with the analysis under paragraph (a) of this section within 60 days after we request it.</P>
+<CITA TYPE="N">[66 FR 1893, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-10" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-10&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-10&quot;}">
+<HEAD>&#xA7; 3162.2-10 Will BLM notify me when it determines that drainage is occurring?</HEAD>
+<P>We will send you a demand letter by certified mail, return receipt requested, or personally serve you with notice, if we believe that drainage is occurring. However, your responsibility to take protective action arises when you first knew or had constructive notice of the drainage, even when that date precedes the BLM demand letter.</P>
+<CITA TYPE="N">[66 FR 1894, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-11" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-11&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-11&quot;}">
+<HEAD>&#xA7; 3162.2-11 How soon after I know of the likelihood of drainage must I take protective action?</HEAD>
+<P>(a) You must take protective action within a reasonable time after the earlier of:</P>
+<P>(1) The date you knew or had constructive notice that the potentially draining well had begun to produce oil or gas; or</P>
+<P>(2) The date we issued a demand letter for protective action.</P>
+<P>(b) Since the time required to drill and produce a protective well varies according to the location and conditions of the oil and gas reservoir, BLM will determine this on a case-by-case basis. When we determine whether you took protective action within a reasonable time, we will consider several factors including, but not limited to:</P>
+<P>(1) Time required to evaluate the characteristics and performance of the draining well;</P>
+<P>(2) Rig availability;</P>
+<P>(3) Well depth;</P>
+<P>(4) Required environmental analysis;</P>
+<P>(5) Special lease stipulations which provide limited time frames in which to drill; and</P>
+<P>(6) Weather conditions.</P>
+<P>(c) If BLM determines that you did not take protection action timely, you will owe compensatory royalty for the period of the delay under &#xA7; 3162.2-12.</P>
+<CITA TYPE="N">[66 FR 1894, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-12" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-12&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-12&quot;}">
+<HEAD>&#xA7; 3162.2-12 If I hold an interest in a lease, for what period will the Department assess compensatory royalty against me?</HEAD>
+<P>The Department will assess compensatory royalty beginning on the first day of the month following the earliest reasonable time we determine you should have taken protective action. You must continue to pay compensatory royalty until:</P>
+<P>(a) You drill sufficient economic protective wells and remain in continuous production;</P>
+<P>(b) We approve a unitization or communitization agreement that includes the mineral resources being drained;</P>
+<P>(c) The draining well stops producing; or</P>
+<P>(d) You relinquish your interest in the Federal or Indian lease.</P>
+<CITA TYPE="N">[66 FR 1894, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-13" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-13&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-13&quot;}">
+<HEAD>&#xA7; 3162.2-13 If I acquire an interest in a lease that is being drained, will the Department assess me for compensatory royalty?</HEAD>
+<P>If you acquire an interest in a Federal or Indian lease through an assignment of record title or transfer of operating rights under this part, you are liable for all drainage obligations accruing on and after the date we approve the assignment or transfer.</P>
+<CITA TYPE="N">[66 FR 1894, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-14" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-14&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-14&quot;}">
+<HEAD>&#xA7; 3162.2-14 May I appeal BLM's decision to require drainage protective measures?</HEAD>
+<P>You may appeal any BLM decision requiring you take drainage protective measures. You may request BLM State Director review under 43 CFR 3165.3 and/or appeal to the Interior Board of Land Appeals under 43 CFR part 4 and subpart 1840.</P>
+<CITA TYPE="N">[66 FR 1894, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.2-15" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.2-15&quot;,&quot;citation&quot;:&quot;43 CFR 3162.2-15&quot;}">
+<HEAD>&#xA7; 3162.2-15 Who has the burden of proof if I appeal BLM's drainage determination?</HEAD>
+<P>BLM has the burden of establishing a <I>prima facie</I> case that drainage is occurring and that you knew of such drainage. Then the burden of proof shifts to you to refute the existence of drainage or to prove there was not sufficient information to put you on notice of the need for drainage protection. You also have the burden of proving that drilling and producing from a protective well would not be economically feasible.</P>
+<CITA TYPE="N">[66 FR 1894, Jan. 10, 2001]
+</CITA>
+</DIV8>
+<DIV8 N="3162.3" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.3&quot;,&quot;citation&quot;:&quot;43 CFR 3162.3&quot;}">
+<HEAD>&#xA7; 3162.3 Conduct of operations.</HEAD>
+<P>(a) Whenever a change in operator occurs, the authorized officer shall be notified promptly in writing, and the new operator shall furnish evidence of sufficient bond coverage in accordance with &#xA7; 3106.6 and subpart 3104 of this title.</P>
+<P>(b) A contractor on a leasehold shall be considered the agent of the operator for such operations with full responsibility for acting on behalf of the operator for purposes of complying with applicable laws, regulations, the lease terms, NTL's, Onshore Oil and Gas Orders, and other orders and instructions of the authorized officer.</P>
+<CITA TYPE="N">[53 FR 17363, May 16, 1988; 53 FR 31959, Aug. 22, 1988]
+</CITA>
+</DIV8>
+<DIV8 N="3162.3-1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3162.3-1&quot;,&quot;citation&quot;:&quot;43 CFR 3162.3-1&quot;}">
+<HEAD>&#xA7; 3162.3-1 Drilling applications and plans.</HEAD>
+<P>(a) Each well shall be drilled in conformity with an acceptable well-spacing program at a surveyed well location approved or prescribed by the authorized officer after appropriate environmental and technical reviews (see &#xA7; 3162.5-1 of this title). An acceptable well-spacing program may be either (1) one which conforms with a spacing order or field rule issued by a State Commission or Board and accepted by the authorized officer, or (2) one which is located on a lease committed to a communitized or unitized tract at a location approved by the authorized officer, or (3) any other program established by the authorized officer.</P>
+<P>(b) Any well drilled on restricted Indian land shall be subject to the location restrictions specified in the lease and/or Title 25 of the CFR.</P>
+<P>(c) The operator shall submit to the authorized officer for approval an Application for Permit to Drill for each well. No drilling operations, nor surface disturbance preliminary thereto, may be commenced prior to the authorized officer's approval of the permit.</P>
+<P>(d) The Application for Permit to Drill process must be initiated at least 30 days before commencement of operations is desired. Prior to approval, the application must be administratively and technically complete. A complete application consists of Form 3160-3 and the following attachments:</P>
+<P>(1) A drilling plan, which may already be on file, containing information required by paragraph (e) of this section and appropriate orders and notices.</P>
+<P>(2) A surface use plan of operations containing information required by paragraph (f) of this section and appropriate orders and notices.</P>
+<P>(3) Evidence of bond coverage as required by the Department of the Interior regulations.</P>
+<P>(4) For an oil well, a Waste Minimization Plan (WMP), as required by paragraph (j) or a self-certification statement, as required by paragraph (k) (These requirements do not apply to gas wells); and</P>
+<P>(5) Such other information as may be required by applicable orders and notices.</P>
+<P>(e) Each drilling plan shall contain the information specified in applicable notices or orders, including a description of the drilling program, the surface and projected completion zone location, pertinent geologic data, expected hazards, and proposed mitigation measures to address such hazards. A drilling plan may be submitted for a single well or for several wells proposed to be drilled to the same zone within a field or area of geological and environmental similarity. A drilling plan may be modified from time to time as circumstances may warrant, with the approval of the authorized officer.</P>
+<P>(f) The surface use plan of operations shall contain information specified in applicable orders or notices, including the road and drillpad location, details of pad construction, methods for containment and disposal of waste material, plans for reclamation of the surface, and other pertinent data as the authorized officer may require. A surface use plan of operations may be submitted for a single well or for several wells proposed to be drilled in an area of environmental similarity.</P>
+<P>(g) For Federal lands, upon receipt of the Application for Permit to Drill or Notice of Staking, the authorized officer shall post the following information for public inspection at least 30 days before action to approve the Application for Permit to Drill: the company/operator name; the well name/number; the well location described to the nearest quarter-quarter section (40 acres), or similar land description in the case of lands described by metes and bounds, or maps showing the affected lands and the location of all tracts to be leased and of all leases already issued in the general area; and any substantial modifications to the lease terms. Where the inclusion of maps in such posting is not practicable, maps of the affected lands shall be made available to the public for review. This information also shall be provided promptly by the authorized officer to the appropriate office of the Federal surface management agency, for lands the surface of which is not under Bureau jurisdiction, requesting such agency to post the proposed action for public inspection for at least 30 days. The posting shall be in the office of the authorized officer and in the appropriate surface managing agency if other than the Bureau. The posting of an Application for Permit to Drill is for information purposes only and is not an appealable decision.</P>
+<P>(h) Upon initiation of the Application for Permit to Drill process, the authorized officer shall consult with the appropriate Federal surface management agency and with other interested parties as appropriate and shall take one of the following actions as soon as practical, but in no event later than 5 working days after the conclusion of the 30-day notice period for Federal lands, or within 30 days from receipt of the application for Indian lands:</P>
+<P>(1) Approve the application as submitted or with appropriate modifications or conditions;</P>
+<P>(2) Return the application and advise the applicant of the reasons for disapproval; or</P>
+<P>(3) Advise the applicant, either in writing or orally with subsequent written confirmation, of the reasons why final action will be delayed along with the date such final action can be expected.</P>
+<FP>The surface use plan of operations for National Forest System lands shall be approved by the Secretary of Agriculture or his/her representative prior to approval of the Application for Permit to Drill by the authorized officer. Appeals from the denial of approval of such surface use plan of operations shall be submitted to the Secretary of Agriculture.
+</FP>
+<P>(i) Approval of the Application for Permit to Drill does not warrant or certify that the applicant holds legal or equitable title to the subject lease(s) which would entitle the applicant to conduct drilling operations.</P>
+<P>(j) An Application for Permit to Drill for an oil well with a WMP must include the following information in the WMP:</P>
+<P>(1) The anticipated initial oil production rate from the oil well and the anticipated production decline over the first 3 years of production;</P>
+<P>(2) The anticipated initial oil-well gas production rate from the oil well and the anticipated production decline over the first 3 years of production;</P>
+<P>(3) Certification that the operator has a valid, executed gas sales contract to sell to a purchaser 100 percent of the produced oil-well gas, less gas anticipated for use on-lease pursuant to 43 CFR subpart 3178.</P>
+<P>(4) Any other information demonstrating the operator's plans to avoid the waste of gas production from any source, including, as appropriate, from pneumatic equipment, storage tanks, and leaks.</P>
+<P>(k) A self-certification is a written statement that the operator will be able to capture, as defined in 43 CFR 3179.10, 100 percent of the oil-well gas that the oil well produces. An approved Application for Permit to Drill with a self-certification statement is not subject to 43 CFR 3179.70(a), and all flared gas is an avoidable loss with a royalty obligation, except for emergencies as identified in 43 CFR 3179.83. A self-certification statement applies and is enforceable from the date of first production until the well is plugged and abandoned.</P>
+<P>(l) The BLM may take one of the following actions based on the operator's WMP or self-certification:</P>
+<P>(1) Approve an administratively and technically complete oil-well application with a WMP subject to conditions for flared gas, as described in 43 CFR 3179.70(a);</P>
+<P>(2) Approve an administratively and technically complete oil-well application with a self-certification for oil-well gas capture subject to conditions for flared gas, as described in this paragraph;</P>
+<P>(3) Defer action on an oil-well application with a WMP or self-certification statement that is not administratively and technically complete in the interest of preventing waste until such time as the operator is able to amend the application to comply with the requirements in paragraph (j) of this section or this paragraph, as applicable. If the applicant does not address deficiencies in the WMP or the self-certification to comply with the applicable requirements within 2 years of submission of the application, the BLM will disapprove the application.</P>
+<CITA TYPE="N">[47 FR 47765, Oct. 27, 1982. Redesignated and amended at 48 FR 36583, Aug. 12, 1983, further amended at 52 FR 5391, Feb. 20, 1987; 53 FR 17363, May 16, 1988; 53 FR 22846, June 17, 1988; 53 FR 31958, Aug. 22, 1988; 81 FR 83078, Nov. 18, 2016; 82 FR 58072, Dec. 8, 2017; 83 FR 49211, Sept. 28, 2018; 89 FR 25426, Apr. 10, 2024]
+</CITA>
+</DIV8>
+</DIV6>
+<DIV6 N="3165" TYPE="SUBPART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-43/part-3160/subpart-3165&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;43 CFR Part 3160 Subpart 3165&amp;quot;}">
+<HEAD>Subpart 3165&#x2014;Relief, Conflicts, and Appeals</HEAD>
+<DIV8 N="3165.1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-43/section-3160.3165.1&quot;,&quot;citation&quot;:&quot;43 CFR 3165.1&quot;}">
+<HEAD>&#xA7; 3165.1 Relief from operating and/or producing requirements.</HEAD>
+<P>(a) Applications for relief from either the operating or the producing requirements of a lease, or both, must be filed with the authorized officer, and must include a full statement of the circumstances that render such relief necessary.</P>
+<P>(b) The authorized officer will act on applications submitted for a suspension of operations or production, or both, filed pursuant to 43 CFR 3103.42. The application for suspension must be filed with the authorized officer prior to the expiration date of the lease; must be executed by all operating rights owners or by the operator on behalf of the operating rights owners; and must include a full statement of the circumstances that makes such relief necessary.</P>
+<P>(c) The authorized officer will not approve an application for a suspension of a lease where the applicant only cites, as the basis for the suspension, a pending application for permit to drill filed less than 90 calendar days prior to the expiration date of the lease.</P>
+<P>(d) If approved, a suspension of operations and production will be effective on the first of the month in which the completed application was filed or the date specified by the authorized officer in the approval. Approved suspensions will not exceed 1 year. If the circumstances warrant all operating rights owners, or the operator on behalf of the operating rights owners, may submit a request to extend the suspension prior to the end of the suspension.</P>
+<P>(e) BLM-directed suspensions may exceed 1 year.</P>
+<P>(f) Suspensions will lift when the basis provided for the suspension no longer exists, when lifting the suspension is in the public interest, or as otherwise stated by the authorized officer in the approval letter.</P>
+<CITA TYPE="N">[89 FR 30996, Apr. 23, 2024]
+</CITA>
+</DIV8>
+</DIV6>
+</DIV5>

@@ -1159,6 +1159,8 @@ class CfrPartResolverTests(unittest.TestCase):
                 "49-195": "p195",
                 "49-196": "p196",
                 "49-199": "p199",
+                "43-3160": "blm3160",
+                "43-3170": "blm3170",
             },
         )
 
@@ -2316,7 +2318,9 @@ class PartListCitationTests(unittest.TestCase):
     def test_bare_section_of_a_batch_b_part_is_still_emitted_verbatim(self):
         """PART_BARE_LINK_PARTS keeps 194/195/199 exactly as Batch B shipped
         them (their bare trailing members were never linked)."""
-        self.assertEqual(ie.PART_BARE_LINK_PARTS, frozenset({"190", "191", "192", "193", "196"}))
+        # (The four-digit members are BLM's 43 CFR subpart prefixes, 3160-3179.)
+        self.assertEqual({p for p in ie.PART_BARE_LINK_PARTS if len(p) == 3}, {"190", "191", "192", "193", "196"})
+        self.assertEqual({p for p in ie.PART_BARE_LINK_PARTS if len(p) == 4}, {str(n) for n in range(3160, 3180)})
         out, unres = self._link("specified in 49 CFR 192.614 and 195.442 and 49 U.S.C. 60114",
                                 reg="p196", sec="sec-p196-196.111")
         self.assertIn('href="/regulations/p192">49 CFR 192.614</a> and 195.442 and', out)
@@ -2807,3 +2811,393 @@ class CorpusIndexFromMainTests(unittest.TestCase):
                 main._ACTIVE_CORPUS_IDS = old
             else:
                 del main._ACTIVE_CORPUS_IDS
+
+
+# ---------------------------------------------------------------------------
+# BLM: 43 CFR Parts 3160 / 3170 (PR 1a, October 2026)
+# ---------------------------------------------------------------------------
+# Fixtures cut verbatim from pipeline/sources/P3160.xml and P3170.xml
+# (eCFR 2026-10-15): pipeline/fixtures/blm3160_excerpt.xml,
+# pipeline/fixtures/blm3170_excerpt.xml.
+
+FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
+BLM3160_EXCERPT = os.path.join(FIXTURES, "blm3160_excerpt.xml")
+BLM3170_EXCERPT = os.path.join(FIXTURES, "blm3170_excerpt.xml")
+P3160_XML = os.path.join(SOURCES, "P3160.xml")
+P3170_XML = os.path.join(SOURCES, "P3170.xml")
+
+
+class BlmPartMetaTests(unittest.TestCase):
+    def test_both_parts_registered(self):
+        for key, part in (("blm3160", 3160), ("blm3170", 3170)):
+            meta = ie.SUBPART_META[key]
+            self.assertEqual(meta["document"], "part")
+            self.assertEqual(meta["source"], "xml")
+            self.assertEqual(meta["title"], 43)
+            self.assertEqual(meta["part"], part)
+            self.assertEqual(meta["issuing_body"], "BLM")
+            self.assertEqual(meta["jurisdiction_level"], "federal")
+            self.assertEqual(meta["root_citation"], f"43 CFR Part {part}")
+            self.assertEqual(meta["url"], f"https://www.ecfr.gov/current/title-43/part-{part}")
+            self.assertIn(key, ie.CORPUS_REGS)
+            self.assertEqual(ie.CFR_PART_TO_REGKEY[f"43-{part}"], key)
+
+    def test_root_title_is_the_xml_part_heading(self):
+        import xml.etree.ElementTree as ET
+
+        for key, xml in (("blm3160", P3160_XML), ("blm3170", P3170_XML)):
+            if not os.path.exists(xml):
+                self.skipTest(f"{xml} not present")
+            head = ie._xml_text(ET.parse(xml).getroot().find("HEAD"))
+            number, name = head.split("—", 1)
+            expected = f"43 CFR {number.title()} — {name.title().replace(' And ', ' and ')}"
+            self.assertEqual(ie.SUBPART_META[key]["root_title"], expected)
+
+    def test_import_ccr_maps(self):
+        import import_ccr as ic
+
+        for key, part in (("blm3160", "3160"), ("blm3170", "3170")):
+            self.assertIn(key, ic.ECFR_REGS)
+            self.assertEqual(ic.CORPUS_REGS[key], key)
+            self.assertEqual(ic.CFR_TITLE_PART_TO_REGKEY[("43", part)], key)
+            self.assertEqual(ic.REG_META[key]["issuing_body"], "BLM")
+            self.assertEqual(ic.REG_META[key]["jurisdiction_level"], "federal")
+            self.assertEqual(ic.REG_META[key]["root_title"], ie.SUBPART_META[key]["root_title"])
+            self.assertEqual(ic.REG_META[key]["source_url"], ie.SUBPART_META[key]["url"])
+
+    def test_title_43_section_prefix_names_the_part_by_its_tens(self):
+        self.assertEqual(ie._resolve_target_reg_titled(43, "3162", "3"), "blm3160")
+        self.assertEqual(ie._resolve_target_reg_titled(43, "3160", "0"), "blm3160")
+        self.assertEqual(ie._resolve_target_reg_titled(43, "3179", "70"), "blm3170")
+        self.assertIsNone(ie._resolve_target_reg_titled(43, "3181", "5"))   # Part 3180: not in the corpus
+        self.assertIsNone(ie._resolve_target_reg_titled(43, "4", "21"))     # 43 CFR 4.21
+        # title 49 is unchanged, and a 43 CFR number never reaches it
+        self.assertEqual(ie._resolve_target_reg_titled(49, "192", "605"), "p192")
+        self.assertIsNone(ie._resolve_target_reg_titled(49, "3162", "3"))
+        self.assertIsNone(ie._resolve_target_reg_titled(43, "192", "605"))
+
+
+class BlmSectionNumberTests(unittest.TestCase):
+    """Section 3 of PR 1a: hyphenated section numbers."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rows, cls.rep = ie.parse_ecfr_part("blm3160", BLM3160_EXCERPT)
+        cls.by_id = {r["id"]: r for r in cls.rows}
+
+    def test_is_range(self):
+        for n in ("192.117-192.119", "193.2061-193.2065", "190.229-190.231", "3162.2-1-3162.2-3"):
+            self.assertTrue(ie._is_section_range(n), n)
+        for n in ("3162.2-15", "3160.0-1", "3165.1-1", "192.3", "3175.30"):
+            self.assertFalse(ie._is_section_range(n), n)
+
+    def test_hyphenated_section_is_one_section(self):
+        r = self.by_id["sec-blm3160-3162.2-15"]
+        self.assertEqual(r["citation"], "§ 3162.2-15")
+        self.assertEqual(r["kind"], "section")
+        self.assertEqual(r["parent_id"], "sec-blm3160-PART-3162")
+        self.assertTrue(r["title"].startswith("§ 3162.2-15 "))
+        self.assertEqual(self.by_id["sec-blm3160-3160.0-1"]["citation"], "§ 3160.0-1")
+        # paragraphs hang off the hyphenated id with the hyphen kept
+        r = self.by_id["sec-blm3160-3162.2-1-(a)"]
+        self.assertEqual(r["citation"], "§ 3162.2-1(a)")
+        self.assertEqual(r["parent_id"], "sec-blm3160-3162.2-1")
+        self.assertFalse([r["id"] for r in self.rows if "_" in r["id"]])
+
+    def test_sort_order_is_document_order_not_text_order(self):
+        nums = [f"3162.2-{i}" for i in range(1, 16)]
+        orders = [self.by_id[f"sec-blm3160-{n}"]["sort_order"] for n in nums]
+        self.assertEqual(orders, sorted(orders))
+        self.assertNotEqual(sorted(nums), nums)   # a text sort would put -10 before -2
+        self.assertLess(self.by_id["sec-blm3160-3162.2"]["sort_order"], orders[0])
+        self.assertLess(orders[-1], self.by_id["sec-blm3160-3162.3"]["sort_order"])
+        self.assertEqual(self.rep["section_order_breaks"], [])
+
+    def test_prefix_collisions_reported(self):
+        got = {(c["section"], c["extends"]) for c in self.rep["prefix_collisions"]}
+        expected = {(f"3162.2-{i}", "3162.2") for i in range(1, 16)} | {("3162.3-1", "3162.3")}
+        self.assertEqual(got, expected)   # 3165.1-1 is not in the excerpt
+
+    def test_bare_umbrella_section_is_a_heading_not_reserved(self):
+        r = self.by_id["sec-blm3160-3162.2"]
+        self.assertEqual(r["kind"], "section")
+        self.assertEqual(r["full_text"], "§ 3162.2 Drilling, producing, and drainage obligations.")
+        self.assertEqual(r["full_text"], r["title"])
+        self.assertEqual(self.rep["reserved"], [])
+        self.assertEqual(self.rep["heading_only_sections"], ["§ 3162.2"])
+
+    def test_numeric_subpart_rows(self):
+        self.assertEqual(self.rep["subparts"], ["Subpart 3160", "Subpart 3162", "Subpart 3165"])
+        r = self.by_id["sec-blm3160-PART-3162"]
+        self.assertEqual(r["full_text"], "Subpart 3162 — Requirements for Operating Rights Owners and Operators")
+
+    def test_phmsa_reserved_ranges_still_parse_as_ranges(self):
+        if not os.path.exists(P192_XML):
+            self.skipTest("P192.xml not present")
+        rows, rep = ie.parse_ecfr_part("p192", P192_XML)
+        r = next(r for r in rows if r["id"] == "sec-p192-192.117-192.119")
+        self.assertEqual(r["citation"], "§§ 192.117-192.119")
+        self.assertEqual(r["full_text"], "<p>[Reserved]</p>")
+        self.assertEqual(rep["prefix_collisions"], [])
+        self.assertEqual(rep["heading_only_sections"], [])
+
+    def test_section_number_key(self):
+        self.assertLess(ie._section_number_key("3162.2-2"), ie._section_number_key("3162.2-10"))
+        self.assertLess(ie._section_number_key("3162.2"), ie._section_number_key("3162.2-1"))
+        self.assertEqual(ie._section_number_key("192.117-192.119"), (192, 117))
+
+
+class BlmCitationLinkingTests(unittest.TestCase):
+    """Section 4 of PR 1a: four-digit parts, hyphenated sections, numeric
+    subparts, and nothing silent."""
+
+    KNOWN = {
+        "sec-blm3160-top-REG-blm3160",
+        "sec-blm3160-PART-3162",
+        "sec-blm3160-PART-3165",
+        "sec-blm3160-3162.2",
+        "sec-blm3160-3162.2-15",
+        "sec-blm3160-3162.3-1",
+        "sec-blm3160-3162.3-1-(d)",
+        "sec-blm3160-3163.2",
+    }
+
+    def _link(self, text, reg="blm3160", own="sec-blm3160-3162.2-15"):
+        unresolved = defaultdict(Counter)
+        out = ie.link_citations(text, reg, own, own, self.KNOWN, ie.CORPUS_REGS, unresolved)
+        return out, unresolved
+
+    def test_hyphenated_section_links_to_its_own_id(self):
+        out, _ = self._link("as required by § 3162.3-1 of this title")
+        self.assertIn('<span class="xref" data-target="sec-blm3160-3162.3-1">§ 3162.3-1</span>', out)
+
+    def test_hyphenated_section_with_paragraph(self):
+        out, _ = self._link("see § 3162.3-1(d) here")
+        self.assertIn('data-target="sec-blm3160-3162.3-1-(d)">§ 3162.3-1(d)</span>', out)
+
+    def test_bare_section_and_its_hyphenated_sibling_stay_apart(self):
+        out, _ = self._link("§§ 3162.2 and 3162.3-1")
+        self.assertIn('data-target="sec-blm3160-3162.2">§§ 3162.2</span>', out)
+        self.assertIn('data-target="sec-blm3160-3162.3-1">3162.3-1</span>', out)
+
+    def test_43_cfr_prefixed_cite(self):
+        out, _ = self._link("under 43 CFR 3163.2 apply")
+        self.assertIn('data-target="sec-blm3160-3163.2">43 CFR 3163.2</span>', out)
+
+    def test_cross_document_hyphenated_cite(self):
+        import import_ccr as ic
+
+        out, _ = self._link("43 CFR 3162.3-1(d) and", reg="blm3170", own="sec-blm3170-3171.4")
+        self.assertEqual(out, '<a class="xref-external-reg" href="/regulations/blm3160">43 CFR 3162.3-1(d)</a> and')
+        ic.set_corpus_ids({"blm3160": {"sec-blm3160-3162.3-1", "sec-blm3160-3162.3-1-(d)"}})
+        try:
+            out, _ = self._link("43 CFR 3162.3-1(d) and", reg="blm3170", own="sec-blm3170-3171.4")
+        finally:
+            ic.set_corpus_ids(None)
+        self.assertIn('data-provision-id="sec-blm3160-3162.3-1-(d)"', out)
+        self.assertIn('href="/regulations/blm3160#sec-blm3160-3162.3-1-(d)"', out)
+
+    def test_numeric_subpart_of_this_part(self):
+        out, _ = self._link("contained in subpart 3165 of this part do not apply")
+        self.assertEqual(
+            out,
+            'contained in subpart <span class="xref" data-target="sec-blm3160-PART-3165">3165</span> of this part do not apply',
+        )
+
+    def test_numeric_subpart_list_in_another_part(self):
+        out, unresolved = self._link("part 3170, including subparts 3173, 3174, and 3175")
+        self.assertEqual(out.count('href="/regulations/blm3170"'), 4)
+        self.assertIn('>3173</a>, <a class="xref-external-reg" href="/regulations/blm3170">3174</a>, and ', out)
+        self.assertEqual(sum(sum(c.values()) for c in unresolved.values()), 0)
+
+    def test_numeric_subpart_deep_link_with_index(self):
+        import import_ccr as ic
+
+        ic.set_corpus_ids({"blm3160": {"sec-blm3160-PART-3163"}})
+        try:
+            out, _ = self._link("under 43 CFR subpart 3163 or", reg="blm3170", own="sec-blm3170-3170.9")
+        finally:
+            ic.set_corpus_ids(None)
+        self.assertIn('href="/regulations/blm3160#sec-blm3160-PART-3163">3163</a>', out)
+
+    def test_out_of_corpus_numeric_subpart_is_bucketed(self):
+        out, unresolved = self._link("under subpart 3104 of this title and subpart 1840.")
+        self.assertNotIn("<", out)
+        self.assertEqual(unresolved[ie.BUCKET_CFR], Counter({"subpart 3104": 1, "subpart 1840": 1}))
+
+    def test_missing_own_subpart_is_bucketed(self):
+        out, unresolved = self._link("under subpart 3164 of this part")
+        self.assertNotIn("<", out)
+        self.assertEqual(unresolved[ie.BUCKET_OTHER_SUBPART], Counter({"subpart 3164": 1}))
+
+    def test_four_digit_part_references(self):
+        out, _ = self._link("the regulations in part 3160 and part 3170")
+        self.assertIn('<span class="xref" data-target="sec-blm3160-top-REG-blm3160">part 3160</span>', out)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/blm3170">part 3170</a>', out)
+
+    def test_another_titles_part_is_read_in_that_title(self):
+        out, unresolved = self._link("30 CFR part 221 and 1 CFR part 51")
+        self.assertNotIn("<", out)
+        self.assertEqual(unresolved[ie.BUCKET_CFR], Counter({"part 221": 1, "part 51": 1}))
+
+    def test_nonexistent_own_section_is_bucketed(self):
+        out, unresolved = self._link("and 3162.7-5 of this title; § 3162.7-5")
+        self.assertNotIn("<", out)
+        self.assertEqual(unresolved[ie.BUCKET_UNPARSEABLE], Counter({"3162.7-5": 1, "§ 3162.7-5": 1}))
+
+    def test_unrecognised_section_sign_is_bucketed_not_dropped(self):
+        out, unresolved = self._link("16 U.S.C. 1 et seq.; § 441 of the Act")
+        self.assertEqual(out, "16 U.S.C. 1 et seq.; § 441 of the Act")
+        self.assertEqual(unresolved[ie.BUCKET_UNRECOGNISED], Counter({"§ 441": 1}))
+
+    def test_figure_url_is_not_a_bare_cite(self):
+        url = '<p class="figure-omitted">see https://www.ecfr.gov/current/title-43/section-3162.2-15</p>'
+        out, unresolved = self._link(url)
+        self.assertEqual(out, url)
+        self.assertEqual(sum(sum(c.values()) for c in unresolved.values()), 0)
+
+    def test_title_49_patterns_do_not_take_a_dash_range_as_a_hyphen(self):
+        m = ie.PART_NUMREF_RE.search("§§ 192.117-192.119 [Reserved]")
+        self.assertEqual(m.group(0), "§§ 192.117")
+        m = ie.PART_NUMREF_43_RE.search("§§ 3162.2-1-3162.2-3")
+        self.assertEqual(m.group(0), "§§ 3162.2-1")
+
+    def test_title_49_documents_get_no_title_43_alternatives(self):
+        unresolved = defaultdict(Counter)
+        text = "subpart 3165 applies; § 441"
+        out = ie.link_citations(text, "p192", "sec-p192-192.605", "sec-p192-192.605", set(), ie.CORPUS_REGS, unresolved)
+        self.assertEqual(out, text)
+        self.assertNotIn(ie.BUCKET_UNRECOGNISED, unresolved)
+
+
+class BlmExcerptParseTests(unittest.TestCase):
+    """The 3170 excerpt end to end: cross-part cites, method links, standards."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rows, cls.rep = ie.parse_ecfr_part("blm3170", BLM3170_EXCERPT)
+        cls.by_id = {r["id"]: r for r in cls.rows}
+
+    def test_cross_part_hyphenated_list(self):
+        t = self.by_id["sec-blm3170-3172.1-(b)"]["full_text"]
+        self.assertIn('<a class="xref-external-reg" href="/regulations/blm3160">43 CFR 3162.3-1</a>, ', t)
+        self.assertIn('<a class="xref-external-reg" href="/regulations/blm3160">3162.3-4</a>', t)
+
+    def test_api_mpms_and_aga_stay_plain_text(self):
+        rows = [r for r in self.rows if r["id"].startswith("sec-blm3170-3175.30")]
+        texts = "".join(r["full_text"] for r in rows)
+        self.assertIn("API MPMS", texts)
+        self.assertIn("AGA Report", texts)
+        for a in re.findall(r"<a\b[^>]*>(.*?)</a>", texts):
+            self.assertNotRegex(a, r"API|AGA", a)
+        self.assertGreater(sum(c for t, c in self.rep["unresolved"][ie.BUCKET_STANDARD].items() if t.startswith("API")), 0)
+
+    def test_epa_method_21_is_linked(self):
+        t = self.by_id["sec-blm3170-3179.101-(c)"]["full_text"]
+        self.assertIn('<a class="xref-method" href="/test-methods/method-21">EPA Method 21</a>', t)
+
+    def test_section_image_is_a_placeholder(self):
+        t = self.by_id["sec-blm3170-3175.90-(b)"]["full_text"]
+        self.assertIn("https://www.ecfr.gov/current/title-43/section-3175.90", t)
+        self.assertEqual(len(self.rep["images"]), 1)
+
+    def test_no_section_sign_is_left_unaccounted(self):
+        """Every § printed outside a link is a self-cite or in a bucket."""
+        bucketed = {t for c in self.rep["unresolved"].values() for t in c}
+        for r in self.rows:
+            if not r["full_text"].startswith("<"):
+                continue
+            plain = re.sub(r"<(span|a)\b[^>]*>.*?</\1>", " ", r["full_text"])
+            plain = re.sub(r"<[^>]+>", " ", plain)
+            for m in re.finditer(r"§§?\s*[^\s<]*", plain):
+                cite = m.group(0).rstrip(".,;:)")
+                self.assertTrue(
+                    any(b.startswith(cite) or cite.startswith(b) for b in bucketed)
+                    or r["id"].startswith(f"sec-blm3170-{cite.lstrip('§ ').split('(')[0]}"),
+                    f"{r['id']}: {cite!r} neither linked nor bucketed",
+                )
+
+
+class _BlmFullParseMixin(_PartRowInvariantsMixin):
+    XML = ""
+    REG = ""
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(cls.XML):
+            raise unittest.SkipTest(f"{cls.XML} not present")
+        cls.rows, cls.rep = ie.parse_ecfr_part(cls.REG, cls.XML)
+        cls.by_id = {r["id"]: r for r in cls.rows}
+
+    def test_no_orphans_no_duplicates_no_dead_targets(self):
+        ids = {r["id"] for r in self.rows}
+        self.assertEqual(len(ids), len(self.rows))
+        self.assertEqual(self.rep["duplicate_ids"], [])
+        self.assertFalse([r for r in self.rows if r["parent_id"] and r["parent_id"] not in ids])
+        self.assertEqual(self.rep["dead_targets"], [])
+        self.assertEqual(self.rep["section_order_breaks"], [])
+
+    def test_section_rows_equal_the_xml_sections(self):
+        import xml.etree.ElementTree as ET
+
+        xml_secs = [d.get("N") for d in ET.parse(self.XML).getroot().iter("DIV8")]
+        got = [r["id"].split(f"sec-{self.REG}-", 1)[1] for r in self.rows if r["kind"] == "section"]
+        self.assertEqual(got, xml_secs)
+
+    def test_sort_order_strictly_increasing(self):
+        orders = [r["sort_order"] for r in self.rows]
+        self.assertEqual(orders, sorted(set(orders)))
+
+
+class Blm3160FullParseTests(_BlmFullParseMixin, unittest.TestCase):
+    XML = P3160_XML
+    REG = "blm3160"
+
+    def test_counts(self):
+        self.assertEqual(len(self.rows), 342)
+        self.assertEqual(self.rep["subparts"], [f"Subpart {n}" for n in range(3160, 3166)])
+        self.assertEqual(len(self.rep["prefix_collisions"]), 29)
+        self.assertEqual(self.rep["heading_only_sections"], ["§ 3162.2", "§ 3162.4", "§ 3162.5", "§ 3162.7"])
+        self.assertEqual(len(self.rep["images"]), 0)
+        self.assertEqual(len(self.rep["tables"]), 2)
+        self.assertEqual(self.rep["appendix_modes"], {})
+        self.assertEqual(self.rep["dropped"], [])
+
+    def test_3162_2_sections_in_numeric_order(self):
+        orders = [self.by_id[f"sec-blm3160-3162.2-{i}"]["sort_order"] for i in range(1, 16)]
+        self.assertEqual(orders, sorted(orders))
+
+
+class Blm3170FullParseTests(_BlmFullParseMixin, unittest.TestCase):
+    XML = P3170_XML
+    REG = "blm3170"
+
+    def test_counts(self):
+        self.assertEqual(len(self.rows), 2489)
+        self.assertEqual(self.rep["subparts"], [f"Subpart {n}" for n in range(3170, 3180)])
+        self.assertEqual(self.rep["prefix_collisions"], [])
+        self.assertEqual(len(self.rep["tables"]), 128)
+        # 24 section-level images become placeholders; the other 37 are in
+        # the five subpart-nested appendices, which this parser does not
+        # read yet (BLM PR 1b) -- see the report's `dropped`
+        self.assertEqual(len(self.rep["images"]), 24)
+        self.assertEqual(self.rep["appendix_modes"], {})
+
+    def test_what_is_not_read_yet_is_reported(self):
+        """The five subpart-nested appendices and the Notice of Staking body
+        printed at part level (both BLM PR 1b) are listed, not lost silently."""
+        apx = [d["n"] for d in self.rep["dropped"] if d["tag"] == "DIV9"]
+        self.assertEqual(apx, [
+            "Appendix A to Subpart 3171", "Appendix A to Subpart 3172",
+            "Appendix A to Subpart 3173 of Part 3170", "Appendix A to Subpart 3175 of Part 3170",
+            "Appendix A to Subpart 3177",
+        ])
+        self.assertEqual(sum(d["images"] for d in self.rep["dropped"]), 37)
+        self.assertEqual(sum(d["tables"] for d in self.rep["dropped"]), 1)
+        loose = [d["tag"] for d in self.rep["dropped"] if d["in"] == "part"]
+        self.assertEqual(loose, ["EXTRACT", "P", "P-2", "P-2", "P-2"])
+
+    def test_api_and_aga_never_link(self):
+        for r in self.rows:
+            for a in re.findall(r"<a\b[^>]*>(.*?)</a>", r["full_text"]):
+                self.assertNotRegex(a, r"\b(?:API|AGA)\b", r["id"])
