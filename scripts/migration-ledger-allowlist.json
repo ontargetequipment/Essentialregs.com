@@ -1,0 +1,38 @@
+{
+  "statement_less": [
+    {
+      "version": "20261006090000",
+      "reason": "Applied by hand through execute_sql on 6 Oct 2026 and recorded as a version with no statements on 7 Oct (docs/CEO_PHASE_PLAN.md, 'Migration records'). The file is the SQL that ran; catalog evidence (function body, trigger, comments) in the 17 Oct 2026 ledger reconciliation PR."
+    },
+    {
+      "version": "20261007040000",
+      "reason": "Applied through execute_sql on 7 Oct 2026 and recorded with the file's version, no statements (docs/CEO_PHASE_PLAN.md, 'Migration records'). Catalog evidence (trigger body, rehash function, ACL, the 53 relabelled rows) in the 17 Oct 2026 ledger reconciliation PR."
+    },
+    {
+      "version": "20261009005000",
+      "reason": "Applied through the connector on 9 Oct 2026 and recorded under the file's version with no statements (the file's own header). Catalog evidence (table, constraints, index, RLS, grants, policy) in the 17 Oct 2026 ledger reconciliation PR."
+    }
+  ],
+  "duplicates": [
+    {
+      "version": "20261007010000",
+      "twin_of": "20261007011846",
+      "reason": "apply_migration recorded changelog_rewritten_and_reviewed as 20261007011846 (with statements); a second, statement-less row was inserted for the file's planned version on 7 Oct 2026. One change, two rows; the file is a comment-only duplicate note."
+    },
+    {
+      "version": "20261007020000",
+      "twin_of": "20261007011936",
+      "reason": "apply_migration recorded keyword_search_closed_permits_and_applicability as 20261007011936 (with statements); a second, statement-less row was inserted for the file's planned version on 7 Oct 2026. One change, two rows; the file is a comment-only duplicate note."
+    }
+  ],
+  "known_differences": [
+    {
+      "version": "20261004200000",
+      "reason": "The row stores steps 1-2 only (archive and schema); the file also has steps 3-4 (log the removals, delete, verify). Kept as is (CEO decision, 17 Oct 2026): production confirms steps 3-4 ran, with 0 live sec-26-C-FEDJJJJ rows and 20 archived in archive.provisions_backup_reg26_fedjjjj_20261004."
+    },
+    {
+      "version": "20261011175808",
+      "reason": "Comment split into five strings, same resulting comment (CEO decision, 17 Oct 2026: kept as is)."
+    }
+  ]
+}

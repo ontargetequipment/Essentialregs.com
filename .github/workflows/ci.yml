@@ -10,11 +10,13 @@ name: CI
 #   smoke -- Playwright against a deployed copy (e2e/). Fires when Vercel
 #            reports a deployment succeeded (deployment_status), or by hand
 #            with a base_url. Read-only: never signs up, never pays.
-#   qa    -- scripts/corpus_qa.sql against the database. Every pull request
-#            (not a required check: it reads production, writes only session
-#            temp tables, and takes under a minute), or by hand with the qa
-#            input. Needs the SUPABASE_DB_URL secret; without it (a fork's
-#            pull request, say) the job prints "QA skipped" and passes.
+#   qa    -- scripts/corpus_qa.sql, then scripts/check-migration-ledger.ts
+#            (supabase/migrations/ against schema_migrations, files = rows),
+#            against the database. Every pull request (not a required check:
+#            it reads production, writes only session temp tables, and takes
+#            under a minute), or by hand with the qa input. Needs the
+#            SUPABASE_DB_URL secret; without it (a fork's pull request, say)
+#            the job prints "QA skipped" and passes.
 
 on:
   pull_request:
@@ -33,7 +35,7 @@ on:
         options: [all, anonymous]
         default: all
       qa:
-        description: "QA: run scripts/corpus_qa.sql against the database (needs the SUPABASE_DB_URL secret)."
+        description: "QA: run scripts/corpus_qa.sql and the migration ledger check against the database (needs the SUPABASE_DB_URL secret)."
         type: boolean
         default: false
 
@@ -223,3 +225,25 @@ jobs:
             echo "::error title=Corpus QA::One or more ERROR/GUARD checks moved off their baseline; see the job summary."
             exit 1
           fi
+
+      # The ledger check runs even when corpus QA failed: the two answer
+      # different questions.
+      - uses: actions/setup-node@v4
+        if: ${{ !cancelled() && steps.gate.outputs.run == 'true' }}
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        if: ${{ !cancelled() && steps.gate.outputs.run == 'true' }}
+        run: npm ci
+
+      - name: Migration ledger
+        # scripts/check-migration-ledger.ts: one file in supabase/migrations/
+        # per row of supabase_migrations.schema_migrations, same version and
+        # name, and the same SQL wherever the row stores its statements; twins,
+        # statement-less rows and known differences are in
+        # scripts/migration-ledger-allowlist.json with their reasons. Reads
+        # only (psql, SUPABASE_DB_URL). Fails on any mismatch.
+        if: ${{ !cancelled() && steps.gate.outputs.run == 'true' }}
+        run: npx tsx scripts/check-migration-ledger.ts

@@ -64,3 +64,28 @@ their files entered git (2026-09-21 18:51 and 2026-09-22 03:05); `011` refers to
 RPC's by-hand fix "on 2026-09-21" and predates the 2026-09-23 03:59 UTC fix. The drop
 of the two btree indexes is dated by the commit that added the statements to 008
 (2026-09-19 03:21 UTC), after the recorded version that created them.
+
+## The 2026-10-17 reconciliation (before the BLM import)
+
+On 2026-10-17 `supabase/migrations/` had 68 timestamped files against 73 rows: five
+files with no row and ten rows with no file, all from 3-10 Oct. Most of the gap was one
+pattern: the connector's `apply_migration` records a change under its own timestamp,
+while the file had been committed under the version it was planned with. The recorded
+versions now have files holding their stored statements verbatim (each begins
+"regenerated 2026-10-17 from schema_migrations.statements"); the files below, which
+were never anyone's row, were moved here unchanged. None of them is applied by anything.
+
+| Archived file | What it was | What was checked | Now represented by |
+|---|---|---|---|
+| `20261003160524_changelog_public_rpc.sql` | Renamed copy. Applied by `apply_migration` and recorded as `20261003160551`. | The row's stored statements equal this file's SQL once comments and whitespace are set aside. | `20261003160551_changelog_public_rpc.sql` |
+| `20261007120000_changelog_regulatory_changes_only.sql` | Renamed copy, recorded as `20261008000816`. The stored text names this file as the "repository copy" with the full commentary, which is why it is kept. | Stored statements equal this file's SQL, comments aside. | `20261008000816_changelog_regulatory_changes_only.sql` |
+| `20261007121000_changelog_snapshot.sql` | Renamed copy, recorded as `20261008000836`; the stored text names this file the same way. | Stored statements equal this file's SQL, comments aside. | `20261008000836_changelog_snapshot.sql` |
+| `20261008040000_regulation_release_state.sql` | Consolidated replay copy of a change applied in six pieces on 8 Oct 2026 (its own note says so). **Not** a faithful record: it uses DROP/CREATE POLICY where production ran ALTER POLICY, and its three `revoke` statements on `regulation_releases` and `reg_is_released(text)` were never run (production's ACLs still carry the defaults; reported in the PR). Recording it would replay the whole change a second time after its pieces. | Five pieces are recorded with statements (031550 table and function, 031623 policies, 031858 changelog, 032004 `match_provisions`, 032118 `match_provisions_hybrid`, whose stored text is this file's function byte for byte). The seed `insert` was run by hand: 58 rows with its note and one `released_at`, 2026-10-08 03:16:09 UTC. | `20261008031550`, `20261008031609_regulation_release_state_seed.sql` (the seed, recorded by `docs/imports/2026-10-16/RUN_ME_20261017035000_migration_ledger_record.sql`), `20261008031623`, `20261008031858`, `20261008032004`, `20261008032118` |
+| `20261007010000_changelog_rewritten_and_reviewed.sql` | The twin's former text. Applied once, recorded twice: `20261007011846` by `apply_migration` with statements, and `20261007010000` inserted by hand with none (docs/CEO_PHASE_PLAN.md, "Migration records"). | Stored statements of `20261007011846` equal this file's SQL, comments aside. | `20261007011846_changelog_rewritten_and_reviewed.sql` (the SQL); `supabase/migrations/20261007010000_...` is now the comment-only duplicate note |
+| `20261007020000_keyword_search_closed_permits_and_applicability.sql` | The twin's former text: recorded as `20261007011936` (with statements) and `20261007020000` (none). | Stored statements of `20261007011936` equal this file's SQL, comments aside. | `20261007011936_keyword_search_closed_permits_and_applicability.sql` (the SQL); `supabase/migrations/20261007020000_...` is the duplicate note |
+
+| `20260926045912_keyword_search_operative_first.sql` | Previous body of a recorded version, **never applied**. The file (one commit, `ceabb1d`, 05:11 UTC on 26 Sep) was edited after the 04:59 UTC apply: a `matches as materialized` CTE with the citation and basis multipliers before the `lim*3` pool, and a reworded function comment. Production ran the stored statements, which take the pool on `base` and apply every multiplier after it. `search_provisions` was redefined by four later migrations, so a replay ends in the same state either way. | The row's stored statements differ from this file; they are byte-identical (md5) to the new file's body after its header line. | `20260926045912_keyword_search_operative_first.sql` (body replaced 2026-10-17 with the applied SQL, CEO decision) |
+
+`20261010120000_gp05_public_sample.sql` had no row either, but it was applied (all 111
+GP05 rows are `is_public`) and stays in `supabase/migrations/`; the same RUN_ME file
+records it. No file was found to be never applied.

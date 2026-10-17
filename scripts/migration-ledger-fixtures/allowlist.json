@@ -1,0 +1,5 @@
+{
+  "statement_less": [{"version": "20260103000000", "reason": "Fixture: recorded by hand, version only."}],
+  "duplicates": [{"version": "20260102000000", "twin_of": "20260102000100", "reason": "Fixture: the planned version recorded as well as the applied one."}],
+  "known_differences": []
+}

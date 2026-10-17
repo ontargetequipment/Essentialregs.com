@@ -1,3 +1,4 @@
+-- body replaced 2026-10-17 with the applied SQL from schema_migrations.statements; the previous body was never applied
 -- Backlog #15: keyword search ranks operative provisions first and Statements
 -- of Basis last.
 --
@@ -31,21 +32,10 @@
 --               returns, so for a caller who gets NULL paths (anon, see
 --               provision_path) the multiplier is inert -- and anon can only
 --               see the four sample rows anyway.
---   5. The citation and basis multipliers need nothing but the row, so they
---      are applied to every match. The Definitions multiplier needs the
---      breadcrumb, so it is applied to a relevance pool of the best lim * 3
---      rows (by normalised rank x citation x basis), from which the best lim
---      are returned. Costs lim * 3 provision_path() calls instead of lim,
---      but the whole function is still faster than the old one, which spent
---      its time running ts_headline over 25 huge basis rows: best of three
---      as a subscriber, old vs new (include_basis off), "APEN requirements"
---      338 vs 65 ms, "storage tank requirements" 469 vs 73, "well production
---      facility" 462 vs 72, "OOOOb" 97 vs 64, "produced water tank" 227 vs
---      65. The pool is NOT taken by raw rank on purpose: for
---      "APEN requirements" a dozen Reg 3 Part F basis entries out-rank every
---      operative row but the first, and a raw-rank pool of 15 (lim 5) held
---      only four operative rows, so a basis row still took fifth place after
---      the 0.5 was applied.
+--   5. The multipliers are applied to a pool of lim * 3 rows taken by
+--      normalised rank, then the best lim are returned. Costs lim * 3
+--      provision_path() calls instead of lim: measured +25-30 ms per search on
+--      a warm cache (about 50 -> 80 ms for the pool stage).
 --
 -- Result, same five queries, same subscriber, include_basis off (the page
 -- default): "APEN requirements" -> Reg 3 Part A II. (APEN Requirements) first;
@@ -93,32 +83,18 @@ stable
 set search_path = public
 as $$
   with query as (select websearch_to_tsquery('english', q) as tsq),
-  -- MATERIALIZED on purpose. For an authenticated caller the RLS policy on
-  -- provisions turns this into a sequential scan of the whole table (36k
-  -- rows), and without the fence the planner pushes the is_basis_provision()
-  -- filter from the next CTE down into that scan and evaluates it once per
-  -- table row instead of once per match: measured 280 ms against 46 ms for
-  -- "APEN requirements" as a subscriber. Do not remove the keyword.
-  matches as materialized (
+  -- Relevance pool: the best lim * 3 rows by length-normalised rank. Basis
+  -- rows are filtered here, before the limit, so include_basis = false never
+  -- returns a short page just because basis rows crowded the pool.
+  pool as (
     select p.id, p.citation, p.title, p.full_text, p.sort_order,
       ts_rank(p.search_vector, query.tsq, 1) as base,
       public.is_basis_provision(p.id) as is_basis,
       (to_tsvector('english', p.citation) @@ query.tsq) as citation_hit
     from provisions p, query
     where p.search_vector @@ query.tsq
-  ),
-  -- Relevance pool: the best lim * 3 rows by normalised rank with the two
-  -- row-local multipliers already applied. Basis rows are dropped here, before
-  -- any limit, so include_basis = false never returns a short page because
-  -- basis rows crowded the pool.
-  pool as (
-    select matches.*,
-      (matches.base
-        * (case when matches.citation_hit then 2.0 else 1.0 end)
-        * (case when matches.is_basis then 0.5 else 1.0 end)) as pre
-    from matches
-    where include_basis or not matches.is_basis
-    order by pre desc, matches.sort_order asc
+      and (include_basis or not public.is_basis_provision(p.id))
+    order by base desc, p.sort_order asc
     limit greatest(coalesce(lim, 25), 1) * 3
   ),
   -- The breadcrumb is computed once per pooled row: it drives the Definitions
@@ -129,7 +105,9 @@ as $$
   ),
   scored as (
     select pathed.*,
-      (pathed.pre
+      (pathed.base
+        * (case when pathed.citation_hit then 2.0 else 1.0 end)
+        * (case when pathed.is_basis then 0.5 else 1.0 end)
         * (case when pathed.path ~* '\mdefinitions?\M' then 0.8 else 1.0 end)
       )::real as score
     from pathed
@@ -160,11 +138,10 @@ as $$
 $$;
 
 comment on function public.search_provisions(text, integer, boolean) is
-  'Keyword search. Length-normalised ts_rank x2 on a direct citation hit, '
-  'x0.5 on a Statement of Basis; the best lim*3 then get x0.8 under a '
-  'Definitions heading and the best lim are returned. include_basis=false '
-  '(default) drops Statements of Basis. SECURITY INVOKER on purpose: RLS is '
-  'the paywall here.';
+  'Keyword search. Length-normalised ts_rank with multipliers (x2 direct '
+  'citation hit, x0.5 Statement of Basis, x0.8 under a Definitions heading) '
+  'applied to a lim*3 pool; include_basis=false (default) drops Statements of '
+  'Basis. SECURITY INVOKER on purpose: RLS is the paywall here.';
 
 -- Same grants as 20260913000000 (anon, authenticated) plus service_role, which
 -- already held EXECUTE on the old signature. Re-issued because the drop above

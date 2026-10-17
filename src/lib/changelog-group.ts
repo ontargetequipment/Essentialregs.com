@@ -1,7 +1,7 @@
 /**
  * Page-side folding of the changelog_public() rows (one per Denver day,
  * regulation and change type -- see
- * supabase/migrations/20261003160524_changelog_public_rpc.sql) into one line
+ * supabase/migrations/20261003160551_changelog_public_rpc.sql) into one line
  * per regulation per day: "Regulation 7 — 1,496 provisions updated · 212
  * summaries checked against source text". Since migration 20261007010000 the function
  * reports a summary rewritten and reviewed in the same run as one
